@@ -7,13 +7,13 @@
 
 Organizers upload an avatar and service photos. Candidates: **Cloudflare R2** vs **UploadThing**.
 
-| | Cloudflare R2 | UploadThing |
-|---|---------------|-------------|
-| API | S3-compatible; DIY signed URLs | Opinionated Next.js-centric DX |
-| Clients | Any HTTP client (web cabinet, later native) | Best with Next server routes |
-| Cost | No egress fees; predictable | Usage on UploadThing’s SaaS |
-| Lock-in | Object storage (portable) | Product + SDK lock-in |
-| Domain fit | Natural with Cloudflare DNS for `countmein.group` | Independent |
+|            | Cloudflare R2                                     | UploadThing                    |
+| ---------- | ------------------------------------------------- | ------------------------------ |
+| API        | S3-compatible; DIY signed URLs                    | Opinionated Next.js-centric DX |
+| Clients    | Any HTTP client (web cabinet, later native)       | Best with Next server routes   |
+| Cost       | No egress fees; predictable                       | Usage on UploadThing’s SaaS    |
+| Lock-in    | Object storage (portable)                         | Product + SDK lock-in          |
+| Domain fit | Natural with Cloudflare DNS for `countmein.group` | Independent                    |
 
 ## Decision
 

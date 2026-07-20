@@ -5,7 +5,14 @@ import { CalendarCheck } from 'lucide-react'
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-8 px-6 text-center">
-      <Image src="/logo.svg" alt="CountMeIn logo" width={160} height={160} className="size-40" priority />
+      <Image
+        src="/logo.svg"
+        alt="CountMeIn logo"
+        width={160}
+        height={160}
+        className="size-40"
+        priority
+      />
 
       <div className="flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm text-muted-foreground">
         <CalendarCheck className="size-4" />

@@ -39,12 +39,13 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 
 ## Documentation
 
-| Doc | Purpose |
-|-----|---------|
-| [docs/architecture.md](docs/architecture.md) | Surfaces, data flow, infra |
-| [docs/domain.md](docs/domain.md) | Entities (no Calendar), invariants |
-| [docs/roadmap.md](docs/roadmap.md) | MVP vs later |
-| [docs/decisions/](docs/decisions/) | ADRs |
+| Doc                                          | Purpose                            |
+| -------------------------------------------- | ---------------------------------- |
+| [docs/architecture.md](docs/architecture.md) | Surfaces, data flow, infra         |
+| [docs/domain.md](docs/domain.md)             | Entities (no Calendar), invariants |
+| [docs/pages.md](docs/pages.md)               | Site map / routes by audience      |
+| [docs/roadmap.md](docs/roadmap.md)           | MVP vs later                       |
+| [docs/decisions/](docs/decisions/)           | ADRs                               |
 
 ## Conventions
 
