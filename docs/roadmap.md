@@ -6,7 +6,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 ## MVP
 
-- Turborepo: `apps/web`, `apps/worker`, packages (`db`, `api-contracts`, `ui`, `storage`, `eslint-config`, `typescript-config`).
+- Turborepo: `apps/web`, `apps/worker`, packages (`db`, `api-contracts`, `storage`, `eslint-config`, `typescript-config`).
 - `apps/web`: landing + public booking + **organizer cabinet** + HTTP API.
 - Organizer flow: phone + messenger OTP → notifications in that messenger → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
@@ -34,6 +34,7 @@ Explicitly **not** in MVP:
 - Optional Capacitor organizer shell if web-in-messenger is not enough ([ADR-006](decisions/006-organizer-capacitor.md)).
 - Image variants / CDN resize if needed.
 - Waitlist / notify-on-free-seat; realtime capacity if demand justifies.
+- Occupancy analytics dashboard in cabinet: fill rate by time (hour-of-day / day-of-week heatmap), per service and slot, to reveal peak vs. slow times.
 
 ## Phase 3+
 

@@ -50,7 +50,6 @@ flowchart LR
 | `apps/worker`                                           | Jobs: messenger notifications with cabinet deep links (Telegram first)        |
 | `packages/db`                                           | Drizzle schema, migrations, client                                            |
 | `packages/api-contracts`                                | Zod schemas shared by web and worker                                          |
-| `packages/ui`                                           | Optional shared shadcn primitives                                             |
 | `packages/storage`                                      | R2 signed upload helpers                                                      |
 | `packages/eslint-config` / `packages/typescript-config` | Shared lint & TS configs                                                      |
 | Postgres                                                | Domain + `pg-boss`                                                            |

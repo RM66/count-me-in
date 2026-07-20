@@ -29,7 +29,6 @@ apps/
 packages/
   db/                  # Drizzle
   api-contracts/       # Zod / shared types
-  ui/                  # shared UI
   storage/             # Cloudflare R2
   eslint-config/       # shared ESLint (turbo starter)
   typescript-config/   # shared tsconfig (turbo starter)

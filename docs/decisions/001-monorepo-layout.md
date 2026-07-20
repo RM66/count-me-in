@@ -1,11 +1,11 @@
 # ADR-001: Monorepo layout
 
-- **Status:** Accepted (amended 2026-07-19)
+- **Status:** Accepted (amended 2026-07-20)
 - **Date:** 2026-07-18
 
 ## Context
 
-CountMeIn has guest web booking, an organizer web cabinet (opened from messenger links in MVP), shared types, DB schema, media helpers, UI kit, and a notification worker.
+CountMeIn has guest web booking, an organizer web cabinet (opened from messenger links in MVP), shared types, DB schema, media helpers, and a notification worker.
 
 ## Decision
 
@@ -16,7 +16,6 @@ apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP 
 apps/worker      # job consumer (notifications)
 packages/db
 packages/api-contracts
-packages/ui
 packages/storage
 packages/eslint-config
 packages/typescript-config
@@ -33,5 +32,5 @@ Do not add `apps/api` until API must outlive the Next deployment.
 ## Consequences
 
 - Single web deployable + worker for MVP.
-- `packages/ui` can stay thin until a second client appears.
+- UI (Tailwind + shadcn/ui) lives inside `apps/web` for MVP; extract a shared `packages/ui` only when a second client appears.
 - Messenger deep links target `https://countmein.group/...` cabinet routes.

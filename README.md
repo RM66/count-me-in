@@ -13,7 +13,6 @@ Online booking for group events — `https://countmein.group`
 
 | Package                   | Role                    |
 | ------------------------- | ----------------------- |
-| `@repo/ui`                | Shared UI primitives    |
 | `@repo/db`                | Drizzle schema & client |
 | `@repo/api-contracts`     | Shared Zod / API types  |
 | `@repo/storage`           | Cloudflare R2 helpers   |
