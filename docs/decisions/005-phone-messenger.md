@@ -23,4 +23,4 @@ Product defaults initially assumed email for organizer auth and booking notifica
 - `preferredMessenger` reduces “which channel?” ambiguity on repeat login/notify.
 - Dependency on messenger reachability for that phone.
 - Auth.js is phone/OTP-centric, not email-centric.
-- Guest cancel tokens go out on the same messenger path as confirmation.
+- The guest booking management link goes out on the same messenger path as confirmation ([ADR-002](002-guest-booking.md)).

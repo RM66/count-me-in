@@ -1,6 +1,6 @@
 # ADR-002: Guest booking (no visitor Auth.js accounts)
 
-- **Status:** Accepted (amended 2026-07-18)
+- **Status:** Accepted (amended 2026-07-20)
 - **Date:** 2026-07-18
 
 ## Context
@@ -13,7 +13,14 @@ In MVP, **visitors do not have Auth.js accounts**. A booking stores `guestName` 
 
 Auth.js sessions are for **organizers only** (phone-based — see ADR-005).
 
-**Cancel is in MVP:** guest can cancel via token/link from the messenger notification; organizer can cancel from the dashboard. Cancel decrements `bookedCount` in the same transaction.
+**Cancel is in MVP, via a booking management page** (no visitor account). The page shows the booking and a Cancel button, and is reachable two ways:
+
+1. **Deep link** in the messenger notification — `https://countmein.group/b/{manageToken}`. The link was delivered to the verified phone's messenger, which is itself proof of ownership, so no additional OTP is required. `manageToken` is an opaque secret stored **hashed** on the booking.
+2. **Phone + OTP lookup** — the guest enters their phone, gets a messenger OTP (Redis TTL), and sees the bookings for that phone. Useful if the original message is lost.
+
+Organizers can also cancel from the web cabinet. Cancel sets `cancelled` and decrements `bookedCount` in the same transaction.
+
+This replaces the earlier bare "cancel token" idea: a single management surface is easier to extend (e.g. show status, later reschedule) and both entry paths reuse the phone + messenger trust model already in the product.
 
 ## Consequences
 

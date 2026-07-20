@@ -4,13 +4,13 @@ High-level system design for CountMeIn. Product domain lives in [domain.md](doma
 
 ## Product surfaces
 
-| Surface | App | Audience | Responsibility |
-|---------|-----|----------|----------------|
-| Landing | `apps/web` | Prospects | Marketing, organizer sign-up |
-| Public booking | `apps/web` | Guests | `https://countmein.group/{orgSlug}` — service → slot → options → book |
-| Organizer cabinet | `apps/web` | Organizers | Services, slots, bookings, profile/media — opened from messenger links |
-| API | `apps/web` (Route Handlers) | Clients | HTTP API; Auth.js for organizers |
-| Worker | `apps/worker` | — | Messenger notifications / jobs |
+| Surface           | App                         | Audience   | Responsibility                                                         |
+| ----------------- | --------------------------- | ---------- | ---------------------------------------------------------------------- |
+| Landing           | `apps/web`                  | Prospects  | Marketing, organizer sign-up                                           |
+| Public booking    | `apps/web`                  | Guests     | `https://countmein.group/{orgSlug}` — service → slot → options → book  |
+| Organizer cabinet | `apps/web`                  | Organizers | Services, slots, bookings, profile/media — opened from messenger links |
+| API               | `apps/web` (Route Handlers) | Clients    | HTTP API; Auth.js for organizers                                       |
+| Worker            | `apps/worker`               | —          | Messenger notifications / jobs                                         |
 
 **MVP entry for organizers:** register via phone → OTP in messenger → later, each booking notification includes a link that opens the cabinet in the messenger WebView (or browser). No separate native app in MVP — [ADR-006](decisions/006-organizer-capacitor.md).
 
@@ -44,18 +44,18 @@ flowchart LR
 
 ## Component roles
 
-| Component | Role |
-|-----------|------|
-| `apps/web` | Next.js: landing, public booking, organizer cabinet, HTTP API, Auth.js |
-| `apps/worker` | Jobs: messenger notifications with cabinet deep links (Telegram first) |
-| `packages/db` | Drizzle schema, migrations, client |
-| `packages/api-contracts` | Zod schemas shared by web and worker |
-| `packages/ui` | Optional shared shadcn primitives |
-| `packages/storage` | R2 signed upload helpers |
-| `packages/eslint-config` / `packages/typescript-config` | Shared lint & TS configs |
-| Postgres | Domain + `pg-boss` |
-| Redis | Sessions, OTP TTL, rate limits |
-| Cloudflare R2 | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md)) |
+| Component                                               | Role                                                                          |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `apps/web`                                              | Next.js: landing, public booking, organizer cabinet, HTTP API, Auth.js        |
+| `apps/worker`                                           | Jobs: messenger notifications with cabinet deep links (Telegram first)        |
+| `packages/db`                                           | Drizzle schema, migrations, client                                            |
+| `packages/api-contracts`                                | Zod schemas shared by web and worker                                          |
+| `packages/ui`                                           | Optional shared shadcn primitives                                             |
+| `packages/storage`                                      | R2 signed upload helpers                                                      |
+| `packages/eslint-config` / `packages/typescript-config` | Shared lint & TS configs                                                      |
+| Postgres                                                | Domain + `pg-boss`                                                            |
+| Redis                                                   | Sessions, OTP TTL, rate limits                                                |
+| Cloudflare R2                                           | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md)) |
 
 ## Critical flow: create booking (guest)
 
@@ -63,18 +63,23 @@ flowchart LR
 2. Guest picks service/slot/options; enters name + phone; messenger OTP verifies phone (Redis TTL; **no seat held**).
 3. `POST` booking in one transaction (after OTP):
    - validate `selectedOptions` against service
-   - assert `bookedCount + seats <= capacity`
+   - **claim seats atomically** with one conditional statement: `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` (not a read-then-write — that reopens the overbooking race)
+   - if no row was updated, the slot is full → abort
    - insert `Booking` (`confirmed`)
-   - increment `bookedCount`
-4. Enqueue `booking.created` (cancel token for guest; **cabinet URL** for organizer).
+4. Enqueue `booking.created` (booking **management link** for guest; **cabinet URL** for organizer).
 5. Worker notifies guest + organizer; organizer message includes link to cabinet / booking.
 6. Invalidate TanStack Query on the public page (and cabinet if open).
 
-If the slot filled during OTP, step 3 fails; guest picks another slot. No `pending` status.
+If the slot filled during OTP, the conditional `UPDATE` in step 3 affects no row and the booking is aborted; guest picks another slot. No `pending` status.
 
 ### Cancel (MVP)
 
-Guest token from messenger, or organizer in the web cabinet. Transaction: `cancelled` + decrement `bookedCount` + enqueue `booking.cancelled`.
+Guests manage a booking on a dedicated **booking management page**, reachable two ways:
+
+- **Deep link** in the messenger notification (`https://countmein.group/b/{manageToken}`) — the messenger already proved phone ownership, so no extra OTP is required.
+- **Phone + OTP lookup:** guest enters their phone, receives a messenger OTP, and sees the bookings for that phone.
+
+The page shows the booking details and a **Cancel** button. Organizers can also cancel from the web cabinet. Cancelling runs one transaction: set `cancelled` + decrement `bookedCount` + enqueue `booking.cancelled`.
 
 ### Media upload (organizer)
 
@@ -83,7 +88,7 @@ Authenticated organizer in cabinet → signed upload URL → PUT to R2 → save 
 ## Auth boundary
 
 - **Organizers:** Auth.js (phone + messenger OTP); session for cabinet routes. Deep links should land in an authenticated session (cookie after login, or one-time link that establishes session). See [ADR-005](decisions/005-phone-messenger.md).
-- **Visitors:** No Auth.js account; phone + OTP / cancel token. See [ADR-002](decisions/002-guest-booking.md).
+- **Visitors:** No Auth.js account; booking management via messenger deep link (`manageToken`) or phone + OTP lookup. See [ADR-002](decisions/002-guest-booking.md).
 
 ## Monorepo
 
