@@ -24,14 +24,15 @@ No separate organizer native app in MVP — [ADR-006](docs/decisions/006-organiz
 
 ```
 apps/
-  web/            # Next.js: landing + public booking + cabinet + API
-  worker/         # notifications / jobs
+  web/                 # Next.js: landing + public booking + cabinet + API
+  worker/              # notifications / jobs
 packages/
-  db/
-  api-contracts/
-  ui/
-  storage/        # R2 signed uploads
-  config/
+  db/                  # Drizzle
+  api-contracts/       # Zod / shared types
+  ui/                  # shared UI
+  storage/             # Cloudflare R2
+  eslint-config/       # shared ESLint (turbo starter)
+  typescript-config/   # shared tsconfig (turbo starter)
 docs/
 ```
 

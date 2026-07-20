@@ -52,7 +52,7 @@ flowchart LR
 | `packages/api-contracts` | Zod schemas shared by web and worker |
 | `packages/ui` | Optional shared shadcn primitives |
 | `packages/storage` | R2 signed upload helpers |
-| `packages/config` | eslint, tsconfig, tailwind |
+| `packages/eslint-config` / `packages/typescript-config` | Shared lint & TS configs |
 | Postgres | Domain + `pg-boss` |
 | Redis | Sessions, OTP TTL, rate limits |
 | Cloudflare R2 | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md)) |

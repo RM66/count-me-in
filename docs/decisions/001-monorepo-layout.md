@@ -16,12 +16,15 @@ apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP 
 apps/worker      # job consumer (notifications)
 packages/db
 packages/api-contracts
-packages/ui      # shared primitives (optional extraction; can start inside apps/web)
-packages/storage # Cloudflare R2 helpers
-packages/config
+packages/ui
+packages/storage
+packages/eslint-config
+packages/typescript-config
 ```
 
 **`apps/` vs `packages/`:** `apps/*` are deployable processes. `packages/*` are libraries imported by apps.
+
+Shared lint/tsconfig come from the Turborepo starter as `eslint-config` + `typescript-config` (instead of a single `packages/config`).
 
 **MVP:** do **not** add `apps/organizer` / Capacitor. Organizer UI is route group(s) inside `apps/web`. See [ADR-006](006-organizer-capacitor.md).
 
