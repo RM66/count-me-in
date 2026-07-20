@@ -13,14 +13,14 @@ Product defaults initially assumed email for organizer auth and booking notifica
 2. **Guest booking:** `guestPhone` required; name required. Messenger OTP **before** insert; booking created atomically as `confirmed`. See [domain](../domain.md).
 3. **Notifications:** messengers are the **primary** channel. Email not required for MVP.
 4. **MVP provider:** **Telegram** first; other messengers as adapters later.
-5. **Preferred channel:** persist `Organizer.preferredMessenger` from the channel that successfully delivered OTP, and reuse it for subsequent OTP/notifications when possible.
+5. **Channel:** persist `Organizer.messenger` (and `Booking.messenger` for guests) from the channel that successfully delivered OTP, and reuse it for subsequent OTP/notifications.
 6. **Public URL:** `https://countmein.group/{orgSlug}`.
 
 ## Consequences
 
 - Worker grows a notification adapter interface; Telegram is the first adapter.
 - OTP codes and rate limits live in Redis (short TTL); phones in E.164.
-- `preferredMessenger` reduces “which channel?” ambiguity on repeat login/notify.
+- Persisting `messenger` reduces “which channel?” ambiguity on repeat login/notify.
 - Dependency on messenger reachability for that phone.
 - Auth.js is phone/OTP-centric, not email-centric.
 - The guest booking management link goes out on the same messenger path as confirmation ([ADR-002](002-guest-booking.md)).

@@ -11,7 +11,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Organizer flow: phone + messenger OTP → notifications in that messenger → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
 - Guest booking with OTP → atomic `confirmed`; cancel in MVP (guest + organizer).
-- Messenger notifications via `pg-boss` + worker; Telegram first; `preferredMessenger` on organizer.
+- Messenger notifications via `pg-boss` + worker; Telegram first; `messenger` on organizer and booking.
 - Image uploads (organizer avatar, service photo) via Cloudflare R2.
 - Observability: Sentry, PostHog (basic).
 - Docs: AGENTS.md + `docs/`.
@@ -45,12 +45,12 @@ Explicitly **not** in MVP:
 
 ## Settled choices
 
-| Topic | Decision |
-|-------|----------|
-| Domain / URL | `countmein.group/{orgSlug}` |
-| Auth | Phone + messenger OTP; `Organizer.id` only |
-| Notifications | Messengers (Telegram MVP) + cabinet deep links |
-| Guest cancel | MVP |
+| Topic                  | Decision                                                                    |
+| ---------------------- | --------------------------------------------------------------------------- |
+| Domain / URL           | `countmein.group/{orgSlug}`                                                 |
+| Auth                   | Phone + messenger OTP; `Organizer.id` only                                  |
+| Notifications          | Messengers (Telegram MVP) + cabinet deep links                              |
+| Guest cancel           | MVP                                                                         |
 | Organizer client (MVP) | Web cabinet in `apps/web` ([ADR-006](decisions/006-organizer-capacitor.md)) |
-| Media | Cloudflare R2 ([ADR-007](decisions/007-cloudflare-r2.md)) |
-| Calendar entity | Removed |
+| Media                  | Cloudflare R2 ([ADR-007](decisions/007-cloudflare-r2.md))                   |
+| Calendar entity        | Removed                                                                     |

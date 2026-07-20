@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
   },
@@ -16,5 +17,9 @@
     "@types/node": "^22.15.3",
     "eslint": "^9.39.1",
     "typescript": "5.9.2"
+  },
+  "dependencies": {
+    "libphonenumber-js": "^1.13.9",
+    "zod": "^4.4.3"
   }
 }

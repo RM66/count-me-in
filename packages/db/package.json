@@ -3,18 +3,30 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",
-    "lint": "eslint --max-warnings 0"
+    "lint": "eslint --max-warnings 0",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/node": "^22.15.3",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.1",
     "typescript": "5.9.2"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "nanoid": "^6.0.0",
+    "postgres": "^3.4.9",
+    "uuidv7": "^1.2.1"
   }
 }
