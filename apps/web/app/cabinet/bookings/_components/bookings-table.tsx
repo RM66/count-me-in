@@ -36,7 +36,11 @@ import {
 } from '@/lib/mock-data'
 
 function initials(name: string) {
-  return name.split(' ').map((n) => n[0]).join('').slice(0, 2)
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
 }
 
 export function BookingsTable() {
@@ -107,11 +111,7 @@ export function BookingsTable() {
                 const svc = getBookingService(b)
                 const slot = getSlot(b.timeSlotId)
                 return (
-                  <TableRow
-                    key={b.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelected(b)}
-                  >
+                  <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelected(b)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="size-8">
@@ -214,9 +214,7 @@ export function BookingsTable() {
             </Button>
             <Button
               variant="outline"
-              onClick={() =>
-                toast('Calling guest', { description: 'This is a mockup.' })
-              }
+              onClick={() => toast('Calling guest', { description: 'This is a mockup.' })}
             >
               <PhoneIcon data-icon="inline-start" />
               Call guest
@@ -225,9 +223,7 @@ export function BookingsTable() {
               <Button
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
-                onClick={() =>
-                  toast('Cancel booking?', { description: 'This is a mockup.' })
-                }
+                onClick={() => toast('Cancel booking?', { description: 'This is a mockup.' })}
               >
                 <XIcon data-icon="inline-start" />
                 Cancel booking

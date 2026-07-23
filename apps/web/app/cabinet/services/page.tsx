@@ -31,9 +31,7 @@ export default function ServicesPage() {
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Services</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage the experiences guests can book.
-          </p>
+          <p className="text-sm text-muted-foreground">Manage the experiences guests can book.</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -52,9 +50,7 @@ export default function ServicesPage() {
                 </div>
                 <CardHeader>
                   <CardTitle className="text-balance">{svc.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {svc.description}
-                  </CardDescription>
+                  <CardDescription className="line-clamp-2">{svc.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{svc.defaultPrice}</Badge>

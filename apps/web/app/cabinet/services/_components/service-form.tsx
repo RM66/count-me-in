@@ -8,13 +8,7 @@ import { PlusIcon, XIcon, ImageIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Field,
   FieldDescription,
@@ -90,9 +84,7 @@ export function ServiceForm({ service }: { service?: Service }) {
         <Card>
           <CardHeader>
             <CardTitle>Defaults</CardTitle>
-            <CardDescription>
-              Applied to new slots. You can override them per slot.
-            </CardDescription>
+            <CardDescription>Applied to new slots. You can override them per slot.</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -125,9 +117,7 @@ export function ServiceForm({ service }: { service?: Service }) {
         <Card>
           <CardHeader>
             <CardTitle>Booking options</CardTitle>
-            <CardDescription>
-              Optional add-ons or choices guests pick when booking.
-            </CardDescription>
+            <CardDescription>Optional add-ons or choices guests pick when booking.</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>

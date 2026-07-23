@@ -110,7 +110,9 @@ export default async function ServicePage({
               <EmptyHeader>
                 <CalendarX className="size-6 text-muted-foreground" />
                 <EmptyTitle>No slots yet</EmptyTitle>
-                <EmptyDescription>Check back soon — new times are added regularly.</EmptyDescription>
+                <EmptyDescription>
+                  Check back soon — new times are added regularly.
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (

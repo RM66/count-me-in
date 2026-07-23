@@ -126,7 +126,10 @@ export function CabinetSidebar() {
                   )}
                 >
                   <Avatar className="size-8 rounded-md">
-                    <AvatarImage src={organizer.photoUrl || '/placeholder.svg'} alt={organizer.name} />
+                    <AvatarImage
+                      src={organizer.photoUrl || '/placeholder.svg'}
+                      alt={organizer.name}
+                    />
                     <AvatarFallback className="rounded-md">SL</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">

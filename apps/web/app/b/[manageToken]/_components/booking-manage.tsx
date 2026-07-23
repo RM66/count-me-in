@@ -68,7 +68,9 @@ export function BookingManage({
             </Badge>
           )}
         </div>
-        <CardDescription>Booking with {organizer.name} · {formatDate(slot.startsAt)}</CardDescription>
+        <CardDescription>
+          Booking with {organizer.name} · {formatDate(slot.startsAt)}
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3">
@@ -125,7 +127,10 @@ export function BookingManage({
             />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+                <Button
+                  variant="outline"
+                  className="w-full text-destructive hover:text-destructive"
+                >
                   Cancel booking
                 </Button>
               </AlertDialogTrigger>

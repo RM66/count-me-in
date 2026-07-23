@@ -15,12 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import {
   Select,
   SelectContent,
@@ -99,9 +94,7 @@ export function AddSlotDialog() {
             </Field>
           </div>
           <Field>
-            <FieldDescription>
-              Leave price empty to use the service default.
-            </FieldDescription>
+            <FieldDescription>Leave price empty to use the service default.</FieldDescription>
           </Field>
         </FieldGroup>
         <DialogFooter>

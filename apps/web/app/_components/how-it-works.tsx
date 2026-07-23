@@ -32,8 +32,8 @@ export function HowItWorks() {
             From setup to first booking in minutes
           </h2>
           <p className="mt-4 text-muted-foreground text-pretty">
-            CountMeIn handles capacity, confirmations, and reminders so you can focus on running your
-            events.
+            CountMeIn handles capacity, confirmations, and reminders so you can focus on running
+            your events.
           </p>
         </div>
 

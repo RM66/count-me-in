@@ -23,12 +23,7 @@ import {
   FieldSet,
   FieldLegend,
 } from '@/components/ui/field'
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  InputOTPSeparator,
-} from '@/components/ui/input-otp'
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
 import { AddToCalendar } from '@/components/guest/add-to-calendar'
 import { SeatsBadge } from '@/app/[orgSlug]/[serviceId]/_components/seats-badge'
 import {

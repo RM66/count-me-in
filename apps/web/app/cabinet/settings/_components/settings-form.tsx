@@ -16,13 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldTitle,
-} from '@/components/ui/field'
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
 import {
   InputGroup,
   InputGroupAddon,
@@ -127,9 +121,7 @@ export function SettingsForm() {
                   </InputGroupAddon>
                   <InputGroupInput id="slug" defaultValue={organizer.slug} />
                 </InputGroup>
-                <FieldDescription>
-                  Guests visit this link to browse and book.
-                </FieldDescription>
+                <FieldDescription>Guests visit this link to browse and book.</FieldDescription>
               </Field>
               <Field>
                 <FieldLabel htmlFor="share">Share link</FieldLabel>

@@ -7,28 +7,12 @@ import { GuestShell } from '@/components/guest/guest-shell'
 import { MessengerToggle } from '@/components/auth/messenger-toggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-} from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  bookings,
-  getSlot,
-  getBookingService,
-  formatDateTime,
-} from '@/lib/mock-data'
+import { bookings, getSlot, getBookingService, formatDateTime } from '@/lib/mock-data'
 
 type ViewState = 'idle' | 'searching' | 'results'
 
@@ -53,8 +37,8 @@ export default function FindBookingPage() {
             Find your booking
           </h1>
           <p className="mt-2 text-muted-foreground text-pretty">
-            Lost your link? Enter the phone number you booked with and we&apos;ll send a
-            fresh manage link to your messenger.
+            Lost your link? Enter the phone number you booked with and we&apos;ll send a fresh
+            manage link to your messenger.
           </p>
         </div>
 

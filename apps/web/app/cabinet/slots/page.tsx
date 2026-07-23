@@ -1,13 +1,7 @@
 import { MoreHorizontalIcon } from 'lucide-react'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { AddSlotDialog } from '@/app/cabinet/slots/_components/add-slot-dialog'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -121,9 +115,7 @@ export default function SlotsPage() {
                               <DropdownMenuItem>Edit slot</DropdownMenuItem>
                               <DropdownMenuItem>View bookings</DropdownMenuItem>
                               <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem variant="destructive">
-                                Cancel slot
-                              </DropdownMenuItem>
+                              <DropdownMenuItem variant="destructive">Cancel slot</DropdownMenuItem>
                             </DropdownMenuGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>

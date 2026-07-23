@@ -11,13 +11,7 @@ import {
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -34,12 +28,8 @@ import {
 export default function CabinetOverviewPage() {
   const confirmed = bookings.filter((b) => b.status === 'confirmed')
   const totalSeats = confirmed.reduce((sum, b) => sum + b.seats, 0)
-  const upcoming = [...slots]
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-    .slice(0, 5)
-  const recent = [...bookings]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5)
+  const upcoming = [...slots].sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, 5)
+  const recent = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5)
 
   return (
     <>
@@ -183,9 +173,7 @@ export default function CabinetOverviewPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex flex-col gap-1">
               <CardTitle>Your public page</CardTitle>
-              <CardDescription>
-                Share this link so guests can browse and book.
-              </CardDescription>
+              <CardDescription>Share this link so guests can browse and book.</CardDescription>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/${organizer.slug}`} target="_blank">

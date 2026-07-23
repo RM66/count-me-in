@@ -7,24 +7,14 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { MessengerToggle } from '@/components/auth/messenger-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldDescription,
-} from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  InputOTPSeparator,
-} from '@/components/ui/input-otp'
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
 import {
   Select,
   SelectContent,
@@ -77,9 +67,7 @@ export default function SignupPage() {
             <span
               className={cn(
                 'flex size-7 items-center justify-center rounded-full text-xs font-medium',
-                i <= step
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground',
+                i <= step ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
               )}
             >
               {i + 1}

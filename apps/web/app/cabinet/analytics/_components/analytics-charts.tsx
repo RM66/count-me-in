@@ -1,21 +1,7 @@
 'use client'
 
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ChartContainer,
   ChartTooltip,
@@ -99,11 +85,7 @@ export function AnalyticsCharts() {
         </CardHeader>
         <CardContent>
           <ChartContainer config={serviceConfig} className="h-[320px] w-full">
-            <BarChart
-              data={perService}
-              layout="vertical"
-              margin={{ left: 4, right: 12 }}
-            >
+            <BarChart data={perService} layout="vertical" margin={{ left: 4, right: 12 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" tickLine={false} axisLine={false} />
               <YAxis

@@ -12,11 +12,7 @@ export const metadata: Metadata = {
   description: organizer.description,
 }
 
-export default async function OrganizerPage({
-  params,
-}: {
-  params: Promise<{ orgSlug: string }>
-}) {
+export default async function OrganizerPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params
 
   // Demo: only the seeded organizer exists.
