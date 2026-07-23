@@ -44,7 +44,6 @@ export interface TimeSlot {
 export interface Booking {
   id: string
   timeSlotId: string
-  serviceId: string
   status: BookingStatus
   seats: number
   guestName: string
@@ -141,7 +140,6 @@ export const bookings: Booking[] = [
   {
     id: 'bk_1',
     timeSlotId: 'slot_y1',
-    serviceId: 'svc_yoga',
     status: 'confirmed',
     seats: 2,
     guestName: 'Mila Petrović',
@@ -154,7 +152,6 @@ export const bookings: Booking[] = [
   {
     id: 'bk_2',
     timeSlotId: 'slot_p1',
-    serviceId: 'svc_pottery',
     status: 'confirmed',
     seats: 1,
     guestName: 'Noah Ellis',
@@ -167,7 +164,6 @@ export const bookings: Booking[] = [
   {
     id: 'bk_3',
     timeSlotId: 'slot_b1',
-    serviceId: 'svc_breath',
     status: 'confirmed',
     seats: 1,
     guestName: 'Ana Kovač',
@@ -179,7 +175,6 @@ export const bookings: Booking[] = [
   {
     id: 'bk_4',
     timeSlotId: 'slot_y3',
-    serviceId: 'svc_yoga',
     status: 'confirmed',
     seats: 3,
     guestName: 'Luka Jovanović',
@@ -192,7 +187,6 @@ export const bookings: Booking[] = [
   {
     id: 'bk_5',
     timeSlotId: 'slot_p1',
-    serviceId: 'svc_pottery',
     status: 'cancelled',
     seats: 1,
     guestName: 'Sara Nikolić',
@@ -217,6 +211,15 @@ export function getSlotsForService(serviceId: string): TimeSlot[] {
 
 export function getSlot(slotId: string): TimeSlot | undefined {
   return slots.find((s) => s.id === slotId)
+}
+
+/**
+ * A booking reaches its service transitively (Booking → TimeSlot → Service),
+ * mirroring docs/domain.md — there is no Booking.serviceId column.
+ */
+export function getBookingService(booking: Booking): Service | undefined {
+  const slot = getSlot(booking.timeSlotId)
+  return slot ? getService(slot.serviceId) : undefined
 }
 
 export function seatsLeft(slot: TimeSlot): number {

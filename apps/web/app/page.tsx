@@ -1,9 +1,9 @@
 import { SiteHeader } from '@/components/marketing/site-header'
 import { SiteFooter } from '@/components/marketing/site-footer'
-import { Hero } from '@/components/marketing/hero'
-import { HowItWorks } from '@/components/marketing/how-it-works'
-import { Features } from '@/components/marketing/features'
-import { Cta } from '@/components/marketing/cta'
+import { Hero } from '@/app/_components/hero'
+import { HowItWorks } from '@/app/_components/how-it-works'
+import { Features } from '@/app/_components/features'
+import { Cta } from '@/app/_components/cta'
 
 export default function Home() {
   return (

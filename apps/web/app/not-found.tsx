@@ -33,7 +33,7 @@ export default function NotFound() {
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/find-booking">
+              <Link href="/b">
                 <SearchIcon data-icon="inline-start" />
                 Find my booking
               </Link>
