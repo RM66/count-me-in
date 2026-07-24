@@ -1,0 +1,14 @@
+/*
+ * In the app `--font-sans` is provided by next/font (Figtree) in app/layout.tsx.
+ * Storybook does not render the root layout, so we provide a fallback stack here.
+ */
+:root {
+  --font-sans:
+    'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+}
+
+body {
+  background: var(--color-background, #fff);
+  color: var(--color-foreground, #111);
+}

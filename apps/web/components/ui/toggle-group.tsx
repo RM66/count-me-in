@@ -1,11 +1,11 @@
 'use client'
 
-import * as React from 'react'
 import { type VariantProps } from 'class-variance-authority'
 import { ToggleGroup as ToggleGroupPrimitive } from 'radix-ui'
+import React, { ComponentProps } from 'react'
 
-import { cn } from '@/lib/utils'
 import { toggleVariants } from '@/components/ui/toggle'
+import { cn } from '@/lib/utils'
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {
@@ -27,7 +27,7 @@ function ToggleGroup({
   orientation = 'horizontal',
   children,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
+}: ComponentProps<typeof ToggleGroupPrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: 'horizontal' | 'vertical'
@@ -59,7 +59,7 @@ function ToggleGroupItem({
   variant = 'default',
   size = 'default',
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> & VariantProps<typeof toggleVariants>) {
+}: ComponentProps<typeof ToggleGroupPrimitive.Item> & VariantProps<typeof toggleVariants>) {
   const context = React.useContext(ToggleGroupContext)
 
   return (

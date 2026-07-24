@@ -1,8 +1,8 @@
 'use client'
 
-import * as React from 'react'
+import React, { ComponentProps } from 'react'
 import * as RechartsPrimitive from 'recharts'
-import type { TooltipValueType } from 'recharts'
+import { type TooltipValueType } from 'recharts'
 
 import { cn } from '@/lib/utils'
 
@@ -46,9 +46,9 @@ function ChartContainer({
   config,
   initialDimension = INITIAL_DIMENSION,
   ...props
-}: React.ComponentProps<'div'> & {
+}: ComponentProps<'div'> & {
   config: ChartConfig
-  children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>['children']
+  children: ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>['children']
   initialDimension?: {
     width: number
     height: number
@@ -122,8 +122,8 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<'div'> & {
+}: ComponentProps<typeof RechartsPrimitive.Tooltip> &
+  ComponentProps<'div'> & {
     hideLabel?: boolean
     hideIndicator?: boolean
     indicator?: 'line' | 'dot' | 'dashed'
@@ -255,7 +255,7 @@ function ChartLegendContent({
   payload,
   verticalAlign = 'bottom',
   nameKey,
-}: React.ComponentProps<'div'> & {
+}: ComponentProps<'div'> & {
   hideIcon?: boolean
   nameKey?: string
 } & RechartsPrimitive.DefaultLegendContentProps) {
