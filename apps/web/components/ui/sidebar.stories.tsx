@@ -17,6 +17,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { TooltipProvider } from './tooltip'
 
 const meta: Meta<typeof Sidebar> = {
   title: 'UI/Sidebar',
@@ -27,14 +28,16 @@ const meta: Meta<typeof Sidebar> = {
   decorators: [
     (Story) => (
       <SidebarProvider>
-        <Story />
-        <SidebarInset>
-          <header className="flex h-12 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
-            <span className="text-sm font-medium">Cabinet</span>
-          </header>
-          <div className="p-4 text-sm text-muted-foreground">Main content area.</div>
-        </SidebarInset>
+        <TooltipProvider>
+          <Story />
+          <SidebarInset>
+            <header className="flex h-12 items-center gap-2 border-b px-4">
+              <SidebarTrigger />
+              <span className="text-sm font-medium">Cabinet</span>
+            </header>
+            <div className="p-4 text-sm text-muted-foreground">Main content area.</div>
+          </SidebarInset>
+        </TooltipProvider>
       </SidebarProvider>
     ),
   ],
