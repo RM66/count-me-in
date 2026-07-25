@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { LegalPage, LegalSection } from '@/components/marketing/legal-page'
+import { LegalPage, LegalSection } from '@/app/(marketing)/_components/legal-page'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — CountMeIn',

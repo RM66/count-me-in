@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { SearchIcon, CalendarIcon, ArrowRightIcon } from 'lucide-react'
-import { MessengerToggle } from '@/components/auth/messenger-toggle'
+import { MessengerToggle } from '@/components/messenger-toggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'

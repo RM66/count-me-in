@@ -24,7 +24,7 @@ import {
   FieldLegend,
 } from '@/components/ui/field'
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
-import { AddToCalendar } from '@/components/guest/add-to-calendar'
+import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import {
   type Service,

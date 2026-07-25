@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { AddToCalendar } from '@/components/guest/add-to-calendar'
+import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
 import { CheckCircle2, XCircle, Calendar, Clock, User, Phone, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import {
