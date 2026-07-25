@@ -12,7 +12,7 @@ import {
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-svh items-center justify-center p-6">
+    <div className="flex min-h-[80vh] items-center justify-center p-6">
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
@@ -41,6 +41,6 @@ export default function NotFound() {
           </div>
         </EmptyContent>
       </Empty>
-    </main>
+    </div>
   )
 }

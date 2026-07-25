@@ -119,19 +119,20 @@ export function BookingManage({
             </Button>
           </div>
         ) : (
-          <>
+          <div className="flex w-full flex-col gap-2 sm:flex-row-reverse sm:justify-between">
             <AddToCalendar
               title={service.title}
               startsAt={slot.startsAt}
               endsAt={slotEnd(slot)}
               location={serviceLocation(service)}
               variant="default"
+              className="w-full sm:w-auto"
             />
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full text-destructive hover:text-destructive"
+                  className="w-full text-destructive hover:text-destructive sm:w-auto"
                 >
                   Cancel booking
                 </Button>
@@ -157,7 +158,7 @@ export function BookingManage({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </>
+          </div>
         )}
       </CardFooter>
     </Card>

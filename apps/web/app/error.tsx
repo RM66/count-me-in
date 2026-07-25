@@ -14,7 +14,7 @@ import {
 
 export default function Error({ reset }: { error: Error; reset: () => void }) {
   return (
-    <main className="flex min-h-svh items-center justify-center p-6">
+    <div className="flex min-h-[80vh] items-center justify-center p-6">
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
@@ -40,6 +40,6 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
           </div>
         </EmptyContent>
       </Empty>
-    </main>
+    </div>
   )
 }

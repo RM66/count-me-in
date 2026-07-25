@@ -21,12 +21,14 @@ export function AddToCalendar({
   endsAt,
   location,
   variant = 'outline',
+  className,
 }: {
   title: string
   startsAt: string
   endsAt: string
   location?: string
   variant?: 'outline' | 'default' | 'secondary'
+  className?: string
 }) {
   const start = toCalDate(startsAt)
   const end = toCalDate(endsAt)
@@ -63,7 +65,7 @@ export function AddToCalendar({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={variant}>
+        <Button variant={variant} className={className}>
           <CalendarPlus data-icon="inline-start" />
           Add to calendar
         </Button>
