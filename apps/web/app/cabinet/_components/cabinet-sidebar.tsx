@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -59,9 +60,7 @@ export function CabinetSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/cabinet">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <SparklesIcon className="size-4" />
-                </div>
+                <Image src="/logo.svg" alt="" width={32} height={32} className="size-8" />
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">CountMeIn</span>
                   <span className="text-xs text-muted-foreground">Organizer</span>
@@ -128,6 +127,7 @@ export function CabinetSidebar() {
                   <Avatar className="size-8 rounded-md">
                     <AvatarImage
                       src={organizer.photoUrl || '/placeholder.svg'}
+                      sizes="2rem"
                       alt={organizer.name}
                     />
                     <AvatarFallback className="rounded-md">SL</AvatarFallback>

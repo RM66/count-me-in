@@ -29,7 +29,7 @@ export default function OnboardingPage() {
             <FieldLabel>Profile photo</FieldLabel>
             <div className="flex items-center gap-4">
               <Avatar className="size-16">
-                <AvatarImage src="/organizer-avatar.png" alt="" />
+                <AvatarImage src="/organizer-avatar.png" sizes="4rem" alt="" />
                 <AvatarFallback>SL</AvatarFallback>
               </Avatar>
               <Button type="button" variant="outline">

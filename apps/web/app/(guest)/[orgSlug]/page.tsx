@@ -21,7 +21,11 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-4 text-center">
         <Avatar className="size-20">
-          <AvatarImage src={organizer.photoUrl || '/placeholder.svg'} alt={organizer.name} />
+          <AvatarImage
+            src={organizer.photoUrl || '/placeholder.svg'}
+            sizes="5rem"
+            alt={organizer.name}
+          />
           <AvatarFallback>{organizer.name.slice(0, 2)}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col gap-1">

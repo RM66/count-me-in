@@ -58,7 +58,11 @@ export function SettingsForm() {
           <CardContent className="flex flex-col gap-6">
             <div className="flex items-center gap-4">
               <Avatar className="size-16">
-                <AvatarImage src={organizer.photoUrl || '/placeholder.svg'} alt={organizer.name} />
+                <AvatarImage
+                  src={organizer.photoUrl || '/placeholder.svg'}
+                  sizes="4rem"
+                  alt={organizer.name}
+                />
                 <AvatarFallback>SL</AvatarFallback>
               </Avatar>
               <Button variant="outline">

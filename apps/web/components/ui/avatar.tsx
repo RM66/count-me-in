@@ -1,8 +1,10 @@
 'use client'
 
+import NextImage, { type ImageProps } from 'next/image'
 import { Avatar as AvatarPrimitive } from 'radix-ui'
-import { ComponentProps } from 'react'
+import { ComponentProps, useState } from 'react'
 
+import { MakeOptional, MakeRequired } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 function Avatar({
@@ -17,7 +19,7 @@ function Avatar({
       data-slot="avatar"
       data-size={size}
       className={cn(
-        'group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten',
+        'group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none after:absolute after:inset-0 after:z-20 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten',
         className,
       )}
       {...props}
@@ -25,25 +27,44 @@ function Avatar({
   )
 }
 
-function AvatarImage({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Image>) {
+/**
+ * Renders an avatar image via next/image for automatic resizing and WebP conversion.
+ * Uses `fill` layout — the parent <Avatar> provides the dimensions via CSS.
+ * `sizes` should reflect the rendered CSS size for best optimisation.
+ */
+function AvatarImage({
+  className,
+  sizes,
+  alt = '',
+  onError,
+  ...props
+}: MakeOptional<ImageProps, 'alt'> & MakeRequired<ImageProps, 'sizes'>) {
+  const [errored, setErrored] = useState(false)
+
+  if (errored) return null
+
   return (
-    <AvatarPrimitive.Image
+    <NextImage
       data-slot="avatar-image"
-      className={cn('aspect-square size-full rounded-full object-cover', className)}
+      fill
+      sizes={sizes}
+      alt={alt}
+      className={cn('z-10 rounded-full object-cover', className)}
+      onError={(e) => {
+        setErrored(true)
+        onError?.(e)
+      }}
       {...props}
     />
   )
 }
 
-function AvatarFallback({
-  className,
-  ...props
-}: ComponentProps<typeof AvatarPrimitive.Fallback>) {
+function AvatarFallback({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Fallback>) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        'flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs',
+        'absolute inset-0 z-0 flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs',
         className,
       )}
       {...props}
@@ -94,4 +115,3 @@ function AvatarGroupCount({ className, ...props }: ComponentProps<'div'>) {
 }
 
 export { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage }
-
