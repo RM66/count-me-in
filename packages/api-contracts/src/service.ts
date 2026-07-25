@@ -5,6 +5,7 @@ import {
   capacity,
   displayName,
   durationMinutes,
+  location,
   priceText,
   serviceDescription,
 } from './primitives.js'
@@ -12,6 +13,7 @@ import {
 const serviceFields = {
   title: displayName,
   description: serviceDescription.optional(),
+  location: location.optional(),
   defaultPrice: priceText,
   defaultCapacity: capacity,
   defaultDurationMinutes: durationMinutes,

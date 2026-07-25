@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeftIcon } from 'lucide-react'
-import { GuestShell } from '@/components/guest/guest-shell'
-import { BookingManage } from '@/app/b/[manageToken]/_components/booking-manage'
+import { BookingManage } from '@/app/(guest)/b/[manageToken]/_components/booking-manage'
 import { Button } from '@/components/ui/button'
 import { bookings, getSlot, getService, organizer } from '@/lib/mock-data'
 
@@ -20,16 +19,14 @@ export default async function BookingManagePage({
   if (!slot || !service) notFound()
 
   return (
-    <GuestShell>
-      <div className="mx-auto w-full max-w-2xl px-4 py-10 md:py-16">
-        <Button variant="ghost" size="sm" asChild className="mb-6 -ml-2">
-          <Link href={`/${organizer.slug}`}>
-            <ArrowLeftIcon data-icon="inline-start" />
-            Back to {organizer.name}
-          </Link>
-        </Button>
-        <BookingManage booking={booking} slot={slot} service={service} organizer={organizer} />
-      </div>
-    </GuestShell>
+    <div className="mx-auto w-full max-w-2xl px-4 py-10 md:py-16">
+      <Button variant="ghost" size="sm" asChild className="mb-6 -ml-2">
+        <Link href={`/${organizer.slug}`}>
+          <ArrowLeftIcon data-icon="inline-start" />
+          Back to {organizer.name}
+        </Link>
+      </Button>
+      <BookingManage booking={booking} slot={slot} service={service} organizer={organizer} />
+    </div>
   )
 }

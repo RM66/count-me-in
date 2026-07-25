@@ -1,5 +1,5 @@
 {
-  "id": "f5c4feb5-c5e6-49d2-b832-9155c9dc3ebc",
+  "id": "77d8b125-0673-4fab-9b12-f0456dbc112b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -190,6 +190,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "messenger": {
           "name": "messenger",
           "type": "text",
@@ -273,6 +279,12 @@
         },
         "photo_url": {
           "name": "photo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
           "type": "text",
           "primaryKey": false,
           "notNull": false

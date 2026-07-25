@@ -54,4 +54,5 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 - Guest booking without Auth.js accounts; cancel in MVP — [ADR-002](docs/decisions/002-guest-booking.md).
 - Capacity updates atomic; bookings only `confirmed` | `cancelled`.
 - Prices are display text only in MVP (no payments).
+- Optional display `location` on `Organizer` and `Service`; `Service.location` overrides the organizer's, shown on public pages and passed to `add-to-calendar` — [domain](docs/domain.md).
 - Do not expand scope without ADR/roadmap update.

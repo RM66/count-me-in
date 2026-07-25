@@ -22,6 +22,7 @@ CREATE TABLE "organizers" (
 	"timezone" text NOT NULL,
 	"description" text,
 	"photo_url" text,
+	"location" text,
 	"messenger" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -32,6 +33,7 @@ CREATE TABLE "services" (
 	"title" text NOT NULL,
 	"description" text,
 	"photo_url" text,
+	"location" text,
 	"default_price" text NOT NULL,
 	"default_capacity" integer NOT NULL,
 	"default_duration_minutes" integer NOT NULL,

@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
+import Link from 'next/link'
+import type { ReactNode } from 'react'
 
-export function GuestShell({ children }: { children: ReactNode }) {
+export default function GuestLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-muted/20">
       <header className="border-b bg-background">

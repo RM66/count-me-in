@@ -25,13 +25,14 @@ import {
 } from '@/components/ui/field'
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
 import { AddToCalendar } from '@/components/guest/add-to-calendar'
-import { SeatsBadge } from '@/app/[orgSlug]/[serviceId]/_components/seats-badge'
+import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import {
   type Service,
   type TimeSlot,
   formatDate,
   formatTime,
   seatsLeft,
+  serviceLocation,
   slotEnd,
   slotPrice,
 } from '@/lib/mock-data'
@@ -341,6 +342,7 @@ export function BookingDialog({
                 title={service.title}
                 startsAt={slot.startsAt}
                 endsAt={slotEnd(slot)}
+                location={serviceLocation(service)}
                 variant="default"
               />
               <Button variant="outline" asChild>

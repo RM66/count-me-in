@@ -34,6 +34,7 @@ import {
   type TimeSlot,
   formatDate,
   formatTime,
+  serviceLocation,
   slotEnd,
   slotPrice,
 } from '@/lib/mock-data'
@@ -123,6 +124,7 @@ export function BookingManage({
               title={service.title}
               startsAt={slot.startsAt}
               endsAt={slotEnd(slot)}
+              location={serviceLocation(service)}
               variant="default"
             />
             <AlertDialog>

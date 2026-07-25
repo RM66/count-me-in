@@ -2,20 +2,20 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { GuestShell } from '@/components/guest/guest-shell'
-import { BookingDialog } from '@/app/[orgSlug]/[serviceId]/_components/booking-dialog'
-import { SeatsBadge } from '@/app/[orgSlug]/[serviceId]/_components/seats-badge'
+import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
+import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { ArrowLeft, Clock, Users, Tag, CalendarX } from 'lucide-react'
+import { ArrowLeft, Clock, Users, Tag, MapPin, CalendarX } from 'lucide-react'
 import {
   organizer,
   getService,
   getSlotsForService,
   seatsLeft,
   slotPrice,
+  serviceLocation,
   formatDate,
   formatTime,
 } from '@/lib/mock-data'
@@ -46,9 +46,10 @@ export default async function ServicePage({
 
   const slots = getSlotsForService(serviceId)
   const hasOpen = slots.some((s) => seatsLeft(s) > 0)
+  const location = serviceLocation(service)
 
   return (
-    <GuestShell>
+    <>
       <div className="flex flex-col gap-5">
         <Link
           href={`/${orgSlug}`}
@@ -84,6 +85,12 @@ export default async function ServicePage({
               <Tag className="size-4" />
               {service.defaultPrice}
             </span>
+            {location ? (
+              <span className="flex items-center gap-1.5">
+                <MapPin className="size-4" />
+                {location}
+              </span>
+            ) : null}
           </div>
           <p className="leading-relaxed text-muted-foreground text-pretty">{service.description}</p>
           {service.options?.length ? (
@@ -164,6 +171,6 @@ export default async function ServicePage({
           />
         </div>
       </div>
-    </GuestShell>
+    </>
   )
 }

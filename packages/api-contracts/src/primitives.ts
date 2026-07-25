@@ -57,6 +57,9 @@ export const priceText = z.string().trim().min(1).max(50)
 export const organizerDescription = z.string().trim().max(4000)
 export const serviceDescription = z.string().trim().max(2000)
 
+/** Human-readable location / address label shown on public pages and passed to calendar links. */
+export const location = z.string().trim().min(1).max(300)
+
 export const seats = z.number().int().min(1).max(1000)
 export const capacity = z.number().int().min(1).max(100_000)
 export const durationMinutes = z.number().int().min(1).max(1440)

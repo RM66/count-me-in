@@ -13,6 +13,7 @@ export interface Organizer {
   timezone: string
   description: string
   photoUrl: string
+  location?: string
   messenger: string
   createdAt: string
 }
@@ -23,6 +24,7 @@ export interface Service {
   title: string
   description: string
   photoUrl: string
+  location?: string
   defaultPrice: string
   defaultCapacity: number
   defaultDurationMinutes: number
@@ -63,6 +65,7 @@ export const organizer: Organizer = {
   description:
     'Boutique movement studio in the heart of Belgrade. Small-group yoga, breathwork, and pottery. Come as you are — beginners always welcome.',
   photoUrl: '/organizer-avatar.png',
+  location: 'Kralja Petra 12, Belgrade',
   messenger: 'telegram',
   createdAt: '2024-11-02T09:00:00.000Z',
 }
@@ -89,6 +92,7 @@ export const services: Service[] = [
     description:
       'Shape your own mug or bowl from scratch. All clay, tools, and firing included. Great for a creative afternoon with friends.',
     photoUrl: '/service-pottery.png',
+    location: 'Ceramics Loft, Cetinjska 15, Belgrade',
     defaultPrice: 'from 2500 RSD',
     defaultCapacity: 8,
     defaultDurationMinutes: 120,
@@ -291,6 +295,15 @@ export function getSlot(slotId: string): TimeSlot | undefined {
 export function getBookingService(booking: Booking): Service | undefined {
   const slot = getSlot(booking.timeSlotId)
   return slot ? getService(slot.serviceId) : undefined
+}
+
+/**
+ * Effective location for a service: the service's own `location` if set,
+ * otherwise the organizer's `location`. Used for the public page and for
+ * the "Add to calendar" event location.
+ */
+export function serviceLocation(service: Service): string | undefined {
+  return service.location ?? organizer.location
 }
 
 export function seatsLeft(slot: TimeSlot): number {

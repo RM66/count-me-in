@@ -1,7 +1,8 @@
 'use client'
 
+import { MessageCircle, Phone, Send } from 'lucide-react'
+
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Send, MessageCircle, Phone } from 'lucide-react'
 
 const messengers = [
   { value: 'telegram', label: 'Telegram', icon: Send },

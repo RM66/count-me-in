@@ -20,6 +20,7 @@ erDiagram
     string timezone
     string description_md "optional"
     string photoUrl "optional"
+    string location "optional"
     string messenger
     datetime createdAt
   }
@@ -29,6 +30,7 @@ erDiagram
     string title
     string description "optional"
     string photoUrl "optional"
+    string location "optional"
     string defaultPrice
     int defaultCapacity
     int defaultDurationMinutes
@@ -95,6 +97,7 @@ Public page: `https://countmein.group/{slug}`.
 | `timezone`    | yes      | IANA tz (e.g. `Europe/Belgrade`); all slots interpreted in this zone                              |
 | `description` | no       | Markdown (links allowed) for the public page                                                      |
 | `photoUrl`    | no       | Avatar / cover image (object storage URL)                                                         |
+| `location`    | no       | Display address shown on the public page; default location for the organizer's services           |
 | `messenger`   | yes      | Channel used for OTP/notifications (e.g. `telegram`); set at sign-up, reused for later OTP/notify |
 | `createdAt`   | yes      | Row creation timestamp (UTC)                                                                      |
 
@@ -110,6 +113,7 @@ Bookable offering owned by an organizer (`organizerId`).
 | `title`                  | yes                | Name                                                                                     |
 | `description`            | no                 | Longer text                                                                              |
 | `photoUrl`               | no                 | Service image                                                                            |
+| `location`               | no                 | Display address for this service; overrides `Organizer.location` when set                |
 | `defaultPrice`           | yes                | **Display text** for value + currency (e.g. `1500 UAH`, `от 20€`) — not a payment amount |
 | `defaultCapacity`        | yes                | Template for new slots (capacity)                                                        |
 | `defaultDurationMinutes` | yes                | Template for new slots (length, minutes); `> 0`                                          |
