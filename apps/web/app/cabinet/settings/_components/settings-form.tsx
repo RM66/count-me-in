@@ -1,8 +1,10 @@
 'use client'
 
+import { CopyIcon, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import { ImageIcon, CopyIcon } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -11,12 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Switch } from '@/components/ui/switch'
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import {
   InputGroup,
   InputGroupAddon,
@@ -32,6 +30,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import { organizer } from '@/lib/mock-data'
 
 function saved() {

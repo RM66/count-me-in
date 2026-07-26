@@ -1,28 +1,29 @@
-import Link from 'next/link'
 import {
-  TicketIcon,
-  UsersIcon,
-  CalendarClockIcon,
-  TrendingUpIcon,
   ArrowRightIcon,
-  PlusIcon,
+  CalendarClockIcon,
   ExternalLinkIcon,
+  PlusIcon,
+  TicketIcon,
+  TrendingUpIcon,
+  UsersIcon,
 } from 'lucide-react'
+import Link from 'next/link'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
   bookings,
-  slots,
-  getService,
-  getBookingService,
-  seatsLeft,
   formatDateTime,
+  getBookingService,
+  getService,
   organizer,
+  seatsLeft,
+  slots,
 } from '@/lib/mock-data'
 
 export default function CabinetOverviewPage() {

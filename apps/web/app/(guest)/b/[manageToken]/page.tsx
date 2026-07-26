@@ -1,9 +1,10 @@
+import { ArrowLeftIcon } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeftIcon } from 'lucide-react'
+
 import { BookingManage } from '@/app/(guest)/b/[manageToken]/_components/booking-manage'
 import { Button } from '@/components/ui/button'
-import { bookings, getSlot, getService, organizer } from '@/lib/mock-data'
+import { bookings, getService, getSlot, organizer } from '@/lib/mock-data'
 
 export default async function BookingManagePage({
   params,

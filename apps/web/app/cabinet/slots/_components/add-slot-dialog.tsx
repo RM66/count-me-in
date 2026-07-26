@@ -1,8 +1,9 @@
 'use client'
 
+import { PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { PlusIcon } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,8 +15,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,

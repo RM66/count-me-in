@@ -1,13 +1,14 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { AuthShell } from '@/app/(auth)/_components/auth-shell'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { Upload } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+
+import { AuthShell } from '@/app/(auth)/_components/auth-shell'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Textarea } from '@/components/ui/textarea'
 
 export default function OnboardingPage() {
   const router = useRouter()

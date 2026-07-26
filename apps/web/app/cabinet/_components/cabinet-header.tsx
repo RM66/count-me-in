@@ -1,7 +1,7 @@
 'use client'
 
-import { SidebarTrigger } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
+import { Fragment } from 'react'
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,7 +10,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { Fragment } from 'react'
+import { Separator } from '@/components/ui/separator'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 
 type Crumb = { label: string; href?: string }
 

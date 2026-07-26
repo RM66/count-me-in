@@ -1,4 +1,4 @@
-import { Users, ShieldCheck, Layers, CalendarDays, MessageCircle, LinkIcon } from 'lucide-react'
+import { CalendarDays, Layers, LinkIcon, MessageCircle, ShieldCheck, Users } from 'lucide-react'
 
 const features = [
   {

@@ -1,9 +1,10 @@
+import { Clock, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+
 import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { Clock, MapPin } from 'lucide-react'
 import { organizer, services } from '@/lib/mock-data'
 
 export const metadata: Metadata = {

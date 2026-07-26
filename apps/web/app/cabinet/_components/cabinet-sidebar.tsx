@@ -1,20 +1,31 @@
 'use client'
 
+import {
+  BarChart3Icon,
+  CalendarClockIcon,
+  ChevronsUpDownIcon,
+  ExternalLinkIcon,
+  LayoutDashboardIcon,
+  LogOutIcon,
+  SettingsIcon,
+  SparklesIcon,
+  TicketIcon,
+  UserIcon,
+} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
-  LayoutDashboardIcon,
-  SparklesIcon,
-  CalendarClockIcon,
-  TicketIcon,
-  BarChart3Icon,
-  SettingsIcon,
-  ExternalLinkIcon,
-  ChevronsUpDownIcon,
-  LogOutIcon,
-  UserIcon,
-} from 'lucide-react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -28,16 +39,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { organizer } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 

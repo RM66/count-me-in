@@ -1,13 +1,14 @@
-import Link from 'next/link'
+import { ChevronRight, Clock, Users } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
+
 import { Badge } from '@/components/ui/badge'
-import { Clock, Users, ChevronRight } from 'lucide-react'
 import {
   type Service,
-  getSlotsForService,
-  seatsLeft,
   formatDate,
   formatTime,
+  getSlotsForService,
+  seatsLeft,
 } from '@/lib/mock-data'
 
 export function ServiceCard({ orgSlug, service }: { orgSlug: string; service: Service }) {

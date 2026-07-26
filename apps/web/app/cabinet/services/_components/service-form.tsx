@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { ImageIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { PlusIcon, XIcon, ImageIcon, Trash2Icon } from 'lucide-react'
+
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Field,
@@ -17,9 +17,10 @@ import {
   FieldLegend,
   FieldSet,
 } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 import type { Service } from '@/lib/mock-data'
 
 export function ServiceForm({ service }: { service?: Service }) {
@@ -199,7 +200,7 @@ export function ServiceForm({ service }: { service?: Service }) {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {service?.photoUrl ? (
-              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md border">
+              <div className="relative aspect-video w-full overflow-hidden rounded-md border">
                 <Image
                   src={service.photoUrl || '/placeholder.svg'}
                   alt={service.title}
@@ -209,7 +210,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                 />
               </div>
             ) : (
-              <div className="flex aspect-[16/9] w-full items-center justify-center rounded-md border border-dashed">
+              <div className="flex aspect-video w-full items-center justify-center rounded-md border border-dashed">
                 <ImageIcon className="size-8 text-muted-foreground" />
               </div>
             )}

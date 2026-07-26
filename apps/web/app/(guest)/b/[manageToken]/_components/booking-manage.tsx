@@ -1,18 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { Calendar, CheckCircle2, Clock, Phone, Tag, User, XCircle } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { useState } from 'react'
+import { toast } from 'sonner'
+
+import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,9 +17,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
-import { CheckCircle2, XCircle, Calendar, Clock, User, Phone, Tag } from 'lucide-react'
-import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import {
   type Booking,
   type Organizer,

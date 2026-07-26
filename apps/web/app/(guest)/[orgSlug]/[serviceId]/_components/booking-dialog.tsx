@@ -1,7 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { ArrowLeft, CheckCircle2, PartyPopper } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
+
+import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
+import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -10,22 +16,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Separator } from '@/components/ui/separator'
 import {
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldDescription,
-  FieldSet,
   FieldLegend,
+  FieldSet,
 } from '@/components/ui/field'
-import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
-import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
-import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
+import { Input } from '@/components/ui/input'
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Separator } from '@/components/ui/separator'
 import {
   type Service,
   type TimeSlot,
@@ -36,7 +38,6 @@ import {
   slotEnd,
   slotPrice,
 } from '@/lib/mock-data'
-import { ArrowLeft, CheckCircle2, PartyPopper } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Step = 'slot' | 'options' | 'details' | 'verify' | 'success'

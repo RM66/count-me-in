@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+
 import { CabinetSidebar } from '@/app/cabinet/_components/cabinet-sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 export default function CabinetLayout({ children }: { children: ReactNode }) {
   return (

@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { ExternalLinkIcon } from 'lucide-react'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { ServiceForm } from '@/app/cabinet/services/_components/service-form'
 import { Button } from '@/components/ui/button'

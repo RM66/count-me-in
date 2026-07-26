@@ -1,4 +1,5 @@
-import { TicketIcon, UsersIcon, TrendingUpIcon, XCircleIcon } from 'lucide-react'
+import { TicketIcon, TrendingUpIcon, UsersIcon, XCircleIcon } from 'lucide-react'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
 import { AnalyticsCharts } from '@/app/cabinet/analytics/_components/analytics-charts'

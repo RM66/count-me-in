@@ -1,6 +1,7 @@
 'use client'
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ChartContainer,
@@ -43,7 +44,7 @@ export function AnalyticsCharts() {
           <CardDescription>Confirmed bookings and seats sold per day.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={trendConfig} className="h-[320px] w-full">
+          <ChartContainer config={trendConfig} className="h-80 w-full">
             <AreaChart data={bookingsOverTime} margin={{ left: 4, right: 12, top: 8 }}>
               <defs>
                 <linearGradient id="fillBookings" x1="0" y1="0" x2="0" y2="1">
@@ -84,7 +85,7 @@ export function AnalyticsCharts() {
           <CardDescription>Bookings in the last 30 days.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={serviceConfig} className="h-[320px] w-full">
+          <ChartContainer config={serviceConfig} className="h-80 w-full">
             <BarChart data={perService} layout="vertical" margin={{ left: 4, right: 12 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" tickLine={false} axisLine={false} />

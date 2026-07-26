@@ -1,20 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { toast } from 'sonner'
+
 import { AuthShell } from '@/app/(auth)/_components/auth-shell'
 import { MessengerToggle } from '@/components/messenger-toggle'
 import { Button } from '@/components/ui/button'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
 import {
   Select,
   SelectContent,
@@ -23,8 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 const steps = ['Phone', 'Verify', 'Profile'] as const

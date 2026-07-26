@@ -1,7 +1,9 @@
-import Link from 'next/link'
+import { ClockIcon, PencilIcon, PlusIcon, UsersIcon } from 'lucide-react'
 import Image from 'next/image'
-import { PlusIcon, ClockIcon, UsersIcon, PencilIcon } from 'lucide-react'
+import Link from 'next/link'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -11,8 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { services, getSlotsForService } from '@/lib/mock-data'
+import { getSlotsForService, services } from '@/lib/mock-data'
 
 export default function ServicesPage() {
   return (
@@ -39,7 +40,7 @@ export default function ServicesPage() {
             const slotCount = getSlotsForService(svc.id).length
             return (
               <Card key={svc.id} className="overflow-hidden pt-0">
-                <div className="relative aspect-[16/9] w-full">
+                <div className="relative aspect-video w-full">
                   <Image
                     src={svc.photoUrl || '/placeholder.svg'}
                     alt={svc.title}

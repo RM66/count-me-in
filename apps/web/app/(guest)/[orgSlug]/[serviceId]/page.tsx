@@ -1,23 +1,24 @@
+import { ArrowLeft, CalendarX, Clock, MapPin, Tag, Users } from 'lucide-react'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { ArrowLeft, Clock, Users, Tag, MapPin, CalendarX } from 'lucide-react'
 import {
-  organizer,
-  getService,
-  getSlotsForService,
-  seatsLeft,
-  slotPrice,
-  serviceLocation,
   formatDate,
   formatTime,
+  getService,
+  getSlotsForService,
+  organizer,
+  seatsLeft,
+  serviceLocation,
+  slotPrice,
 } from '@/lib/mock-data'
 
 export async function generateMetadata({
@@ -65,7 +66,7 @@ export default async function ServicePage({
             alt={service.title}
             width={720}
             height={360}
-            className="aspect-[2/1] w-full object-cover"
+            className="aspect-2/1 w-full object-cover"
             priority
           />
         </div>

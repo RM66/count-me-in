@@ -1,7 +1,18 @@
 import { MoreHorizontalIcon } from 'lucide-react'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { AddSlotDialog } from '@/app/cabinet/slots/_components/add-slot-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Progress } from '@/components/ui/progress'
 import {
   Table,
   TableBody,
@@ -10,24 +21,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  slots,
-  getService,
-  seatsLeft,
   fillLabel,
   formatDate,
   formatTime,
+  getService,
+  seatsLeft,
   slotPrice,
+  slots,
 } from '@/lib/mock-data'
 
 const fillVariant: Record<

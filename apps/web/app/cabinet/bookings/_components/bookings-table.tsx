@@ -1,20 +1,15 @@
 'use client'
 
+import { PhoneIcon, SearchIcon, SendIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { SearchIcon, SendIcon, PhoneIcon, XIcon } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
 import {
   Sheet,
   SheetClose,
@@ -24,14 +19,20 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import {
   bookings as allBookings,
+  formatDateTime,
   getBookingService,
   getSlot,
-  formatDateTime,
   type Booking,
 } from '@/lib/mock-data'
 

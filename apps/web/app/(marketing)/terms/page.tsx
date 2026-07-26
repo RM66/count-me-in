@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+
 import { LegalPage, LegalSection } from '@/app/(marketing)/_components/legal-page'
 
 export const metadata: Metadata = {

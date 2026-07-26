@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { ArrowRightIcon, CalendarIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
-import { SearchIcon, CalendarIcon, ArrowRightIcon } from 'lucide-react'
+import { useState } from 'react'
+
 import { MessengerToggle } from '@/components/messenger-toggle'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
-import { bookings, getSlot, getBookingService, formatDateTime } from '@/lib/mock-data'
+import { bookings, formatDateTime, getBookingService, getSlot } from '@/lib/mock-data'
 
 type ViewState = 'idle' | 'searching' | 'results'
 

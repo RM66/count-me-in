@@ -1,8 +1,9 @@
-import Link from 'next/link'
+import { ArrowRight, CalendarCheck } from 'lucide-react'
 import Image from 'next/image'
-import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+
 import { Badge } from '@/components/ui/badge'
-import { CalendarCheck, ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function Hero() {
   return (
@@ -43,7 +44,7 @@ export function Hero() {
               alt="A morning yoga class in a bright studio"
               width={720}
               height={560}
-              className="aspect-[4/3] w-full object-cover"
+              className="aspect-4/3 w-full object-cover"
               priority
             />
           </div>

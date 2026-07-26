@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { SiteHeader } from '@/app/(marketing)/_components/site-header'
+
 import { SiteFooter } from '@/app/(marketing)/_components/site-footer'
+import { SiteHeader } from '@/app/(marketing)/_components/site-header'
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
