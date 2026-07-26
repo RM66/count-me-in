@@ -24,7 +24,17 @@ export function MarkdownPreview({ className, style, ...props }: MarkdownPreviewP
   const colorMode = mounted && resolvedTheme === 'dark' ? 'dark' : 'light'
 
   return (
-    <div data-color-mode={colorMode} className={cn(className)}>
+    <div
+      data-color-mode={colorMode}
+      className={cn(
+        // The library ships its own font/size/color on `.wmde-markdown`; override it
+        // so the rendered markdown inherits from this wrapper instead.
+        '[&_.wmde-markdown]:bg-transparent! [&_.wmde-markdown]:font-[inherit]!',
+        '[&_.wmde-markdown]:text-[length:inherit]! [&_.wmde-markdown]:leading-[inherit]!',
+        '[&_.wmde-markdown]:text-inherit!',
+        className,
+      )}
+    >
       <MarkdownPreviewImpl {...props} style={{ backgroundColor: 'transparent', ...style }} />
     </div>
   )

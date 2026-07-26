@@ -43,6 +43,15 @@ export function MarkdownEditor({ className, ...props }: MarkdownEditorProps) {
         '[&_.md-editor]:bg-transparent!',
         '[&_.cm-editor]:bg-transparent!',
         '[&_.cm-gutters]:bg-transparent!',
+        // CodeMirror defaults to a monospace font; make the editor text match the
+        // rest of the app (sans font, base size, foreground color).
+        '[&_.cm-editor_.cm-scroller]:font-sans!',
+        '[&_.cm-editor_.cm-content]:text-sm! [&_.cm-editor_.cm-content]:text-foreground!',
+        '[&_.cm-editor_.cm-gutters]:font-sans! [&_.cm-editor_.cm-gutters]:text-muted-foreground!',
+        // The live-preview pane renders with `.wmde-markdown` and keeps the library's
+        // built-in typography; align it with the app text style too.
+        '[&_.wmde-markdown]:bg-transparent! [&_.wmde-markdown]:font-sans!',
+        '[&_.wmde-markdown]:text-sm! [&_.wmde-markdown]:text-foreground!',
         className,
       )}
     >

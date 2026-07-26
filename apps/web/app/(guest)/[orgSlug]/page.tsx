@@ -45,7 +45,7 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
         </div>
         <MarkdownPreview
           source={organizer.description}
-          className="max-w-lg text-left text-sm leading-relaxed text-pretty"
+          className="text-left leading-relaxed text-muted-foreground text-pretty"
         />
       </div>
 
