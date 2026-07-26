@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { MarkdownPreview } from '@/components/ui/markdown-preview'
 import { Separator } from '@/components/ui/separator'
 import { organizer, services } from '@/lib/mock-data'
 
@@ -42,9 +43,10 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
             {organizer.timezone.replace('_', ' ')}
           </p>
         </div>
-        <p className="max-w-lg text-sm leading-relaxed text-muted-foreground text-pretty">
-          {organizer.description}
-        </p>
+        <MarkdownPreview
+          source={organizer.description}
+          className="max-w-lg text-left text-sm leading-relaxed text-pretty"
+        />
       </div>
 
       <Separator />

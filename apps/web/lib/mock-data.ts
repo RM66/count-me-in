@@ -62,8 +62,17 @@ export const organizer: Organizer = {
   name: 'Studio Lumen',
   phone: '+381641234567',
   timezone: 'Europe/Belgrade',
-  description:
-    'Boutique movement studio in the heart of Belgrade. Small-group yoga, breathwork, and pottery. Come as you are — beginners always welcome.',
+  description: `**Boutique movement studio** in the heart of Belgrade.
+
+Small-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.
+
+What we offer:
+
+- 🧘 Morning Vinyasa flow
+- 🌬️ Evening breathwork circles
+- 🏺 Hand-building pottery workshops
+
+Questions? [Message us on Telegram](https://t.me/studiolumen).`,
   photoUrl: '/organizer-avatar.png',
   location: 'Kralja Petra 12, Belgrade',
   messenger: 'telegram',

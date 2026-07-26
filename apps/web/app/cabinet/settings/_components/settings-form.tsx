@@ -1,6 +1,7 @@
 'use client'
 
 import { CopyIcon, ImageIcon } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -31,8 +32,8 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import { organizer } from '@/lib/mock-data'
 
 function saved() {
@@ -42,6 +43,8 @@ function saved() {
 }
 
 export function SettingsForm() {
+  const [bio, setBio] = useState(organizer.description)
+
   return (
     <Tabs defaultValue="profile" className="gap-6">
       <TabsList>
@@ -78,8 +81,10 @@ export function SettingsForm() {
               </Field>
               <Field>
                 <FieldLabel htmlFor="bio">Bio</FieldLabel>
-                <Textarea id="bio" rows={4} defaultValue={organizer.description} />
-                <FieldDescription>Shown at the top of your public page.</FieldDescription>
+                <MarkdownEditor value={bio} onChange={setBio} height="220px" />
+                <FieldDescription>
+                  Shown at the top of your public page. Markdown is supported.
+                </FieldDescription>
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field>
