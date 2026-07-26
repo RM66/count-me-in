@@ -123,12 +123,8 @@
           "name": "bookings_time_slot_id_time_slots_id_fk",
           "tableFrom": "bookings",
           "tableTo": "time_slots",
-          "columnsFrom": [
-            "time_slot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["time_slot_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -350,12 +346,8 @@
           "name": "services_organizer_id_organizers_id_fk",
           "tableFrom": "services",
           "tableTo": "organizers",
-          "columnsFrom": [
-            "organizer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["organizer_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -402,16 +394,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "ends_at": {
-          "name": "ends_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false,
-          "generated": {
-            "as": "starts_at + make_interval(mins => duration_minutes)",
-            "type": "stored"
-          }
         },
         "capacity": {
           "name": "capacity",
@@ -477,12 +459,8 @@
           "name": "time_slots_service_id_services_id_fk",
           "tableFrom": "time_slots",
           "tableTo": "services",
-          "columnsFrom": [
-            "service_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["service_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -511,18 +489,12 @@
     "public.booking_status": {
       "name": "booking_status",
       "schema": "public",
-      "values": [
-        "confirmed",
-        "cancelled"
-      ]
+      "values": ["confirmed", "cancelled"]
     },
     "public.options_select_mode": {
       "name": "options_select_mode",
       "schema": "public",
-      "values": [
-        "single",
-        "multi"
-      ]
+      "values": ["single", "multi"]
     }
   },
   "schemas": {},
