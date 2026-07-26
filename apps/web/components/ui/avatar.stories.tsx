@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: (args) => (
     <Avatar {...args}>
-      <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+      <AvatarImage src="https://github.com/shadcn.png" sizes="4rem" alt="@shadcn" />
       <AvatarFallback>CN</AvatarFallback>
     </Avatar>
   ),
@@ -64,7 +64,7 @@ export const Sizes: Story = {
 export const WithBadge: Story = {
   render: () => (
     <Avatar size="lg">
-      <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+      <AvatarImage src="https://github.com/shadcn.png" sizes="4rem" alt="@shadcn" />
       <AvatarFallback>CN</AvatarFallback>
       <AvatarBadge>
         <CheckIcon />
@@ -77,13 +77,15 @@ export const Group: Story = {
   render: () => (
     <AvatarGroup>
       <Avatar>
-        <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+        <AvatarImage src="https://github.com/shadcn.png" sizes="4rem" alt="@shadcn" />
         <AvatarFallback>CN</AvatarFallback>
       </Avatar>
       <Avatar>
+        <AvatarImage src="https://github.com/shadcn.png" sizes="4rem" alt="@shadcn" />
         <AvatarFallback>AB</AvatarFallback>
       </Avatar>
       <Avatar>
+        <AvatarImage src="https://github.com/shadcn.png" sizes="4rem" alt="@shadcn" />
         <AvatarFallback>CD</AvatarFallback>
       </Avatar>
       <AvatarGroupCount>+3</AvatarGroupCount>

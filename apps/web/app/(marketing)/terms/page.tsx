@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: 'The terms that govern your use of CountMeIn.',
 }
 
+// Static legal content — prerendered at build time.
+export const dynamic = 'force-static'
+
 export default function TermsPage() {
   return (
     <LegalPage title="Terms of Service" updated="July 1, 2026">

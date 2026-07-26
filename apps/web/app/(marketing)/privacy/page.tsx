@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: 'How CountMeIn handles organizer and guest data.',
 }
 
+// Static legal content — prerendered at build time.
+export const dynamic = 'force-static'
+
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="July 1, 2026">
