@@ -20,20 +20,31 @@ Simple online booking for group events: organizers publish services with time sl
 
 No separate organizer native app in MVP — [ADR-006](docs/decisions/006-organizer-capacitor.md). WebSockets out of MVP — [ADR-003](docs/decisions/003-no-websocket-mvp.md).
 
-## Monorepo layout (target)
+## Monorepo layout
 
 ```
 apps/
   web/                 # Next.js: landing + public booking + cabinet + API
+    lib/               # Business logic (api, services, domain, helpers)
+    types/             # TypeScript utility types
+    utils.ts           # UI utilities (cn)
+    proxy.ts           # Auth.js v5 proxy (cabinet routes)
   worker/              # notifications / jobs
 packages/
-  db/                  # Drizzle
-  api-contracts/       # Zod / shared types
-  storage/             # Cloudflare R2
-  eslint-config/       # shared ESLint (turbo starter)
-  typescript-config/   # shared tsconfig (turbo starter)
+  db/                  # Drizzle schema, migrations
+  api-contracts/       # Zod schemas, shared types
+  storage/             # Cloudflare R2 helpers
+  eslint-config/       # shared ESLint
+  typescript-config/   # shared tsconfig
 docs/
 ```
+
+**`apps/web/lib/` structure:**
+
+- `api/` — React Query hooks (mutations/, queries/, client.ts, error.ts)
+- `services/` — Server-side logic (auth, redis, otp/, booking/, storage/)
+- `domain/` — Pure business logic (slot.ts, etc.)
+- `helpers/` — Utilities (date.ts, etc.)
 
 See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/007-cloudflare-r2.md).
 

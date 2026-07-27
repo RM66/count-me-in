@@ -1,7 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
-  "globalEnv": ["DATABASE_URL", "REDIS_URL"],
+  "globalEnv": ["DATABASE_URL", "REDIS_URL", "AUTH_SECRET", "R2_PUBLIC_URL", "NODE_ENV"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

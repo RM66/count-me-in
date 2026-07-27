@@ -11,12 +11,48 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
+import { useRequestOtp, useSignInWithTicket, useVerifyOtp } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
   const [step, setStep] = useState<'phone' | 'code'>('phone')
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
+
+  const requestOtp = useRequestOtp()
+  const verifyOtp = useVerifyOtp()
+  const signIn = useSignInWithTicket()
+
+  async function handleSendCode(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await requestOtp.mutateAsync({ phone, messenger: 'telegram' })
+      setStep('code')
+      toast.success('Verification code sent to your messenger')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not send the code')
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      const { ticket, organizerExists } = await verifyOtp.mutateAsync({ phone, code })
+      if (!organizerExists) {
+        toast.error('No account for this phone yet — create one first')
+        router.push('/signup')
+        return
+      }
+      await signIn.mutateAsync(ticket)
+      router.push('/cabinet')
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not log you in')
+      setCode('')
+    }
+  }
+
+  const pending = requestOtp.isPending || verifyOtp.isPending || signIn.isPending
 
   return (
     <AuthShell
@@ -36,13 +72,7 @@ export default function LoginPage() {
       }
     >
       {step === 'phone' ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            setStep('code')
-            toast.success('Verification code sent to your messenger')
-          }}
-        >
+        <form onSubmit={handleSendCode}>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="phone">Phone number</FieldLabel>
@@ -57,18 +87,13 @@ export default function LoginPage() {
               />
               <FieldDescription>Include your country code.</FieldDescription>
             </Field>
-            <Button type="submit" className="w-full">
-              Send code
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? 'Sending…' : 'Send code'}
             </Button>
           </FieldGroup>
         </form>
       ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            router.push('/cabinet')
-          }}
-        >
+        <form onSubmit={handleVerify}>
           <FieldGroup>
             <Field className="items-center">
               <InputOTP maxLength={6} value={code} onChange={setCode}>
@@ -84,16 +109,19 @@ export default function LoginPage() {
                   <InputOTPSlot index={5} />
                 </InputOTPGroup>
               </InputOTP>
-              <FieldDescription>Enter any 6 digits for this demo.</FieldDescription>
+              <FieldDescription>Enter the 6-digit code from your messenger.</FieldDescription>
             </Field>
-            <Button type="submit" className="w-full" disabled={code.length < 6}>
-              Verify & log in
+            <Button type="submit" className="w-full" disabled={code.length < 6 || pending}>
+              {pending ? 'Verifying…' : 'Verify & log in'}
             </Button>
             <Button
               type="button"
               variant="ghost"
               className="w-full"
-              onClick={() => setStep('phone')}
+              onClick={() => {
+                setStep('phone')
+                setCode('')
+              }}
             >
               <ArrowLeft data-icon="inline-start" />
               Use a different number

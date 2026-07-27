@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 /** @type {import('next').NextConfig} */
 
 // Allow next/image to optimise images served from the R2 public bucket.
@@ -22,6 +24,7 @@ function buildRemotePatterns() {
 }
 
 const nextConfig = {
+  transpilePackages: ['@repo/api-contracts', '@repo/db'],
   images: {
     remotePatterns: buildRemotePatterns(),
   },

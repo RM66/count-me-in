@@ -37,9 +37,11 @@ export const config = [
         {
           groups: [
             // External packages
-            ['^\\u0000', '^node:', '^@?\\w'],
+            ['^node:', '^@?\\w'],
             // Internal project imports (relative or aliased with @/)
             ['^@/', '^\\.'],
+            // Side effect imports
+            ['^\\u0000'],
           ],
         },
       ],

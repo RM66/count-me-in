@@ -4,8 +4,8 @@ import { ArrowLeft, CheckCircle2, PartyPopper } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
+import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -29,16 +29,16 @@ import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/comp
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Separator } from '@/components/ui/separator'
 import {
-  type Service,
-  type TimeSlot,
   formatDate,
   formatTime,
   seatsLeft,
+  type Service,
   serviceLocation,
   slotEnd,
   slotPrice,
+  type TimeSlot,
 } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 
 type Step = 'slot' | 'options' | 'details' | 'verify' | 'success'
 

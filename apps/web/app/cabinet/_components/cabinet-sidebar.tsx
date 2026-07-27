@@ -40,7 +40,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { organizer } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 
 const nav = [
   { title: 'Overview', href: '/cabinet', icon: LayoutDashboardIcon },

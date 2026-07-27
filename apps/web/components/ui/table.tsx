@@ -2,7 +2,7 @@
 
 import { ComponentProps } from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 
 function Table({ className, ...props }: ComponentProps<'table'>) {
   return (
@@ -86,4 +86,4 @@ function TableCaption({ className, ...props }: ComponentProps<'caption'>) {
   )
 }
 
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption }
+export { Table, TableBody, TableCaption,TableCell, TableFooter, TableHead, TableHeader, TableRow }

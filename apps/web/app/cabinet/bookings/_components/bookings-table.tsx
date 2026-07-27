@@ -29,11 +29,11 @@ import {
 } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
+  type Booking,
   bookings as allBookings,
   formatDateTime,
   getBookingService,
   getSlot,
-  type Booking,
 } from '@/lib/mock-data'
 
 function initials(name: string) {

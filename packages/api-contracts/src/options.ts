@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import type { OptionsSelectMode } from './enums.js'
-import { optionLabel } from './primitives.js'
+
+import type { OptionsSelectMode } from './enums'
+import { optionLabel } from './primitives'
 
 /** Allowed option labels on a service: unique, non-empty list. */
 export const optionsList = z

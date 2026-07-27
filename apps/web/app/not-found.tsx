@@ -1,5 +1,6 @@
+import { ArrowLeftIcon, MapPinnedIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
-import { MapPinnedIcon, ArrowLeftIcon, SearchIcon } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import {
   Empty,

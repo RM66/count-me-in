@@ -4,11 +4,11 @@ import Link from 'next/link'
 
 import { Badge } from '@/components/ui/badge'
 import {
-  type Service,
   formatDate,
   formatTime,
   getSlotsForService,
   seatsLeft,
+  type Service,
 } from '@/lib/mock-data'
 
 export function ServiceCard({ orgSlug, service }: { orgSlug: string; service: Service }) {

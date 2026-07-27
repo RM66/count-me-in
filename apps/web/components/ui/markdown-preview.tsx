@@ -1,11 +1,12 @@
 'use client'
 
-import '@uiw/react-markdown-preview/markdown.css'
-import { useTheme } from 'next-themes'
 import dynamic from 'next/dynamic'
-import { useEffect, useState, type ComponentProps } from 'react'
+import { useTheme } from 'next-themes'
+import { type ComponentProps, useEffect, useState } from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
+
+import '@uiw/react-markdown-preview/markdown.css'
 
 const MarkdownPreviewImpl = dynamic(
   () => import('@uiw/react-markdown-preview').then((mod) => mod.default),

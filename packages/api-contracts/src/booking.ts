@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { selectedOptionsShape } from './options.js'
-import { displayName, manageToken, phone, seats, serviceId, uuid } from './primitives.js'
+
+import { selectedOptionsShape } from './options'
+import { displayName, manageToken, phone, seats, serviceId, uuid } from './primitives'
 
 /**
  * Public booking request. `selectedOptions` here is only shape-validated; validate it against the

@@ -22,6 +22,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import {
   Select,
   SelectContent,
@@ -32,7 +33,6 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { organizer } from '@/lib/mock-data'
 

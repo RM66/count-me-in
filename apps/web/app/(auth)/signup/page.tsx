@@ -1,5 +1,6 @@
 'use client'
 
+import type { Messenger } from '@repo/api-contracts'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -26,7 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
+import {
+  ApiError,
+  useRegisterOrganizer,
+  useRequestOtp,
+  useSignInWithTicket,
+  useVerifyOtp,
+} from '@/lib/api'
+import { cn } from '@/utils'
 
 const steps = ['Phone', 'Verify', 'Profile'] as const
 
@@ -45,9 +53,74 @@ export default function SignupPage() {
   const [phone, setPhone] = useState('')
   const [messenger, setMessenger] = useState('telegram')
   const [code, setCode] = useState('')
+  const [ticket, setTicket] = useState('')
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [timezone, setTimezone] = useState('Europe/Belgrade')
+
+  const requestOtp = useRequestOtp()
+  const verifyOtp = useVerifyOtp()
+  const registerOrganizer = useRegisterOrganizer()
+  const signIn = useSignInWithTicket()
+
+  async function handleSendCode(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await requestOtp.mutateAsync({ phone, messenger: messenger as Messenger })
+      setStep(1)
+      toast.success('Verification code sent to your messenger')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not send the code')
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      const result = await verifyOtp.mutateAsync({ phone, code })
+      if (result.organizerExists) {
+        await signIn.mutateAsync(result.ticket)
+        toast.success('You already have an account — welcome back!')
+        router.push('/cabinet')
+        router.refresh()
+        return
+      }
+      setTicket(result.ticket)
+      setStep(2)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not verify the code')
+      setCode('')
+    }
+  }
+
+  async function handleCreateAccount(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await registerOrganizer.mutateAsync({
+        ticket,
+        slug,
+        name,
+        timezone,
+        messenger: messenger as Messenger,
+      })
+      await signIn.mutateAsync(ticket)
+      router.push('/onboarding')
+      router.refresh()
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        // Ticket expired mid-registration — restart phone verification.
+        toast.error(error.message)
+        setStep(0)
+        setCode('')
+        setTicket('')
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Could not create the account')
+      }
+    }
+  }
+
+  const pending =
+    requestOtp.isPending || verifyOtp.isPending || registerOrganizer.isPending || signIn.isPending
 
   return (
     <AuthShell
@@ -87,13 +160,7 @@ export default function SignupPage() {
       </ol>
 
       {step === 0 && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            setStep(1)
-            toast.success('Verification code sent to your messenger')
-          }}
-        >
+        <form onSubmit={handleSendCode}>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="phone">Phone number</FieldLabel>
@@ -114,20 +181,15 @@ export default function SignupPage() {
                 We’ll use this channel to verify you and send booking alerts.
               </FieldDescription>
             </Field>
-            <Button type="submit" className="w-full">
-              Send code
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? 'Sending…' : 'Send code'}
             </Button>
           </FieldGroup>
         </form>
       )}
 
       {step === 1 && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            setStep(2)
-          }}
-        >
+        <form onSubmit={handleVerify}>
           <FieldGroup>
             <Field className="items-center">
               <FieldLabel className="self-start">Verification code</FieldLabel>
@@ -144,12 +206,20 @@ export default function SignupPage() {
                   <InputOTPSlot index={5} />
                 </InputOTPGroup>
               </InputOTP>
-              <FieldDescription>Enter any 6 digits for this demo.</FieldDescription>
+              <FieldDescription>Enter the 6-digit code from your messenger.</FieldDescription>
             </Field>
-            <Button type="submit" className="w-full" disabled={code.length < 6}>
-              Verify
+            <Button type="submit" className="w-full" disabled={code.length < 6 || pending}>
+              {pending ? 'Verifying…' : 'Verify'}
             </Button>
-            <Button type="button" variant="ghost" className="w-full" onClick={() => setStep(0)}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setStep(0)
+                setCode('')
+              }}
+            >
               <ArrowLeft data-icon="inline-start" />
               Back
             </Button>
@@ -158,12 +228,7 @@ export default function SignupPage() {
       )}
 
       {step === 2 && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            router.push('/onboarding')
-          }}
-        >
+        <form onSubmit={handleCreateAccount}>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="name">Display name</FieldLabel>
@@ -209,8 +274,8 @@ export default function SignupPage() {
               </Select>
               <FieldDescription>All your time slots are shown in this zone.</FieldDescription>
             </Field>
-            <Button type="submit" className="w-full">
-              Continue
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? 'Creating account…' : 'Continue'}
             </Button>
           </FieldGroup>
         </form>

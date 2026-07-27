@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { type TimeSlot, seatsLeft, fillLabel } from '@/lib/mock-data'
+import { fillLabel, seatsLeft, type TimeSlot } from '@/lib/mock-data'
 
 export function SeatsBadge({ slot }: { slot: TimeSlot }) {
   const left = seatsLeft(slot)

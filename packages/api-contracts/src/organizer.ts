@@ -1,6 +1,15 @@
 import { z } from 'zod'
-import { messengerEnum } from './enums.js'
-import { displayName, location, organizerDescription, phone, slug, timezone } from './primitives.js'
+
+import { messengerEnum } from './enums'
+import {
+  displayName,
+  location,
+  organizerDescription,
+  otpTicket,
+  phone,
+  slug,
+  timezone,
+} from './primitives'
 
 export const createOrganizerInput = z.object({
   slug,
@@ -12,6 +21,19 @@ export const createOrganizerInput = z.object({
   messenger: messengerEnum,
 })
 export type CreateOrganizerInput = z.infer<typeof createOrganizerInput>
+
+/**
+ * Public registration: phone is derived server-side from the OTP `ticket`
+ * ([ADR-005](../../docs/decisions/005-phone-messenger.md)) — never trusted from the client.
+ */
+export const registerOrganizerInput = z.object({
+  ticket: otpTicket,
+  slug,
+  name: displayName,
+  timezone,
+  messenger: messengerEnum,
+})
+export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
 
 /** Profile edits from the cabinet. Identity fields (`slug`, `phone`) are not editable in MVP. */
 export const updateOrganizerProfileInput = z.object({

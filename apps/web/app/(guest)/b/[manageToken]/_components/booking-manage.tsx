@@ -30,14 +30,14 @@ import {
 import { Separator } from '@/components/ui/separator'
 import {
   type Booking,
-  type Organizer,
-  type Service,
-  type TimeSlot,
   formatDate,
   formatTime,
+  type Organizer,
+  type Service,
   serviceLocation,
   slotEnd,
   slotPrice,
+  type TimeSlot,
 } from '@/lib/mock-data'
 
 export function BookingManage({

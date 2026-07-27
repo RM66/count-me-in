@@ -1,7 +1,7 @@
-export * from './schema.js'
-export { db, client, schema } from './client.js'
+export { client, db, schema } from './client'
+export * from './schema'
 
-import type { bookings, organizers, services, timeSlots } from './schema.js'
+import type { bookings, organizers, services, timeSlots } from './schema'
 
 export type Organizer = typeof organizers.$inferSelect
 export type NewOrganizer = typeof organizers.$inferInsert

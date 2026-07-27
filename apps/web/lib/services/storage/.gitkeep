@@ -1,0 +1,2 @@
+# Cloudflare R2 storage integration
+# TODO: Implement signed upload URLs (see docs/decisions/007-cloudflare-r2.md)

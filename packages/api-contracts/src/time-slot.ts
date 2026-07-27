@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { capacity, durationMinutes, priceText, serviceId } from './primitives.js'
+
+import { capacity, durationMinutes, priceText, serviceId } from './primitives'
 
 export const createTimeSlotInput = z.object({
   serviceId,

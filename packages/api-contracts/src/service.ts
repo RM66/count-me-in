@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { optionsSelectModeEnum } from './enums.js'
-import { optionsList } from './options.js'
+
+import { optionsSelectModeEnum } from './enums'
+import { optionsList } from './options'
 import {
   capacity,
   displayName,
@@ -8,7 +9,7 @@ import {
   location,
   priceText,
   serviceDescription,
-} from './primitives.js'
+} from './primitives'
 
 const serviceFields = {
   title: displayName,

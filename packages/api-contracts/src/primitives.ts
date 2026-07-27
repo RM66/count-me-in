@@ -72,3 +72,6 @@ export const manageToken = z.string().min(10).max(200)
 
 /** Numeric OTP code delivered via messenger. */
 export const otpCode = z.string().regex(/^\d{4,8}$/, 'OTP must be 4–8 digits')
+
+/** Opaque short-lived token proving a phone was just verified via OTP. */
+export const otpTicket = z.string().min(20).max(200)

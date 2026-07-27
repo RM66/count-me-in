@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
-import './globals.css'
-import { Providers } from './providers'
 import { Figtree } from 'next/font/google'
-import { cn } from '@/lib/utils'
+
+import { cn } from '@/utils'
+import { Providers } from './providers'
+
+import './globals.css'
 
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' })
 

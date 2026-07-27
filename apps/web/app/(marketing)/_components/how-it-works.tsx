@@ -1,4 +1,4 @@
-import { UserPlus, CalendarPlus, Share2, PhoneCall } from 'lucide-react'
+import { CalendarPlus, PhoneCall, Share2, UserPlus } from 'lucide-react'
 
 const steps = [
   {

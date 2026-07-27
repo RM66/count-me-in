@@ -1,11 +1,12 @@
 'use client'
 
-import '@uiw/react-markdown-editor/markdown-editor.css'
-import { useTheme } from 'next-themes'
 import dynamic from 'next/dynamic'
-import { useEffect, useState, type ComponentProps, type CSSProperties } from 'react'
+import { useTheme } from 'next-themes'
+import { type ComponentProps, type CSSProperties, useEffect, useState } from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
+
+import '@uiw/react-markdown-editor/markdown-editor.css'
 
 // The editor relies on CodeMirror / browser APIs, so it must never render on the server.
 const MarkdownEditorImpl = dynamic(
