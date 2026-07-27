@@ -4,8 +4,8 @@ import type { Messenger, RegisterOrganizerInput, VerifyOtpResponse } from '@repo
 import { useMutation } from '@tanstack/react-query'
 import { signIn } from 'next-auth/react'
 
-import { ApiError } from '../error'
 import { post } from '../client'
+import { ApiError } from '../error'
 
 /**
  * Hook for requesting an OTP code.
