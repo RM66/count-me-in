@@ -1,6 +1,6 @@
 'use client'
 
-import type { Messenger, RegisterOrganizerInput, VerifyOtpResponse } from '@repo/api-contracts'
+import type { AuthTicketResponse, RegisterOrganizerInput } from '@repo/api-contracts'
 import { useMutation } from '@tanstack/react-query'
 import { signIn } from 'next-auth/react'
 
@@ -8,30 +8,20 @@ import { post } from '../client'
 import { ApiError } from '../error'
 
 /**
- * Hook for requesting an OTP code.
- * Sends a code to the user's messenger (Telegram by default).
+ * Validates the Telegram Login Widget payload server-side (HMAC) and returns
+ * a short-lived auth ticket plus whether an organizer exists for this identity.
+ * Call this from the TelegramLoginButton callback in the auth pages.
  */
-export function useRequestOtp() {
+export function useValidateTelegramWidget() {
   return useMutation({
-    mutationFn: ({ phone, messenger = 'telegram' }: { phone: string; messenger?: Messenger }) =>
-      post<{ ok: true }>('/api/otp/request', { phone, messenger }),
+    mutationFn: (widgetData: Record<string, unknown>) =>
+      post<AuthTicketResponse>('/api/auth/telegram-signup', widgetData),
   })
 }
 
 /**
- * Hook for verifying an OTP code.
- * Returns a one-time ticket and whether an organizer exists for this phone.
- */
-export function useVerifyOtp() {
-  return useMutation({
-    mutationFn: ({ phone, code }: { phone: string; code: string }) =>
-      post<VerifyOtpResponse>('/api/otp/verify', { phone, code }),
-  })
-}
-
-/**
- * Hook for registering a new organizer.
- * Requires a valid phone-ownership ticket from OTP verification.
+ * Registers a new organizer. The messenger identity is derived server-side
+ * from the auth ticket (never trusted from the client).
  */
 export function useRegisterOrganizer() {
   return useMutation({
@@ -41,15 +31,15 @@ export function useRegisterOrganizer() {
 }
 
 /**
- * Hook for signing in with a phone-ownership ticket.
- * Exchanges the ticket for an Auth.js session (consumes the ticket).
+ * Signs in with a previously issued auth ticket.
+ * Exchanges the ticket for an Auth.js JWT session (ticket is consumed).
  */
 export function useSignInWithTicket() {
   return useMutation({
     mutationFn: async (ticket: string) => {
-      const result = await signIn('otp-ticket', { ticket, redirect: false })
+      const result = await signIn('telegram', { ticket, redirect: false })
       if (result?.error) {
-        throw new ApiError('Could not sign you in — verify your phone again', 401)
+        throw new ApiError('Could not sign you in — authenticate with Telegram again', 401)
       }
     },
   })

@@ -8,9 +8,9 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 - Turborepo: `apps/web`, `apps/worker`, packages (`db`, `api-contracts`, `storage`, `eslint-config`, `typescript-config`).
 - `apps/web`: landing + public booking + **organizer cabinet** + HTTP API.
-- Organizer flow: phone + messenger OTP → notifications in that messenger → **deep link** opens cabinet in WebView/browser.
+- Organizer flow: messenger login widget → notifications in that messenger → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
-- Guest booking with OTP → atomic `confirmed`; cancel in MVP (guest + organizer).
+- Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
 - Messenger notifications via `pg-boss` + worker; Telegram first; `messenger` on organizer and booking.
 - Image uploads (organizer avatar, service photo) via Cloudflare R2.
 - Observability: Sentry, PostHog (basic).
@@ -49,7 +49,7 @@ Explicitly **not** in MVP:
 | Topic                  | Decision                                                                    |
 | ---------------------- | --------------------------------------------------------------------------- |
 | Domain / URL           | `countmein.group/{orgSlug}`                                                 |
-| Auth                   | Phone + messenger OTP; `Organizer.id` only                                  |
+| Auth                   | Messenger login widget (Telegram); `Organizer.id` only                      |
 | Notifications          | Messengers (Telegram MVP) + cabinet deep links                              |
 | Guest cancel           | MVP                                                                         |
 | Organizer client (MVP) | Web cabinet in `apps/web` ([ADR-006](decisions/006-organizer-capacitor.md)) |

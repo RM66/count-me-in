@@ -9,7 +9,7 @@ Organizers need a way to manage services, slots, and bookings, and to learn abou
 
 Desired MVP flow:
 
-1. Organizer registers with a phone tied to a messenger.
+1. Organizer registers via messenger login widget (Telegram).
 2. Booking notifications arrive in that messenger.
 3. Each message includes a link to the organizer cabinet.
 4. The link opens in the messenger **WebView** (or system browser) — responsive web pages in `apps/web`.
@@ -20,7 +20,7 @@ Desired MVP flow:
 
 **Post-MVP:** if organizers need a store app or stronger native UX, extract or wrap the cabinet with **Capacitor** (preferred over PWABuilder — see prior analysis). Until then, messenger + deep link is the “app” entry point.
 
-Notification messages must include a stable absolute URL to the relevant cabinet view (dashboard, booking detail, etc.), preferably with session-friendly auth (cookie after OTP, or short-lived magic link that establishes session).
+Notification messages must include a stable absolute URL to the relevant cabinet view (dashboard, booking detail, etc.), preferably with session-friendly auth (cookie after login, or short-lived magic link that establishes session).
 
 ## Consequences
 

@@ -1,7 +1,9 @@
 # ADR-005: Phone identity and messenger notifications
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-008](008-messenger-only-auth.md)
 - **Date:** 2026-07-18
+
+> **Superseded (2026-07-28):** phone identity and OTP are removed entirely. Identity is the messenger account (`messenger` + `messengerId`); Telegram Login Widget for organizers and guests. Messenger-first notifications and the Telegram-first provider strategy survive in ADR-008.
 
 ## Context
 

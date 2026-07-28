@@ -88,8 +88,15 @@ export function SettingsForm() {
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                  <Input id="phone" defaultValue={organizer.phone} />
+                  <FieldLabel htmlFor="contact">Contact</FieldLabel>
+                  <Input
+                    id="contact"
+                    defaultValue={organizer.contact ?? ''}
+                    placeholder="e.g. +381 64 123 4567 or studio@example.com"
+                  />
+                  <FieldDescription>
+                    Shown to guests on your public page. Phone, email, website, or any text.
+                  </FieldDescription>
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="tz">Timezone</FieldLabel>

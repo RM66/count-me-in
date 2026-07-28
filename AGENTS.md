@@ -10,7 +10,7 @@ Simple online booking for group events: organizers publish services with time sl
 - **App:** Next.js (`apps/web`) — landing, public booking, organizer cabinet, API
 - **UI:** React, Tailwind, shadcn/ui (Radix)
 - **State:** TanStack Query (server), Zustand (local UI)
-- **Auth:** Auth.js — organizers via phone + messenger OTP (`Organizer.id` = user id)
+- **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
 - **Validation:** Zod (`packages/api-contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
 - **Media:** Cloudflare R2 (`packages/storage`)
@@ -42,7 +42,7 @@ docs/
 **`apps/web/lib/` structure:**
 
 - `api/` — React Query hooks (mutations/, queries/, client.ts, error.ts)
-- `services/` — Server-side logic (auth, redis, otp/, booking/, storage/)
+- `services/` — Server-side logic (auth, redis, booking/, storage/)
 - `domain/` — Pure business logic (slot.ts, etc.)
 - `helpers/` — Utilities (date.ts, etc.)
 
@@ -61,9 +61,10 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 ## Conventions
 
 - No `Calendar` entity; timezone + profile on `Organizer` — [domain](docs/domain.md).
-- Phone + messenger — [ADR-005](docs/decisions/005-phone-messenger.md).
-- Guest booking without Auth.js accounts; cancel in MVP — [ADR-002](docs/decisions/002-guest-booking.md).
+- Messenger-only identity, no phone/OTP — [ADR-008](docs/decisions/008-messenger-only-auth.md) (supersedes [ADR-005](docs/decisions/005-phone-messenger.md)).
+- Guest booking without Auth.js accounts (guest = messenger identity via widget); cancel in MVP — [ADR-002](docs/decisions/002-guest-booking.md).
 - Capacity updates atomic; bookings only `confirmed` | `cancelled`.
 - Prices are display text only in MVP (no payments).
 - Optional display `location` on `Organizer` and `Service`; `Service.location` overrides the organizer's, shown on public pages and passed to `add-to-calendar` — [domain](docs/domain.md).
+- Optional display `contact` on `Organizer` and `Service` (same override rule); stored as one plain string, rendered via `detectContactKind` + `<ContactLink />` (tel:/mailto:/https:/plain) — [domain](docs/domain.md).
 - Do not expand scope without ADR/roadmap update.

@@ -136,7 +136,7 @@ export function CabinetSidebar() {
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="truncate font-medium">{organizer.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {organizer.phone}
+                      {organizer.messenger} · {organizer.messengerId}
                     </span>
                   </div>
                   <ChevronsUpDownIcon className="ml-auto size-4" />

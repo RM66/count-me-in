@@ -16,19 +16,19 @@ Legend: **MVP** unless a row is marked _(later)_.
 
 ## 2. Guest (public booking, no Auth.js account)
 
-| Page               | Route                    | Purpose                                                                                                                  |
-| ------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Organizer page     | `/{orgSlug}`             | Organizer profile (name, avatar, Markdown description) + list of services. Shared as "me as a provider".                 |
-| Service page       | `/{orgSlug}/{serviceId}` | Service description, photo, price (text), upcoming slots with availability, options. Shared to promote one service.      |
-| Booking management | `/b/{manageToken}`       | Opened from the messenger deep link (phone already proven — no OTP). Booking details + **Cancel** + **Add to calendar**. |
-| Booking lookup     | `/b`                     | Guest enters phone → messenger OTP → list of their bookings, then manage/cancel. Fallback when the deep link is lost.    |
+| Page               | Route                    | Purpose                                                                                                                                   |
+| ------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Organizer page     | `/{orgSlug}`             | Organizer profile (name, avatar, Markdown description) + list of services. Shared as "me as a provider".                                  |
+| Service page       | `/{orgSlug}/{serviceId}` | Service description, photo, price (text), upcoming slots with availability, options. Shared to promote one service.                       |
+| Booking management | `/b/{manageToken}`       | Opened from the messenger deep link (messenger already proved ownership). Booking details + **Cancel** + **Add to calendar**.             |
+| Booking lookup     | `/b`                     | Guest re-authenticates with the messenger login widget → list of their bookings, then manage/cancel. Fallback when the deep link is lost. |
 
 ### Booking flow (steps on the service page — modal/stepper, not separate routes)
 
 1. Pick slot
 2. Pick options (if the service has any)
-3. Enter name + phone
-4. Verify phone via messenger OTP (no seat held during OTP)
+3. Enter name
+4. Authenticate with the messenger login widget — server validates the signed payload and issues a short-lived guest ticket (no seat held)
 5. **Success screen**: booking details, link to the management page, and an **"Add to calendar"** button
 
 The **"Add to calendar"** button (shown on both the success screen and the booking management page)
@@ -41,15 +41,14 @@ the appointment to their own device calendar.
 
 | Page                | Route                                      | Purpose                                                                                                                 |
 | ------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Sign up             | `/signup`                                  | Phone + messenger → OTP; set slug, name, timezone, messenger channel.                                                   |
-| Log in              | `/login`                                   | Phone → messenger OTP. Deep links must land in an authenticated session.                                                |
-| Onboarding          | (post sign-up)                             | Finish profile (slug, timezone, avatar, description) before publishing services.                                        |
+| Sign up             | `/signup`                                  | Two-step flow: Telegram Login Widget → profile form (slug, name, timezone).                                             |
+| Log in              | `/login`                                   | Messenger login widget. Deep links must land in an authenticated session.                                               |
 | Cabinet overview    | `/cabinet`                                 | Upcoming bookings, quick status. Landing target for deep links.                                                         |
 | Services list       | `/cabinet/services`                        | List services; create / edit / delete.                                                                                  |
 | Service editor      | `/cabinet/services/{serviceId}` (+ `/new`) | Edit title, description, photo, defaultPrice, defaultCapacity, defaultDurationMinutes, options, optionsSelectMode.      |
 | Time slots          | `/cabinet/services/{serviceId}/slots`      | List and create / edit / delete slots (startsAt, duration, capacity, price override). Defaults seeded from the service. |
 | Bookings            | `/cabinet/bookings`                        | Bookings across all services (seen transitively); filter by service/slot; view detail; cancel.                          |
-| Profile / settings  | `/cabinet/settings`                        | Name, slug, description, avatar (upload to R2), timezone, messenger, phone.                                             |
+| Profile / settings  | `/cabinet/settings`                        | Name, slug, description, avatar (upload to R2), timezone, messenger.                                                    |
 | Occupancy analytics | `/cabinet/analytics`                       | Fill-rate heatmap by hour/day, per service/slot. _(later — Phase 2)_                                                    |
 
 ## 4. Shared / system
@@ -62,7 +61,7 @@ the appointment to their own device calendar.
 
 ## Notes
 
-- `manageToken` in the URL is a secret; `/b/{manageToken}` needs no OTP (the messenger already proved
-  ownership), whereas `/b` phone lookup does require OTP.
+- `manageToken` in the URL is a secret; `/b/{manageToken}` needs no re-authentication (the messenger already proved
+  ownership), whereas `/b` requires re-authenticating with the login widget.
 - A `TimeSlot` has no public URL — it is always reached inside its service page.
 - Only the analytics dashboard is Phase 2; everything else is MVP.

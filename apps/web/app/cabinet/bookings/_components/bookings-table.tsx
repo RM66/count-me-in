@@ -54,7 +54,7 @@ export function BookingsTable() {
     const matchesQuery =
       query.trim() === '' ||
       b.guestName.toLowerCase().includes(query.toLowerCase()) ||
-      b.guestPhone.includes(query)
+      b.guestMessengerId.includes(query)
     return matchesFilter && matchesQuery
   })
 
@@ -120,7 +120,9 @@ export function BookingsTable() {
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="font-medium">{b.guestName}</span>
-                          <span className="text-xs text-muted-foreground">{b.guestPhone}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {b.guestMessengerLogin ?? b.guestMessengerId}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
@@ -156,7 +158,9 @@ export function BookingsTable() {
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="font-medium">{selected.guestName}</span>
-                  <span className="text-sm text-muted-foreground">{selected.guestPhone}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {selected.guestMessengerLogin ?? selected.guestMessengerId}
+                  </span>
                 </div>
                 <Badge
                   className="ml-auto"
@@ -185,7 +189,7 @@ export function BookingsTable() {
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Messenger</dt>
-                  <dd className="text-right font-medium capitalize">{selected.messenger}</dd>
+                  <dd className="text-right font-medium capitalize">{selected.guestMessenger}</dd>
                 </div>
                 {selected.selectedOptions && selected.selectedOptions.length > 0 && (
                   <div className="flex justify-between gap-4">

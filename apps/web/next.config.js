@@ -28,6 +28,7 @@ const nextConfig = {
   images: {
     remotePatterns: buildRemotePatterns(),
   },
+  allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
 }
 
 export default nextConfig

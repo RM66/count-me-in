@@ -4,6 +4,7 @@ import { optionsSelectModeEnum } from './enums'
 import { optionsList } from './options'
 import {
   capacity,
+  contact,
   displayName,
   durationMinutes,
   location,
@@ -15,6 +16,8 @@ const serviceFields = {
   title: displayName,
   description: serviceDescription.optional(),
   location: location.optional(),
+  /** Optional display-only contact; overrides organizer.contact when set. */
+  contact: contact.optional(),
   defaultPrice: priceText,
   defaultCapacity: capacity,
   defaultDurationMinutes: durationMinutes,

@@ -16,12 +16,13 @@ erDiagram
     string id PK
     string slug UK
     string name
-    string phone UK
+    string messenger
+    string messengerId UK
     string timezone
     string description_md "optional"
     string photoUrl "optional"
     string location "optional"
-    string messenger
+    string contact "optional"
     datetime createdAt
   }
   Service {
@@ -31,6 +32,7 @@ erDiagram
     string description "optional"
     string photoUrl "optional"
     string location "optional"
+    string contact "optional"
     string defaultPrice
     int defaultCapacity
     int defaultDurationMinutes
@@ -55,8 +57,9 @@ erDiagram
     enum status
     int seats
     string guestName
-    string guestPhone
-    string messenger
+    string guestMessenger
+    string guestMessengerId
+    string guestMessengerLogin "optional"
     string manageToken
     string_array selectedOptions "optional"
     datetime createdAt
@@ -84,22 +87,23 @@ An organizer reaches their bookings **transitively** (`Organizer → Service →
 
 ### Organizer
 
-The authenticated account itself (`id` is the sole primary key). Auth.js uses this id as the user subject — **no separate `userId`**.
+The authenticated account itself (`id` is the sole primary key). Auth.js uses this id as the user subject — **no separate `userId`**. Login identity is the messenger account ([ADR-008](decisions/008-messenger-only-auth.md)) — **no phone column**.
 
 Public page: `https://countmein.group/{slug}`.
 
-| Field         | Required | Meaning                                                                                           |
-| ------------- | -------- | ------------------------------------------------------------------------------------------------- |
-| `id`          | yes      | PK; Auth.js user id                                                                               |
-| `slug`        | yes      | Public URL segment                                                                                |
-| `name`        | yes      | Display name                                                                                      |
-| `phone`       | yes      | E.164; login identity (stored `varchar(16)`, canonical E.164; unique — normalize before insert)   |
-| `timezone`    | yes      | IANA tz (e.g. `Europe/Belgrade`); all slots interpreted in this zone                              |
-| `description` | no       | Markdown (links allowed) for the public page                                                      |
-| `photoUrl`    | no       | Avatar / cover image (object storage URL)                                                         |
-| `location`    | no       | Display address shown on the public page; default location for the organizer's services           |
-| `messenger`   | yes      | Channel used for OTP/notifications (e.g. `telegram`); set at sign-up, reused for later OTP/notify |
-| `createdAt`   | yes      | Row creation timestamp (UTC)                                                                      |
+| Field         | Required | Meaning                                                                                        |
+| ------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `id`          | yes      | PK; Auth.js user id                                                                            |
+| `slug`        | yes      | Public URL segment                                                                             |
+| `name`        | yes      | Display name                                                                                   |
+| `messenger`   | yes      | Auth/notification channel (enum; `telegram` in MVP)                                            |
+| `messengerId` | yes      | Stable user id in that messenger (e.g. Telegram user id); unique together with `messenger`     |
+| `timezone`    | yes      | IANA tz (e.g. `Europe/Belgrade`); all slots interpreted in this zone                           |
+| `description` | no       | Markdown (links allowed) for the public page                                                   |
+| `photoUrl`    | no       | Avatar / cover image (object storage URL)                                                      |
+| `location`    | no       | Display address shown on the public page; default location for the organizer's services        |
+| `contact`     | no       | Display-only "how to reach me" — free text (phone / email / social link); default for services |
+| `createdAt`   | yes      | Row creation timestamp (UTC)                                                                   |
 
 MVP: one organizer account = one person. Multi-staff is post-MVP.
 
@@ -114,6 +118,7 @@ Bookable offering owned by an organizer (`organizerId`).
 | `description`            | no                 | Longer text                                                                              |
 | `photoUrl`               | no                 | Service image                                                                            |
 | `location`               | no                 | Display address for this service; overrides `Organizer.location` when set                |
+| `contact`                | no                 | Display contact for this service; overrides `Organizer.contact` when set                 |
 | `defaultPrice`           | yes                | **Display text** for value + currency (e.g. `1500 UAH`, `от 20€`) — not a payment amount |
 | `defaultCapacity`        | yes                | Template for new slots (capacity)                                                        |
 | `defaultDurationMinutes` | yes                | Template for new slots (length, minutes); `> 0`                                          |
@@ -122,6 +127,16 @@ Bookable offering owned by an organizer (`organizerId`).
 | `createdAt`              | yes                | Row creation timestamp (UTC)                                                             |
 
 `options` are deliberately plain strings (not a separate entity with IDs) to keep the MVP simple. Because `Booking.selectedOptions` stores the chosen **string values** (not references), a booking keeps the exact label it was made with even if the organizer later edits or removes that option from the service. This is an intentional trade-off: no referential integrity, but immutable, self-contained booking records.
+
+### Contact (display field)
+
+`contact` is **one universal string** on both `Organizer` and `Service`; the effective value for a service is:
+
+```
+effectiveContact(service) = service.contact ?? organizer.contact ?? null
+```
+
+— the same fallback rule as `location`. It has **no auth or notification role**. At render time a pure function (`detectContactKind`) classifies the text as phone / email / URL / plain text, and the UI component wraps it in the matching link (`tel:` / `mailto:` / `https:`) or a plain span. Shown on the public organizer page, service page, and booking confirmation/management pages.
 
 ### TimeSlot
 
@@ -142,19 +157,20 @@ The interval convention is half-open `[startsAt, endsAt)`. `durationMinutes` is 
 
 ### Booking
 
-Reservation on a slot (`timeSlotId`) by a guest (no visitor Auth.js account).
+Reservation on a slot (`timeSlotId`) by a guest (no visitor Auth.js account). The guest is identified by their messenger account, verified via the login widget at booking time ([ADR-002](decisions/002-guest-booking.md), [ADR-008](decisions/008-messenger-only-auth.md)).
 
-| Field             | Required | Meaning                                                                                                                                         |
-| ----------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `timeSlotId`      | yes      | FK → TimeSlot                                                                                                                                   |
-| `seats`           | yes      | `>= 1`                                                                                                                                          |
-| `guestName`       | yes      | Display name                                                                                                                                    |
-| `guestPhone`      | yes      | E.164; OTP target (stored `varchar(16)`, canonical E.164)                                                                                       |
-| `messenger`       | yes      | Channel that delivered the guest OTP (e.g. `telegram`); reused for confirmation/cancel notifications                                            |
-| `manageToken`     | yes      | Opaque secret embedded in the messenger deep link to the booking management page; **stored hashed** at rest                                     |
-| `selectedOptions` | no       | String values chosen from `Service.options` at booking time (stored by value as `text[]`; `null` when the service has no options — see Service) |
-| `status`          | yes      | Lifecycle                                                                                                                                       |
-| `createdAt`       | yes      | Row creation timestamp (UTC)                                                                                                                    |
+| Field                 | Required | Meaning                                                                                                                                         |
+| --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `timeSlotId`          | yes      | FK → TimeSlot                                                                                                                                   |
+| `seats`               | yes      | `>= 1`                                                                                                                                          |
+| `guestName`           | yes      | Display name                                                                                                                                    |
+| `guestMessenger`      | yes      | Messenger the guest authenticated with (enum; `telegram` in MVP); notification channel                                                          |
+| `guestMessengerId`    | yes      | Stable user id in that messenger; indexed together with `guestMessenger` for "my bookings" lookup                                               |
+| `guestMessengerLogin` | no       | Human-readable messenger handle (e.g. Telegram @username); nullable — not all accounts expose a public login                                    |
+| `manageToken`         | yes      | Opaque secret embedded in the messenger deep link to the booking management page; **stored hashed** at rest                                     |
+| `selectedOptions`     | no       | String values chosen from `Service.options` at booking time (stored by value as `text[]`; `null` when the service has no options — see Service) |
+| `status`              | yes      | Lifecycle                                                                                                                                       |
+| `createdAt`           | yes      | Row creation timestamp (UTC)                                                                                                                    |
 
 Validation: every `selectedOptions` entry must be in the service’s `options`; count must respect `optionsSelectMode`.
 
@@ -165,9 +181,9 @@ Validation: every `selectedOptions` entry must be in the service’s `options`; 
 | `confirmed` | Active; counts toward `bookedCount`      |
 | `cancelled` | Released; must not count toward capacity |
 
-MVP flow: messenger OTP verifies the phone **before** any booking row exists; then one transaction claims the seats and inserts the `confirmed` booking (see invariant 2). **No `pending` status.**
+MVP flow: the guest authenticates with the messenger login widget **before** any booking row exists (short-lived ticket; no seat held); then one transaction claims the seats and inserts the `confirmed` booking (see invariant 2). **No `pending` status.**
 
-**Cancel is in MVP.** The guest opens the booking management page (deep link from the messenger, or phone + OTP lookup); the organizer can also cancel from the cabinet. Cancelling sets `cancelled` and decrements `bookedCount` in the same transaction.
+**Cancel is in MVP.** The guest opens the booking management page (deep link from the messenger, or by re-authenticating with the same messenger account); the organizer can also cancel from the cabinet. Cancelling sets `cancelled` and decrements `bookedCount` in the same transaction.
 
 ## Invariants
 
@@ -178,6 +194,7 @@ MVP flow: messenger OTP verifies the phone **before** any booking row exists; th
 5. **Ownership:** `Service.organizerId` → organizer; `TimeSlot.serviceId` → service; `Booking.timeSlotId` → slot; organizer sees bookings for their services.
 6. **Options:** if service has `options`, booking’s `selectedOptions` must be a valid selection per `optionsSelectMode`; if no `options`, `selectedOptions` is `null`.
 7. **Price:** informational display only in MVP — no checkout or payment state.
+8. **Messenger identity:** `(messenger, messengerId)` is unique per organizer; guest messenger identity comes only from server-validated widget payloads, never from raw client input.
 
 ## Payments
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-Booking and related events need asynchronous side effects (messenger notifications now; reminders and more providers later). Redis is already planned for sessions, OTP TTL, rate limiting, and short locks. Options considered: Redis + BullMQ, external broker (Rabbit/SQS), Postgres-backed jobs.
+Booking and related events need asynchronous side effects (messenger notifications now; reminders and more providers later). Redis is already planned for sessions, auth ticket TTL, rate limiting, and short locks. Options considered: Redis + BullMQ, external broker (Rabbit/SQS), Postgres-backed jobs.
 
 ## Decision
 

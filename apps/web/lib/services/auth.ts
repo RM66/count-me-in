@@ -1,49 +1,35 @@
-import { db, organizers } from '@repo/db'
-import { eq } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import NextAuth, { type NextAuthResult } from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
 
-import { consumeTicket, TICKET_BASE64URL_LENGTH } from './otp'
+import { createTelegramProvider } from './telegram-provider'
 
 /**
- * Auth.js for organizers (ADR-005): phone + messenger OTP, JWT sessions.
+ * Auth.js for organizers (ADR-008): messenger-only identity, JWT sessions.
  * `Organizer.id` IS the Auth.js user id — no separate user table.
  *
- * The credentials provider does not see raw OTP codes: the client first calls
- * `/api/otp/verify`, gets a one-time `ticket`, and exchanges it here. The
- * ticket is consumed atomically so it cannot be replayed.
+ * Single provider: **telegram** (Telegram Login Widget, HMAC validation).
+ * - Known organizer → session immediately.
+ * - Unknown identity → throws SIGNUP_REQUIRED:<ticket> so the client
+ *   can redirect to /signup pre-loaded with the widget-validated identity.
  */
 const nextAuth = NextAuth({
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
-  providers: [
-    Credentials({
-      id: 'otp-ticket',
-      credentials: { ticket: {} },
-      async authorize(credentials) {
-        const ticket = credentials?.ticket
-        if (typeof ticket !== 'string' || ticket.length !== TICKET_BASE64URL_LENGTH) {
-          return null
-        }
-
-        const payload = await consumeTicket(ticket)
-        if (!payload) {
-          return null
-        }
-
-        const organizer = await db.query.organizers.findFirst({
-          where: eq(organizers.phone, payload.phone),
-        })
-        if (!organizer) {
-          return null
-        }
-
-        return { id: organizer.id, name: organizer.name, slug: organizer.slug }
-      },
-    }),
-  ],
+  providers: [createTelegramProvider()],
   callbacks: {
-    authorized({ auth }) {
+    authorized({ request, auth }) {
+      const { pathname } = request.nextUrl
+      const isAuthPage = pathname === '/login' || pathname === '/signup'
+
+      // Auth pages: allow unauthenticated, redirect authenticated to cabinet.
+      if (isAuthPage) {
+        if (auth?.user) {
+          return NextResponse.redirect(new URL('/cabinet', request.url))
+        }
+        return true
+      }
+
+      // Protected pages (cabinet): require authentication.
       return !!auth?.user
     },
     jwt({ token, user }) {

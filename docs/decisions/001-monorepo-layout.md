@@ -15,7 +15,7 @@ Use **Turborepo + Bun** with:
 apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP API
   lib/           # Business logic
     api/         # React Query hooks (mutations/, queries/, client.ts, error.ts)
-    services/    # Server-side logic (auth, redis, otp/, booking/, storage/)
+    services/    # Server-side logic (auth, redis, booking/, storage/)
     domain/      # Pure business logic (slot.ts, etc.)
     helpers/     # Utilities (date.ts, etc.)
   types/         # TypeScript utility types

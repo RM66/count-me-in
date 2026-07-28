@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, CheckCircle2, Clock, Phone, Tag, User, XCircle } from 'lucide-react'
+import { Calendar, CheckCircle2, Clock, MessageCircle, Tag, User, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -86,8 +86,8 @@ export function BookingManage({
           <Row icon={User} label="Name">
             {booking.guestName}
           </Row>
-          <Row icon={Phone} label="Phone">
-            {booking.guestPhone}
+          <Row icon={MessageCircle} label="Messenger">
+            {booking.guestMessenger} · {booking.guestMessengerId}
           </Row>
           <Row icon={Tag} label="Price">
             {slotPrice(slot)}

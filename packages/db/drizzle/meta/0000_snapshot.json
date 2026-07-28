@@ -1,6 +1,6 @@
 {
-  "id": "77d8b125-0673-4fab-9b12-f0456dbc112b",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "prevId": null,
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -39,17 +39,24 @@
           "primaryKey": false,
           "notNull": true
         },
-        "guest_phone": {
-          "name": "guest_phone",
-          "type": "varchar(16)",
+        "guest_messenger": {
+          "name": "guest_messenger",
+          "type": "messenger_kind",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
-        "messenger": {
-          "name": "messenger",
+        "guest_messenger_id": {
+          "name": "guest_messenger_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "guest_messenger_login": {
+          "name": "guest_messenger_login",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "manage_token": {
           "name": "manage_token",
@@ -87,11 +94,17 @@
           "method": "btree",
           "with": {}
         },
-        "bookings_guest_phone_idx": {
-          "name": "bookings_guest_phone_idx",
+        "bookings_guest_messenger_idx": {
+          "name": "bookings_guest_messenger_idx",
           "columns": [
             {
-              "expression": "guest_phone",
+              "expression": "guest_messenger",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "guest_messenger_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -162,9 +175,16 @@
           "primaryKey": false,
           "notNull": true
         },
-        "phone": {
-          "name": "phone",
-          "type": "varchar(16)",
+        "messenger": {
+          "name": "messenger",
+          "type": "messenger_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "messenger_id": {
+          "name": "messenger_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -192,11 +212,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "messenger": {
-          "name": "messenger",
+        "contact": {
+          "name": "contact",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -222,11 +242,17 @@
           "method": "btree",
           "with": {}
         },
-        "organizers_phone_key": {
-          "name": "organizers_phone_key",
+        "organizers_messenger_id_key": {
+          "name": "organizers_messenger_id_key",
           "columns": [
             {
-              "expression": "phone",
+              "expression": "messenger",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "messenger_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -281,6 +307,12 @@
         },
         "location": {
           "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact": {
+          "name": "contact",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -490,6 +522,11 @@
       "name": "booking_status",
       "schema": "public",
       "values": ["confirmed", "cancelled"]
+    },
+    "public.messenger_kind": {
+      "name": "messenger_kind",
+      "schema": "public",
+      "values": ["telegram"]
     },
     "public.options_select_mode": {
       "name": "options_select_mode",

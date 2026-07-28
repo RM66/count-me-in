@@ -12,7 +12,7 @@ High-level system design for CountMeIn. Product domain lives in [domain.md](doma
 | API               | `apps/web` (Route Handlers) | Clients    | HTTP API; Auth.js for organizers                                       |
 | Worker            | `apps/worker`               | —          | Messenger notifications / jobs                                         |
 
-**MVP entry for organizers:** register via phone → OTP in messenger → later, each booking notification includes a link that opens the cabinet in the messenger WebView (or browser). No separate native app in MVP — [ADR-006](decisions/006-organizer-capacitor.md).
+**MVP entry for organizers:** register via messenger login (Telegram Login Widget) → profile form → later, each booking notification includes a link that opens the cabinet in the messenger WebView (or browser). No separate native app in MVP — [ADR-006](decisions/006-organizer-capacitor.md).
 
 ## Context diagram
 
@@ -53,14 +53,14 @@ flowchart LR
 | `packages/storage`                                      | R2 signed upload helpers                                                      |
 | `packages/eslint-config` / `packages/typescript-config` | Shared lint & TS configs                                                      |
 | Postgres                                                | Domain + `pg-boss`                                                            |
-| Redis                                                   | Sessions, OTP TTL, rate limits                                                |
+| Redis                                                   | Sessions, short-lived auth tickets, rate limits                               |
 | Cloudflare R2                                           | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md)) |
 
 ## Critical flow: create booking (guest)
 
 1. `GET` public page data by organizer `slug` (services, slots; cacheable).
-2. Guest picks service/slot/options; enters name + phone; messenger OTP verifies phone (Redis TTL; **no seat held**).
-3. `POST` booking in one transaction (after OTP):
+2. Guest picks service/slot/options; enters name; authenticates with the messenger login widget — the server validates the signed payload and issues a short-lived guest ticket (Redis TTL; **no seat held**).
+3. `POST` booking in one transaction (with the ticket):
    - validate `selectedOptions` against service
    - **claim seats atomically** with one conditional statement: `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` (not a read-then-write — that reopens the overbooking race)
    - if no row was updated, the slot is full → abort
@@ -69,14 +69,14 @@ flowchart LR
 5. Worker notifies guest + organizer; organizer message includes link to cabinet / booking.
 6. Invalidate TanStack Query on the public page (and cabinet if open).
 
-If the slot filled during OTP, the conditional `UPDATE` in step 3 affects no row and the booking is aborted; guest picks another slot. No `pending` status.
+If the slot filled while the guest was authenticating, the conditional `UPDATE` in step 3 affects no row and the booking is aborted; guest picks another slot. No `pending` status.
 
 ### Cancel (MVP)
 
 Guests manage a booking on a dedicated **booking management page**, reachable two ways:
 
-- **Deep link** in the messenger notification (`https://countmein.group/b/{manageToken}`) — the messenger already proved phone ownership, so no extra OTP is required.
-- **Phone + OTP lookup:** guest enters their phone, receives a messenger OTP, and sees the bookings for that phone.
+- **Deep link** in the messenger notification (`https://countmein.group/b/{manageToken}`) — delivered to the guest's verified messenger account, which is itself proof of ownership.
+- **Messenger lookup:** guest re-authenticates with the login widget and sees the bookings for that messenger account (`guestMessenger` + `guestMessengerId`).
 
 The page shows the booking details and a **Cancel** button. Organizers can also cancel from the web cabinet. Cancelling runs one transaction: set `cancelled` + decrement `bookedCount` + enqueue `booking.cancelled`.
 
@@ -86,8 +86,8 @@ Authenticated organizer in cabinet → signed upload URL → PUT to R2 → save 
 
 ## Auth boundary
 
-- **Organizers:** Auth.js (phone + messenger OTP); session for cabinet routes. Deep links should land in an authenticated session (cookie after login, or one-time link that establishes session). See [ADR-005](decisions/005-phone-messenger.md).
-- **Visitors:** No Auth.js account; booking management via messenger deep link (`manageToken`) or phone + OTP lookup. See [ADR-002](decisions/002-guest-booking.md).
+- **Organizers:** Auth.js (messenger login — Telegram Login Widget, server-side HMAC validation); session for cabinet routes. Deep links should land in an authenticated session (cookie after login, or one-time link that establishes session). See [ADR-008](decisions/008-messenger-only-auth.md).
+- **Visitors:** No Auth.js account; booking requires widget auth (short-lived guest ticket); management via messenger deep link (`manageToken`) or re-auth lookup. See [ADR-002](decisions/002-guest-booking.md).
 
 ## Monorepo
 
@@ -95,7 +95,7 @@ Authenticated organizer in cabinet → signed upload URL → PUT to R2 → save 
 
 ## Jobs / notifications
 
-`pg-boss` + `apps/worker`; messengers primary ([ADR-005](decisions/005-phone-messenger.md), [ADR-004](decisions/004-queue-pg-boss.md)).
+`pg-boss` + `apps/worker`; messengers primary, addressed by messenger user id ([ADR-008](decisions/008-messenger-only-auth.md), [ADR-004](decisions/004-queue-pg-boss.md)). Constraint: a Telegram bot can only message users who pressed **Start** — the UX includes a bot-start step after widget auth, with the management deep link shown on-screen as fallback.
 
 ## Out of scope for this document
 

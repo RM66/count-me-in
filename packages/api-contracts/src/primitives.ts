@@ -1,21 +1,4 @@
-import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { z } from 'zod'
-
-/** Phone as canonical E.164 (e.g. `+380501234567`). Accepts loosely formatted input and normalizes. */
-export const phone = z
-  .string()
-  .trim()
-  .transform((value, ctx) => {
-    const parsed = parsePhoneNumberFromString(value)
-    if (!parsed || !parsed.isValid()) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Invalid phone number — use international E.164 format, e.g. +380501234567',
-      })
-      return z.NEVER
-    }
-    return parsed.number
-  })
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -60,6 +43,9 @@ export const serviceDescription = z.string().trim().max(2000)
 /** Human-readable location / address label shown on public pages and passed to calendar links. */
 export const location = z.string().trim().min(1).max(300)
 
+/** Optional display-only contact string (phone, email, URL or plain text). Detected at render time. */
+export const contact = z.string().trim().min(1).max(300)
+
 export const seats = z.number().int().min(1).max(1000)
 export const capacity = z.number().int().min(1).max(100_000)
 export const durationMinutes = z.number().int().min(1).max(1440)
@@ -70,8 +56,11 @@ export const optionLabel = z.string().trim().min(1).max(100)
 /** Opaque secret from the booking management deep link. */
 export const manageToken = z.string().min(10).max(200)
 
-/** Numeric OTP code delivered via messenger. */
-export const otpCode = z.string().regex(/^\d{4,8}$/, 'OTP must be 4–8 digits')
+/** Messenger user id (e.g. Telegram user id as a string). */
+export const messengerId = z.string().min(1).max(100)
 
-/** Opaque short-lived token proving a phone was just verified via OTP. */
-export const otpTicket = z.string().min(20).max(200)
+/**
+ * Opaque short-lived token proving messenger identity was validated (ADR-008).
+ * Replaces the old `otpTicket` — same shape, new semantics (widget HMAC, not OTP code).
+ */
+export const authTicket = z.string().min(20).max(200)

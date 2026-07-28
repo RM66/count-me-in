@@ -4,17 +4,19 @@
 
 export type OptionsSelectMode = 'single' | 'multi'
 export type BookingStatus = 'confirmed' | 'cancelled'
+export type Messenger = 'telegram'
 
 export interface Organizer {
   id: string
   slug: string
   name: string
-  phone: string
+  messenger: Messenger
+  messengerId: string
   timezone: string
   description: string
   photoUrl: string
   location?: string
-  messenger: string
+  contact?: string
   createdAt: string
 }
 
@@ -25,6 +27,7 @@ export interface Service {
   description: string
   photoUrl: string
   location?: string
+  contact?: string
   defaultPrice: string
   defaultCapacity: number
   defaultDurationMinutes: number
@@ -49,8 +52,10 @@ export interface Booking {
   status: BookingStatus
   seats: number
   guestName: string
-  guestPhone: string
-  messenger: string
+  guestMessenger: Messenger
+  guestMessengerId: string
+  /** Human-readable messenger handle for the organizer to contact the guest (e.g. @alice, +381...). */
+  guestMessengerLogin?: string
   manageToken: string
   selectedOptions?: string[]
   createdAt: string
@@ -60,7 +65,8 @@ export const organizer: Organizer = {
   id: 'org_1',
   slug: 'studio-lumen',
   name: 'Studio Lumen',
-  phone: '+381641234567',
+  messenger: 'telegram',
+  messengerId: '123456789',
   timezone: 'Europe/Belgrade',
   description: `**Boutique movement studio** in the heart of Belgrade.
 
@@ -75,7 +81,7 @@ What we offer:
 Questions? [Message us on Telegram](https://t.me/studiolumen).`,
   photoUrl: '/organizer-avatar.png',
   location: 'Kralja Petra 12, Belgrade',
-  messenger: 'telegram',
+  contact: 'studio@studiolumen.rs',
   createdAt: '2024-11-02T09:00:00.000Z',
 }
 
@@ -102,6 +108,7 @@ export const services: Service[] = [
       'Shape your own mug or bowl from scratch. All clay, tools, and firing included. Great for a creative afternoon with friends.',
     photoUrl: '/service-pottery.png',
     location: 'Ceramics Loft, Cetinjska 15, Belgrade',
+    contact: '+381 64 999 1234',
     defaultPrice: 'from 2500 RSD',
     defaultCapacity: 8,
     defaultDurationMinutes: 120,
@@ -227,8 +234,9 @@ export const bookings: Booking[] = [
     status: 'confirmed',
     seats: 2,
     guestName: 'Mila Petrović',
-    guestPhone: '+381641112233',
-    messenger: 'telegram',
+    guestMessenger: 'telegram',
+    guestMessengerId: '111222333',
+    guestMessengerLogin: '@milapetrovic',
     manageToken: 'demo-manage-token',
     selectedOptions: ['Downtown studio'],
     createdAt: '2026-07-20T10:12:00.000Z',
@@ -239,8 +247,9 @@ export const bookings: Booking[] = [
     status: 'confirmed',
     seats: 1,
     guestName: 'Noah Ellis',
-    guestPhone: '+381641445566',
-    messenger: 'telegram',
+    guestMessenger: 'telegram',
+    guestMessengerId: '444555666',
+    // no username set — guestMessengerLogin absent
     manageToken: 'demo-manage-token-2',
     selectedOptions: ['Take-home glaze kit', 'Photo of your piece'],
     createdAt: '2026-07-19T18:40:00.000Z',
@@ -251,8 +260,9 @@ export const bookings: Booking[] = [
     status: 'confirmed',
     seats: 1,
     guestName: 'Ana Kovač',
-    guestPhone: '+381641778899',
-    messenger: 'telegram',
+    guestMessenger: 'telegram',
+    guestMessengerId: '777888999',
+    guestMessengerLogin: '@ana_kovac',
     manageToken: 'demo-manage-token-3',
     createdAt: '2026-07-21T08:05:00.000Z',
   },
@@ -262,8 +272,9 @@ export const bookings: Booking[] = [
     status: 'confirmed',
     seats: 3,
     guestName: 'Luka Jovanović',
-    guestPhone: '+381641223344',
-    messenger: 'telegram',
+    guestMessenger: 'telegram',
+    guestMessengerId: '101112131',
+    guestMessengerLogin: '@lukajovanovic',
     manageToken: 'demo-manage-token-4',
     selectedOptions: ['Riverside studio'],
     createdAt: '2026-07-21T11:20:00.000Z',
@@ -274,8 +285,9 @@ export const bookings: Booking[] = [
     status: 'cancelled',
     seats: 1,
     guestName: 'Sara Nikolić',
-    guestPhone: '+381641556677',
-    messenger: 'telegram',
+    guestMessenger: 'telegram',
+    guestMessengerId: '141516171',
+    guestMessengerLogin: '@sara_nikolic',
     manageToken: 'demo-manage-token-5',
     createdAt: '2026-07-18T14:00:00.000Z',
   },
@@ -313,6 +325,14 @@ export function getBookingService(booking: Booking): Service | undefined {
  */
 export function serviceLocation(service: Service): string | undefined {
   return service.location ?? organizer.location
+}
+
+/**
+ * Effective contact for a service: the service's own `contact` if set,
+ * otherwise the organizer's `contact`. Same override rule as `location`.
+ */
+export function serviceContact(service: Service): string | undefined {
+  return service.contact ?? organizer.contact
 }
 
 export function seatsLeft(slot: TimeSlot): number {
