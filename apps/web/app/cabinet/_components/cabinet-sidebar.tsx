@@ -139,12 +139,7 @@ export function CabinetSidebar() {
                         {initials(organizer.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="truncate font-medium">{organizer.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {organizer.messenger} · {organizer.messengerId}
-                      </span>
-                    </div>
+                    <span className="truncate font-medium">{organizer.name}</span>
                     <ChevronsUpDownIcon className="ml-auto size-4" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

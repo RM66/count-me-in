@@ -41,9 +41,10 @@ export const organizerProfile = z.object({
 })
 export type OrganizerProfile = z.infer<typeof organizerProfile>
 
-/** Profile edits from the cabinet. Identity fields (`slug`, messenger) are not editable in MVP. */
+/** Profile edits from the cabinet. Messenger identity is not editable. */
 export const updateOrganizerProfileInput = z.object({
   name: displayName.optional(),
+  slug: slug.optional(),
   timezone: timezone.optional(),
   description: organizerDescription.nullable().optional(),
   location: location.nullable().optional(),
