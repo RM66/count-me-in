@@ -4,13 +4,13 @@ High-level system design for CountMeIn. Product domain lives in [domain.md](doma
 
 ## Product surfaces
 
-| Surface           | App                         | Audience   | Responsibility                                                         |
-| ----------------- | --------------------------- | ---------- | ---------------------------------------------------------------------- |
-| Landing           | `apps/web`                  | Prospects  | Marketing, organizer sign-up                                           |
-| Public booking    | `apps/web`                  | Guests     | `https://countmein.group/{orgSlug}` — service → slot → options → book  |
-| Organizer cabinet | `apps/web`                  | Organizers | Services, slots, bookings, profile/media — opened from messenger links |
-| API               | `apps/web` (Route Handlers) | Clients    | HTTP API; Auth.js for organizers                                       |
-| Worker            | `apps/worker`               | —          | Messenger notifications / jobs                                         |
+| Surface           | App                         | Audience   | Responsibility                                                                                    |
+| ----------------- | --------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| Landing           | `apps/web`                  | Prospects  | Marketing, organizer sign-up                                                                      |
+| Public booking    | `apps/web`                  | Guests     | `https://countmein.group/{orgSlug}` — service → slot → options → book (slug min 4 chars, ADR-009) |
+| Organizer cabinet | `apps/web`                  | Organizers | Services, slots, bookings, profile/media — opened from messenger links                            |
+| API               | `apps/web` (Route Handlers) | Clients    | HTTP API; Auth.js for organizers                                                                  |
+| Worker            | `apps/worker`               | —          | Messenger notifications / jobs                                                                    |
 
 **MVP entry for organizers:** register via messenger login (Telegram Login Widget) → profile form → later, each booking notification includes a link that opens the cabinet in the messenger WebView (or browser). No separate native app in MVP — [ADR-006](decisions/006-organizer-capacitor.md).
 
@@ -75,7 +75,7 @@ If the slot filled while the guest was authenticating, the conditional `UPDATE` 
 
 Guests manage a booking on a dedicated **booking management page**, reachable two ways:
 
-- **Deep link** in the messenger notification (`https://countmein.group/b/{manageToken}`) — delivered to the guest's verified messenger account, which is itself proof of ownership.
+- **Deep link** in the messenger notification (`https://countmein.group/booking/{manageToken}`) — delivered to the guest's verified messenger account, which is itself proof of ownership.
 - **Messenger lookup:** guest re-authenticates with the login widget and sees the bookings for that messenger account (`guestMessenger` + `guestMessengerId`).
 
 The page shows the booking details and a **Cancel** button. Organizers can also cancel from the web cabinet. Cancelling runs one transaction: set `cancelled` + decrement `bookedCount` + enqueue `booking.cancelled`.

@@ -11,7 +11,7 @@ export default function GuestLayout({ children }: { children: ReactNode }) {
             <Image src="/logo.svg" alt="" width={22} height={22} className="size-5" />
             <span className="text-sm font-semibold">CountMeIn</span>
           </Link>
-          <Link href="/b" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/booking" className="text-sm text-muted-foreground hover:text-foreground">
             My bookings
           </Link>
         </div>

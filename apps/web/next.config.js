@@ -26,7 +26,10 @@ function buildRemotePatterns() {
 const nextConfig = {
   transpilePackages: ['@repo/api-contracts', '@repo/db'],
   images: {
-    remotePatterns: buildRemotePatterns(),
+    remotePatterns: [
+      ...buildRemotePatterns(),
+      { protocol: 'https', hostname: 't.me' }, // For Telegram avatars
+    ],
   },
   allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
 }

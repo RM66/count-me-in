@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { messengerEnum } from './enums'
 import {
   authTicket,
   contact,
@@ -8,6 +9,7 @@ import {
   organizerDescription,
   slug,
   timezone,
+  uuid,
 } from './primitives'
 
 /**
@@ -22,6 +24,22 @@ export const registerOrganizerInput = z.object({
   contact: contact.optional(),
 })
 export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
+
+/** Organizer profile as returned by the API (cabinet). Dates are ISO strings. */
+export const organizerProfile = z.object({
+  id: uuid,
+  slug,
+  name: displayName,
+  messenger: messengerEnum,
+  messengerId: z.string(),
+  timezone,
+  description: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  location: z.string().nullable(),
+  contact: z.string().nullable(),
+  createdAt: z.string(),
+})
+export type OrganizerProfile = z.infer<typeof organizerProfile>
 
 /** Profile edits from the cabinet. Identity fields (`slug`, messenger) are not editable in MVP. */
 export const updateOrganizerProfileInput = z.object({

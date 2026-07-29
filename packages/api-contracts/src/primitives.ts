@@ -2,15 +2,24 @@ import { z } from 'zod'
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
+/**
+ * Reserved slugs that conflict with system routes (ADR-009).
+ * These values are rejected during organizer registration.
+ */
+const RESERVED_SLUGS = new Set(['api', 'booking', 'cabinet', 'signup', 'login', 'terms', 'privacy'])
+
 /** Organizer public URL segment: lowercase letters, digits, hyphens. Normalized to lowercase. */
 export const slug = z
   .string()
   .trim()
-  .min(3)
+  .min(4)
   .max(40)
   .transform((value) => value.toLowerCase())
   .refine((value) => slugPattern.test(value), {
     message: 'slug must be lowercase letters, digits and single hyphens',
+  })
+  .refine((value) => !RESERVED_SLUGS.has(value), {
+    message: 'this slug is reserved for system use — please choose another',
   })
 
 /** IANA timezone id (e.g. `Europe/Belgrade`). */

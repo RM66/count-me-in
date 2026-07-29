@@ -16,12 +16,12 @@ Legend: **MVP** unless a row is marked _(later)_.
 
 ## 2. Guest (public booking, no Auth.js account)
 
-| Page               | Route                    | Purpose                                                                                                                                   |
-| ------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Organizer page     | `/{orgSlug}`             | Organizer profile (name, avatar, Markdown description) + list of services. Shared as "me as a provider".                                  |
-| Service page       | `/{orgSlug}/{serviceId}` | Service description, photo, price (text), upcoming slots with availability, options. Shared to promote one service.                       |
-| Booking management | `/b/{manageToken}`       | Opened from the messenger deep link (messenger already proved ownership). Booking details + **Cancel** + **Add to calendar**.             |
-| Booking lookup     | `/b`                     | Guest re-authenticates with the messenger login widget → list of their bookings, then manage/cancel. Fallback when the deep link is lost. |
+| Page               | Route                    | Purpose                                                                                                                                                      |
+| ------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Organizer page     | `/{orgSlug}`             | Organizer profile (name, avatar, Markdown description) + list of services. Shared as "me as a provider". Slug min 4 chars, reserved words blocked (ADR-009). |
+| Service page       | `/{orgSlug}/{serviceId}` | Service description, photo, price (text), upcoming slots with availability, options. Shared to promote one service.                                          |
+| Booking management | `/booking/{manageToken}` | Opened from the messenger deep link (messenger already proved ownership). Booking details + **Cancel** + **Add to calendar**.                                |
+| Booking lookup     | `/booking`               | Guest re-authenticates with the messenger login widget → list of their bookings, then manage/cancel. Fallback when the deep link is lost.                    |
 
 ### Booking flow (steps on the service page — modal/stepper, not separate routes)
 
@@ -61,7 +61,8 @@ the appointment to their own device calendar.
 
 ## Notes
 
-- `manageToken` in the URL is a secret; `/b/{manageToken}` needs no re-authentication (the messenger already proved
-  ownership), whereas `/b` requires re-authenticating with the login widget.
+- `manageToken` in the URL is a secret; `/booking/{manageToken}` needs no re-authentication (the messenger already proved
+  ownership), whereas `/booking` requires re-authenticating with the login widget.
+- Organizer slugs have a minimum length of 4 characters and cannot use reserved words (`api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`) to prevent route conflicts (ADR-009).
 - A `TimeSlot` has no public URL — it is always reached inside its service page.
 - Only the analytics dashboard is Phase 2; everything else is MVP.

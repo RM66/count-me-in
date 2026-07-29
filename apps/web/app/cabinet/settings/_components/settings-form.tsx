@@ -1,5 +1,6 @@
 'use client'
 
+import type { OrganizerProfile } from '@repo/api-contracts'
 import { CopyIcon, ImageIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -32,18 +33,43 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { organizer } from '@/lib/mock-data'
+import { useCurrentOrganizer } from '@/lib/api'
+import { initials } from '@/lib/helpers/name'
 
 function saved() {
   toast.success('Changes saved', {
-    description: 'This is a design mockup — no data was saved.',
+    description: 'Saving is not implemented yet — no data was changed.',
   })
 }
 
 export function SettingsForm() {
-  const [bio, setBio] = useState(organizer.description)
+  const { data: organizer, isPending, isError } = useCurrentOrganizer()
+
+  if (isPending) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
+
+  if (isError || !organizer) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Could not load your profile — refresh the page to try again.
+      </p>
+    )
+  }
+
+  return <SettingsFormInner organizer={organizer} />
+}
+
+function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
+  const [bio, setBio] = useState(organizer.description ?? '')
 
   return (
     <Tabs defaultValue="profile" className="gap-6">
@@ -67,7 +93,7 @@ export function SettingsForm() {
                   sizes="4rem"
                   alt={organizer.name}
                 />
-                <AvatarFallback>SL</AvatarFallback>
+                <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
               </Avatar>
               <Button variant="outline">
                 <ImageIcon data-icon="inline-start" />
@@ -152,9 +178,10 @@ export function SettingsForm() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() =>
-                        toast.success('Link copied', { description: 'This is a mockup.' })
-                      }
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://countmein.group/${organizer.slug}`)
+                        toast.success('Link copied')
+                      }}
                     >
                       <CopyIcon data-icon="inline-start" />
                       Copy

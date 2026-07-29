@@ -95,7 +95,7 @@ export default function FindBookingPage() {
             const service = getBookingService(b)
             if (!slot || !service) return null
             return (
-              <Link key={b.id} href={`/b/${b.manageToken}`} className="group block">
+              <Link key={b.id} href={`/booking/${b.manageToken}`} className="group block">
                 <Card className="transition-colors group-hover:border-primary/40">
                   <CardContent className="flex items-center gap-4 py-4">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted">

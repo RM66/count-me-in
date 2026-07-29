@@ -2,7 +2,7 @@ import { ArrowLeftIcon } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { BookingManage } from '@/app/(guest)/b/[manageToken]/_components/booking-manage'
+import { BookingManage } from '@/app/(guest)/booking/[manageToken]/_components/booking-manage'
 import { Button } from '@/components/ui/button'
 import { bookings, getService, getSlot, organizer } from '@/lib/mock-data'
 

@@ -347,7 +347,7 @@ export function BookingDialog({
                 variant="default"
               />
               <Button variant="outline" asChild>
-                <Link href="/b/demo-manage-token">Manage this booking</Link>
+                <Link href="/booking/demo-manage-token">Manage this booking</Link>
               </Button>
             </div>
           </div>

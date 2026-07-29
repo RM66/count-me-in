@@ -2,7 +2,7 @@
 
 Simple online booking for group events: organizers publish services with time slots and capacity; guests book on a public web page; organizers manage a web cabinet opened from messenger notification links.
 
-**Host:** `https://countmein.group` — public booking at `/{orgSlug}`.
+**Host:** `https://countmein.group` — public booking at `/{orgSlug}` (min 4 chars, reserved: `api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`).
 
 ## Stack
 

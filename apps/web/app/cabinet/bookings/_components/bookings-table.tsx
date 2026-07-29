@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { initials } from '@/lib/helpers/name'
 import {
   type Booking,
   bookings as allBookings,
@@ -35,14 +36,6 @@ import {
   getBookingService,
   getSlot,
 } from '@/lib/mock-data'
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-}
 
 export function BookingsTable() {
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled'>('all')

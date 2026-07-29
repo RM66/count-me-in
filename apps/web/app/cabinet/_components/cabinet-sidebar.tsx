@@ -39,7 +39,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { organizer } from '@/lib/mock-data'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useCurrentOrganizer } from '@/lib/api'
+import { initials } from '@/lib/helpers/name'
 import { cn } from '@/utils'
 
 const nav = [
@@ -53,6 +55,7 @@ const nav = [
 
 export function CabinetSidebar() {
   const pathname = usePathname()
+  const { data: organizer } = useCurrentOrganizer()
 
   return (
     <Sidebar>
@@ -97,71 +100,83 @@ export function CabinetSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Public</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="View public page">
-                  <Link href={`/${organizer.slug}`} target="_blank">
-                    <ExternalLinkIcon />
-                    <span>View public page</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {organizer && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Public</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="View public page">
+                    <Link href={`/${organizer.slug}`} target="_blank">
+                      <ExternalLinkIcon />
+                      <span>View public page</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className={cn(
-                    'data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground',
-                  )}
-                >
-                  <Avatar className="size-8 rounded-md">
-                    <AvatarImage
-                      src={organizer.photoUrl || '/placeholder.svg'}
-                      sizes="2rem"
-                      alt={organizer.name}
-                    />
-                    <AvatarFallback className="rounded-md">SL</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="truncate font-medium">{organizer.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {organizer.messenger} · {organizer.messengerId}
-                    </span>
-                  </div>
-                  <ChevronsUpDownIcon className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" className="w-56">
-                <DropdownMenuLabel>My account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
+            {organizer ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton
+                    size="lg"
+                    className={cn(
+                      'data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground',
+                    )}
+                  >
+                    <Avatar className="size-8 rounded-md">
+                      {organizer.photoUrl && (
+                        <AvatarImage src={organizer.photoUrl} sizes="2rem" alt={organizer.name} />
+                      )}
+                      <AvatarFallback className="rounded-md">
+                        {initials(organizer.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col gap-0.5 leading-none">
+                      <span className="truncate font-medium">{organizer.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {organizer.messenger} · {organizer.messengerId}
+                      </span>
+                    </div>
+                    <ChevronsUpDownIcon className="ml-auto size-4" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="top" className="w-56">
+                  <DropdownMenuLabel>My account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem asChild>
+                      <Link href="/cabinet/settings">
+                        <UserIcon />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/cabinet/settings">
-                      <UserIcon />
-                      Profile
+                    <Link href="/login">
+                      <LogOutIcon />
+                      Log out
                     </Link>
                   </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/login">
-                    <LogOutIcon />
-                    Log out
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <SidebarMenuButton size="lg" disabled>
+                <Skeleton className="size-8 rounded-md" />
+                <div className="flex flex-1 flex-col gap-1">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
