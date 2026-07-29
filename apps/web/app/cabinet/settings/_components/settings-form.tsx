@@ -50,7 +50,7 @@ export function SettingsForm() {
       <TabsList>
         <TabsTrigger value="profile">Profile</TabsTrigger>
         <TabsTrigger value="public">Public page</TabsTrigger>
-        <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        {/* TODO: <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
       </TabsList>
 
       <TabsContent value="profile" className="flex flex-col gap-6">

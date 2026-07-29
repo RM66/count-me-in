@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  BarChart3Icon,
+  //BarChart3Icon,
   CalendarClockIcon,
   ChevronsUpDownIcon,
   ExternalLinkIcon,
@@ -47,7 +47,7 @@ const nav = [
   { title: 'Services', href: '/cabinet/services', icon: SparklesIcon },
   { title: 'Slots', href: '/cabinet/slots', icon: CalendarClockIcon },
   { title: 'Bookings', href: '/cabinet/bookings', icon: TicketIcon },
-  { title: 'Analytics', href: '/cabinet/analytics', icon: BarChart3Icon },
+  // TODO: { title: 'Analytics', href: '/cabinet/analytics', icon: BarChart3Icon },
   { title: 'Settings', href: '/cabinet/settings', icon: SettingsIcon },
 ]
 
@@ -150,12 +150,6 @@ export function CabinetSidebar() {
                     <Link href="/cabinet/settings">
                       <UserIcon />
                       Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/cabinet/settings">
-                      <SettingsIcon />
-                      Settings
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
