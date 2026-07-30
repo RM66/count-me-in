@@ -12,7 +12,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
 - Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
 - Messenger notifications via `pg-boss` + worker; Telegram first; `messenger` on organizer and booking.
-- Image uploads (organizer avatar, service photo) via Cloudflare R2.
+- Image uploads (organizer avatar, service photo) via Cloudflare R2, downscaled in the browser to 512×512 WebP before upload ([ADR-007](decisions/007-cloudflare-r2.md)).
 - Observability: Sentry, PostHog (basic).
 - Docs: AGENTS.md + `docs/`.
 
@@ -32,7 +32,8 @@ Explicitly **not** in MVP:
 
 - Reminder jobs; more messenger providers.
 - Optional Capacitor organizer shell if web-in-messenger is not enough ([ADR-006](decisions/006-organizer-capacitor.md)).
-- Image variants / CDN resize if needed.
+- Image variants / CDN resize if needed (browser-side downscaling already landed in MVP — [ADR-007](decisions/007-cloudflare-r2.md)).
+- Cleanup of superseded R2 objects on avatar change (deferred: versioned keys + small objects make this cheap to postpone).
 - Waitlist / notify-on-free-seat; realtime capacity if demand justifies.
 - Occupancy analytics dashboard in cabinet: fill rate by time (hour-of-day / day-of-week heatmap), per service and slot, to reveal peak vs. slow times.
 

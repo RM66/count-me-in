@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
 import { auth } from '@/lib/services/auth'
+import { isOwnAvatarUrl } from '@/lib/services/storage/avatar'
 
 /**
  * Current organizer profile for the cabinet.
@@ -45,7 +46,7 @@ export async function GET() {
 
 /**
  * Update the current organizer's profile.
- * Editable fields: name, slug, timezone, description, location, contact.
+ * Editable fields: name, slug, timezone, description, location, contact, photoUrl.
  * Messenger identity is not editable.
  */
 export async function PUT(request: Request) {
@@ -66,6 +67,16 @@ export async function PUT(request: Request) {
 
   const input: UpdateOrganizerProfileInput = parsed.data
 
+  // Validate photoUrl if provided (must belong to this organizer's media prefix)
+  if (input.photoUrl !== undefined && input.photoUrl !== null) {
+    if (!isOwnAvatarUrl(session.user.id, input.photoUrl)) {
+      return NextResponse.json(
+        { error: 'Invalid photoUrl: must belong to your media prefix' },
+        { status: 400 },
+      )
+    }
+  }
+
   // Build update object with only provided fields
   const updates: Partial<typeof organizers.$inferInsert> = {}
   if (input.name !== undefined) updates.name = input.name
@@ -74,6 +85,7 @@ export async function PUT(request: Request) {
   if (input.description !== undefined) updates.description = input.description
   if (input.location !== undefined) updates.location = input.location
   if (input.contact !== undefined) updates.contact = input.contact
+  if (input.photoUrl !== undefined) updates.photoUrl = input.photoUrl
 
   const [updated] = await db
     .update(organizers)

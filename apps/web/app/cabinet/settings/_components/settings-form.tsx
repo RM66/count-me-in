@@ -81,9 +81,20 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               />
               <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
             </Avatar>
-            <Button variant="outline" disabled>
+            <input
+              ref={form.fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={form.handleAvatarChange}
+            />
+            <Button
+              variant="outline"
+              onClick={form.triggerAvatarUpload}
+              disabled={form.isUploadingAvatar}
+            >
               <ImageIcon data-icon="inline-start" />
-              Change photo
+              {form.isUploadingAvatar ? 'Uploading...' : 'Change photo'}
             </Button>
           </div>
           <FieldGroup>
@@ -107,11 +118,11 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                   onChange={(e) => form.updateField('slug')(e.target.value)}
                   disabled={!isSlugEditable}
                 />
-                <InputGroupAddon align="inline-end">
+                <InputGroupAddon align="inline-end" className="max-sm:gap-0">
                   {!isSlugEditable && (
                     <Button size="sm" variant="ghost" onClick={() => setIsSlugEditable(true)}>
                       <PencilIcon data-icon="inline-start" />
-                      Edit
+                      <span className="max-sm:hidden">Edit</span>
                     </Button>
                   )}
                   <Button
@@ -123,7 +134,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                     }}
                   >
                     <CopyIcon data-icon="inline-start" />
-                    Copy
+                    <span className="max-sm:hidden">Copy</span>
                   </Button>
                 </InputGroupAddon>
               </InputGroup>

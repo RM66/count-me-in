@@ -184,7 +184,7 @@ function SignupPageInner() {
                   required
                 />
               </InputGroup>
-              <FieldDescription>This is the link you'll share with guests.</FieldDescription>
+              <FieldDescription>This is the link you&apos;ll share with guests.</FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="timezone">Timezone</FieldLabel>

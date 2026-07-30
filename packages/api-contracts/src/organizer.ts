@@ -49,5 +49,6 @@ export const updateOrganizerProfileInput = z.object({
   description: organizerDescription.nullable().optional(),
   location: location.nullable().optional(),
   contact: contact.nullable().optional(),
+  photoUrl: z.url().nullable().optional(), // null = remove avatar
 })
 export type UpdateOrganizerProfileInput = z.infer<typeof updateOrganizerProfileInput>

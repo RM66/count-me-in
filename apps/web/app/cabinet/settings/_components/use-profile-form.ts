@@ -1,8 +1,9 @@
 import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/api-contracts'
-import { useReducer } from 'react'
+import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/api-contracts'
+import { useReducer, useRef } from 'react'
 import { toast } from 'sonner'
 
-import { useUpdateOrganizerProfile } from '@/lib/api'
+import { useUpdateOrganizerProfile, useUploadAvatar } from '@/lib/api'
 
 type ProfileFormState = {
   name: string
@@ -37,6 +38,8 @@ function profileFormReducer(state: ProfileFormState, action: ProfileFormAction):
 
 export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () => void) {
   const updateProfile = useUpdateOrganizerProfile()
+  const uploadAvatar = useUploadAvatar()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [state, dispatch] = useReducer(profileFormReducer, {
     name: organizer.name,
@@ -89,6 +92,40 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     })
   }
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Client-side validation
+    if (!avatarContentType.safeParse(file.type).success) {
+      toast.error('Use a JPEG, PNG or WebP image')
+      e.target.value = ''
+      return
+    }
+
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error('Image must be under 5 MB')
+      e.target.value = ''
+      return
+    }
+
+    // Upload
+    uploadAvatar.mutate(file, {
+      onSuccess: () => {
+        toast.success('Photo updated')
+        e.target.value = ''
+      },
+      onError: (error) => {
+        toast.error(error.message)
+        e.target.value = ''
+      },
+    })
+  }
+
+  const triggerAvatarUpload = () => {
+    fileInputRef.current?.click()
+  }
+
   return {
     state,
     updateField,
@@ -97,5 +134,10 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     hasChanges,
     save,
     isSaving: updateProfile.isPending,
+    // Avatar upload
+    fileInputRef,
+    handleAvatarChange,
+    triggerAvatarUpload,
+    isUploadingAvatar: uploadAvatar.isPending,
   }
 }
