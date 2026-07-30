@@ -140,6 +140,12 @@ export function CabinetSidebar() {
                       </AvatarFallback>
                     </Avatar>
                     <span className="truncate font-medium">{organizer.name}</span>
+                    {/* <div className="flex flex-col gap-0.5 leading-none">
+                      <span className="truncate font-medium">{organizer.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        TODO: Info about subscription
+                      </span>
+                    </div> */}
                     <ChevronsUpDownIcon className="ml-auto size-4" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
