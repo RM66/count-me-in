@@ -40,10 +40,11 @@ export function MarkdownEditor({ className, ...props }: MarkdownEditorProps) {
       data-color-mode={colorMode}
       style={CSS_VARS}
       className={cn(
-        'overflow-hidden rounded-2xl border bg-input/50',
-        '[&_.md-editor]:bg-transparent!',
-        '[&_.cm-editor]:bg-transparent!',
+        'overflow-hidden rounded-2xl border',
+        '[&_.md-editor]:bg-background!',
+        '[&_.cm-editor]:bg-input/50!',
         '[&_.cm-gutters]:bg-transparent!',
+        '[&_.cm-activeLine]:bg-transparent!',
         // CodeMirror defaults to a monospace font; make the editor text match the
         // rest of the app (sans font, base size, foreground color).
         '[&_.cm-editor_.cm-scroller]:font-sans!',
