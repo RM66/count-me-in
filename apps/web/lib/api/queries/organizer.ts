@@ -16,3 +16,15 @@ export function useCurrentOrganizer() {
     select: (data) => data.organizer,
   })
 }
+
+/**
+ * Whether the signed-in organizer is the read-only demo account (ADR-010).
+ *
+ * Drives disabled inputs and the cabinet banner. Defaults to `false` while the
+ * profile is loading — the API is the real gate, so an optimistic `false` here
+ * only ever means a control is briefly enabled before a rejected write.
+ */
+export function useIsDemo(): boolean {
+  const { data: organizer } = useCurrentOrganizer()
+  return organizer?.isDemo ?? false
+}

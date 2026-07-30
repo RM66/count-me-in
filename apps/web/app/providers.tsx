@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { SessionProvider } from 'next-auth/react'
 import { type ReactNode, useState } from 'react'
 
 import { Toaster } from '@/components/ui/sonner'
@@ -31,10 +32,16 @@ export function Providers({ children }: { children: ReactNode }) {
   )
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-      <Toaster />
-      {!isProduction && <ReactQueryDevtools initialIsOpen={false} />}
-    </QueryClientProvider>
+    // `SessionProvider` lets statically rendered pages (the landing is
+    // `force-static`) read the session on the client instead of at render time.
+    // `useSession()` hits `/api/auth/session`, which only decodes the JWT — no
+    // database round-trip on the highest-traffic page.
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+        <Toaster />
+        {!isProduction && <ReactQueryDevtools initialIsOpen={false} />}
+      </QueryClientProvider>
+    </SessionProvider>
   )
 }

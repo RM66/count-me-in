@@ -1,6 +1,16 @@
 // Mock data for CountMeIn design mockups.
 // Shapes follow docs/domain.md (Organizer, Service, TimeSlot, Booking).
-// This is static demo content only — no backend.
+//
+// TEMPORARY: this file is scaffolding for pages that are not wired to the API
+// yet. The same content is seeded into Postgres for the read-only demo
+// organizer (`packages/db/src/seed/demo.ts`, ADR-010); each page drops its
+// import here as its real endpoint lands, and the file goes away entirely once
+// services / slots / bookings are served from the database.
+//
+// Identity is imported from the shared demo constants so the mock and the seed
+// cannot disagree about the demo organizer's id or slug.
+
+import { DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG, DEMO_SERVICE_IDS } from '@repo/api-contracts'
 
 export type OptionsSelectMode = 'single' | 'multi'
 export type BookingStatus = 'confirmed' | 'cancelled'
@@ -62,11 +72,11 @@ export interface Booking {
 }
 
 export const organizer: Organizer = {
-  id: 'org_1',
-  slug: 'studio-lumen',
+  id: DEMO_ORGANIZER_ID,
+  slug: DEMO_ORGANIZER_SLUG,
   name: 'Studio Lumen',
   messenger: 'telegram',
-  messengerId: '123456789',
+  messengerId: 'demo-account',
   timezone: 'Europe/Belgrade',
   description: `**Boutique movement studio** in the heart of Belgrade.
 
@@ -87,8 +97,8 @@ Questions? [Message us on Telegram](https://t.me/studiolumen).`,
 
 export const services: Service[] = [
   {
-    id: 'svc_yoga',
-    organizerId: 'org_1',
+    id: DEMO_SERVICE_IDS.yoga,
+    organizerId: DEMO_ORGANIZER_ID,
     title: 'Morning Vinyasa Flow',
     description:
       'A dynamic 60-minute flow to wake up the body and mind. Suitable for all levels. Mats and props provided.',
@@ -101,8 +111,8 @@ export const services: Service[] = [
     createdAt: '2024-11-05T09:00:00.000Z',
   },
   {
-    id: 'svc_pottery',
-    organizerId: 'org_1',
+    id: DEMO_SERVICE_IDS.pottery,
+    organizerId: DEMO_ORGANIZER_ID,
     title: 'Hand-Building Pottery Workshop',
     description:
       'Shape your own mug or bowl from scratch. All clay, tools, and firing included. Great for a creative afternoon with friends.',
@@ -117,8 +127,8 @@ export const services: Service[] = [
     createdAt: '2024-11-08T09:00:00.000Z',
   },
   {
-    id: 'svc_breath',
-    organizerId: 'org_1',
+    id: DEMO_SERVICE_IDS.breathwork,
+    organizerId: DEMO_ORGANIZER_ID,
     title: 'Evening Breathwork Circle',
     description:
       'A calming 45-minute guided breathwork session to close out your day. Dim lights, warm blankets, deep rest.',
@@ -144,7 +154,7 @@ export const slots: TimeSlot[] = [
   // Yoga
   {
     id: 'slot_y1',
-    serviceId: 'svc_yoga',
+    serviceId: DEMO_SERVICE_IDS.yoga,
     startsAt: iso(0, 7),
     durationMinutes: 60,
     capacity: 12,
@@ -152,7 +162,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_y2',
-    serviceId: 'svc_yoga',
+    serviceId: DEMO_SERVICE_IDS.yoga,
     startsAt: iso(1, 7),
     durationMinutes: 60,
     capacity: 12,
@@ -160,7 +170,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_y3',
-    serviceId: 'svc_yoga',
+    serviceId: DEMO_SERVICE_IDS.yoga,
     startsAt: iso(2, 7),
     durationMinutes: 60,
     capacity: 12,
@@ -168,7 +178,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_y4',
-    serviceId: 'svc_yoga',
+    serviceId: DEMO_SERVICE_IDS.yoga,
     startsAt: iso(3, 7),
     durationMinutes: 60,
     capacity: 12,
@@ -178,7 +188,7 @@ export const slots: TimeSlot[] = [
   // Pottery
   {
     id: 'slot_p1',
-    serviceId: 'svc_pottery',
+    serviceId: DEMO_SERVICE_IDS.pottery,
     startsAt: iso(1, 15),
     durationMinutes: 120,
     capacity: 8,
@@ -186,7 +196,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_p2',
-    serviceId: 'svc_pottery',
+    serviceId: DEMO_SERVICE_IDS.pottery,
     startsAt: iso(4, 15),
     durationMinutes: 120,
     capacity: 8,
@@ -194,7 +204,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_p3',
-    serviceId: 'svc_pottery',
+    serviceId: DEMO_SERVICE_IDS.pottery,
     startsAt: iso(6, 11),
     durationMinutes: 120,
     capacity: 8,
@@ -203,7 +213,7 @@ export const slots: TimeSlot[] = [
   // Breathwork
   {
     id: 'slot_b1',
-    serviceId: 'svc_breath',
+    serviceId: DEMO_SERVICE_IDS.breathwork,
     startsAt: iso(0, 18),
     durationMinutes: 45,
     capacity: 16,
@@ -211,7 +221,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_b2',
-    serviceId: 'svc_breath',
+    serviceId: DEMO_SERVICE_IDS.breathwork,
     startsAt: iso(2, 18),
     durationMinutes: 45,
     capacity: 16,
@@ -219,7 +229,7 @@ export const slots: TimeSlot[] = [
   },
   {
     id: 'slot_b3',
-    serviceId: 'svc_breath',
+    serviceId: DEMO_SERVICE_IDS.breathwork,
     startsAt: iso(5, 18),
     durationMinutes: 45,
     capacity: 16,

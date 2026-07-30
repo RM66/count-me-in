@@ -2,7 +2,7 @@
 
 Simple online booking for group events: organizers publish services with time slots and capacity; guests book on a public web page; organizers manage a web cabinet opened from messenger notification links.
 
-**Host:** `https://countmein.group` — public booking at `/{orgSlug}` (min 4 chars, reserved: `api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`).
+**Host:** `https://countmein.group` — public booking at `/{orgSlug}` (min 4 chars, reserved: `api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`, `demo`).
 
 ## Stack
 
@@ -28,7 +28,7 @@ apps/
     lib/               # Business logic (api, services, domain, helpers)
     types/             # TypeScript utility types
     utils.ts           # UI utilities (cn)
-    proxy.ts           # Auth.js v5 proxy (cabinet routes)
+    proxy.ts           # Auth.js v5 proxy (auth pages only — /cabinet is public)
   worker/              # notifications / jobs
 packages/
   db/                  # Drizzle schema, migrations
@@ -67,4 +67,7 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 - Prices are display text only in MVP (no payments).
 - Optional display `location` on `Organizer` and `Service`; `Service.location` overrides the organizer's, shown on public pages and passed to `add-to-calendar` — [domain](docs/domain.md).
 - Optional display `contact` on `Organizer` and `Service` (same override rule); stored as one plain string, rendered via `detectContactKind` + `<ContactLink />` (tel:/mailto:/https:/plain) — [domain](docs/domain.md).
+- Read-only **demo organizer** seeded at `/demo`; identity is a code constant (`DEMO_ORGANIZER_ID` in `packages/api-contracts`), not a DB flag. Every write path must reject it (`rejectDemoWrite` / `assertNotDemo` in `apps/web/lib/services/demo.ts`), including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
+- **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. There is no demo session/cookie — "demo" is resolved per request via `resolveCabinetOrganizerId()`. Consequence: a cabinet route does **not** imply an authenticated organizer, so scope every cabinet read through that helper and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
+- `apps/web/lib/mock-data.ts` is temporary scaffolding for pages not yet wired to the API; drop each import as its endpoint lands. It is **not** the demo data source — that is the DB seed in `packages/db/src/seed/`.
 - Do not expand scope without ADR/roadmap update.

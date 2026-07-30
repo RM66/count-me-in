@@ -64,6 +64,10 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
   const [isSlugEditable, setIsSlugEditable] = useState(false)
   const form = useProfileForm(organizer, () => setIsSlugEditable(false))
 
+  // Read-only demo account (ADR-010). Copy / navigation stay enabled — only
+  // controls that would write are locked. The API rejects demo writes anyway.
+  const isReadOnly = organizer.isDemo
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -91,7 +95,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
             <Button
               variant="outline"
               onClick={form.triggerAvatarUpload}
-              disabled={form.isUploadingAvatar}
+              disabled={form.isUploadingAvatar || isReadOnly}
             >
               <ImageIcon data-icon="inline-start" />
               {form.isUploadingAvatar ? 'Uploading...' : 'Change photo'}
@@ -104,6 +108,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                 id="name"
                 value={form.state.name}
                 onChange={(e) => form.updateField('name')(e.target.value)}
+                disabled={isReadOnly}
               />
             </Field>
             <Field>
@@ -116,10 +121,10 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                   id="slug"
                   value={form.state.slug}
                   onChange={(e) => form.updateField('slug')(e.target.value)}
-                  disabled={!isSlugEditable}
+                  disabled={!isSlugEditable || isReadOnly}
                 />
                 <InputGroupAddon align="inline-end" className="max-sm:gap-0">
-                  {!isSlugEditable && (
+                  {!isSlugEditable && !isReadOnly && (
                     <Button size="sm" variant="ghost" onClick={() => setIsSlugEditable(true)}>
                       <PencilIcon data-icon="inline-start" />
                       <span className="max-sm:hidden">Edit</span>
@@ -139,9 +144,11 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                 </InputGroupAddon>
               </InputGroup>
               <FieldDescription>
-                {!isSlugEditable
-                  ? 'Your public booking page. Click Edit to change (old links will break).'
-                  : 'Warning: Changing this will break existing links shared with guests.'}
+                {isReadOnly
+                  ? 'The demo page URL is fixed.'
+                  : !isSlugEditable
+                    ? 'Your public booking page. Click Edit to change (old links will break).'
+                    : 'Warning: Changing this will break existing links shared with guests.'}
               </FieldDescription>
             </Field>
             <Field>
@@ -150,6 +157,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                 value={form.state.bio}
                 onChange={form.updateField('bio')}
                 height="220px"
+                readOnly={isReadOnly}
               />
               <FieldDescription>
                 Shown at the top of your public page. Markdown is supported.
@@ -163,6 +171,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                   value={form.state.contact}
                   onChange={(e) => form.updateField('contact')(e.target.value)}
                   placeholder="e.g. +381 64 123 4567 or studio@example.com"
+                  disabled={isReadOnly}
                 />
                 <FieldDescription>
                   Shown to guests on your public page. Phone, email, social link, etc.
@@ -170,7 +179,11 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               </Field>
               <Field>
                 <FieldLabel htmlFor="tz">Timezone</FieldLabel>
-                <Select value={form.state.timezone} onValueChange={form.updateField('timezone')}>
+                <Select
+                  value={form.state.timezone}
+                  onValueChange={form.updateField('timezone')}
+                  disabled={isReadOnly}
+                >
                   <SelectTrigger id="tz">
                     <SelectValue />
                   </SelectTrigger>
@@ -193,6 +206,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                 value={form.state.location}
                 onChange={(e) => form.updateField('location')(e.target.value)}
                 placeholder="e.g. Belgrade, Serbia"
+                disabled={isReadOnly}
               />
               <FieldDescription>
                 Optional. Shown on your public page and can be overridden per service.
@@ -201,7 +215,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button onClick={form.save} disabled={form.isSaving}>
+          <Button onClick={form.save} disabled={form.isSaving || isReadOnly}>
             {form.isSaving ? 'Saving...' : 'Save changes'}
           </Button>
         </CardFooter>

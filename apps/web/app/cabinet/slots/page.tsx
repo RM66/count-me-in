@@ -30,6 +30,7 @@ import {
   slotPrice,
   slots,
 } from '@/lib/mock-data'
+import { isDemoSession } from '@/lib/services/demo'
 
 const fillVariant: Record<
   ReturnType<typeof fillLabel>,
@@ -40,8 +41,10 @@ const fillVariant: Record<
   full: { label: 'Full', variant: 'secondary' },
 }
 
-export default function SlotsPage() {
+export default async function SlotsPage() {
   const sorted = [...slots].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  // Read-only demo account (ADR-010).
+  const isReadOnly = await isDemoSession()
 
   return (
     <>
@@ -113,10 +116,12 @@ export default function SlotsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
-                              <DropdownMenuItem>Edit slot</DropdownMenuItem>
+                              <DropdownMenuItem disabled={isReadOnly}>Edit slot</DropdownMenuItem>
                               <DropdownMenuItem>View bookings</DropdownMenuItem>
-                              <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem variant="destructive">Cancel slot</DropdownMenuItem>
+                              <DropdownMenuItem disabled={isReadOnly}>Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem variant="destructive" disabled={isReadOnly}>
+                                Cancel slot
+                              </DropdownMenuItem>
                             </DropdownMenuGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>

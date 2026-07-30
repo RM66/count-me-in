@@ -25,10 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useIsDemo } from '@/lib/api'
 import { services } from '@/lib/mock-data'
 
 export function AddSlotDialog() {
   const [open, setOpen] = useState(false)
+  // Read-only demo account (ADR-010): disabling the trigger locks the whole
+  // dialog, so there is nothing to guard field by field.
+  const isReadOnly = useIsDemo()
 
   function onCreate() {
     toast.success('Slot added', {
@@ -40,7 +44,7 @@ export function AddSlotDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" disabled={isReadOnly}>
           <PlusIcon data-icon="inline-start" />
           Add slot
         </Button>

@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useIsDemo } from '@/lib/api'
 import { initials } from '@/lib/helpers/name'
 import {
   type Booking,
@@ -41,6 +42,10 @@ export function BookingsTable() {
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled'>('all')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Booking | null>(null)
+  // Read-only demo account (ADR-010). Browsing and filtering stay enabled;
+  // sending messages and cancelling do not. Demo guests are not real messenger
+  // accounts, so notifications must never be dispatched for them.
+  const isReadOnly = useIsDemo()
 
   const filtered = allBookings.filter((b) => {
     const matchesFilter = filter === 'all' || b.status === filter
@@ -201,6 +206,7 @@ export function BookingsTable() {
           )}
           <SheetFooter>
             <Button
+              disabled={isReadOnly}
               onClick={() =>
                 toast.success('Reminder sent', {
                   description: 'This is a mockup — no message was sent.',
@@ -212,6 +218,7 @@ export function BookingsTable() {
             </Button>
             <Button
               variant="outline"
+              disabled={isReadOnly}
               onClick={() => toast('Calling guest', { description: 'This is a mockup.' })}
             >
               <PhoneIcon data-icon="inline-start" />
@@ -221,6 +228,7 @@ export function BookingsTable() {
               <Button
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
+                disabled={isReadOnly}
                 onClick={() => toast('Cancel booking?', { description: 'This is a mockup.' })}
               >
                 <XIcon data-icon="inline-start" />

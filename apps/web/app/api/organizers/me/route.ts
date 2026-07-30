@@ -5,26 +5,36 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
 import { auth } from '@/lib/services/auth'
+import {
+  demoReadOnlyResponse,
+  rejectDemoWrite,
+  resolveCabinetOrganizerId,
+} from '@/lib/services/demo'
 import { isOwnAvatarUrl } from '@/lib/services/storage/avatar'
 
 /**
- * Current organizer profile for the cabinet.
- * Identity comes from the Auth.js JWT session (`session.user.id` IS the organizer id).
+ * Profile powering the cabinet.
+ *
+ * Normally this is the signed-in organizer (`session.user.id` IS the organizer
+ * id). **When there is no session it returns the demo organizer** with
+ * `isDemo: true`, because `/cabinet` is open to anonymous visitors and renders
+ * the read-only demo (ADR-010) — so this endpoint is "the organizer this
+ * request may view", not strictly "me".
+ *
+ * Writes are never inferred from this response: `PUT` below re-checks the
+ * session independently.
  */
 export async function GET() {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { organizerId, isDemo } = await resolveCabinetOrganizerId()
 
-  const [row] = await db
-    .select()
-    .from(organizers)
-    .where(eq(organizers.id, session.user.id))
-    .limit(1)
+  const [row] = await db.select().from(organizers).where(eq(organizers.id, organizerId)).limit(1)
 
   if (!row) {
-    return NextResponse.json({ error: 'Organizer not found' }, { status: 404 })
+    // For the demo id this means the seed has not been run.
+    return NextResponse.json(
+      { error: isDemo ? 'Demo organizer is not seeded' : 'Organizer not found' },
+      { status: 404 },
+    )
   }
 
   const organizer: OrganizerProfile = {
@@ -39,6 +49,7 @@ export async function GET() {
     location: row.location,
     contact: row.contact,
     createdAt: row.createdAt.toISOString(),
+    isDemo,
   }
 
   return NextResponse.json({ organizer })
@@ -51,9 +62,14 @@ export async function GET() {
  */
 export async function PUT(request: Request) {
   const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const organizerId = session?.user?.id
+
+  // Read-only demo (ADR-010). Covers both the demo id and anonymous callers —
+  // an anonymous request is someone browsing the demo cabinet, so they get the
+  // same `DEMO_READ_ONLY` refusal instead of a bare 401. Also narrows
+  // `organizerId` to a string for the rest of the handler.
+  const denied = rejectDemoWrite(organizerId)
+  if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
 
   const body = await request.json()
   const parsed = updateOrganizerProfileInput.safeParse(body)
@@ -69,7 +85,7 @@ export async function PUT(request: Request) {
 
   // Validate photoUrl if provided (must belong to this organizer's media prefix)
   if (input.photoUrl !== undefined && input.photoUrl !== null) {
-    if (!isOwnAvatarUrl(session.user.id, input.photoUrl)) {
+    if (!isOwnAvatarUrl(organizerId, input.photoUrl)) {
       return NextResponse.json(
         { error: 'Invalid photoUrl: must belong to your media prefix' },
         { status: 400 },
@@ -90,7 +106,7 @@ export async function PUT(request: Request) {
   const [updated] = await db
     .update(organizers)
     .set(updates)
-    .where(eq(organizers.id, session.user.id))
+    .where(eq(organizers.id, organizerId))
     .returning()
 
   if (!updated) {
@@ -109,6 +125,8 @@ export async function PUT(request: Request) {
     location: updated.location,
     contact: updated.contact,
     createdAt: updated.createdAt.toISOString(),
+    // A successful write means this is not the demo account.
+    isDemo: false,
   }
 
   return NextResponse.json({ organizer })

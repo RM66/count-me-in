@@ -14,19 +14,30 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { getSlotsForService, services } from '@/lib/mock-data'
+import { isDemoSession } from '@/lib/services/demo'
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  // Read-only demo account (ADR-010).
+  const isReadOnly = await isDemoSession()
+
   return (
     <>
       <CabinetHeader
         crumbs={[{ label: 'Cabinet', href: '/cabinet' }, { label: 'Services' }]}
         action={
-          <Button size="sm" asChild>
-            <Link href="/cabinet/services/new">
+          isReadOnly ? (
+            <Button size="sm" disabled>
               <PlusIcon data-icon="inline-start" />
               New service
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button size="sm" asChild>
+              <Link href="/cabinet/services/new">
+                <PlusIcon data-icon="inline-start" />
+                New service
+              </Link>
+            </Button>
+          )
         }
       />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -71,7 +82,7 @@ export default function ServicesPage() {
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/cabinet/services/${svc.id}`}>
                       <PencilIcon data-icon="inline-start" />
-                      Edit
+                      {isReadOnly ? 'View' : 'Edit'}
                     </Link>
                   </Button>
                 </CardFooter>

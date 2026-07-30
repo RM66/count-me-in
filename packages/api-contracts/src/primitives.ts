@@ -1,12 +1,26 @@
 import { z } from 'zod'
 
+import { DEMO_ORGANIZER_SLUG } from './demo'
+
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 /**
- * Reserved slugs that conflict with system routes (ADR-009).
- * These values are rejected during organizer registration.
+ * Reserved slugs that conflict with system routes (ADR-009) or with the seeded
+ * demo organizer (ADR-010). These values are rejected during registration.
+ *
+ * `demo` passes the 4-character minimum, so without reserving it a real
+ * organizer could register it and squat the public example page.
  */
-const RESERVED_SLUGS = new Set(['api', 'booking', 'cabinet', 'signup', 'login', 'terms', 'privacy'])
+const RESERVED_SLUGS = new Set([
+  'api',
+  'booking',
+  'cabinet',
+  'signup',
+  'login',
+  'terms',
+  'privacy',
+  DEMO_ORGANIZER_SLUG,
+])
 
 /** Organizer public URL segment: lowercase letters, digits, hyphens. Normalized to lowercase. */
 export const slug = z

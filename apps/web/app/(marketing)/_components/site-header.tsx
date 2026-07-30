@@ -1,6 +1,10 @@
+'use client'
+
+import { DEMO_ORGANIZER_PATH } from '@repo/api-contracts'
 import { Menu } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -8,8 +12,44 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 const nav = [
   { label: 'How it works', href: '/#how-it-works' },
   { label: 'Features', href: '/#features' },
-  { label: 'Examples', href: '/studio-lumen' },
+  { label: 'Examples', href: DEMO_ORGANIZER_PATH },
 ]
+
+/**
+ * Auth actions in the header.
+ *
+ * Signed-in organizers get a single shortcut to their cabinet instead of
+ * "Log in / Get started" — the landing itself stays reachable (and statically
+ * rendered) rather than redirecting them away, so it can still be shared and
+ * reviewed while logged in.
+ *
+ * While the session is loading we render the anonymous variant: the landing is
+ * `force-static`, so there is no server-known session to render from, and
+ * flashing a skeleton in the header on every visit is worse than a brief
+ * swap for the minority who are signed in.
+ */
+function AuthActions({ className }: { className?: string }) {
+  const { data: session } = useSession()
+
+  if (session?.user) {
+    return (
+      <Button className={className} asChild>
+        <Link href="/cabinet">Go to cabinet</Link>
+      </Button>
+    )
+  }
+
+  return (
+    <>
+      <Button variant="ghost" className={className} asChild>
+        <Link href="/login">Log in</Link>
+      </Button>
+      <Button className={className} asChild>
+        <Link href="/signup">Get started</Link>
+      </Button>
+    </>
+  )
+}
 
 export function SiteHeader() {
   return (
@@ -33,12 +73,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Log in</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Get started</Link>
-          </Button>
+          <AuthActions />
         </div>
 
         <Sheet>
@@ -61,12 +96,7 @@ export function SiteHeader() {
                 </Link>
               ))}
               <div className="mt-4 flex flex-col gap-2">
-                <Button variant="outline" asChild>
-                  <Link href="/login">Log in</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/signup">Get started</Link>
-                </Button>
+                <AuthActions className="w-full" />
               </div>
             </div>
           </SheetContent>

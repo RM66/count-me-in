@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { useIsDemo } from '@/lib/api'
 import type { Service } from '@/lib/mock-data'
 
 export function ServiceForm({ service }: { service?: Service }) {
@@ -29,6 +30,9 @@ export function ServiceForm({ service }: { service?: Service }) {
   const [options, setOptions] = useState<string[]>(service?.options ?? [])
   const [optionDraft, setOptionDraft] = useState('')
   const [selectMode, setSelectMode] = useState(service?.optionsSelectMode ?? 'single')
+  // Read-only demo account (ADR-010). Enforced server-side once these forms are
+  // wired to the API; disabling here keeps the demo honest in the meantime.
+  const isReadOnly = useIsDemo()
 
   function addOption() {
     const val = optionDraft.trim()
@@ -64,6 +68,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                   id="title"
                   defaultValue={service?.title}
                   placeholder="e.g. Morning Vinyasa Flow"
+                  disabled={isReadOnly}
                 />
               </Field>
               <Field>
@@ -73,6 +78,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                   rows={4}
                   defaultValue={service?.description}
                   placeholder="Describe what guests can expect..."
+                  disabled={isReadOnly}
                 />
                 <FieldDescription>
                   Shown on the service page. Markdown is not supported.
@@ -92,7 +98,12 @@ export function ServiceForm({ service }: { service?: Service }) {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Field>
                   <FieldLabel htmlFor="price">Price</FieldLabel>
-                  <Input id="price" defaultValue={service?.defaultPrice} placeholder="1200 RSD" />
+                  <Input
+                    id="price"
+                    defaultValue={service?.defaultPrice}
+                    placeholder="1200 RSD"
+                    disabled={isReadOnly}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="capacity">Capacity</FieldLabel>
@@ -100,6 +111,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                     id="capacity"
                     type="number"
                     defaultValue={service?.defaultCapacity ?? 10}
+                    disabled={isReadOnly}
                   />
                 </Field>
                 <Field>
@@ -108,6 +120,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                     id="duration"
                     type="number"
                     defaultValue={service?.defaultDurationMinutes ?? 60}
+                    disabled={isReadOnly}
                   />
                 </Field>
               </div>
@@ -136,8 +149,9 @@ export function ServiceForm({ service }: { service?: Service }) {
                       }
                     }}
                     placeholder="e.g. Riverside studio"
+                    disabled={isReadOnly}
                   />
-                  <Button type="button" variant="outline" onClick={addOption}>
+                  <Button type="button" variant="outline" onClick={addOption} disabled={isReadOnly}>
                     <PlusIcon data-icon="inline-start" />
                     Add
                   </Button>
@@ -149,14 +163,16 @@ export function ServiceForm({ service }: { service?: Service }) {
                   {options.map((opt, i) => (
                     <Badge key={`${opt}-${i}`} variant="secondary" className="gap-1 pr-1">
                       {opt}
-                      <button
-                        type="button"
-                        onClick={() => removeOption(i)}
-                        className="rounded-sm opacity-70 hover:opacity-100"
-                        aria-label={`Remove ${opt}`}
-                      >
-                        <XIcon className="size-3" />
-                      </button>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => removeOption(i)}
+                          className="rounded-sm opacity-70 hover:opacity-100"
+                          aria-label={`Remove ${opt}`}
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      )}
                     </Badge>
                   ))}
                 </div>
@@ -170,6 +186,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                     <RadioGroup
                       value={selectMode}
                       onValueChange={(v) => setSelectMode(v as 'single' | 'multi')}
+                      disabled={isReadOnly}
                     >
                       <Field orientation="horizontal">
                         <RadioGroupItem value="single" id="mode-single" />
@@ -214,7 +231,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                 <ImageIcon className="size-8 text-muted-foreground" />
               </div>
             )}
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" disabled={isReadOnly}>
               <ImageIcon data-icon="inline-start" />
               Upload image
             </Button>
@@ -227,7 +244,9 @@ export function ServiceForm({ service }: { service?: Service }) {
             <CardDescription>Save changes to this service.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            <Button onClick={onSave}>{isEdit ? 'Save changes' : 'Create service'}</Button>
+            <Button onClick={onSave} disabled={isReadOnly}>
+              {isEdit ? 'Save changes' : 'Create service'}
+            </Button>
             <Button variant="ghost" onClick={() => router.push('/cabinet/services')}>
               Cancel
             </Button>
@@ -237,6 +256,7 @@ export function ServiceForm({ service }: { service?: Service }) {
                 <Button
                   variant="ghost"
                   className="text-destructive hover:text-destructive"
+                  disabled={isReadOnly}
                   onClick={() =>
                     toast('Delete service?', {
                       description: 'This is a mockup — nothing was deleted.',

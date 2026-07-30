@@ -13,6 +13,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
 - Messenger notifications via `pg-boss` + worker; Telegram first; `messenger` on organizer and booking.
 - Image uploads (organizer avatar, service photo) via Cloudflare R2, downscaled in the browser to 512×512 WebP before upload ([ADR-007](decisions/007-cloudflare-r2.md)).
+- Read-only demo organizer seeded at `/demo`, linked from the landing page; write paths reject it and the worker never notifies it ([ADR-010](decisions/010-demo-organizer-account.md)).
 - Observability: Sentry, PostHog (basic).
 - Docs: AGENTS.md + `docs/`.
 
@@ -47,12 +48,13 @@ Explicitly **not** in MVP:
 
 ## Settled choices
 
-| Topic                  | Decision                                                                    |
-| ---------------------- | --------------------------------------------------------------------------- |
-| Domain / URL           | `countmein.group/{orgSlug}`                                                 |
-| Auth                   | Messenger login widget (Telegram); `Organizer.id` only                      |
-| Notifications          | Messengers (Telegram MVP) + cabinet deep links                              |
-| Guest cancel           | MVP                                                                         |
-| Organizer client (MVP) | Web cabinet in `apps/web` ([ADR-006](decisions/006-organizer-capacitor.md)) |
-| Media                  | Cloudflare R2 ([ADR-007](decisions/007-cloudflare-r2.md))                   |
-| Calendar entity        | Removed                                                                     |
+| Topic                  | Decision                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| Domain / URL           | `countmein.group/{orgSlug}`                                                           |
+| Auth                   | Messenger login widget (Telegram); `Organizer.id` only                                |
+| Notifications          | Messengers (Telegram MVP) + cabinet deep links                                        |
+| Guest cancel           | MVP                                                                                   |
+| Organizer client (MVP) | Web cabinet in `apps/web` ([ADR-006](decisions/006-organizer-capacitor.md))           |
+| Media                  | Cloudflare R2 ([ADR-007](decisions/007-cloudflare-r2.md))                             |
+| Calendar entity        | Removed                                                                               |
+| Demo account           | Seeded, read-only, code constant ([ADR-010](decisions/010-demo-organizer-account.md)) |

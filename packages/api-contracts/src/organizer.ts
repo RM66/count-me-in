@@ -38,6 +38,13 @@ export const organizerProfile = z.object({
   location: z.string().nullable(),
   contact: z.string().nullable(),
   createdAt: z.string(),
+  /**
+   * Read-only demo account (ADR-010). **Derived** server-side from
+   * `DEMO_ORGANIZER_ID` — not a database column, so it cannot desync from the
+   * server-side guard. The cabinet uses it to disable inputs and show a banner;
+   * enforcement itself lives in the API, never in the UI.
+   */
+  isDemo: z.boolean(),
 })
 export type OrganizerProfile = z.infer<typeof organizerProfile>
 

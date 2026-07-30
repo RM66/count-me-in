@@ -6,17 +6,21 @@ import {
   ChevronsUpDownIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
+  LogInIcon,
   LogOutIcon,
   SettingsIcon,
   SparklesIcon,
   TicketIcon,
   UserIcon,
+  UserPlusIcon,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,7 +126,27 @@ export function CabinetSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {organizer ? (
+            {organizer?.isDemo ? (
+              // Read-only demo (ADR-010): the visitor has no account, so offer
+              // both entry points instead of a meaningless "Log out".
+              <div className="flex flex-col gap-2 p-1 group-data-[collapsible=icon]:hidden">
+                <p className="px-1 text-xs text-muted-foreground">
+                  You&apos;re viewing a demo cabinet.
+                </p>
+                <Button size="sm" asChild>
+                  <Link href="/signup">
+                    <UserPlusIcon data-icon="inline-start" />
+                    Sign up
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/login">
+                    <LogInIcon data-icon="inline-start" />
+                    Log in
+                  </Link>
+                </Button>
+              </div>
+            ) : organizer ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton
@@ -161,11 +185,15 @@ export function CabinetSidebar() {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/login">
-                      <LogOutIcon />
-                      Log out
-                    </Link>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      // Must actually clear the session: linking to /login only
+                      // navigated, leaving the organizer signed in.
+                      void signOut({ redirectTo: '/' })
+                    }}
+                  >
+                    <LogOutIcon />
+                    Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -1,4 +1,5 @@
-import { ArrowRight, CalendarCheck } from 'lucide-react'
+import { DEMO_CABINET_PATH, DEMO_ORGANIZER_PATH } from '@repo/api-contracts'
+import { ArrowRight, CalendarCheck, LayoutDashboardIcon, TicketIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -21,20 +22,40 @@ export function Hero() {
             Publish your services with time slots and capacity. Share one link. Guests book in
             seconds — no account, no app, just their phone.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button size="lg" asChild>
-              <Link href="/signup">
-                Start for free
-                <ArrowRight data-icon="inline-end" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/studio-lumen">See a live example</Link>
-            </Button>
-          </div>
+          <Button size="lg" asChild>
+            <Link href="/signup">
+              Start for free
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
           <p className="text-sm text-muted-foreground">
             No credit card. Set up your first bookable service in minutes.
           </p>
+          {/*
+            Two read-only demo entry points (ADR-010). Kept as secondary links
+            rather than buttons next to "Start for free": three side-by-side CTAs
+            read as a choice, not a call to action. Labels name *whose* view it
+            is — "See a live example" left that ambiguous.
+          */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">Prefer to look around first?</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Link
+                href={DEMO_ORGANIZER_PATH}
+                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:text-muted-foreground"
+              >
+                <TicketIcon className="size-4" />
+                See a guest booking page
+              </Link>
+              <Link
+                href={DEMO_CABINET_PATH}
+                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:text-muted-foreground"
+              >
+                <LayoutDashboardIcon className="size-4" />
+                See the organizer cabinet
+              </Link>
+            </div>
+          </div>
         </div>
 
         <div className="relative">

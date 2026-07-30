@@ -1,5 +1,6 @@
 export * from './auth'
 export * from './booking'
+export * from './demo'
 export * from './enums'
 export * from './options'
 export * from './organizer'
