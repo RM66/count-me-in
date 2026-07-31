@@ -1,9 +1,10 @@
 import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/api-contracts'
 import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/api-contracts'
-import { useReducer, useRef } from 'react'
+import { useReducer } from 'react'
 import { toast } from 'sonner'
 
 import { useUpdateOrganizerProfile, useUploadAvatar } from '@/lib/api'
+import { useImageUpload } from '@/lib/hooks/use-image-upload'
 
 type ProfileFormState = {
   name: string
@@ -23,31 +24,37 @@ function profileFormReducer(state: ProfileFormState, action: ProfileFormAction):
     case 'UPDATE_FIELD':
       return { ...state, [action.field]: action.value }
     case 'RESET':
-      return {
-        name: action.organizer.name,
-        bio: action.organizer.description ?? '',
-        contact: action.organizer.contact ?? '',
-        timezone: action.organizer.timezone,
-        location: action.organizer.location ?? '',
-        slug: action.organizer.slug,
-      }
+      return toFormState(action.organizer)
     default:
       return state
   }
 }
 
-export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () => void) {
-  const updateProfile = useUpdateOrganizerProfile()
-  const uploadAvatar = useUploadAvatar()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const [state, dispatch] = useReducer(profileFormReducer, {
+/** Seed the reducer from the loaded profile. Also used by `reset`. */
+function toFormState(organizer: OrganizerProfile): ProfileFormState {
+  return {
     name: organizer.name,
     bio: organizer.description ?? '',
     contact: organizer.contact ?? '',
     timezone: organizer.timezone,
     location: organizer.location ?? '',
     slug: organizer.slug,
+  }
+}
+
+export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () => void) {
+  const updateProfile = useUpdateOrganizerProfile()
+
+  // Lazy initializer: `toFormState` runs on mount instead of every render.
+  const [state, dispatch] = useReducer(profileFormReducer, organizer, toFormState)
+
+  const avatar = useImageUpload({
+    contentType: avatarContentType,
+    maxBytes: AVATAR_MAX_BYTES,
+    maxBytesLabel: '5 MB',
+    mutation: useUploadAvatar(),
+    // The avatar mutation persists the URL itself and updates the cache.
+    onUploaded: () => toast.success('Photo updated'),
   })
 
   const updateField = (field: keyof ProfileFormState) => (value: string) => {
@@ -92,40 +99,6 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     })
   }
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Client-side validation
-    if (!avatarContentType.safeParse(file.type).success) {
-      toast.error('Use a JPEG, PNG or WebP image')
-      e.target.value = ''
-      return
-    }
-
-    if (file.size > AVATAR_MAX_BYTES) {
-      toast.error('Image must be under 5 MB')
-      e.target.value = ''
-      return
-    }
-
-    // Upload
-    uploadAvatar.mutate(file, {
-      onSuccess: () => {
-        toast.success('Photo updated')
-        e.target.value = ''
-      },
-      onError: (error) => {
-        toast.error(error.message)
-        e.target.value = ''
-      },
-    })
-  }
-
-  const triggerAvatarUpload = () => {
-    fileInputRef.current?.click()
-  }
-
   return {
     state,
     updateField,
@@ -134,10 +107,10 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     hasChanges,
     save,
     isSaving: updateProfile.isPending,
-    // Avatar upload
-    fileInputRef,
-    handleAvatarChange,
-    triggerAvatarUpload,
-    isUploadingAvatar: uploadAvatar.isPending,
+    // Avatar upload — shared with the service cover picker.
+    fileInputRef: avatar.inputRef,
+    handleAvatarChange: avatar.onFileChange,
+    triggerAvatarUpload: avatar.open,
+    isUploadingAvatar: avatar.isUploading,
   }
 }

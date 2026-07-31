@@ -10,6 +10,8 @@ import {
   location,
   priceText,
   serviceDescription,
+  serviceId,
+  uuid,
 } from './primitives'
 
 const serviceFields = {
@@ -25,12 +27,18 @@ const serviceFields = {
   optionsSelectMode: optionsSelectModeEnum.optional(),
 }
 
-/** `optionsSelectMode` is required iff the service defines options. */
+/**
+ * `optionsSelectMode` is required iff the service defines options.
+ *
+ * `null` counts as "no options": the cabinet clears an option list by sending
+ * `options: null` together with `optionsSelectMode: null`, so both absent and
+ * explicitly-nulled values must land on the same branch.
+ */
 function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
   return schema.superRefine((value, ctx) => {
     const { options, optionsSelectMode } = value as {
-      options?: string[]
-      optionsSelectMode?: string
+      options?: string[] | null
+      optionsSelectMode?: string | null
     }
     const hasOptions = Array.isArray(options) && options.length > 0
     if (hasOptions && !optionsSelectMode) {
@@ -50,8 +58,55 @@ function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
   })
 }
 
-export const createServiceInput = refineOptionsConsistency(z.object(serviceFields))
+export const createServiceInput = refineOptionsConsistency(
+  z.object({
+    ...serviceFields,
+    /** Public R2 URL of the cover image, already uploaded via a signed URL. */
+    photoUrl: z.url().optional(),
+  }),
+)
 export type CreateServiceInput = z.infer<typeof createServiceInput>
 
-export const updateServiceInput = refineOptionsConsistency(z.object(serviceFields).partial())
+/**
+ * Cabinet edits. Every optional display field is additionally **nullable**:
+ * `undefined` means "leave unchanged", `null` means "clear it". Without that
+ * distinction an organizer could never remove a description or a cover photo.
+ */
+export const updateServiceInput = refineOptionsConsistency(
+  z
+    .object({
+      title: displayName,
+      description: serviceDescription.nullable(),
+      location: location.nullable(),
+      contact: contact.nullable(),
+      defaultPrice: priceText,
+      defaultCapacity: capacity,
+      defaultDurationMinutes: durationMinutes,
+      options: optionsList.nullable(),
+      optionsSelectMode: optionsSelectModeEnum.nullable(),
+      photoUrl: z.url().nullable(), // null = remove cover photo
+    })
+    .partial(),
+)
 export type UpdateServiceInput = z.infer<typeof updateServiceInput>
+
+/**
+ * A service as returned by the API. Mirrors the `services` table with dates
+ * normalized to ISO strings so it can cross the server/client boundary.
+ */
+export const serviceRecord = z.object({
+  id: serviceId,
+  organizerId: uuid,
+  title: displayName,
+  description: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  location: z.string().nullable(),
+  contact: z.string().nullable(),
+  defaultPrice: priceText,
+  defaultCapacity: capacity,
+  defaultDurationMinutes: durationMinutes,
+  options: z.array(z.string()).nullable(),
+  optionsSelectMode: optionsSelectModeEnum.nullable(),
+  createdAt: z.string(),
+})
+export type ServiceRecord = z.infer<typeof serviceRecord>

@@ -1,59 +1,44 @@
 'use client'
 
-import { ImageIcon, PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
-import Image from 'next/image'
+import type { ServiceRecord } from '@repo/api-contracts'
+import { Trash2Icon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { toast } from 'sonner'
 
-import { Badge } from '@/components/ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { FieldGroup } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import { useIsDemo } from '@/lib/api'
-import type { Service } from '@/lib/mock-data'
+import { ServiceOptionsField } from './service-options-field'
+import { ServicePhotoField } from './service-photo-field'
+import { ServiceTextareaField, ServiceTextField } from './service-text-field'
+import { useServiceForm } from './use-service-form'
 
-export function ServiceForm({ service }: { service?: Service }) {
+export function ServiceForm({ service }: { service?: ServiceRecord }) {
   const router = useRouter()
-  const isEdit = Boolean(service)
-  const [options, setOptions] = useState<string[]>(service?.options ?? [])
-  const [optionDraft, setOptionDraft] = useState('')
-  const [selectMode, setSelectMode] = useState(service?.optionsSelectMode ?? 'single')
-  // Read-only demo account (ADR-010). Enforced server-side once these forms are
-  // wired to the API; disabling here keeps the demo honest in the meantime.
+  const { form, isEdit, submit, remove, isSaving, isDeleting } = useServiceForm(service)
+
+  // Read-only demo account (ADR-010). Disabling here is UX only — every write
+  // endpoint rejects the demo id server-side regardless.
   const isReadOnly = useIsDemo()
 
-  function addOption() {
-    const val = optionDraft.trim()
-    if (!val) return
-    setOptions((prev) => [...prev, val])
-    setOptionDraft('')
-  }
-
-  function removeOption(i: number) {
-    setOptions((prev) => prev.filter((_, idx) => idx !== i))
-  }
-
-  function onSave() {
-    toast.success(isEdit ? 'Service updated' : 'Service created', {
-      description: 'This is a design mockup — no data was saved.',
-    })
-    router.push('/cabinet/services')
-  }
+  const { control } = form
+  const { isDirty } = form.formState
+  const isBusy = isSaving || isDeleting
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="flex flex-col gap-6 lg:col-span-2">
         <Card>
           <CardHeader>
@@ -62,28 +47,40 @@ export function ServiceForm({ service }: { service?: Service }) {
           </CardHeader>
           <CardContent>
             <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="title">Title</FieldLabel>
-                <Input
-                  id="title"
-                  defaultValue={service?.title}
-                  placeholder="e.g. Morning Vinyasa Flow"
+              <ServiceTextField
+                control={control}
+                name="title"
+                label="Title"
+                placeholder="e.g. Morning Vinyasa Flow"
+                disabled={isReadOnly}
+              />
+              <ServiceTextareaField
+                control={control}
+                name="description"
+                label="Description"
+                rows={4}
+                placeholder="Describe what guests can expect..."
+                description="Shown on the service page. Markdown is not supported."
+                disabled={isReadOnly}
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <ServiceTextField
+                  control={control}
+                  name="location"
+                  label="Location"
+                  placeholder="e.g. Kralja Petra 12, Belgrade"
+                  description="Overrides your profile location when set."
                   disabled={isReadOnly}
                 />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="description">Description</FieldLabel>
-                <Textarea
-                  id="description"
-                  rows={4}
-                  defaultValue={service?.description}
-                  placeholder="Describe what guests can expect..."
+                <ServiceTextField
+                  control={control}
+                  name="contact"
+                  label="Contact"
+                  placeholder="e.g. phone, email or social link"
+                  description="Overrides your profile contact when set."
                   disabled={isReadOnly}
                 />
-                <FieldDescription>
-                  Shown on the service page. Markdown is not supported.
-                </FieldDescription>
-              </Field>
+              </div>
             </FieldGroup>
           </CardContent>
         </Card>
@@ -96,147 +93,41 @@ export function ServiceForm({ service }: { service?: Service }) {
           <CardContent>
             <FieldGroup>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field>
-                  <FieldLabel htmlFor="price">Price</FieldLabel>
-                  <Input
-                    id="price"
-                    defaultValue={service?.defaultPrice}
-                    placeholder="1200 RSD"
-                    disabled={isReadOnly}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="capacity">Capacity</FieldLabel>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    defaultValue={service?.defaultCapacity ?? 10}
-                    disabled={isReadOnly}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="duration">Duration (min)</FieldLabel>
-                  <Input
-                    id="duration"
-                    type="number"
-                    defaultValue={service?.defaultDurationMinutes ?? 60}
-                    disabled={isReadOnly}
-                  />
-                </Field>
+                <ServiceTextField
+                  control={control}
+                  name="defaultPrice"
+                  label="Price"
+                  placeholder="1200 RSD"
+                  disabled={isReadOnly}
+                />
+                <ServiceTextField
+                  control={control}
+                  name="defaultCapacity"
+                  label="Capacity"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  disabled={isReadOnly}
+                />
+                <ServiceTextField
+                  control={control}
+                  name="defaultDurationMinutes"
+                  label="Duration (min)"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  disabled={isReadOnly}
+                />
               </div>
             </FieldGroup>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking options</CardTitle>
-            <CardDescription>Optional add-ons or choices guests pick when booking.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="option">Add an option</FieldLabel>
-                <div className="flex gap-2">
-                  <Input
-                    id="option"
-                    value={optionDraft}
-                    onChange={(e) => setOptionDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                        e.preventDefault()
-                        addOption()
-                      }
-                    }}
-                    placeholder="e.g. Riverside studio"
-                    disabled={isReadOnly}
-                  />
-                  <Button type="button" variant="outline" onClick={addOption} disabled={isReadOnly}>
-                    <PlusIcon data-icon="inline-start" />
-                    Add
-                  </Button>
-                </div>
-              </Field>
-
-              {options.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {options.map((opt, i) => (
-                    <Badge key={`${opt}-${i}`} variant="secondary" className="gap-1 pr-1">
-                      {opt}
-                      {!isReadOnly && (
-                        <button
-                          type="button"
-                          onClick={() => removeOption(i)}
-                          className="rounded-sm opacity-70 hover:opacity-100"
-                          aria-label={`Remove ${opt}`}
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      )}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {options.length > 0 && (
-                <>
-                  <Separator />
-                  <FieldSet>
-                    <FieldLegend>Selection mode</FieldLegend>
-                    <RadioGroup
-                      value={selectMode}
-                      onValueChange={(v) => setSelectMode(v as 'single' | 'multi')}
-                      disabled={isReadOnly}
-                    >
-                      <Field orientation="horizontal">
-                        <RadioGroupItem value="single" id="mode-single" />
-                        <FieldLabel htmlFor="mode-single" className="font-normal">
-                          Single choice (guest picks one)
-                        </FieldLabel>
-                      </Field>
-                      <Field orientation="horizontal">
-                        <RadioGroupItem value="multi" id="mode-multi" />
-                        <FieldLabel htmlFor="mode-multi" className="font-normal">
-                          Multiple choice (guest picks any)
-                        </FieldLabel>
-                      </Field>
-                    </RadioGroup>
-                  </FieldSet>
-                </>
-              )}
-            </FieldGroup>
-          </CardContent>
-        </Card>
+        <ServiceOptionsField control={control} disabled={isReadOnly} />
       </div>
 
       <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cover photo</CardTitle>
-            <CardDescription>Shown on your public page.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {service?.photoUrl ? (
-              <div className="relative aspect-video w-full overflow-hidden rounded-md border">
-                <Image
-                  src={service.photoUrl || '/placeholder.svg'}
-                  alt={service.title}
-                  fill
-                  className="object-cover"
-                  sizes="33vw"
-                />
-              </div>
-            ) : (
-              <div className="flex aspect-video w-full items-center justify-center rounded-md border border-dashed">
-                <ImageIcon className="size-8 text-muted-foreground" />
-              </div>
-            )}
-            <Button variant="outline" className="w-full" disabled={isReadOnly}>
-              <ImageIcon data-icon="inline-start" />
-              Upload image
-            </Button>
-          </CardContent>
-        </Card>
+        <ServicePhotoField control={control} disabled={isReadOnly} />
 
         <Card>
           <CardHeader>
@@ -244,33 +135,60 @@ export function ServiceForm({ service }: { service?: Service }) {
             <CardDescription>Save changes to this service.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            <Button onClick={onSave} disabled={isReadOnly}>
-              {isEdit ? 'Save changes' : 'Create service'}
+            {/*
+              Disabled until something changes — this is what replaced the
+              "No changes to save" toast and the manual field-by-field diff.
+            */}
+            <Button type="submit" disabled={isBusy || isReadOnly || !isDirty}>
+              {isSaving ? 'Saving...' : isEdit ? 'Save changes' : 'Create service'}
             </Button>
-            <Button variant="ghost" onClick={() => router.push('/cabinet/services')}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.push('/cabinet/services')}
+              disabled={isBusy}
+            >
               Cancel
             </Button>
             {isEdit && (
               <>
                 <Separator className="my-1" />
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  disabled={isReadOnly}
-                  onClick={() =>
-                    toast('Delete service?', {
-                      description: 'This is a mockup — nothing was deleted.',
-                    })
-                  }
-                >
-                  <Trash2Icon data-icon="inline-start" />
-                  Delete service
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      disabled={isBusy || isReadOnly}
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      {isDeleting ? 'Deleting...' : 'Delete service'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this service?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {service?.title} and all of its time slots and bookings will be removed.
+                        This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep service</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={remove}
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
             )}
           </CardContent>
         </Card>
       </div>
-    </div>
+    </form>
   )
 }

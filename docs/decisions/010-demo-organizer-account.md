@@ -180,9 +180,11 @@ indistinguishable from real data at read time, which is the entire point.
 
 ### Still to do
 
-- Guards on services / slots / bookings endpoints as they are implemented, plus scoping their reads
-  through `resolveCabinetOrganizerId()` so the demo cabinet shows demo data once those pages leave
-  `mock-data.ts`.
+- Guards on slots / bookings endpoints as they are implemented, plus scoping their reads through
+  `resolveCabinetOrganizerId()` so the demo cabinet shows demo data once those pages leave
+  `mock-data.ts`. **Services are done:** `POST /api/services`,
+  `PUT|DELETE /api/services/[id]` and `POST /api/organizers/me/service-photo` all reject the demo
+  id, and the cabinet's services list / edit pages read through `resolveCabinetOrganizerId()`.
 - Recurring `pg-boss` job calling `seedDemo()`; notification handlers skipping demo ids.
 - A test asserting `demo` is rejected by the `slug` schema.
 - A test asserting anonymous `PUT /api/organizers/me` answers `403 DEMO_READ_ONLY`.

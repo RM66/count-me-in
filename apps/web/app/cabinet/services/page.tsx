@@ -1,4 +1,4 @@
-import { ClockIcon, PencilIcon, PlusIcon, UsersIcon } from 'lucide-react'
+import { ClockIcon, ImageIcon, PencilIcon, PlusIcon, UsersIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -13,12 +13,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { getSlotsForService, services } from '@/lib/mock-data'
-import { isDemoSession } from '@/lib/services/demo'
+import { resolveCabinetOrganizerId } from '@/lib/services/demo'
+import { countUpcomingSlots, listServices } from '@/lib/services/service'
 
 export default async function ServicesPage() {
-  // Read-only demo account (ADR-010).
-  const isReadOnly = await isDemoSession()
+  // Anonymous visitors get the read-only demo organizer (ADR-010).
+  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+
+  const services = await listServices(organizerId)
+  const slotCounts = await countUpcomingSlots(services.map((service) => service.id))
 
   return (
     <>
@@ -46,50 +49,77 @@ export default async function ServicesPage() {
           <p className="text-sm text-muted-foreground">Manage the experiences guests can book.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {services.map((svc) => {
-            const slotCount = getSlotsForService(svc.id).length
-            return (
-              <Card key={svc.id} className="overflow-hidden pt-0">
-                <div className="relative aspect-video w-full">
-                  <Image
-                    src={svc.photoUrl || '/placeholder.svg'}
-                    alt={svc.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                  />
-                </div>
-                <CardHeader>
-                  <CardTitle className="text-balance">{svc.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{svc.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">{svc.defaultPrice}</Badge>
-                  <Badge variant="outline">
-                    <ClockIcon data-icon="inline-start" />
-                    {svc.defaultDurationMinutes} min
-                  </Badge>
-                  <Badge variant="outline">
-                    <UsersIcon data-icon="inline-start" />
-                    {svc.defaultCapacity} seats
-                  </Badge>
-                </CardContent>
-                <CardFooter className="justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {slotCount} upcoming {slotCount === 1 ? 'slot' : 'slots'}
-                  </span>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/cabinet/services/${svc.id}`}>
-                      <PencilIcon data-icon="inline-start" />
-                      {isReadOnly ? 'View' : 'Edit'}
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          })}
-        </div>
+        {services.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>No services yet</CardTitle>
+              <CardDescription>
+                Create your first service to give guests something to book.
+              </CardDescription>
+            </CardHeader>
+            {!isReadOnly && (
+              <CardContent>
+                <Button asChild>
+                  <Link href="/cabinet/services/new">
+                    <PlusIcon data-icon="inline-start" />
+                    New service
+                  </Link>
+                </Button>
+              </CardContent>
+            )}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {services.map((svc) => {
+              const slotCount = slotCounts[svc.id] ?? 0
+              return (
+                <Card key={svc.id} className="overflow-hidden pt-0">
+                  <div className="relative aspect-video w-full">
+                    {svc.photoUrl ? (
+                      <Image
+                        src={svc.photoUrl}
+                        alt={svc.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-muted">
+                        <ImageIcon className="size-8 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <CardHeader>
+                    <CardTitle className="text-balance">{svc.title}</CardTitle>
+                    <CardDescription className="line-clamp-2">{svc.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{svc.defaultPrice}</Badge>
+                    <Badge variant="outline">
+                      <ClockIcon data-icon="inline-start" />
+                      {svc.defaultDurationMinutes} min
+                    </Badge>
+                    <Badge variant="outline">
+                      <UsersIcon data-icon="inline-start" />
+                      {svc.defaultCapacity} seats
+                    </Badge>
+                  </CardContent>
+                  <CardFooter className="justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {slotCount} upcoming {slotCount === 1 ? 'slot' : 'slots'}
+                    </span>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/cabinet/services/${svc.id}`}>
+                        <PencilIcon data-icon="inline-start" />
+                        {isReadOnly ? 'View' : 'Edit'}
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </div>
     </>
   )

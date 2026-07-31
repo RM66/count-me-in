@@ -5,11 +5,7 @@ import { ComponentProps } from 'react'
 
 import { cn } from '@/utils'
 
-function Progress({
-  className,
-  value,
-  ...props
-}: ComponentProps<typeof ProgressPrimitive.Root>) {
+function Progress({ className, value, ...props }: ComponentProps<typeof ProgressPrimitive.Root>) {
   return (
     <ProgressPrimitive.Root
       data-slot="progress"

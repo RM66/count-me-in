@@ -3,7 +3,9 @@
  * See docs/plans/avatar-upload-r2.md
  */
 import type { AvatarUploadTarget, CreateAvatarUploadInput } from '@repo/api-contracts'
-import { avatarKey, createSignedUploadUrl, organizerMediaUrlPrefix, publicUrl } from '@repo/storage'
+import { avatarKey, createSignedUploadUrl, publicUrl } from '@repo/storage'
+
+import { isOwnMediaUrl } from './media'
 
 /**
  * Create a signed upload URL for an organizer's avatar.
@@ -39,12 +41,4 @@ export async function createAvatarUpload(
     publicUrl: publicUrl(key),
     expiresAt,
   }
-}
-
-/**
- * Validate that a photoUrl belongs to this organizer's media prefix.
- * Prevents an organizer from pointing photoUrl at arbitrary hosts or another organizer's media.
- */
-export function isOwnAvatarUrl(organizerId: string, url: string): boolean {
-  return url.startsWith(organizerMediaUrlPrefix(organizerId))
 }

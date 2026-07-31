@@ -6,3 +6,4 @@
 export * from './auth'
 export * from './avatar'
 export * from './organizer'
+export * from './service'

@@ -92,7 +92,11 @@ function BreadcrumbEllipsis({ className, ...props }: ComponentProps<'span'>) {
 }
 
 export {
-  Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem,
-  BreadcrumbLink, BreadcrumbList, BreadcrumbPage,
-  BreadcrumbSeparator
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
 }

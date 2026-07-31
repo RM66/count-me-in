@@ -10,7 +10,7 @@ import {
   rejectDemoWrite,
   resolveCabinetOrganizerId,
 } from '@/lib/services/demo'
-import { isOwnAvatarUrl } from '@/lib/services/storage/avatar'
+import { isOwnMediaUrl } from '@/lib/services/storage/media'
 
 /**
  * Profile powering the cabinet.
@@ -85,7 +85,7 @@ export async function PUT(request: Request) {
 
   // Validate photoUrl if provided (must belong to this organizer's media prefix)
   if (input.photoUrl !== undefined && input.photoUrl !== null) {
-    if (!isOwnAvatarUrl(organizerId, input.photoUrl)) {
+    if (!isOwnMediaUrl(organizerId, input.photoUrl)) {
       return NextResponse.json(
         { error: 'Invalid photoUrl: must belong to your media prefix' },
         { status: 400 },

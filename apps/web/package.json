@@ -13,6 +13,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.5.7",
     "@repo/api-contracts": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/storage": "workspace:*",
@@ -32,6 +33,7 @@
     "radix-ui": "^1.6.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-hook-form": "^7.83.0",
     "recharts": "3.8.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",

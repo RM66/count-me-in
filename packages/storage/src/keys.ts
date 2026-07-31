@@ -18,12 +18,17 @@ export function avatarKey(organizerId: string, ext: ImageExt): string {
 }
 
 /**
- * Generate a versioned photo key for a service (for later use).
- * Format: services/{serviceId}/photo-{random}.{ext}
+ * Generate a versioned cover-photo key for a service.
+ *
+ * Deliberately **organizer-scoped**, not `services/{serviceId}/…`: the cover is
+ * uploaded from the "new service" form *before* the row (and therefore the
+ * service id) exists. Keeping it under the organizer prefix means the same
+ * ownership check — {@link organizerMediaUrlPrefix} — validates avatars and
+ * covers alike, and the objects are still cleaned up with the organizer.
  */
-export function servicePhotoKey(serviceId: string, ext: ImageExt): string {
+export function servicePhotoKey(organizerId: string, ext: ImageExt): string {
   const random = randomUUID().slice(0, 8)
-  return `services/${serviceId}/photo-${random}.${ext}`
+  return `organizers/${organizerId}/services/photo-${random}.${ext}`
 }
 
 /**
@@ -35,7 +40,8 @@ export function publicUrl(key: string): string {
 }
 
 /**
- * Get the public URL prefix for all media belonging to an organizer.
+ * Get the public URL prefix for all media belonging to an organizer
+ * (avatar *and* service covers).
  * Used to validate that a client-submitted photoUrl belongs to this organizer.
  */
 export function organizerMediaUrlPrefix(organizerId: string): string {
