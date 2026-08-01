@@ -8,6 +8,8 @@
 import type { CreateServicePhotoUploadInput, ImageUploadTarget } from '@repo/api-contracts'
 import { createSignedUploadUrl, publicUrl, servicePhotoKey } from '@repo/storage'
 
+import 'server-only'
+
 /** Map an accepted content type to the extension stored in R2. */
 const EXT_BY_CONTENT_TYPE: Record<string, 'jpg' | 'png' | 'webp'> = {
   'image/jpeg': 'jpg',

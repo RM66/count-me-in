@@ -345,6 +345,15 @@ export function serviceContact(service: Service): string | undefined {
   return service.contact ?? organizer.contact
 }
 
+/**
+ * Slot calculations — `seatsLeft` / `fillLabel` / `slotEnd` below are the **only
+ * live copies**. `lib/domain/slot.ts` held the same logic but nothing imported
+ * it, so it was deleted 2026-08-01 (ADR-001).
+ *
+ * These are real domain rules, not mock data: when this file is dismantled they
+ * must be re-homed (prefer `packages/api-contracts`, which is isomorphic and
+ * already entity-sliced) rather than deleted with the fixtures.
+ */
 export function seatsLeft(slot: TimeSlot): number {
   return Math.max(0, slot.capacity - slot.bookedCount)
 }

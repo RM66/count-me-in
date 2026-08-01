@@ -34,8 +34,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentOrganizer } from '@/lib/api'
+import { TIMEZONES } from '@/lib/constants/timezones'
 import { initials } from '@/lib/helpers/name'
-import { TIMEZONES } from '@/lib/helpers/timezone'
 import { useProfileForm } from './use-profile-form'
 export function SettingsForm() {
   const { data: organizer, isPending, isError } = useCurrentOrganizer()

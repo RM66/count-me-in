@@ -1,4 +1,4 @@
-import { detectContactKind } from '@/lib/domain/contact'
+import { detectContactKind } from '@/lib/helpers/contact'
 
 interface ContactLinkProps {
   contact: string

@@ -13,8 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { resolveCabinetOrganizerId } from '@/lib/services/demo'
-import { countUpcomingSlots, listServices } from '@/lib/services/service'
+import { countUpcomingSlots, listServices } from '@/lib/server/db/service'
+import { resolveCabinetOrganizerId } from '@/lib/server/demo'
 
 export default async function ServicesPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).

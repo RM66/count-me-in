@@ -8,8 +8,8 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useImageUpload } from '@/hooks/use-image-upload'
 import { useUploadServicePhoto } from '@/lib/api'
-import { useImageUpload } from '@/lib/hooks/use-image-upload'
 import type { ServiceFormControl } from './use-service-form'
 
 /**

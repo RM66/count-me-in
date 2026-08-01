@@ -9,13 +9,23 @@ import type {
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/api-contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { resizeServicePhoto } from '@/lib/helpers/image'
-import { del, post, put } from '../client'
-import { ApiError } from '../error'
+import { del, post, put } from './client'
+import { ApiError } from './error'
+import { resizeServicePhoto } from './image'
+import { queryKeys } from './keys'
+
+/**
+ * Client-side API for the **Service** entity (услуга) — writes plus the cover
+ * upload flow.
+ *
+ * Cabinet pages read services on the server (`lib/server/db/service.ts`), so
+ * there is no list/detail query here yet; the mutations still have to drop that
+ * cache when a server component refetches.
+ */
 
 /** Drop every cached service list/detail so the next read refetches. */
 function invalidateServices(queryClient: ReturnType<typeof useQueryClient>) {
-  return queryClient.invalidateQueries({ queryKey: ['services'] })
+  return queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
 }
 
 /** Create a service owned by the signed-in organizer. */

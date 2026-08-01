@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Figtree } from 'next/font/google'
 
-import { cn } from '@/utils'
+import { cn } from '@/lib/utils'
 import { Providers } from './providers'
 
 import './globals.css'

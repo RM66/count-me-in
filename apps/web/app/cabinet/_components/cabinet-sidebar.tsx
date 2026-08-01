@@ -46,7 +46,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentOrganizer } from '@/lib/api'
 import { initials } from '@/lib/helpers/name'
-import { cn } from '@/utils'
+import { cn } from '@/lib/utils'
 
 const nav = [
   { title: 'Overview', href: '/cabinet', icon: LayoutDashboardIcon },

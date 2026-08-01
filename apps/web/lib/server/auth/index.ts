@@ -3,6 +3,8 @@ import NextAuth, { type NextAuthResult } from 'next-auth'
 
 import { createTelegramProvider } from './telegram-provider'
 
+import 'server-only'
+
 /**
  * Auth.js for organizers (ADR-008): messenger-only identity, JWT sessions.
  * `Organizer.id` IS the Auth.js user id — no separate user table.

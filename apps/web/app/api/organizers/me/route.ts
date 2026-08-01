@@ -4,13 +4,13 @@ import { db, organizers } from '@repo/db'
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/services/auth'
+import { auth } from '@/lib/server/auth'
 import {
   demoReadOnlyResponse,
   rejectDemoWrite,
   resolveCabinetOrganizerId,
-} from '@/lib/services/demo'
-import { isOwnMediaUrl } from '@/lib/services/storage/media'
+} from '@/lib/server/demo'
+import { isOwnMediaUrl } from '@/lib/server/storage/media'
 
 /**
  * Profile powering the cabinet.

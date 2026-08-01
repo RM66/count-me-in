@@ -30,7 +30,7 @@ import {
   slotPrice,
   slots,
 } from '@/lib/mock-data'
-import { isDemoSession } from '@/lib/services/demo'
+import { isDemoSession } from '@/lib/server/demo'
 
 const fillVariant: Record<
   ReturnType<typeof fillLabel>,

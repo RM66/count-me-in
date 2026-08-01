@@ -8,6 +8,8 @@
  */
 import { organizerMediaUrlPrefix } from '@repo/storage'
 
+import 'server-only'
+
 /**
  * Validate that a media URL belongs to this organizer's prefix.
  * Prevents pointing `photoUrl` at arbitrary hosts or another organizer's media.

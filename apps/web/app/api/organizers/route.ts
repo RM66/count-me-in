@@ -3,7 +3,7 @@ import { db, organizers } from '@repo/db'
 import { NextResponse } from 'next/server'
 import { flattenError } from 'zod'
 
-import { peekTicket } from '@/lib/services/auth-ticket'
+import { peekTicket } from '@/lib/server/auth/ticket'
 
 /** Postgres unique_violation. */
 const UNIQUE_VIOLATION = '23505'

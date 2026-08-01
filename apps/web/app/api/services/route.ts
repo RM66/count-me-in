@@ -2,14 +2,14 @@ import { createServiceInput } from '@repo/api-contracts'
 import { db, services } from '@repo/db'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/services/auth'
+import { auth } from '@/lib/server/auth'
+import { listServices, toServiceRecord } from '@/lib/server/db/service'
 import {
   demoReadOnlyResponse,
   rejectDemoWrite,
   resolveCabinetOrganizerId,
-} from '@/lib/services/demo'
-import { listServices, toServiceRecord } from '@/lib/services/service'
-import { isOwnMediaUrl } from '@/lib/services/storage/media'
+} from '@/lib/server/demo'
+import { isOwnMediaUrl } from '@/lib/server/storage/media'
 
 /**
  * Services for the organizer this request may view — the signed-in organizer,

@@ -25,7 +25,7 @@ Two problems with keeping the example in the mock:
 
 Separately, the mock is currently load-bearing: 13 modules import it and the entire cabinet plus
 the public booking flow render from it. Only organizer profile, auth and avatar have real
-endpoints; `apps/web/lib/services/booking/` is an empty placeholder.
+endpoints; `apps/web/lib/server/db/booking/` is an empty placeholder.
 
 ## Decision
 
@@ -69,7 +69,7 @@ required a dedicated Auth.js provider handing out a cookie for a hardcoded id.
 
 Treating "demo" as a per-request property removes that entirely — and with it a public endpoint
 that mints sessions, the need to `signOut()` before signup, and the redirect loop where
-[`authorized`](../../apps/web/lib/services/auth.ts) bounces a "logged in" demo visitor from
+[`authorized`](../../apps/web/lib/server/auth/index.ts) bounces a "logged in" demo visitor from
 `/signup` back to `/cabinet`. Nothing can get stuck in a cookie because nothing is stored.
 
 **The cost, accepted deliberately:** `/cabinet` is no longer gated by one line in `authorized`, so
@@ -139,7 +139,7 @@ indistinguishable from real data at read time, which is the entire point.
   `resolveCabinetOrganizerId()`. Every mutating endpoint must check the session itself; "it's under
   `/cabinet`" is no longer a security argument.
 - Every new write path must remember the guard. Mitigated by concentrating the helpers in
-  `apps/web/lib/services/demo.ts` with a coverage checklist in its docblock.
+  `apps/web/lib/server/demo.ts` with a coverage checklist in its docblock.
 - `GET /api/organizers/me` no longer strictly means "me" — it falls back to the demo organizer for
   anonymous callers.
 - The demo `manageToken`s are deterministic and effectively public. Acceptable only _because_
@@ -159,19 +159,19 @@ indistinguishable from real data at read time, which is the entire point.
 3. `packages/api-contracts/src/organizer.ts` — add `isDemo: boolean` to `organizerProfile`.
 4. `packages/db/src/seed/demo.ts` + `run-demo.ts` — seed data and idempotent upsert; exposed as
    `bun run --filter @repo/db db:seed:demo` and as `seedDemo()` for the worker.
-5. `apps/web/lib/services/demo.ts` — `resolveCabinetOrganizerId()` (per-request "whose cabinet is
+5. `apps/web/lib/server/demo.ts` — `resolveCabinetOrganizerId()` (per-request "whose cabinet is
    this?"), `rejectDemoWrite()` (route handlers), `assertNotDemo()` / `DemoReadOnlyError` (service
    layer), `isDemoSession()` (server components). Guards treat anonymous as demo.
 6. Guards wired into `PUT /api/organizers/me` and `POST /api/organizers/me/avatar`; the checklist
    in the module docblock tracks the endpoints still to come (services, slots, guest booking
    create/cancel).
-7. `apps/web/lib/services/auth.ts` — `authorized` gates nothing; it only redirects signed-in
+7. `apps/web/lib/server/auth/index.ts` — `authorized` gates nothing; it only redirects signed-in
    organizers away from the auth pages. `apps/web/proxy.ts` — matcher narrowed to `/login` and
    `/signup`, since running middleware on `/cabinet/*` would decode the JWT only to allow the
    request.
 8. `apps/web/app/api/organizers/me/route.ts` — `GET` falls back to the demo organizer with
    `isDemo: true` when there is no session.
-9. `apps/web/lib/api/queries/organizer.ts` — `useIsDemo()` for client components.
+9. `apps/web/lib/api/organizer.ts` — `useIsDemo()` for client components.
 10. `apps/web/app/cabinet/_components/demo-banner.tsx`, mounted in the cabinet layout;
     `robots: noindex, nofollow` in the same layout.
 11. `apps/web/app/cabinet/_components/cabinet-sidebar.tsx` — **Log in** + **Sign up** replace the

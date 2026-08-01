@@ -3,14 +3,14 @@ import { db, services } from '@repo/db'
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/services/auth'
+import { auth } from '@/lib/server/auth'
+import { getOwnedService, toServiceRecord } from '@/lib/server/db/service'
 import {
   demoReadOnlyResponse,
   rejectDemoWrite,
   resolveCabinetOrganizerId,
-} from '@/lib/services/demo'
-import { getOwnedService, toServiceRecord } from '@/lib/services/service'
-import { isOwnMediaUrl } from '@/lib/services/storage/media'
+} from '@/lib/server/demo'
+import { isOwnMediaUrl } from '@/lib/server/storage/media'
 
 type RouteContext = { params: Promise<{ id: string }> }
 

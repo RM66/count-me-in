@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { type ComponentProps, useEffect, useState } from 'react'
 
-import { cn } from '@/utils'
+import { cn } from '@/lib/utils'
 
 import '@uiw/react-markdown-preview/markdown.css'
 

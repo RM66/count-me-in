@@ -5,7 +5,7 @@
 import type { AvatarUploadTarget, CreateAvatarUploadInput } from '@repo/api-contracts'
 import { avatarKey, createSignedUploadUrl, publicUrl } from '@repo/storage'
 
-import { isOwnMediaUrl } from './media'
+import 'server-only'
 
 /**
  * Create a signed upload URL for an organizer's avatar.

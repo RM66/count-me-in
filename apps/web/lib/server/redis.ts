@@ -1,5 +1,7 @@
 import Redis from 'ioredis'
 
+import 'server-only'
+
 /**
  * Redis singleton (OTP codes, tickets, rate limits — see ADR-005).
  * Cached on globalThis so Next.js dev HMR doesn't open a new connection per reload.

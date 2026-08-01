@@ -7,8 +7,8 @@ import { notFound } from 'next/navigation'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { ServiceForm } from '@/app/cabinet/services/_components/service-form'
 import { Button } from '@/components/ui/button'
-import { resolveCabinetOrganizerId } from '@/lib/services/demo'
-import { getOwnedService } from '@/lib/services/service'
+import { getOwnedService } from '@/lib/server/db/service'
+import { resolveCabinetOrganizerId } from '@/lib/server/demo'
 
 export default async function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

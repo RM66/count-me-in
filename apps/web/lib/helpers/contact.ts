@@ -1,8 +1,9 @@
 /**
  * Contact string classifier (ADR-008).
  *
- * The DB stores a single free-text `contact` string. At render time this pure
- * function classifies it so the UI can wrap it in the right link kind.
+ * The DB stores one free-text `contact` string; this decides which *link kind*
+ * renders it. The separate rule for which contact value wins (service overrides
+ * organizer) is specified in docs/domain.md and is not implemented yet.
  *
  * Classification order (first match wins):
  * 1. phone  — E.164-ish / digits with separators  → `tel:` link
@@ -63,15 +64,4 @@ export function detectContactKind(raw: string): ContactInfo {
 
   // 4. Plain text
   return { kind: 'text' }
-}
-
-/**
- * Returns the effective contact for a service: the service's own `contact`
- * if set, otherwise the organizer's `contact`. Same fallback rule as `location`.
- */
-export function effectiveContact(
-  serviceContact: string | null | undefined,
-  organizerContact: string | null | undefined,
-): string | null {
-  return serviceContact ?? organizerContact ?? null
 }

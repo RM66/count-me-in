@@ -29,6 +29,8 @@ import { NextResponse } from 'next/server'
 
 import { auth } from './auth'
 
+import 'server-only'
+
 /**
  * The organizer whose data the cabinet should show for this request:
  * the signed-in organizer, or the demo organizer when there is no session.

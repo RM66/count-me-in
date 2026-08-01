@@ -4,8 +4,8 @@ import NextImage, { type ImageProps } from 'next/image'
 import { Avatar as AvatarPrimitive } from 'radix-ui'
 import { ComponentProps, useState } from 'react'
 
+import { cn } from '@/lib/utils'
 import { MakeOptional, MakeRequired } from '@/types'
-import { cn } from '@/utils'
 
 function Avatar({
   className,

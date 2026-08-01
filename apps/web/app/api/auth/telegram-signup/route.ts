@@ -4,7 +4,7 @@ import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
-import { issueTicket } from '@/lib/services/auth-ticket'
+import { issueTicket } from '@/lib/server/auth/ticket'
 
 /**
  * POST /api/auth/telegram-signup

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { ServiceForm } from '@/app/cabinet/services/_components/service-form'
-import { isDemoSession } from '@/lib/services/demo'
+import { isDemoSession } from '@/lib/server/demo'
 
 export default async function NewServicePage() {
   // The demo account cannot create services (ADR-010). The entry point is

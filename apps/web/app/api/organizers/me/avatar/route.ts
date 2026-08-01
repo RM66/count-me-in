@@ -2,9 +2,9 @@ import type { AvatarUploadTarget } from '@repo/api-contracts'
 import { createAvatarUploadInput } from '@repo/api-contracts'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/services/auth'
-import { demoReadOnlyResponse, rejectDemoWrite } from '@/lib/services/demo'
-import { createAvatarUpload } from '@/lib/services/storage/avatar'
+import { auth } from '@/lib/server/auth'
+import { demoReadOnlyResponse, rejectDemoWrite } from '@/lib/server/demo'
+import { createAvatarUpload } from '@/lib/server/storage/avatar'
 
 /**
  * Create a signed upload URL for the current organizer's avatar.

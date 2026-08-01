@@ -3,7 +3,9 @@ import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { and, eq } from 'drizzle-orm'
 import Credentials from 'next-auth/providers/credentials'
 
-import { consumeTicket, issueTicket, TICKET_BASE64URL_LENGTH } from './auth-ticket'
+import { consumeTicket, issueTicket, TICKET_BASE64URL_LENGTH } from './ticket'
+
+import 'server-only'
 
 /**
  * Telegram Login Widget provider for Auth.js (ADR-008).

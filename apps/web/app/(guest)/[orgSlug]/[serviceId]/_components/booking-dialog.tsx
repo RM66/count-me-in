@@ -38,7 +38,7 @@ import {
   slotPrice,
   type TimeSlot,
 } from '@/lib/mock-data'
-import { cn } from '@/utils'
+import { cn } from '@/lib/utils'
 
 type Step = 'slot' | 'options' | 'details' | 'verify' | 'success'
 

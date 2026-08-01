@@ -2,9 +2,9 @@ import type { ImageUploadTarget } from '@repo/api-contracts'
 import { createServicePhotoUploadInput } from '@repo/api-contracts'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/services/auth'
-import { demoReadOnlyResponse, rejectDemoWrite } from '@/lib/services/demo'
-import { createServicePhotoUpload } from '@/lib/services/storage/service-photo'
+import { auth } from '@/lib/server/auth'
+import { demoReadOnlyResponse, rejectDemoWrite } from '@/lib/server/demo'
+import { createServicePhotoUpload } from '@/lib/server/storage/service-photo'
 
 /**
  * Create a signed upload URL for a service cover photo.

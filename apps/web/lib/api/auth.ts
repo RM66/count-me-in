@@ -4,8 +4,8 @@ import type { AuthTicketResponse, RegisterOrganizerInput } from '@repo/api-contr
 import { useMutation } from '@tanstack/react-query'
 import { signIn } from 'next-auth/react'
 
-import { post } from '../client'
-import { ApiError } from '../error'
+import { post } from './client'
+import { ApiError } from './error'
 
 /**
  * Validates the Telegram Login Widget payload server-side (HMAC) and returns

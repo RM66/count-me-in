@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ApiError, useRegisterOrganizer, useSignInWithTicket } from '@/lib/api'
-import { cn } from '@/utils'
+import { cn } from '@/lib/utils'
 
 const steps = ['Telegram', 'Profile'] as const
 

@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto'
 import type { Messenger } from '@repo/api-contracts'
 
-import { getRedis } from './redis'
+import { getRedis } from '../redis'
+
+import 'server-only'
 
 /**
  * Short-lived auth ticket service (ADR-008).
