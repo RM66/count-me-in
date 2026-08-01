@@ -25,18 +25,24 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ApiError, useRegisterOrganizer, useSignInWithTicket } from '@/lib/api'
+import { TIMEZONES } from '@/lib/constants/timezones'
 import { cn } from '@/lib/utils'
 
 const steps = ['Telegram', 'Profile'] as const
 
-const timezones = [
-  'Europe/Belgrade',
-  'Europe/Berlin',
-  'Europe/London',
-  'Europe/Kyiv',
-  'America/New_York',
-  'America/Los_Angeles',
-]
+const FALLBACK_TIMEZONE = 'Europe/Belgrade'
+
+/**
+ * Pre-select the visitor's own timezone when we offer it.
+ *
+ * The browser can report a zone that is not in `TIMEZONES` (the list is a
+ * curated subset), and an unlisted value would leave the `Select` blank with no
+ * hint that anything is wrong — so an unknown zone falls back to a listed one.
+ */
+function detectTimezone(): string {
+  const detected = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return TIMEZONES.some((tz) => tz.value === detected) ? detected : FALLBACK_TIMEZONE
+}
 
 function SignupPageInner() {
   const router = useRouter()
@@ -46,7 +52,8 @@ function SignupPageInner() {
   const [ticket, setTicket] = useState('')
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
-  const [timezone, setTimezone] = useState('Europe/Belgrade')
+  // Lazy initialiser: `Intl` is read once on mount, not on every render.
+  const [timezone, setTimezone] = useState(detectTimezone)
 
   const registerOrganizer = useRegisterOrganizer()
   const signIn = useSignInWithTicket()
@@ -194,9 +201,9 @@ function SignupPageInner() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {timezones.map((tz) => (
-                      <SelectItem key={tz} value={tz}>
-                        {tz}
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>

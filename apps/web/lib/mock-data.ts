@@ -9,8 +9,31 @@
 //
 // Identity is imported from the shared demo constants so the mock and the seed
 // cannot disagree about the demo organizer's id or slug.
+//
+// **Fixtures only.** The domain rules that used to live here (`seatsLeft`,
+// `fillLabel`, `slotEnd`, `slotPrice`, the location/contact override) now live
+// in `@repo/api-contracts` — they must outlive this file, which is scheduled
+// for deletion. What remains below are thin re-exports bound to the mock
+// organizer, so the pages still importing them keep working until each one
+// moves to its real endpoint. Do not add new rules here.
 
-import { DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG, DEMO_SERVICE_IDS } from '@repo/api-contracts'
+import {
+  DEMO_ORGANIZER_ID,
+  DEMO_ORGANIZER_SLUG,
+  DEMO_SERVICE_IDS,
+  effectiveContact,
+  effectiveLocation,
+  fillLabel as fillLabelRule,
+  seatsLeft as seatsLeftRule,
+  slotEnd as slotEndRule,
+  slotPrice as slotPriceRule,
+} from '@repo/api-contracts'
+
+import {
+  formatDate as formatDateIn,
+  formatDateTime as formatDateTimeIn,
+  formatTime as formatTimeIn,
+} from './helpers/date'
 
 export type OptionsSelectMode = 'single' | 'multi'
 export type BookingStatus = 'confirmed' | 'cancelled'
@@ -328,76 +351,60 @@ export function getBookingService(booking: Booking): Service | undefined {
   return slot ? getService(slot.serviceId) : undefined
 }
 
+// --- Domain rules, bound to the mock organizer ---
+//
+// The rules themselves are in `@repo/api-contracts`; these wrappers only supply
+// the mock organizer / service that a real caller would pass explicitly.
+
 /**
  * Effective location for a service: the service's own `location` if set,
- * otherwise the organizer's `location`. Used for the public page and for
- * the "Add to calendar" event location.
+ * otherwise the organizer's. Used for the public page and for the
+ * "Add to calendar" event location.
  */
 export function serviceLocation(service: Service): string | undefined {
-  return service.location ?? organizer.location
+  return effectiveLocation(service, organizer)
 }
 
 /**
  * Effective contact for a service: the service's own `contact` if set,
- * otherwise the organizer's `contact`. Same override rule as `location`.
+ * otherwise the organizer's. Same override rule as `location`.
  */
 export function serviceContact(service: Service): string | undefined {
-  return service.contact ?? organizer.contact
+  return effectiveContact(service, organizer)
 }
 
-/**
- * Slot calculations — `seatsLeft` / `fillLabel` / `slotEnd` below are the **only
- * live copies**. `lib/domain/slot.ts` held the same logic but nothing imported
- * it, so it was deleted 2026-08-01 (ADR-001).
- *
- * These are real domain rules, not mock data: when this file is dismantled they
- * must be re-homed (prefer `packages/api-contracts`, which is isomorphic and
- * already entity-sliced) rather than deleted with the fixtures.
- */
 export function seatsLeft(slot: TimeSlot): number {
-  return Math.max(0, slot.capacity - slot.bookedCount)
+  return seatsLeftRule(slot)
 }
 
-// --- Formatting helpers (fixed timezone for deterministic mockups) ---
+export function slotEnd(slot: TimeSlot): string {
+  return slotEndRule(slot)
+}
+
+export function slotPrice(slot: TimeSlot): string {
+  return slotPriceRule(slot, getService(slot.serviceId))
+}
+
+export function fillLabel(slot: TimeSlot): 'open' | 'filling' | 'full' {
+  return fillLabelRule(slot)
+}
+
+// --- Formatting (mock organizer's timezone, for deterministic mockups) ---
+//
+// Thin bindings over `lib/helpers/date.ts`. Real pages call those directly with
+// the organizer's timezone; here it is fixed so mockups render identically
+// regardless of where the build runs.
 
 const TZ = organizer.timezone
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    timeZone: TZ,
-  })
+  return formatDateIn(iso, TZ)
 }
 
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: TZ,
-  })
+  return formatTimeIn(iso, TZ)
 }
 
 export function formatDateTime(iso: string): string {
-  return `${formatDate(iso)} · ${formatTime(iso)}`
-}
-
-export function slotEnd(slot: TimeSlot): string {
-  const start = new Date(slot.startsAt)
-  const end = new Date(start.getTime() + slot.durationMinutes * 60_000)
-  return end.toISOString()
-}
-
-export function slotPrice(slot: TimeSlot): string {
-  const svc = getService(slot.serviceId)
-  return slot.price ?? svc?.defaultPrice ?? ''
-}
-
-export function fillLabel(slot: TimeSlot): 'open' | 'filling' | 'full' {
-  const left = seatsLeft(slot)
-  if (left === 0) return 'full'
-  if (left <= Math.ceil(slot.capacity * 0.25)) return 'filling'
-  return 'open'
+  return formatDateTimeIn(iso, TZ)
 }

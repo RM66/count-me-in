@@ -2,8 +2,7 @@ import type { ImageUploadTarget } from '@repo/api-contracts'
 import { createServicePhotoUploadInput } from '@repo/api-contracts'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/server/auth'
-import { demoReadOnlyResponse, rejectDemoWrite } from '@/lib/server/demo'
+import { parseJsonBody, requireWritableOrganizer } from '@/lib/server/http'
 import { createServicePhotoUpload } from '@/lib/server/storage/service-photo'
 
 /**
@@ -15,25 +14,16 @@ import { createServicePhotoUpload } from '@/lib/server/storage/service-photo'
  * organizer-scoped, which is also what the `photoUrl` ownership check validates.
  */
 export async function POST(request: Request) {
-  const session = await auth()
-  const organizerId = session?.user?.id
-
   // Read-only demo (ADR-010) — deny before handing out an R2 upload URL.
   // Anonymous callers are demo cabinet visitors, so they get the same refusal.
-  const denied = rejectDemoWrite(organizerId)
-  if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
+  const guard = await requireWritableOrganizer()
+  if (!guard.ok) return guard.response
+  const { organizerId } = guard.value
 
-  const body = await request.json()
-  const parsed = createServicePhotoUploadInput.safeParse(body)
+  const parsed = await parseJsonBody(request, createServicePhotoUploadInput)
+  if (!parsed.ok) return parsed.response
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 },
-    )
-  }
-
-  const target: ImageUploadTarget = await createServicePhotoUpload(organizerId, parsed.data)
+  const target: ImageUploadTarget = await createServicePhotoUpload(organizerId, parsed.value)
 
   return NextResponse.json(target)
 }

@@ -1,15 +1,14 @@
 import { updateServiceInput } from '@repo/api-contracts'
-import { db, services } from '@repo/db'
-import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/server/auth'
-import { getOwnedService, toServiceRecord } from '@/lib/server/db/service'
 import {
-  demoReadOnlyResponse,
-  rejectDemoWrite,
-  resolveCabinetOrganizerId,
-} from '@/lib/server/demo'
+  deleteOwnedService,
+  getOwnedService,
+  NoServiceUpdatesError,
+  updateOwnedService,
+} from '@/lib/server/db/service'
+import { resolveCabinetOrganizerId } from '@/lib/server/demo'
+import { parseJsonBody, requireWritableOrganizer } from '@/lib/server/http'
 import { isOwnMediaUrl } from '@/lib/server/storage/media'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -41,66 +40,35 @@ export async function GET(_request: Request, { params }: RouteContext) {
 export async function PUT(request: Request, { params }: RouteContext) {
   const { id } = await params
 
-  const session = await auth()
-  const organizerId = session?.user?.id
+  const guard = await requireWritableOrganizer()
+  if (!guard.ok) return guard.response
+  const { organizerId } = guard.value
 
-  // Read-only demo (ADR-010). Also narrows `organizerId` to a string.
-  const denied = rejectDemoWrite(organizerId)
-  if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
+  const parsed = await parseJsonBody(request, updateServiceInput)
+  if (!parsed.ok) return parsed.response
+  const input = parsed.value
 
-  const body = await request.json()
-  const parsed = updateServiceInput.safeParse(body)
-
-  if (!parsed.success) {
+  if (input.photoUrl != null && !isOwnMediaUrl(organizerId, input.photoUrl)) {
     return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
+      { error: 'Invalid photoUrl: must belong to your media prefix' },
       { status: 400 },
     )
   }
 
-  const input = parsed.data
+  try {
+    const service = await updateOwnedService(organizerId, id, input)
 
-  if (input.photoUrl !== undefined && input.photoUrl !== null) {
-    if (!isOwnMediaUrl(organizerId, input.photoUrl)) {
-      return NextResponse.json(
-        { error: 'Invalid photoUrl: must belong to your media prefix' },
-        { status: 400 },
-      )
+    if (!service) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
     }
+
+    return NextResponse.json({ service })
+  } catch (error) {
+    if (error instanceof NoServiceUpdatesError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    throw error
   }
-
-  // Only the keys actually present in the payload are written.
-  const updates: Partial<typeof services.$inferInsert> = {}
-  if (input.title !== undefined) updates.title = input.title
-  if (input.description !== undefined) updates.description = input.description
-  if (input.location !== undefined) updates.location = input.location
-  if (input.contact !== undefined) updates.contact = input.contact
-  if (input.defaultPrice !== undefined) updates.defaultPrice = input.defaultPrice
-  if (input.defaultCapacity !== undefined) updates.defaultCapacity = input.defaultCapacity
-  if (input.defaultDurationMinutes !== undefined) {
-    updates.defaultDurationMinutes = input.defaultDurationMinutes
-  }
-  if (input.options !== undefined) updates.options = input.options
-  if (input.optionsSelectMode !== undefined) updates.optionsSelectMode = input.optionsSelectMode
-  if (input.photoUrl !== undefined) updates.photoUrl = input.photoUrl
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
-  }
-
-  // `organizerId` in the WHERE clause is the ownership check: a foreign id
-  // simply matches no row, so there is no read-then-write gap to exploit.
-  const [updated] = await db
-    .update(services)
-    .set(updates)
-    .where(and(eq(services.id, id), eq(services.organizerId, organizerId)))
-    .returning()
-
-  if (!updated) {
-    return NextResponse.json({ error: 'Service not found' }, { status: 404 })
-  }
-
-  return NextResponse.json({ service: toServiceRecord(updated) })
 }
 
 /**
@@ -112,20 +80,15 @@ export async function PUT(request: Request, { params }: RouteContext) {
 export async function DELETE(_request: Request, { params }: RouteContext) {
   const { id } = await params
 
-  const session = await auth()
-  const organizerId = session?.user?.id
+  const guard = await requireWritableOrganizer()
+  if (!guard.ok) return guard.response
+  const { organizerId } = guard.value
 
-  const denied = rejectDemoWrite(organizerId)
-  if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
+  const deletedId = await deleteOwnedService(organizerId, id)
 
-  const [deleted] = await db
-    .delete(services)
-    .where(and(eq(services.id, id), eq(services.organizerId, organizerId)))
-    .returning()
-
-  if (!deleted) {
+  if (!deletedId) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 })
   }
 
-  return NextResponse.json({ id: deleted.id })
+  return NextResponse.json({ id: deletedId })
 }

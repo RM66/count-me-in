@@ -1,14 +1,9 @@
 import { createServiceInput } from '@repo/api-contracts'
-import { db, services } from '@repo/db'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/server/auth'
-import { listServices, toServiceRecord } from '@/lib/server/db/service'
-import {
-  demoReadOnlyResponse,
-  rejectDemoWrite,
-  resolveCabinetOrganizerId,
-} from '@/lib/server/demo'
+import { createService, listServices } from '@/lib/server/db/service'
+import { resolveCabinetOrganizerId } from '@/lib/server/demo'
+import { parseJsonBody, requireWritableOrganizer } from '@/lib/server/http'
 import { isOwnMediaUrl } from '@/lib/server/storage/media'
 
 /**
@@ -32,24 +27,13 @@ export async function GET() {
  * organizer cannot create a service under someone else's account.
  */
 export async function POST(request: Request) {
-  const session = await auth()
-  const organizerId = session?.user?.id
+  const guard = await requireWritableOrganizer()
+  if (!guard.ok) return guard.response
+  const { organizerId } = guard.value
 
-  // Read-only demo (ADR-010). Also narrows `organizerId` to a string.
-  const denied = rejectDemoWrite(organizerId)
-  if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
-
-  const body = await request.json()
-  const parsed = createServiceInput.safeParse(body)
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 },
-    )
-  }
-
-  const input = parsed.data
+  const parsed = await parseJsonBody(request, createServiceInput)
+  if (!parsed.ok) return parsed.response
+  const input = parsed.value
 
   // A cover URL must live under this organizer's media prefix — otherwise the
   // row could point at an arbitrary host or another organizer's object.
@@ -60,26 +44,11 @@ export async function POST(request: Request) {
     )
   }
 
-  const [created] = await db
-    .insert(services)
-    .values({
-      organizerId,
-      title: input.title,
-      description: input.description ?? null,
-      photoUrl: input.photoUrl ?? null,
-      location: input.location ?? null,
-      contact: input.contact ?? null,
-      defaultPrice: input.defaultPrice,
-      defaultCapacity: input.defaultCapacity,
-      defaultDurationMinutes: input.defaultDurationMinutes,
-      options: input.options ?? null,
-      optionsSelectMode: input.optionsSelectMode ?? null,
-    })
-    .returning()
+  const service = await createService(organizerId, input)
 
-  if (!created) {
+  if (!service) {
     return NextResponse.json({ error: 'Could not create the service' }, { status: 500 })
   }
 
-  return NextResponse.json({ service: toServiceRecord(created) }, { status: 201 })
+  return NextResponse.json({ service }, { status: 201 })
 }

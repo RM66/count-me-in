@@ -2,8 +2,7 @@ import type { AvatarUploadTarget } from '@repo/api-contracts'
 import { createAvatarUploadInput } from '@repo/api-contracts'
 import { NextResponse } from 'next/server'
 
-import { auth } from '@/lib/server/auth'
-import { demoReadOnlyResponse, rejectDemoWrite } from '@/lib/server/demo'
+import { parseJsonBody, requireWritableOrganizer } from '@/lib/server/http'
 import { createAvatarUpload } from '@/lib/server/storage/avatar'
 
 /**
@@ -11,26 +10,17 @@ import { createAvatarUpload } from '@/lib/server/storage/avatar'
  * Returns uploadUrl (direct to R2), publicUrl, and expiresAt.
  */
 export async function POST(request: Request) {
-  const session = await auth()
-  const organizerId = session?.user?.id
-
   // Read-only demo (ADR-010) — deny before handing out an R2 upload URL,
   // otherwise the demo avatar could be overwritten. Anonymous callers are demo
   // cabinet visitors, so they get the same refusal.
-  const denied = rejectDemoWrite(organizerId)
-  if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
+  const guard = await requireWritableOrganizer()
+  if (!guard.ok) return guard.response
+  const { organizerId } = guard.value
 
-  const body = await request.json()
-  const parsed = createAvatarUploadInput.safeParse(body)
+  const parsed = await parseJsonBody(request, createAvatarUploadInput)
+  if (!parsed.ok) return parsed.response
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.flatten() },
-      { status: 400 },
-    )
-  }
-
-  const target: AvatarUploadTarget = await createAvatarUpload(organizerId, parsed.data)
+  const target: AvatarUploadTarget = await createAvatarUpload(organizerId, parsed.value)
 
   return NextResponse.json(target)
 }

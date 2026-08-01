@@ -62,7 +62,13 @@ does not, it cannot.
   fetch helpers, `image.ts` browser-side downscaling. Import via `@/lib/api`.
 - `server/` — **server-only** code; every module carries `import 'server-only'`
   - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`
-  - `db/` — Postgres reads + DTO mapping, one file per entity (`service.ts`, `booking/`)
+  - `db/` — Postgres reads **and writes** + DTO mapping, one file per entity
+    (`organizer.ts`, `service.ts`); `shared.ts` holds `pickDefined`. Route
+    handlers must not run SQL inline — a mutation that lives in `route.ts`
+    cannot be reused by the worker or tested without HTTP.
+  - `http.ts` — route-handler plumbing: `requireWritableOrganizer()` (session +
+    demo guard) and `parseJsonBody()` (Zod + `400`). Both return a
+    `Guarded<T>` discriminated union — check `.ok`, never truthiness.
   - `storage/` — Cloudflare R2 orchestration (avatar, service-photo, media ownership)
   - `demo.ts`, `redis.ts` — cross-cutting policy guard / infra singleton
 - `helpers/` — pure presentation utilities: formatting and adapters
@@ -75,11 +81,13 @@ does not, it cannot.
   `shadcn add` emits a broken import. Do not add non-shadcn helpers here.
 
 There is **no `lib/domain/`**. It was deleted 2026-08-01 as dead code — nothing
-imported it. Entity invariants currently live in whichever layer needs them
-(`lib/server/db/` for reads, `packages/api-contracts` for shared shapes), and the
-slot calculations still run from the copies in `lib/mock-data.ts`. When those
-rules get a real home, prefer `packages/api-contracts` (isomorphic, already
-entity-sliced) over a new app-local layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
+imported it. Entity invariants live in the layer that enforces them
+(`lib/server/db/` for persistence) or in `packages/api-contracts` when both
+client and server need them. The slot calculations (`seatsLeft`, `fillLabel`,
+`slotEnd`, `slotPrice`) and the location/contact override (`effectiveLocation`,
+`effectiveContact`) moved there 2026-08-01; `lib/mock-data.ts` now only re-binds
+them to the mock organizer. Never add a new app-local rules layer — see
+[ADR-001](docs/decisions/001-monorepo-layout.md).
 
 **Naming rule — `service` is ambiguous, so the layer never uses it.** `Service`
 (услуга) is a domain entity: the `services` table, `/api/services`,
@@ -128,5 +136,5 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 - Optional display `contact` on `Organizer` and `Service` (same override rule); stored as one plain string, rendered via `detectContactKind` + `<ContactLink />` (tel:/mailto:/https:/plain) — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is a code constant (`DEMO_ORGANIZER_ID` in `packages/api-contracts`), not a DB flag. Every write path must reject it (`rejectDemoWrite` / `assertNotDemo` in `apps/web/lib/server/demo.ts`), including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. There is no demo session/cookie — "demo" is resolved per request via `resolveCabinetOrganizerId()`. Consequence: a cabinet route does **not** imply an authenticated organizer, so scope every cabinet read through that helper and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- `apps/web/lib/mock-data.ts` is temporary scaffolding for pages not yet wired to the API; drop each import as its endpoint lands. It is **not** the demo data source — that is the DB seed in `packages/db/src/seed/`.
+- `apps/web/lib/mock-data.ts` is temporary scaffolding for pages not yet wired to the API; drop each import as its endpoint lands, and delete the file once the last one goes. It holds **fixtures only** — the domain rules it used to own now live in `packages/api-contracts`, so nothing of value dies with it. It is **not** the demo data source — that is the DB seed in `packages/db/src/seed/`.
 - Do not expand scope without ADR/roadmap update.

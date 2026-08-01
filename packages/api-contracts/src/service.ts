@@ -110,3 +110,33 @@ export const serviceRecord = z.object({
   createdAt: z.string(),
 })
 export type ServiceRecord = z.infer<typeof serviceRecord>
+
+/**
+ * Display-field inheritance: a service may override its organizer's `location`
+ * and `contact`, and falls back to the organizer's value when it has none.
+ *
+ * Isomorphic on purpose — the public page renders these, the calendar link
+ * embeds the location, and the worker puts both in notification copy, so the
+ * override rule cannot live in a component.
+ */
+
+interface OverridableDisplayFields {
+  location?: string | null
+  contact?: string | null
+}
+
+/** Location shown for a service: its own, else the organizer's. */
+export function effectiveLocation(
+  service: OverridableDisplayFields,
+  organizer: OverridableDisplayFields,
+): string | undefined {
+  return service.location ?? organizer.location ?? undefined
+}
+
+/** Contact shown for a service: its own, else the organizer's. Same rule as location. */
+export function effectiveContact(
+  service: OverridableDisplayFields,
+  organizer: OverridableDisplayFields,
+): string | undefined {
+  return service.contact ?? organizer.contact ?? undefined
+}
