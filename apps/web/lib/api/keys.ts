@@ -22,4 +22,10 @@ export const queryKeys = {
     /** One service by id. */
     detail: (id: string) => ['services', id] as const,
   },
+  slots: {
+    /** Prefix for every slot query — use to invalidate the whole entity. */
+    all: ['slots'] as const,
+    /** One slot by id. */
+    detail: (id: string) => ['slots', id] as const,
+  },
 } as const

@@ -1,138 +1,75 @@
-import { MoreHorizontalIcon } from 'lucide-react'
-
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
-import { AddSlotDialog } from '@/app/cabinet/slots/_components/add-slot-dialog'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Progress } from '@/components/ui/progress'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  fillLabel,
-  formatDate,
-  formatTime,
-  getService,
-  seatsLeft,
-  slotPrice,
-  slots,
-} from '@/lib/mock-data'
-import { isDemoSession } from '@/lib/server/demo'
+import { SlotsTable } from '@/app/cabinet/slots/_components/slots-table'
+import { getOrganizerProfile } from '@/lib/server/db/organizer'
+import { listServices } from '@/lib/server/db/service'
+import { listSlots } from '@/lib/server/db/time-slot'
+import { resolveCabinetOrganizerId } from '@/lib/server/demo'
 
-const fillVariant: Record<
-  ReturnType<typeof fillLabel>,
-  { label: string; variant: 'secondary' | 'outline' | 'default' }
-> = {
-  open: { label: 'Open', variant: 'outline' },
-  filling: { label: 'Filling up', variant: 'default' },
-  full: { label: 'Full', variant: 'secondary' },
-}
+export default async function SlotsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ service?: string }>
+}) {
+  // Anonymous visitors get the read-only demo organizer (ADR-010).
+  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  const { service: serviceParam } = await searchParams
 
-export default async function SlotsPage() {
-  const sorted = [...slots].sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-  // Read-only demo account (ADR-010).
-  const isReadOnly = await isDemoSession()
+  // The profile supplies the timezone every slot instant is rendered in, and
+  // the services back both the table's titles and the dialog's picker.
+  //
+  // Every slot is fetched, not just upcoming ones: the table splits them and
+  // keeps past sessions one click away. Filtering them out here is what made a
+  // mis-dated slot look like a failed save.
+  const [organizer, services, slots] = await Promise.all([
+    getOrganizerProfile(organizerId, isReadOnly),
+    listServices(organizerId),
+    listSlots(organizerId),
+  ])
+
+  // Sent from the server so the client's split matches what was rendered —
+  // deriving "now" during render would risk a hydration mismatch.
+  const nowIso = new Date().toISOString()
+
+  // The filter lives in the URL so the services list can deep-link into it and
+  // the browser's back button works. An id the organizer does not own is
+  // ignored rather than shown as an empty filter for a service they cannot see.
+  const activeServiceId =
+    serviceParam && services.some((service) => service.id === serviceParam)
+      ? serviceParam
+      : undefined
+  const activeService = services.find((service) => service.id === activeServiceId)
 
   return (
     <>
       <CabinetHeader
-        crumbs={[{ label: 'Cabinet', href: '/cabinet' }, { label: 'Slots' }]}
-        action={<AddSlotDialog />}
+        crumbs={[
+          { label: 'Cabinet', href: '/cabinet' },
+          // Filtered by a service? Then "Slots" is a step back to the full list.
+          ...(activeService
+            ? [{ label: 'Slots', href: '/cabinet/slots' }, { label: activeService.title }]
+            : [{ label: 'Slots' }]),
+        ]}
       />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Slots</h1>
           <p className="text-sm text-muted-foreground">
-            Schedule and track capacity for every session.
+            {activeService
+              ? `Sessions for ${activeService.title}.`
+              : 'Schedule and track capacity for every session.'}
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming schedule</CardTitle>
-            <CardDescription>{sorted.length} slots over the next 7 days.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Date &amp; time</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((slot) => {
-                  const svc = getService(slot.serviceId)
-                  const left = seatsLeft(slot)
-                  const pct = Math.round((slot.bookedCount / slot.capacity) * 100)
-                  const fill = fillVariant[fillLabel(slot)]
-                  return (
-                    <TableRow key={slot.id}>
-                      <TableCell className="font-medium">{svc?.title}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <div className="flex flex-col">
-                          <span>{formatDate(slot.startsAt)}</span>
-                          <span className="text-xs">
-                            {formatTime(slot.startsAt)} · {slot.durationMinutes} min
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex w-32 flex-col gap-1">
-                          <span className="text-xs text-muted-foreground">
-                            {slot.bookedCount}/{slot.capacity} · {left} left
-                          </span>
-                          <Progress value={pct} />
-                        </div>
-                      </TableCell>
-                      <TableCell>{slotPrice(slot)}</TableCell>
-                      <TableCell>
-                        <Badge variant={fill.variant}>{fill.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontalIcon />
-                              <span className="sr-only">Slot actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuGroup>
-                              <DropdownMenuItem disabled={isReadOnly}>Edit slot</DropdownMenuItem>
-                              <DropdownMenuItem>View bookings</DropdownMenuItem>
-                              <DropdownMenuItem disabled={isReadOnly}>Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem variant="destructive" disabled={isReadOnly}>
-                                Cancel slot
-                              </DropdownMenuItem>
-                            </DropdownMenuGroup>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <SlotsTable
+          slots={slots}
+          services={services}
+          nowIso={nowIso}
+          activeServiceId={activeServiceId}
+          // Falls back to UTC only if the profile row is missing (e.g. the demo
+          // seed has not run) — the table still renders rather than throwing.
+          timezone={organizer?.timezone ?? 'UTC'}
+          isReadOnly={isReadOnly}
+        />
       </div>
     </>
   )

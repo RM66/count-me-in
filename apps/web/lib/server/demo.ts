@@ -11,7 +11,7 @@
  *
  * Coverage checklist (keep in sync as endpoints land):
  * - cabinet: profile update ✓, avatar upload ✓, service create/update/delete ✓,
- *   service cover upload ✓, slot create/update/delete, organizer-side booking
+ *   service cover upload ✓, slot create/update/delete ✓, organizer-side booking
  *   cancel
  * - guest: create booking, cancel booking by `manageToken` — these mutate
  *   `bookedCount` on a demo slot and would let anyone vandalise the public

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { optionsSelectModeEnum } from './enums'
+import { numericText, optionalText } from './form-fields'
 import {
   capacity,
   contact,
@@ -27,28 +28,6 @@ import type { CreateServiceInput, ServiceRecord } from './service'
  * Every rule is composed from the same primitives the wire schemas use, so
  * bounds cannot drift between client and server.
  */
-
-/** Optional text field: `''` (untouched or cleared) → `null`, otherwise validated. */
-function optionalText<T extends z.ZodType<string, string>>(schema: T) {
-  return z.union([z.literal(''), schema]).transform((value) => (value === '' ? null : value))
-}
-
-/**
- * Numeric text field. `z.coerce.number()` would turn `''` into `0` and report
- * "too small" for an empty input, so the empty case is rejected explicitly and
- * anything non-numeric is caught before the primitive's bounds apply.
- */
-function numericText<T extends z.ZodType<number, number>>(schema: T, label: string) {
-  return (
-    z
-      .string()
-      .trim()
-      .min(1, `${label} is required`)
-      .transform((value) => Number(value))
-      // `z.number()` rejects NaN, which is what a non-numeric input becomes.
-      .pipe(z.number({ error: `${label} must be a number` }).pipe(schema))
-  )
-}
 
 const serviceFormFields = {
   title: displayName,

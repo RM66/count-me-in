@@ -13,7 +13,7 @@
 
 import type { NextResponse } from 'next/server'
 import { NextResponse as Response } from 'next/server'
-import type { z } from 'zod'
+import { z } from 'zod'
 
 import { auth } from './auth'
 import { rejectDemoWrite } from './demo'
@@ -72,10 +72,18 @@ export async function parseJsonBody<S extends z.ZodType>(
   const parsed = schema.safeParse(body)
 
   if (!parsed.success) {
+    // Surface the first issue as `error`. The client renders that field
+    // verbatim in a toast, and a bare "Invalid input" tells the organizer
+    // nothing about which rule they broke. `details` still carries the rest.
+    const [first] = parsed.error.issues
+
     return {
       ok: false,
       response: Response.json(
-        { error: 'Invalid input', details: parsed.error.flatten() },
+        {
+          error: first?.message ?? 'Invalid input',
+          details: z.flattenError(parsed.error),
+        },
         { status: 400 },
       ),
     }

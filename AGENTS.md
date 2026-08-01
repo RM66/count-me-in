@@ -89,6 +89,23 @@ client and server need them. The slot calculations (`seatsLeft`, `fillLabel`,
 them to the mock organizer. Never add a new app-local rules layer — see
 [ADR-001](docs/decisions/001-monorepo-layout.md).
 
+**Wall-clock time is a contract, not a formatting detail.** A slot is stored as
+an instant (`timestamptz`) but authored as "the 25th at 07:00" in the
+organizer's timezone. `new Date('2026-07-25T07:00')` parses in the _runtime's_
+zone, so the browser and the server would disagree by hours. Both directions
+live in `packages/api-contracts/src/timezone.ts` (`wallClockToInstant`,
+`instantToWallClockInputs`) precisely because the form, the API and the worker
+must agree; `helpers/date.ts` stays purely about rendering an instant that
+already exists.
+
+**Form schemas are not wire schemas.** A controlled input holds a `string`
+(including `''` mid-edit), while the API takes numbers and reads `null` as
+"clear this column". Each entity therefore has a `*-form.ts` beside its wire
+schema (`service-form.ts`, `time-slot-form.ts`) that validates the input shape
+and transforms it into the wire shape, with the two adapters that bridge the gap
+(`optionalText`, `numericText`) shared from `form-fields.ts`. Bounds always
+compose from `primitives.ts`, so client and server rules cannot drift.
+
 **Naming rule — `service` is ambiguous, so the layer never uses it.** `Service`
 (услуга) is a domain entity: the `services` table, `/api/services`,
 `/cabinet/services`, `ServiceRecord`. The server layer is therefore called

@@ -105,9 +105,17 @@ export default async function ServicesPage() {
                     </Badge>
                   </CardContent>
                   <CardFooter className="justify-between">
-                    <span className="text-sm text-muted-foreground">
+                    {/*
+                      Links into the slots page filtered by this service. Kept a
+                      plain link rather than a button: it is navigation, and the
+                      filter lives in the URL so it stays shareable.
+                    */}
+                    <Link
+                      href={`/cabinet/slots?service=${svc.id}`}
+                      className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    >
                       {slotCount} upcoming {slotCount === 1 ? 'slot' : 'slots'}
-                    </span>
+                    </Link>
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/cabinet/services/${svc.id}`}>
                         <PencilIcon data-icon="inline-start" />
