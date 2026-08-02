@@ -11,7 +11,7 @@ import { effectiveLocation, seatsLeft, slotEnd, slotPrice } from '@repo/api-cont
 import { AlertCircle, ArrowLeft, CheckCircle2, PartyPopper } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { type ComponentProps, useState } from 'react'
 
 import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
@@ -60,13 +60,28 @@ export function BookingDialog({
   service,
   slots,
   preselectedSlotId,
-  trigger,
+  triggerLabel,
+  triggerDisabled = false,
+  triggerVariant,
+  triggerSize,
+  triggerClassName,
 }: {
   organizer: PublicOrganizer
   service: ServiceRecord
   slots: TimeSlotRecord[]
   preselectedSlotId?: string
-  trigger: React.ReactNode
+  /**
+   * Trigger content/props, not a pre-built element. The `Button` must be
+   * rendered here (client side) rather than assembled in the server-rendered
+   * page and passed down as a `trigger` prop — `DialogTrigger asChild` +
+   * `Slot` fails to merge props onto an element built across the
+   * Server → Client Component boundary (radix-ui/primitives#3780).
+   */
+  triggerLabel: React.ReactNode
+  triggerDisabled?: boolean
+  triggerVariant?: ComponentProps<typeof Button>['variant']
+  triggerSize?: ComponentProps<typeof Button>['size']
+  triggerClassName?: string
 }) {
   const router = useRouter()
   const createBooking = useCreateBooking()
@@ -161,7 +176,16 @@ export function BookingDialog({
         if (!o) setTimeout(reset, 200)
       }}
     >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        <Button
+          variant={triggerVariant}
+          size={triggerSize}
+          className={triggerClassName}
+          disabled={triggerDisabled}
+        >
+          {triggerLabel}
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{stepTitles[step]}</DialogTitle>

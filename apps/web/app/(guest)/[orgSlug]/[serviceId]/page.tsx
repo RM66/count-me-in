@@ -9,7 +9,6 @@ import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/b
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { ContactLink } from '@/components/contact-link'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
 import { formatDate, formatTime } from '@/lib/helpers/date'
@@ -175,11 +174,9 @@ export default async function ServicePage({
                         service={service}
                         slots={slots}
                         preselectedSlotId={slot.id}
-                        trigger={
-                          <Button size="sm" disabled={full}>
-                            {full ? 'Full' : 'Book'}
-                          </Button>
-                        }
+                        triggerSize="sm"
+                        triggerDisabled={full}
+                        triggerLabel={full ? 'Full' : 'Book'}
                       />
                     </div>
                   </div>
@@ -196,11 +193,10 @@ export default async function ServicePage({
             organizer={organizer}
             service={service}
             slots={slots}
-            trigger={
-              <Button className="w-full" size="lg" disabled={!hasOpen}>
-                {hasOpen ? 'Book now' : 'Fully booked'}
-              </Button>
-            }
+            triggerClassName="w-full"
+            triggerSize="lg"
+            triggerDisabled={!hasOpen}
+            triggerLabel={hasOpen ? 'Book now' : 'Fully booked'}
           />
         </div>
       </div>
