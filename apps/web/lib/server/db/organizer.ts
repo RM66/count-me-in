@@ -4,9 +4,19 @@
  * Cabinet pages are server components that query Postgres directly, while the
  * route handlers return the same shape over HTTP — both go through
  * {@link toOrganizerProfile} so the client only ever sees one contract.
+ *
+ * Two projections, one table: {@link toOrganizerProfile} is the organizer's own
+ * view, {@link toPublicOrganizer} the one guests get on `/{orgSlug}`. Keeping
+ * them as separate mappers rather than deleting fields at the call site is what
+ * stops the messenger identity from leaking to a public page by omission.
  */
 
-import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/api-contracts'
+import type {
+  OrganizerProfile,
+  PublicOrganizer,
+  UpdateOrganizerProfileInput,
+} from '@repo/api-contracts'
+import { isDemoOrganizerId } from '@repo/api-contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
 import { eq } from 'drizzle-orm'
@@ -46,6 +56,45 @@ export function toOrganizerProfile(row: Organizer, isDemo: boolean): OrganizerPr
     createdAt: row.createdAt.toISOString(),
     isDemo,
   }
+}
+
+/**
+ * Normalize an `organizers` row into the **public** DTO for `/{orgSlug}`.
+ *
+ * `isDemo` is derived here rather than passed in: unlike the cabinet, a public
+ * page has no session to resolve it from — the slug alone decides which row is
+ * being shown.
+ */
+export function toPublicOrganizer(row: Organizer): PublicOrganizer {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    timezone: row.timezone,
+    description: row.description,
+    photoUrl: row.photoUrl,
+    location: row.location,
+    contact: row.contact,
+    isDemo: isDemoOrganizerId(row.id),
+  }
+}
+
+/**
+ * The organizer behind a public slug, or `null` when no such page exists — the
+ * caller answers `404`.
+ *
+ * Slugs are stored lowercase (the `slug` primitive transforms them), so the
+ * lookup lowercases too: `/Demo` and `/demo` are the same page, and without
+ * this a capitalised link would 404 on a slug that plainly exists.
+ */
+export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {
+  const [row] = await db
+    .select()
+    .from(organizers)
+    .where(eq(organizers.slug, slug.toLowerCase()))
+    .limit(1)
+
+  return row ? toPublicOrganizer(row) : null
 }
 
 /**

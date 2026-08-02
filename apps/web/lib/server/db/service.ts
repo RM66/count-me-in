@@ -80,6 +80,31 @@ export async function getOwnedService(
 }
 
 /**
+ * A service reached through a public page, scoped to the organizer whose slug is
+ * in the URL.
+ *
+ * The same shape as {@link getOwnedService} and for the same reason, but the
+ * scope here is the *page* rather than a session: `/{orgSlug}/{serviceId}` must
+ * `404` when the service belongs to a different organizer, or one organizer's
+ * service would render under another's name and header.
+ *
+ * There is no separate public DTO: every column of `serviceRecord` is already
+ * shown on the service page, so a projection would only duplicate the type.
+ */
+export async function getPublicService(
+  organizerId: string,
+  serviceId: string,
+): Promise<ServiceRecord | null> {
+  const [row] = await db
+    .select()
+    .from(services)
+    .where(and(eq(services.id, serviceId), eq(services.organizerId, organizerId)))
+    .limit(1)
+
+  return row ? toServiceRecord(row) : null
+}
+
+/**
  * Number of *upcoming* slots per service id, for the cabinet list.
  *
  * One grouped query rather than a count per card — the list renders every

@@ -9,6 +9,7 @@
  */
 
 export * from './auth'
+export * from './booking'
 export * from './error'
 export * from './keys'
 export * from './organizer'

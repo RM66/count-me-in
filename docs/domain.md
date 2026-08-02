@@ -81,7 +81,8 @@ An organizer reaches their bookings **transitively** (`Organizer → Service →
 
 - Organizer as a provider: `https://countmein.group/{orgSlug}`.
 - A specific service/event: `https://countmein.group/{orgSlug}/{serviceId}`.
-- Booking management: `https://countmein.group/b/{manageToken}`.
+- Booking management: `https://countmein.group/booking/{manageToken}` (ADR-009 chose the spelled-out
+  segment over the shorter `/b/`).
 
 `Organizer.id` stays `uuid` for frictionless Auth.js integration and is never shown; the human-friendly organizer address is `slug`. `Service.id` is a short random `text` id so it reads well in the URL (services have no slug). `TimeSlot`/`Booking` ids are internal `uuid`s.
 
@@ -159,20 +160,28 @@ The interval convention is half-open `[startsAt, endsAt)`. `durationMinutes` is 
 
 Reservation on a slot (`timeSlotId`) by a guest (no visitor Auth.js account). The guest is identified by their messenger account, verified via the login widget at booking time ([ADR-002](decisions/002-guest-booking.md), [ADR-008](decisions/008-messenger-only-auth.md)).
 
-| Field                 | Required | Meaning                                                                                                                                         |
-| --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `timeSlotId`          | yes      | FK → TimeSlot                                                                                                                                   |
-| `seats`               | yes      | `>= 1`                                                                                                                                          |
-| `guestName`           | yes      | Display name                                                                                                                                    |
-| `guestMessenger`      | yes      | Messenger the guest authenticated with (enum; `telegram` in MVP); notification channel                                                          |
-| `guestMessengerId`    | yes      | Stable user id in that messenger; indexed together with `guestMessenger` for "my bookings" lookup                                               |
-| `guestMessengerLogin` | no       | Human-readable messenger handle (e.g. Telegram @username); nullable — not all accounts expose a public login                                    |
-| `manageToken`         | yes      | Opaque secret embedded in the messenger deep link to the booking management page; **stored hashed** at rest                                     |
-| `selectedOptions`     | no       | String values chosen from `Service.options` at booking time (stored by value as `text[]`; `null` when the service has no options — see Service) |
-| `status`              | yes      | Lifecycle                                                                                                                                       |
-| `createdAt`           | yes      | Row creation timestamp (UTC)                                                                                                                    |
+| Field                 | Required | Meaning                                                                                                                                                         |
+| --------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `timeSlotId`          | yes      | FK → TimeSlot                                                                                                                                                   |
+| `seats`               | yes      | `>= 1`                                                                                                                                                          |
+| `guestName`           | yes      | Display name                                                                                                                                                    |
+| `guestMessenger`      | yes      | Messenger the guest authenticated with (enum; `telegram` in MVP); notification channel                                                                          |
+| `guestMessengerId`    | yes      | Stable user id in that messenger; indexed together with `guestMessenger` for "my bookings" lookup                                                               |
+| `guestMessengerLogin` | no       | Human-readable messenger handle (e.g. Telegram @username); nullable — not all accounts expose a public login                                                    |
+| `manageToken`         | yes      | Opaque secret embedded in the messenger deep link to the booking management page; **stored hashed** at rest — _not yet: MVP stores it verbatim, see note below_ |
+| `selectedOptions`     | no       | String values chosen from `Service.options` at booking time (stored by value as `text[]`; `null` when the service has no options — see Service)                 |
+| `status`              | yes      | Lifecycle                                                                                                                                                       |
+| `createdAt`           | yes      | Row creation timestamp (UTC)                                                                                                                                    |
 
 Validation: every `selectedOptions` entry must be in the service’s `options`; count must respect `optionsSelectMode`.
+
+**`manageToken` is not hashed yet.** It is generated server-side with 32 bytes of entropy
+(`lib/server/db/booking.ts`) and stored verbatim, because the lookup is a direct match on
+`bookings_manage_token_key` and the demo seed ships known plaintext tokens. Hashing it means
+switching that lookup to a digest and rewriting the seeded rows in the same change — worth doing,
+but it is a migration, not a one-line edit. Until then the token is treated as a
+password-equivalent everywhere else: it never appears in a URL on cancel (it goes in the request
+body), never in the organizer-facing `BookingRecord`, and `/booking/{manageToken}` is `noindex`.
 
 ## Booking statuses
 

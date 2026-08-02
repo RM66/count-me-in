@@ -1,9 +1,8 @@
-import { telegramWidgetPayload } from '@repo/api-contracts'
 import { db, organizers } from '@repo/db'
-import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
+import { validateTelegramWidget } from '@/lib/server/auth/telegram-widget'
 import { issueTicket } from '@/lib/server/auth/ticket'
 
 /**
@@ -23,46 +22,22 @@ import { issueTicket } from '@/lib/server/auth/ticket'
  *       photo_url?, auth_date, hash)
  */
 export async function POST(request: Request) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
-  if (!botToken) {
-    return NextResponse.json({ error: 'Telegram bot not configured' }, { status: 500 })
-  }
-
   const body = await request.json().catch(() => null)
-  const parsed = telegramWidgetPayload.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid Telegram auth data' }, { status: 400 })
-  }
 
-  const widgetData = parsed.data
-
-  // Validate HMAC using the bot token.
-  try {
-    const validator = new AuthDataValidator({ botToken })
-    const dataMap = objectToAuthDataMap(body as Record<string, string>)
-    await validator.validate(dataMap)
-  } catch {
-    return NextResponse.json({ error: 'Telegram auth validation failed' }, { status: 400 })
-  }
-
-  const messengerId = widgetData.id.toString()
-  const displayName = [widgetData.first_name, widgetData.last_name ?? ''].join(' ').trim()
-  // Telegram username as the human-readable login (e.g. @alice). May be absent.
-  const messengerLogin = widgetData.username ? `@${widgetData.username}` : undefined
+  const validated = await validateTelegramWidget(body)
+  if (!validated.ok) return validated.response
+  const identity = validated.value
 
   // Check if an organizer already exists for this identity.
   const existing = await db.query.organizers.findFirst({
-    where: and(eq(organizers.messenger, 'telegram'), eq(organizers.messengerId, messengerId)),
+    where: and(
+      eq(organizers.messenger, identity.messenger),
+      eq(organizers.messengerId, identity.messengerId),
+    ),
     columns: { id: true },
   })
 
-  const ticket = await issueTicket({
-    messenger: 'telegram',
-    messengerId,
-    displayName,
-    photoUrl: widgetData.photo_url,
-    messengerLogin,
-  })
+  const ticket = await issueTicket(identity)
 
   return NextResponse.json({ ticket, organizerExists: !!existing })
 }

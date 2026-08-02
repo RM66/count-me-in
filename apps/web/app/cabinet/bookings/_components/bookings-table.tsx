@@ -286,7 +286,7 @@ export function BookingsTable({
             }
           />
 
-          <div className="relative w-full sm:max-w-xs">
+          <div className="relative w-full sm:w-64">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}

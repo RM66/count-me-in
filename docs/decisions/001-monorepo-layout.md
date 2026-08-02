@@ -92,9 +92,12 @@ the rest was deleted:
   logic must be re-homed when `mock-data.ts` is dismantled, not resurrected as
   `lib/domain/`.
 
-Prefer `packages/api-contracts` for those rules when they land — it is
-isomorphic, dependency-light and already entity-sliced (`service.ts`,
-`time-slot.ts`), so it needs no new app-local layer.
+**Resolved 2026-08-02.** Those rules now live in `packages/api-contracts`
+(`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice` in `time-slot.ts`;
+`effectiveLocation` / `effectiveContact` in `service.ts`) and `mock-data.ts` is
+gone — the guest section reads Postgres. No app-local rules layer was
+resurrected, as intended: the package is isomorphic, dependency-light and already
+entity-sliced, so the guest pages, the cabinet and the worker all import one copy.
 
 Also in this pass: `timezone.ts` became `constants/timezones.ts` (a data table,
 not a helper), and `image.ts` moved to `lib/api/image.ts` next to the two upload
@@ -118,9 +121,11 @@ its own api/helpers/constants). Rejected for now because it cuts across the
 server/client boundary, which is the only _compile-time enforced_ invariant here
 (`import 'server-only'` / `'use client'`) — one folder per entity would mix
 both, and a barrel re-exporting them would silently pull DB code into a client
-bundle. It is also premature: `lib/` is ~1300 LOC and two of the four entities
-(`booking`, `timeSlot`) have almost no code yet. Revisit once booking + slots
-ship and `lib/mock-data.ts` is gone; the entity-sliced `lib/api/` above is a
+bundle. The trigger named here — "revisit once booking + slots ship and
+`lib/mock-data.ts` is gone" — was reached on 2026-08-02, and the answer is still
+no: the server/client split remains the only compile-time enforced invariant, and
+`lib/api/booking.ts` beside `lib/server/db/booking.ts` reads clearly without a
+folder that would have to hold both. The entity-sliced `lib/api/` above is a
 strict subset of that layout, so it is not wasted work if we go vertical later.
 
 Shared lint/tsconfig come from the Turborepo starter as `eslint-config` + `typescript-config` (instead of a single `packages/config`).

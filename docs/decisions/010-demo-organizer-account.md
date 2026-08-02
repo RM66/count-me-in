@@ -8,8 +8,10 @@
 
 The landing page advertises a live example (`See a live example`, `Browse an example page`,
 and the `Examples` nav item). Until now those links pointed at `/studio-lumen`, a page rendered
-entirely from [`apps/web/lib/mock-data.ts`](../../apps/web/lib/mock-data.ts) — a static module
-with a hardcoded organizer, three services, ten slots and five bookings.
+entirely from `apps/web/lib/mock-data.ts` — a static module with a hardcoded organizer, three
+services, ten slots and five bookings. (That module was deleted on 2026-08-02, once the guest
+section moved to Postgres; it is described here in the past tense because it is the context this
+decision was taken in.)
 
 Two problems with keeping the example in the mock:
 
@@ -52,6 +54,8 @@ demo, read-only.
 6. **Keep `mock-data.ts` for now.** Pages migrate off it as their endpoints land; the demo seed is
    an independent artifact and is not blocked on that migration. The mock now imports the shared
    demo id/slug/service-ids so the two cannot disagree.
+   — _Completed 2026-08-02: the guest section moved to Postgres and the module was deleted. The
+   seed is now the only copy of the sample content._
 
 7. **Refresh the seed on a schedule.** Slot times are stored relative to seed time and rebuilt by
    an idempotent `seedDemo()`.
@@ -180,23 +184,26 @@ indistinguishable from real data at read time, which is the entire point.
 
 ### Still to do
 
-- Guards on bookings endpoints as they are implemented, plus scoping their reads through
-  `resolveCabinetOrganizerId()` so the demo cabinet shows demo data once those pages leave
-  `mock-data.ts`. **Services are done:** `POST /api/services`,
-  `PUT|DELETE /api/services/[id]` and `POST /api/organizers/me/service-photo` all reject the demo
-  id, and the cabinet's services list / edit pages read through `resolveCabinetOrganizerId()`.
-  **Slots are done:** `POST /api/slots` and `PUT|DELETE /api/slots/[id]` all reject the demo id,
-  and `/cabinet/slots` reads through `resolveCabinetOrganizerId()`.
+- Organizer-side booking cancel from the cabinet — the last write path without a guard.
+  Everything else is covered: **services** (`POST /api/services`, `PUT|DELETE /api/services/[id]`,
+  `POST /api/organizers/me/service-photo`), **slots** (`POST /api/slots`,
+  `PUT|DELETE /api/slots/[id]`) and, since 2026-08-02, **guest booking + cancel**
+  (`POST /api/bookings`, `POST /api/bookings/cancel`) all reject the demo id — the guest paths via
+  `assertNotDemo()` inside the booking transaction, since they are reached without a session.
+  Every cabinet page reads through `resolveCabinetOrganizerId()`.
 - Recurring `pg-boss` job calling `seedDemo()`; notification handlers skipping demo ids.
 - A test asserting `demo` is rejected by the `slug` schema.
 - A test asserting anonymous `PUT /api/organizers/me` answers `403 DEMO_READ_ONLY`.
+- A test asserting `POST /api/bookings` against a demo slot answers `403 DEMO_READ_ONLY` and leaves
+  `bookedCount` untouched.
 
 ## Alternatives considered
 
 ### Keep the demo in `mock-data.ts`
 
 **Rejected.** Maintains a parallel data path that no real traffic exercises, duplicates the Zod
-contracts, and — as observed — expires without anyone noticing.
+contracts, and — as observed — expires without anyone noticing. The module was deleted outright on
+2026-08-02, so this alternative is now closed rather than merely declined.
 
 ### `organizers.is_demo` boolean column
 

@@ -1,3 +1,4 @@
+import { effectiveContact, effectiveLocation, seatsLeft, slotPrice } from '@repo/api-contracts'
 import { ArrowLeft, CalendarX, Clock, MapPin, Tag, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
@@ -6,31 +7,46 @@ import { notFound } from 'next/navigation'
 
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
+import { ContactLink } from '@/components/contact-link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
-import {
-  formatDate,
-  formatTime,
-  getService,
-  getSlotsForService,
-  organizer,
-  seatsLeft,
-  serviceLocation,
-  slotPrice,
-} from '@/lib/mock-data'
+import { formatDate, formatTime } from '@/lib/helpers/date'
+import { getPublicOrganizerBySlug } from '@/lib/server/db/organizer'
+import { getPublicService } from '@/lib/server/db/service'
+import { listUpcomingSlotsForServices } from '@/lib/server/db/time-slot'
+
+/**
+ * Resolve the `/{orgSlug}/{serviceId}` pair into an organizer and their service.
+ *
+ * Shared by the page and its metadata because both need the same two rows and
+ * the same `404` rule: the service must belong to the organizer in the URL, or
+ * one organizer's service would render under another's name.
+ */
+async function resolveService(orgSlug: string, serviceId: string) {
+  const organizer = await getPublicOrganizerBySlug(orgSlug)
+  if (!organizer) return null
+
+  const service = await getPublicService(organizer.id, serviceId)
+  if (!service) return null
+
+  return { organizer, service }
+}
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ serviceId: string }>
+  params: Promise<{ orgSlug: string; serviceId: string }>
 }): Promise<Metadata> {
-  const { serviceId } = await params
-  const service = getService(serviceId)
+  const { orgSlug, serviceId } = await params
+  const resolved = await resolveService(orgSlug, serviceId)
+
+  if (!resolved) return { title: 'Service not found' }
+
   return {
-    title: service ? `${service.title} — ${organizer.name}` : 'Service',
-    description: service?.description,
+    title: `${resolved.service.title} — ${resolved.organizer.name}`,
+    description: resolved.service.description ?? undefined,
   }
 }
 
@@ -40,20 +56,26 @@ export default async function ServicePage({
   params: Promise<{ orgSlug: string; serviceId: string }>
 }) {
   const { orgSlug, serviceId } = await params
-  if (orgSlug !== organizer.slug) notFound()
 
-  const service = getService(serviceId)
-  if (!service) notFound()
+  const resolved = await resolveService(orgSlug, serviceId)
+  if (!resolved) notFound()
+  const { organizer, service } = resolved
 
-  const slots = getSlotsForService(serviceId)
-  const hasOpen = slots.some((s) => seatsLeft(s) > 0)
-  const location = serviceLocation(service)
+  const slots = await listUpcomingSlotsForServices([service.id])
+
+  const hasOpen = slots.some((slot) => seatsLeft(slot) > 0)
+
+  // A service may override its organizer's location and contact; the fallback
+  // rule lives in api-contracts because the worker and calendar links need it
+  // too (docs/domain.md).
+  const location = effectiveLocation(service, organizer)
+  const contact = effectiveContact(service, organizer)
 
   return (
     <>
       <div className="flex flex-col gap-5">
         <Link
-          href={`/${orgSlug}`}
+          href={`/${organizer.slug}`}
           className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -92,8 +114,13 @@ export default async function ServicePage({
                 {location}
               </span>
             ) : null}
+            {contact ? <ContactLink contact={contact} className="hover:text-foreground" /> : null}
           </div>
-          <p className="leading-relaxed text-muted-foreground text-pretty">{service.description}</p>
+          {service.description ? (
+            <p className="leading-relaxed text-muted-foreground text-pretty">
+              {service.description}
+            </p>
+          ) : null}
           {service.options?.length ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">
@@ -134,13 +161,17 @@ export default async function ServicePage({
                   >
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">
-                        {formatDate(slot.startsAt)} · {formatTime(slot.startsAt)}
+                        {formatDate(slot.startsAt, organizer.timezone)} ·{' '}
+                        {formatTime(slot.startsAt, organizer.timezone)}
                       </span>
-                      <span className="text-xs text-muted-foreground">{slotPrice(slot)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {slotPrice(slot, service)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <SeatsBadge slot={slot} />
                       <BookingDialog
+                        organizer={organizer}
                         service={service}
                         slots={slots}
                         preselectedSlotId={slot.id}
@@ -162,6 +193,7 @@ export default async function ServicePage({
       <div className="sticky bottom-4 mt-6">
         <div className="rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
           <BookingDialog
+            organizer={organizer}
             service={service}
             slots={slots}
             trigger={

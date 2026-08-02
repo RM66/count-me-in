@@ -2,7 +2,10 @@ import { z } from 'zod'
 
 import { bookingStatusEnum, messengerEnum } from './enums'
 import { selectedOptionsShape } from './options'
+import { publicOrganizer } from './organizer'
 import { authTicket, displayName, manageToken, seats, serviceId, uuid } from './primitives'
+import { serviceRecord } from './service'
+import { timeSlotRecord } from './time-slot'
 
 /**
  * Public booking request (ADR-008). Guest identity is derived from the `guestTicket`
@@ -24,6 +27,16 @@ export type CreateBookingInput = z.infer<typeof createBookingInput>
 /** Cancel via the messenger deep-link token. */
 export const cancelBookingByTokenInput = z.object({ manageToken })
 export type CancelBookingByTokenInput = z.infer<typeof cancelBookingByTokenInput>
+
+/**
+ * Look up the bookings of a messenger identity (ADR-002, entry path 2).
+ *
+ * The guest re-authenticates with the login widget and the identity is read
+ * from the ticket server-side — a raw `messengerId` in the body would let
+ * anyone enumerate another guest's bookings.
+ */
+export const lookupBookingsInput = z.object({ guestTicket: authTicket })
+export type LookupBookingsInput = z.infer<typeof lookupBookingsInput>
 
 /** Organizer cancels a booking of their own service from the cabinet. */
 export const cancelBookingByOrganizerInput = z.object({ bookingId: uuid })
@@ -52,3 +65,29 @@ export const bookingRecord = z.object({
   createdAt: z.string(),
 })
 export type BookingRecord = z.infer<typeof bookingRecord>
+
+/**
+ * A booking as the **guest** sees it — their own reservation, so unlike
+ * {@link bookingRecord} it *does* carry `manageToken`: that token is the guest's
+ * own key to `/booking/{manageToken}`, and the whole point of returning it is
+ * that the confirmation screen and the lookup list can link there.
+ *
+ * The slot and service travel with it because a booking is meaningless without
+ * them (Booking → TimeSlot → Service, docs/domain.md) and the guest has no
+ * cabinet lists to join against. `organizer` supplies the timezone every instant
+ * is rendered in, plus the name to link back to.
+ */
+export const guestBooking = z.object({
+  id: uuid,
+  status: bookingStatusEnum,
+  seats,
+  guestName: displayName,
+  selectedOptions: z.array(z.string()).nullable(),
+  createdAt: z.string(),
+  /** The guest's key to the management page. Never sent to the organizer. */
+  manageToken,
+  slot: timeSlotRecord,
+  service: serviceRecord,
+  organizer: publicOrganizer,
+})
+export type GuestBooking = z.infer<typeof guestBooking>

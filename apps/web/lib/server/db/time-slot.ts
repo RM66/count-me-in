@@ -72,6 +72,33 @@ export async function listSlots(
 }
 
 /**
+ * Upcoming slots for the given services, earliest first.
+ *
+ * The **public** read: scoped by service id rather than by organizer, because
+ * the guest pages have already resolved the organizer from the slug and only
+ * ever ask about services they just read from that organizer. One function
+ * serves both surfaces — the service page passes a single id, the organizer
+ * page passes every service so each card can show its next open session without
+ * a query per card.
+ *
+ * Past slots are dropped unconditionally: a guest cannot book a session that
+ * has started, so showing it would only offer a disabled row.
+ */
+export async function listUpcomingSlotsForServices(
+  serviceIds: string[],
+): Promise<TimeSlotRecord[]> {
+  if (serviceIds.length === 0) return []
+
+  const rows = await db
+    .select()
+    .from(timeSlots)
+    .where(and(inArray(timeSlots.serviceId, serviceIds), gte(timeSlots.startsAt, new Date())))
+    .orderBy(asc(timeSlots.startsAt))
+
+  return rows.map(toTimeSlotRecord)
+}
+
+/**
  * A single slot **scoped to its owner** — returns `null` when the id does not
  * exist *or* hangs off another organizer's service, so callers cannot leak a
  * foreign slot by guessing ids.

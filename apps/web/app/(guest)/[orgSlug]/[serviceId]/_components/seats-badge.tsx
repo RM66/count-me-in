@@ -1,7 +1,16 @@
-import { Badge } from '@/components/ui/badge'
-import { fillLabel, seatsLeft, type TimeSlot } from '@/lib/mock-data'
+import type { SlotOccupancy } from '@repo/api-contracts'
+import { fillLabel, seatsLeft } from '@repo/api-contracts'
 
-export function SeatsBadge({ slot }: { slot: TimeSlot }) {
+import { Badge } from '@/components/ui/badge'
+
+/**
+ * Availability badge for one slot.
+ *
+ * Takes `SlotOccupancy` rather than a full slot record: capacity and
+ * `bookedCount` are all it reads, so it renders equally well for a slot DTO or a
+ * row straight from Postgres.
+ */
+export function SeatsBadge({ slot }: { slot: SlotOccupancy }) {
   const left = seatsLeft(slot)
   const status = fillLabel(slot)
 

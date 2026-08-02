@@ -67,8 +67,13 @@ does not, it cannot.
     handlers must not run SQL inline — a mutation that lives in `route.ts`
     cannot be reused by the worker or tested without HTTP.
   - `http.ts` — route-handler plumbing: `requireWritableOrganizer()` (session +
-    demo guard) and `parseJsonBody()` (Zod + `400`). Both return a
-    `Guarded<T>` discriminated union — check `.ok`, never truthiness.
+    demo guard), `requireGuestIdentity()` (consumes an auth ticket) and
+    `parseJsonBody()` (Zod + `400`). All return a `Guarded<T>` discriminated
+    union — check `.ok`, never truthiness. **Request-level only: it must not
+    import from `db/`.** Turning an entity's failure into a status code needs to
+    know the entity, so that mapping lives next to the routes it serves (see
+    `app/api/bookings/_error-response.ts`) — otherwise generic plumbing has to be
+    edited every time an entity grows a new error.
   - `storage/` — Cloudflare R2 orchestration (avatar, service-photo, media ownership)
   - `demo.ts`, `redis.ts` — cross-cutting policy guard / infra singleton
 - `helpers/` — pure presentation utilities: formatting and adapters
@@ -85,9 +90,16 @@ imported it. Entity invariants live in the layer that enforces them
 (`lib/server/db/` for persistence) or in `packages/api-contracts` when both
 client and server need them. The slot calculations (`seatsLeft`, `fillLabel`,
 `slotEnd`, `slotPrice`) and the location/contact override (`effectiveLocation`,
-`effectiveContact`) moved there 2026-08-01; `lib/mock-data.ts` now only re-binds
-them to the mock organizer. Never add a new app-local rules layer — see
-[ADR-001](docs/decisions/001-monorepo-layout.md).
+`effectiveContact`) live there, and every surface — guest pages, cabinet, worker
+— imports them from `@repo/api-contracts`. Never add a new app-local rules layer
+— see [ADR-001](docs/decisions/001-monorepo-layout.md).
+
+**There is no mock data.** `lib/mock-data.ts` was deleted 2026-08-02 when the
+guest section moved to Postgres; every page in `app/` now reads the database. The
+sample content it held is the **demo seed** (`packages/db/src/seed/`), which is
+real rows behind `/demo` (ADR-010) and therefore exercises the same queries as
+any other organizer. Do not reintroduce a fixtures module: a page that renders
+from a hand-written object is a page whose query is never tested.
 
 **Wall-clock time is a contract, not a formatting detail.** A slot is stored as
 an instant (`timestamptz`) but authored as "the 25th at 07:00" in the
@@ -153,5 +165,7 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 - Optional display `contact` on `Organizer` and `Service` (same override rule); stored as one plain string, rendered via `detectContactKind` + `<ContactLink />` (tel:/mailto:/https:/plain) — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is a code constant (`DEMO_ORGANIZER_ID` in `packages/api-contracts`), not a DB flag. Every write path must reject it (`rejectDemoWrite` / `assertNotDemo` in `apps/web/lib/server/demo.ts`), including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. There is no demo session/cookie — "demo" is resolved per request via `resolveCabinetOrganizerId()`. Consequence: a cabinet route does **not** imply an authenticated organizer, so scope every cabinet read through that helper and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- `apps/web/lib/mock-data.ts` is temporary scaffolding for pages not yet wired to the API; drop each import as its endpoint lands, and delete the file once the last one goes. It holds **fixtures only** — the domain rules it used to own now live in `packages/api-contracts`, so nothing of value dies with it. It is **not** the demo data source — that is the DB seed in `packages/db/src/seed/`.
+- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId` (invariant 8). `requireGuestIdentity()` in `apps/web/lib/server/http.ts` is the only way it enters a write; the ticket is single-use, so a replayed booking fails instead of double-booking.
+- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `lib/server/db/booking.ts`, returned only in the `GuestBooking` DTO (never in `BookingRecord`, which the cabinet sees), and passed in a **request body** rather than a URL on cancel so it stays out of logs and `Referer` headers.
+- Seats move only through the atomic reserve — a single conditional `UPDATE … WHERE bookedCount + :seats <= capacity` inside the booking transaction (invariant 2). Never read `bookedCount`, check it in JS, then write it back.
 - Do not expand scope without ADR/roadmap update.

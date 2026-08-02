@@ -13,9 +13,11 @@
  * - cabinet: profile update ✓, avatar upload ✓, service create/update/delete ✓,
  *   service cover upload ✓, slot create/update/delete ✓, organizer-side booking
  *   cancel
- * - guest: create booking, cancel booking by `manageToken` — these mutate
- *   `bookedCount` on a demo slot and would let anyone vandalise the public
- *   example page
+ * - guest: create booking ✓, cancel booking by `manageToken` ✓ — both go through
+ *   {@link assertNotDemo} *inside* the booking transaction rather than a route
+ *   guard, because they carry no session: the organizer is only known once the
+ *   slot has been joined to its service. Without them anyone could move
+ *   `bookedCount` and vandalise the public example page.
  * - worker: skip notification jobs entirely (see `isDemoOrganizerId`)
  */
 

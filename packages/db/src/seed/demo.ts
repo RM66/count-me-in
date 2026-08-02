@@ -1,14 +1,15 @@
 /**
  * Demo organizer seed data (ADR-010).
  *
- * Content ported from `apps/web/lib/mock-data.ts` so the public example page is
- * backed by real rows and exercises the same queries as any other organizer.
+ * Originally ported from `apps/web/lib/mock-data.ts` (deleted 2026-08-02) so the
+ * public example page is backed by real rows and exercises the same queries as
+ * any other organizer. This is now the **only** copy of the sample content.
  *
  * Two rules keep this seed usable long-term:
  *
  * 1. **Deterministic ids.** Re-seeding replaces rows in place instead of
  *    accumulating duplicates, and demo links stay stable.
- * 2. **Slot times relative to seed time**, never absolute. The mock pinned
+ * 2. **Slot times relative to seed time**, never absolute. The old mock pinned
  *    `DEMO_NOW` to a fixed date, so every demo slot silently drifted into the
  *    past. Offsets are resolved against `now` at seed/refresh time instead.
  */

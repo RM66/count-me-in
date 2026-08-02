@@ -15,7 +15,7 @@ Auth.js sessions are for **organizers only** (messenger-based — see ADR-008).
 
 **Cancel is in MVP, via a booking management page** (no visitor account). The page shows the booking and a Cancel button, and is reachable two ways:
 
-1. **Deep link** in the messenger notification — `https://countmein.group/b/{manageToken}`. The link was delivered to the guest's verified messenger account, which is itself proof of ownership. `manageToken` is an opaque secret stored **hashed** on the booking.
+1. **Deep link** in the messenger notification — `https://countmein.group/booking/{manageToken}` (the route was renamed from `/b/` by [ADR-009](009-reserved-slugs-cabinet-route.md)). The link was delivered to the guest's verified messenger account, which is itself proof of ownership. `manageToken` is an opaque secret intended to be stored **hashed** on the booking — MVP stores it verbatim; see the note in [domain.md](../domain.md).
 2. **Messenger lookup** — the guest re-authenticates with the same messenger account (widget) and sees the bookings for that `(guestMessenger, guestMessengerId)`. Useful if the original message is lost.
 
 Organizers can also cancel from the web cabinet. Cancel sets `cancelled` and decrements `bookedCount` in the same transaction.

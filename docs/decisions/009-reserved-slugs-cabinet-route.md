@@ -121,6 +121,6 @@ hyphens, but does **not** reserve any specific values.
 ## Related
 
 - [ADR-001: Monorepo layout](001-monorepo-layout.md) — Next.js app structure.
-- [ADR-002: Guest booking without Auth.js accounts](002-guest-booking.md) — `/b/{manageToken}` route.
+- [ADR-002: Guest booking without Auth.js accounts](002-guest-booking.md) — the booking management route this ADR renamed to `/booking/{manageToken}`.
 - [Domain model](../domain.md) — `Organizer.slug` as the public identifier.
 - [Pages / routes](../pages.md) — Full site map.

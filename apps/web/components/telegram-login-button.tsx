@@ -1,5 +1,6 @@
 'use client'
 
+import type { GuestTicketResponse } from '@repo/api-contracts'
 import { useEffect, useRef } from 'react'
 
 interface TelegramUser {
@@ -32,16 +33,24 @@ interface TelegramLoginButtonProps {
 
   // ── Signup mode ──────────────────────────────────────────────────────────────
   /**
-   * Set to `'signup'` to run the ticket-issuance flow instead of direct sign-in.
-   * The component will POST to /api/auth/telegram-signup and call `onTicketIssued`.
+   * Set to `'signup'` to run the ticket-issuance flow instead of direct sign-in,
+   * or `'guest'` for the booking flow (no organizer account, no session).
    */
-  mode?: 'login' | 'signup'
+  mode?: 'login' | 'signup' | 'guest'
   /**
    * Called after the server validates the widget payload and issues a ticket.
    * `organizerExists` is true if the identity is already registered (login path).
    * Only used in signup mode.
    */
   onTicketIssued?: (ticket: string, organizerExists: boolean) => void
+
+  // ── Guest mode ───────────────────────────────────────────────────────────────
+  /**
+   * Called with the guest ticket and the identity behind it (ADR-002).
+   * Only used in guest mode — the caller spends the ticket on a booking or a
+   * lookup; it is single-use and short-lived, so it should not be held.
+   */
+  onGuestTicket?: (ticket: GuestTicketResponse) => void
 }
 
 /**
@@ -58,6 +67,11 @@ interface TelegramLoginButtonProps {
  * **Signup mode**: calls `onTicketIssued(ticket, organizerExists)` so the page
  * can either proceed to profile creation or sign in directly.
  *
+ * **Guest mode**: posts to `/api/auth/telegram-guest` and calls
+ * `onGuestTicket` — the booking flow (ADR-002). Deliberately a different
+ * endpoint from the organizer modes: a guest gets no session, and its ticket
+ * cannot be redeemed as a sign-in.
+ *
  * @see https://core.telegram.org/widgets/login
  */
 export function TelegramLoginButton({
@@ -71,6 +85,7 @@ export function TelegramLoginButton({
   onSignupRequired,
   mode = 'login',
   onTicketIssued,
+  onGuestTicket,
 }: TelegramLoginButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbackName = useRef(`onTelegramAuth_${Math.random().toString(36).substring(7)}`)
@@ -83,7 +98,24 @@ export function TelegramLoginButton({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any)[callback] = async (user: TelegramUser) => {
-      if (mode === 'signup') {
+      if (mode === 'guest') {
+        // ── Guest flow: validate via the guest API, hand the ticket back ──────
+        try {
+          const response = await fetch('/api/auth/telegram-guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(user),
+          })
+          const data = (await response.json()) as GuestTicketResponse & { error?: string }
+          if (!response.ok || !data.ticket) {
+            console.error('[TelegramLoginButton] Guest ticket error:', data.error)
+            return
+          }
+          onGuestTicket?.(data)
+        } catch (err) {
+          console.error('[TelegramLoginButton] Guest fetch error:', err)
+        }
+      } else if (mode === 'signup') {
         // ── Signup flow: validate via our API, get a ticket ──────────────────
         try {
           const response = await fetch('/api/auth/telegram-signup', {
@@ -174,6 +206,7 @@ export function TelegramLoginButton({
     mode,
     onSignupRequired,
     onTicketIssued,
+    onGuestTicket,
   ])
 
   return <div ref={containerRef} className={className} />
