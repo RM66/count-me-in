@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { bookingStatusEnum, messengerEnum } from './enums'
 import { selectedOptionsShape } from './options'
 import { authTicket, displayName, manageToken, seats, serviceId, uuid } from './primitives'
 
@@ -27,3 +28,27 @@ export type CancelBookingByTokenInput = z.infer<typeof cancelBookingByTokenInput
 /** Organizer cancels a booking of their own service from the cabinet. */
 export const cancelBookingByOrganizerInput = z.object({ bookingId: uuid })
 export type CancelBookingByOrganizerInput = z.infer<typeof cancelBookingByOrganizerInput>
+
+/**
+ * A booking as the **organizer's cabinet** sees it. Mirrors the `bookings`
+ * table with dates normalized to ISO strings so it can cross the server/client
+ * boundary.
+ *
+ * `manageToken` is deliberately absent: it is the guest's cancellation secret
+ * (the messenger deep-link), and the cabinet must never see or leak it. A
+ * booking reaches its service transitively (Booking → TimeSlot → Service, see
+ * docs/domain.md) — there is no `serviceId` here by design.
+ */
+export const bookingRecord = z.object({
+  id: uuid,
+  timeSlotId: uuid,
+  status: bookingStatusEnum,
+  seats,
+  guestName: displayName,
+  guestMessenger: messengerEnum,
+  guestMessengerId: z.string(),
+  guestMessengerLogin: z.string().nullable(),
+  selectedOptions: z.array(z.string()).nullable(),
+  createdAt: z.string(),
+})
+export type BookingRecord = z.infer<typeof bookingRecord>

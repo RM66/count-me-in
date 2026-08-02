@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { countConfirmedBookings } from '@/lib/server/db/booking'
 import { countUpcomingSlots, listServices } from '@/lib/server/db/service'
 import { resolveCabinetOrganizerId } from '@/lib/server/demo'
 
@@ -21,7 +22,11 @@ export default async function ServicesPage() {
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
 
   const services = await listServices(organizerId)
-  const slotCounts = await countUpcomingSlots(services.map((service) => service.id))
+  const serviceIds = services.map((service) => service.id)
+  const [slotCounts, bookingCounts] = await Promise.all([
+    countUpcomingSlots(serviceIds),
+    countConfirmedBookings(serviceIds),
+  ])
 
   return (
     <>
@@ -72,6 +77,7 @@ export default async function ServicesPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {services.map((svc) => {
               const slotCount = slotCounts[svc.id] ?? 0
+              const bookingCount = bookingCounts[svc.id] ?? 0
               return (
                 <Card key={svc.id} className="overflow-hidden pt-0">
                   <div className="relative aspect-video w-full">
@@ -106,16 +112,25 @@ export default async function ServicesPage() {
                   </CardContent>
                   <CardFooter className="justify-between">
                     {/*
-                      Links into the slots page filtered by this service. Kept a
-                      plain link rather than a button: it is navigation, and the
-                      filter lives in the URL so it stays shareable.
+                      Links into the slots / bookings pages filtered by this
+                      service. Kept plain links rather than buttons: they are
+                      navigation, and the filter lives in the URL so it stays
+                      shareable.
                     */}
-                    <Link
-                      href={`/cabinet/slots?service=${svc.id}`}
-                      className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                    >
-                      {slotCount} upcoming {slotCount === 1 ? 'slot' : 'slots'}
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <Link
+                        href={`/cabinet/slots?service=${svc.id}`}
+                        className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                      >
+                        {slotCount} upcoming {slotCount === 1 ? 'slot' : 'slots'}
+                      </Link>
+                      <Link
+                        href={`/cabinet/bookings?service=${svc.id}`}
+                        className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                      >
+                        {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'}
+                      </Link>
+                    </div>
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/cabinet/services/${svc.id}`}>
                         <PencilIcon data-icon="inline-start" />
