@@ -71,8 +71,15 @@ export function useSlotForm({
   const router = useRouter()
   const isEdit = mode === 'edit'
 
-  // The schema closes over the timezone, so it must not be rebuilt per render.
-  const resolver = useMemo(() => standardSchemaResolver(timeSlotFormSchema(timezone)), [timezone])
+  // The schema closes over the timezone and the slot's own `startsAt`, so it
+  // must not be rebuilt per render. Passing the original instant is what lets
+  // an edit that leaves the date untouched stay submittable even when the
+  // slot is already in the past (see `timeSlotFormSchema`).
+  const resolver = useMemo(
+    () =>
+      standardSchemaResolver(timeSlotFormSchema(timezone, { originalStartsAt: slot?.startsAt })),
+    [timezone, slot?.startsAt],
+  )
 
   // Creating while the list is filtered by a service should offer that service,
   // not the first one the organizer happens to own.

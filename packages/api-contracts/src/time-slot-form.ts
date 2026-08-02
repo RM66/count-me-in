@@ -50,8 +50,18 @@ const timeSlotFormFields = {
  * The past-start rule is re-checked here, after the fold, so the message lands
  * on the date field instead of arriving as a toast a round trip later. The API
  * enforces the same rule — this is the convenience copy, not the gate.
+ *
+ * `originalStartsAt` mirrors `updateTimeSlotInput`'s own escape hatch: an edit
+ * that leaves the instant untouched must stay submittable however far in the
+ * past it already is, since the alternative is trapping the organizer with a
+ * slot they can only view, never save. The check only ever waives the rule
+ * for the one value the slot already had — moving it to any other past moment
+ * still fails.
  */
-export function timeSlotFormSchema(timeZone: string) {
+export function timeSlotFormSchema(timeZone: string, options: { originalStartsAt?: string } = {}) {
+  const { originalStartsAt } = options
+  const originalMs = originalStartsAt ? new Date(originalStartsAt).getTime() : undefined
+
   return z
     .object(timeSlotFormFields)
     .transform(({ date, time, ...rest }) => {
@@ -66,10 +76,10 @@ export function timeSlotFormSchema(timeZone: string) {
         ),
       }
     })
-    .refine(({ startsAt }) => isAcceptableSlotStart(startsAt), {
-      path: ['date'],
-      message: SLOT_START_IN_PAST_MESSAGE,
-    })
+    .refine(
+      ({ startsAt }) => startsAt.getTime() === originalMs || isAcceptableSlotStart(startsAt),
+      { path: ['date'], message: SLOT_START_IN_PAST_MESSAGE },
+    )
 }
 
 type TimeSlotFormSchema = ReturnType<typeof timeSlotFormSchema>
@@ -149,6 +159,11 @@ function nextDateForTime(time: string, timeZone: string, now: Date): string {
  * default date: two slots at the same instant would be a copy nobody wants, and
  * the original's date is often already past.
  *
+ * Editing never re-dates, even when the stored slot is already in the past:
+ * the dialog must show the organizer what is actually saved, not a value it
+ * invented. `timeSlotFormSchema`'s `originalStartsAt` is what lets that
+ * untouched-but-past value still be submitted.
+ *
  * `price` stays empty for a new slot: an empty override means "use the service
  * default", so pre-filling it would silently freeze today's price onto the slot.
  */
@@ -167,16 +182,14 @@ export function toTimeSlotFormValues(
 
   if (slot) {
     const { date, time } = instantToWallClockInputs(slot.startsAt, timeZone)
-    const isStale = !isAcceptableSlotStart(new Date(slot.startsAt), now)
-    // Duplicating always re-dates; editing only rescues a slot whose stored
-    // date is already past, which would otherwise fail validation untouched.
-    const reDate = intent === 'duplicate' || isStale
 
     return {
       serviceId: slot.serviceId,
-      // Keyed off the kept time of day, not simply "today": duplicating an
-      // 07:00 session at 18:00 must land tomorrow, not back in the past.
-      date: reDate ? nextDateForTime(time, timeZone, now) : date,
+      // Duplicating always re-dates onto the next occurrence of the kept time
+      // of day — not simply "today", since an 07:00 session duplicated at
+      // 18:00 must land tomorrow, not back in the past. Editing keeps the
+      // slot's own date untouched, past or not.
+      date: intent === 'duplicate' ? nextDateForTime(time, timeZone, now) : date,
       time,
       durationMinutes: String(slot.durationMinutes),
       capacity: String(slot.capacity),
