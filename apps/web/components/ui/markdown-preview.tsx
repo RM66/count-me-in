@@ -4,13 +4,14 @@ import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { type ComponentProps, useEffect, useState } from 'react'
 
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 import '@uiw/react-markdown-preview/markdown.css'
 
 const MarkdownPreviewImpl = dynamic(
   () => import('@uiw/react-markdown-preview').then((mod) => mod.default),
-  { ssr: false },
+  { ssr: false, loading: () => <Skeleton className="px-4">Loading...</Skeleton> },
 )
 
 type MarkdownPreviewProps = ComponentProps<typeof MarkdownPreviewImpl> & {
