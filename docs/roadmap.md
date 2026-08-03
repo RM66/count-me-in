@@ -2,24 +2,24 @@
 
 Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md). Domain: [domain.md](domain.md).
 
-**Product host:** `https://countmein.group` — public pages at `/{orgSlug}`.
+**Host:** `https://countmein.group` — public pages at `/{orgSlug}`.
 
 ## MVP
 
 - Turborepo: `apps/web`, `apps/worker`, packages (`db`, `api-contracts`, `storage`, `eslint-config`, `typescript-config`).
 - `apps/web`: landing + public booking + **organizer cabinet** + HTTP API.
-- Organizer flow: messenger login widget → notifications in that messenger → **deep link** opens cabinet in WebView/browser.
+- Organizer flow: messenger login widget → notifications → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
 - Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
-- Messenger notifications via `pg-boss` + worker; Telegram first; `messenger` on organizer and booking.
-- Image uploads (organizer avatar, service photo) via Cloudflare R2, downscaled in the browser to 512×512 WebP before upload ([ADR-007](decisions/007-cloudflare-r2.md)).
-- Read-only demo organizer seeded at `/demo`, linked from the landing page; write paths reject it and the worker never notifies it ([ADR-010](decisions/010-demo-organizer-account.md)).
+- Messenger notifications via `pg-boss` + worker; Telegram first.
+- Image uploads (avatar, service photo) via Cloudflare R2, browser-downscaled to 512×512 WebP ([ADR-007](decisions/007-cloudflare-r2.md)).
+- Read-only demo organizer at `/demo`, linked from landing; writes reject it, worker never notifies ([ADR-010](decisions/010-demo-organizer-account.md)).
 - Observability: Sentry, PostHog (basic).
 - Docs: AGENTS.md + `docs/`.
 
-Explicitly **not** in MVP:
+**Not in MVP:**
 
-- Separate organizer native/Capacitor app (`apps/organizer`)
+- Separate organizer native/Capacitor app
 - Payment processing (prices are labels only)
 - WebSockets / live seat counters
 - Visitor Auth.js accounts
@@ -32,11 +32,11 @@ Explicitly **not** in MVP:
 ## Phase 2
 
 - Reminder jobs; more messenger providers.
-- Optional Capacitor organizer shell if web-in-messenger is not enough ([ADR-006](decisions/006-organizer-capacitor.md)).
-- Image variants / CDN resize if needed (browser-side downscaling already landed in MVP — [ADR-007](decisions/007-cloudflare-r2.md)).
-- Cleanup of superseded R2 objects on avatar change (deferred: versioned keys + small objects make this cheap to postpone).
+- Optional Capacitor organizer shell if web-in-messenger insufficient ([ADR-006](decisions/006-organizer-capacitor.md)).
+- Image variants / CDN resize if needed (browser-side downscaling already in MVP — [ADR-007](decisions/007-cloudflare-r2.md)).
+- Cleanup of superseded R2 objects on avatar change (deferred: versioned keys + small objects).
 - Waitlist / notify-on-free-seat; realtime capacity if demand justifies.
-- Occupancy analytics dashboard in cabinet: fill rate by time (hour-of-day / day-of-week heatmap), per service and slot, to reveal peak vs. slow times.
+- Occupancy analytics dashboard: fill-rate heatmap by hour/day, per service/slot.
 
 ## Phase 3+
 

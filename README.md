@@ -2,6 +2,8 @@
 
 Online booking for group events — `https://countmein.group`
 
+Organizers publish services with time slots and capacity; guests book on a public page; organizers manage a web cabinet opened from messenger notification links.
+
 ## Apps
 
 | App           | Role                                                      |
@@ -11,13 +13,28 @@ Online booking for group events — `https://countmein.group`
 
 ## Packages
 
-| Package                   | Role                    |
-| ------------------------- | ----------------------- |
-| `@repo/db`                | Drizzle schema & client |
-| `@repo/api-contracts`     | Shared Zod / API types  |
-| `@repo/storage`           | Cloudflare R2 helpers   |
-| `@repo/eslint-config`     | ESLint configs          |
-| `@repo/typescript-config` | TypeScript configs      |
+| Package                   | Role                                                    |
+| ------------------------- | ------------------------------------------------------- |
+| `@repo/db`                | Drizzle schema & client                                 |
+| `@repo/redis`             | ioredis singleton (sessions, auth tickets, rate limits) |
+| `@repo/api-contracts`     | Shared Zod / API types                                  |
+| `@repo/storage`           | Cloudflare R2 helpers                                   |
+| `@repo/eslint-config`     | ESLint configs                                          |
+| `@repo/typescript-config` | TypeScript configs                                      |
+
+## Stack
+
+- **Runtime / monorepo:** Bun, Turborepo
+- **App:** Next.js (`apps/web`)
+- **UI:** React, Tailwind, shadcn/ui (Radix)
+- **State:** TanStack Query (server)
+- **Auth:** Auth.js — messenger login only (Telegram Login Widget)
+- **Validation:** Zod (`packages/api-contracts`)
+- **Data:** Postgres, Drizzle ORM, Redis
+- **Media:** Cloudflare R2
+- **Jobs:** `pg-boss` + `apps/worker`
+- **Notifications:** messengers primary (Telegram first); cabinet deep links
+- **Observability:** PostHog, Sentry
 
 Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md).
 
@@ -35,10 +52,26 @@ Package manager: **Bun** (see `.vscode/settings.json`).
 
 ### Database
 
-Drizzle schema and migrations live in [`packages/db`](packages/db). From that package:
+Drizzle schema and migrations in [`packages/db`](packages/db):
 
 ```sh
 bun run db:generate   # create a migration from schema changes
 bun run db:migrate    # apply pending migrations
 bun run db:studio     # open Drizzle Studio
 ```
+
+### Demo organizer
+
+A read-only demo organizer is seeded at `/demo`. All write paths reject it; the worker never notifies it. See [ADR-010](docs/decisions/010-demo-organizer-account.md).
+
+## Key conventions
+
+- **Messenger-only identity** — no phone/OTP ([ADR-008](docs/decisions/008-messenger-only-auth.md)).
+- **Guest booking** without Auth.js accounts; cancel in MVP ([ADR-002](docs/decisions/002-guest-booking.md)).
+- **Atomic capacity** — single conditional `UPDATE` inside booking transaction, never read-then-write.
+- **Prices are display text only** in MVP (no payments).
+- **`/cabinet` requires no session** — anonymous visitors see read-only demo ([ADR-010](docs/decisions/010-demo-organizer-account.md)).
+- **Notifications enqueued inside transaction** — jobs carry ids only; worker refetches at send time.
+- **Organizer deep links** are one-time login links consumed via `POST`.
+
+See [`AGENTS.md`](AGENTS.md) for full conventions and monorepo layout.
