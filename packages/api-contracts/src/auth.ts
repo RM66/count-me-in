@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { messengerEnum } from './enums'
-import { authTicket, messengerId } from './primitives'
+import { authTicket, messengerId, uuid } from './primitives'
 
 /**
  * Telegram Login Widget payload received from the client after widget auth.
@@ -41,3 +41,43 @@ export const guestTicketResponse = z.object({
   displayName: z.string(),
 })
 export type GuestTicketResponse = z.infer<typeof guestTicketResponse>
+
+// ── One-time login links ─────────────────────────────────────────────────────
+//
+// Organizer notifications deep-link into the cabinet, but `/cabinet` needs no
+// session: without one the organizer would land in the read-only *demo* cabinet
+// (ADR-010) instead of their own data. The messenger has already proved who the
+// recipient is, so the link carries that proof — the same reasoning that makes
+// `manageToken` sufficient for guests.
+//
+// Minted by `apps/worker` at send time, consumed by `apps/web`, so the key
+// format and payload shape live here where both can see them.
+
+/**
+ * How long a login link stays valid.
+ *
+ * Sized against the message, not the session: a booking notification is still a
+ * plausible thing to tap days later, and a token that outlives the chat message
+ * buys nothing. Every notification mints a fresh one, so the newest message
+ * always carries a live link.
+ */
+export const LOGIN_LINK_TTL_S = 30 * 24 * 60 * 60
+
+/** Redis key holding a login link's payload. */
+export function loginLinkKey(token: string): string {
+  return `auth:login-link:${token}`
+}
+
+/**
+ * What a login link resolves to once consumed.
+ *
+ * `next` is stored **with the token rather than in the URL** so the redirect
+ * target cannot be rewritten by whoever holds the link — it is always a
+ * relative cabinet path built server-side, which is what keeps this from being
+ * an open redirect.
+ */
+export const loginLinkPayload = z.object({
+  organizerId: uuid,
+  next: z.string().startsWith('/'),
+})
+export type LoginLinkPayload = z.infer<typeof loginLinkPayload>

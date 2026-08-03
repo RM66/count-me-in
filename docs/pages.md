@@ -56,6 +56,7 @@ All `/cabinet/*` pages are `noindex`.
 | ------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sign up             | `/signup`                                   | Two-step flow: Telegram Login Widget → profile form (slug, name, timezone).                                                                                                                                                                                                                   |
 | Log in              | `/login`                                    | Messenger login widget. Deep links must land in an authenticated session.                                                                                                                                                                                                                     |
+| Login link          | `/login/link/{token}`                       | One-time link from a notification message: establishes the session, then redirects to the page the notification is about (usually `/cabinet/bookings?slot=…`). Single-use, consumed by `POST`, `noindex`. Unknown/expired/spent → `/login`.                                                   |
 | Cabinet overview    | `/cabinet`                                  | Upcoming bookings, quick status. Landing target for deep links.                                                                                                                                                                                                                               |
 | Services list       | `/cabinet/services`                         | List services; create / edit / delete.                                                                                                                                                                                                                                                        |
 | Service editor      | `/cabinet/services/{serviceId}` (+ `/new`)  | Edit title, description, photo, defaultPrice, defaultCapacity, defaultDurationMinutes, options, optionsSelectMode.                                                                                                                                                                            |
@@ -76,6 +77,10 @@ All `/cabinet/*` pages are `noindex`.
 
 - `manageToken` in the URL is a secret; `/booking/{manageToken}` needs no re-authentication (the messenger already proved
   ownership), whereas `/booking` requires re-authenticating with the login widget.
+- The login-link token is a secret of the same class, and for the same reason: it was delivered into the organizer's
+  verified Telegram chat. It is **consumed on `POST`, never on `GET`** — link previewers and scanners fetch URLs before a
+  human clicks, and a single-use token spent on render would be burned by a robot. Visiting the page while already
+  signed in as that organizer redirects without spending the token.
 - Organizer slugs have a minimum length of 4 characters and cannot use reserved words (`api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`, `demo`) to prevent route conflicts (ADR-009) and protect the demo page (ADR-010).
 - `/demo` is a seeded, read-only organizer used by the landing page's example links. It renders through the normal `/{orgSlug}` route; all write paths reject it (ADR-010).
 - A `TimeSlot` has no public URL — it is always reached inside its service page.

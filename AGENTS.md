@@ -29,9 +29,10 @@ apps/
     hooks/             # React hooks (shadcn-owned alias `@/hooks`)
     types/             # TypeScript utility types
     proxy.ts           # Auth.js v5 middleware — root location required, do not move
-  worker/              # notifications / jobs
+  worker/              # notifications / jobs: pg-boss consumer, Telegram sender
 packages/
   db/                  # Drizzle schema, migrations
+  redis/               # ioredis singleton (tickets, login links, rate limits)
   api-contracts/       # Zod schemas, shared types
   storage/             # Cloudflare R2 helpers
   eslint-config/       # shared ESLint
@@ -75,7 +76,7 @@ does not, it cannot.
     `app/api/bookings/_error-response.ts`) — otherwise generic plumbing has to be
     edited every time an entity grows a new error.
   - `storage/` — Cloudflare R2 orchestration (avatar, service-photo, media ownership)
-  - `demo.ts`, `redis.ts` — cross-cutting policy guard / infra singleton
+  - `demo.ts`, `queue.ts` — cross-cutting policy guard / job publisher
 - `helpers/` — pure presentation utilities: formatting and adapters
   (date.ts, name.ts, contact.ts).
 - `constants/` — static data tables (timezones.ts).
@@ -166,6 +167,9 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 - Read-only **demo organizer** seeded at `/demo`; identity is a code constant (`DEMO_ORGANIZER_ID` in `packages/api-contracts`), not a DB flag. Every write path must reject it (`rejectDemoWrite` / `assertNotDemo` in `apps/web/lib/server/demo.ts`), including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. There is no demo session/cookie — "demo" is resolved per request via `resolveCabinetOrganizerId()`. Consequence: a cabinet route does **not** imply an authenticated organizer, so scope every cabinet read through that helper and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId` (invariant 8). `requireGuestIdentity()` in `apps/web/lib/server/http.ts` is the only way it enters a write; the ticket is single-use, so a replayed booking fails instead of double-booking.
+- **Notifications are enqueued inside the booking/cancel transaction**, via `enqueueBookingCreated` / `enqueueBookingCancelled` in `apps/web/lib/server/queue.ts` (pg-boss `fromDrizzle` over the caller's `tx`). A job published after the commit can be lost; one published before it can fire for a booking that rolled back. Queue names and payloads live in `packages/api-contracts/src/jobs.ts`; jobs carry **ids only**, and `apps/worker` refetches at send time so `manageToken` and login tokens never reach the `pgboss.job` table. `booking.created` fans out to one job **per recipient** so a retry cannot re-send to the party that already received it.
+- **Organizer deep links are one-time login links.** `/cabinet` needs no session, so a plain link would drop the organizer into the read-only demo (ADR-010). The worker mints `{ organizerId, next }` into Redis and links to `/login/link/{token}`, which consumes it on **`POST`** (never `GET` — previewers and scanners fetch URLs before a human does) through the `loginLinkToken` branch of `telegram-provider.ts`. Single-use, `noindex`, demo id refused, every failure redirecting to `/login`.
+- A Telegram bot may only message users who pressed **Start**: an unreachable recipient (`403`, `chat not found`) completes the job with a log instead of retrying — only `429`/`5xx`/network are retried.
 - `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `lib/server/db/booking.ts`, returned only in the `GuestBooking` DTO (never in `BookingRecord`, which the cabinet sees), and passed in a **request body** rather than a URL on cancel so it stays out of logs and `Referer` headers.
 - Seats move only through the atomic reserve — a single conditional `UPDATE … WHERE bookedCount + :seats <= capacity` inside the booking transaction (invariant 2). Never read `bookedCount`, check it in JS, then write it back.
 - Do not expand scope without ADR/roadmap update.

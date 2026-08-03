@@ -26,6 +26,7 @@ import { bookings, db, organizers, services, timeSlots } from '@repo/db'
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { assertNotDemo } from '../demo'
+import { enqueueBookingCancelled, enqueueBookingCreated } from '../queue'
 import { toPublicOrganizer } from './organizer'
 import { toServiceRecord } from './service'
 import { toTimeSlotRecord } from './time-slot'
@@ -192,13 +193,16 @@ export async function listGuestBookings(
 
 // ── Guest-facing writes ──────────────────────────────────────────────────────
 //
-// **No notifications are enqueued yet.** docs/architecture.md has booking
-// create/cancel ending in a `booking.created` / `booking.cancelled` job, but
-// `apps/worker` is still a stub and no queue is wired (ADR-004). The enqueue
-// belongs inside these transactions when it lands — a job published after the
-// commit can be lost, and one published before it can fire for a booking that
-// rolled back. Until then the guest's confirmation is the success screen and the
-// management link it carries.
+// **Notifications are enqueued inside these transactions**, never after them:
+// a job published post-commit can be lost if the process dies in between, and
+// one published pre-commit on its own connection can notify about a booking
+// that then rolls back. `lib/server/queue.ts` routes the insert through the
+// caller's `tx` so the job and the row share a fate (ADR-004); the payloads are
+// declared in `packages/api-contracts/src/jobs.ts` and consumed by
+// `apps/worker`.
+//
+// Demo bookings never reach the queue: `assertNotDemo` runs before the write in
+// every path below (ADR-010).
 
 /** Raised when the slot no longer has room for the requested seats. */
 export class SlotSoldOutError extends Error {
@@ -368,6 +372,9 @@ export async function createGuestBooking(input: {
       throw new SlotNotBookableError('Could not create the booking — try again')
     }
 
+    // Both notifications (organizer + guest) ride this transaction.
+    await enqueueBookingCreated(tx, created.id)
+
     return toGuestBooking({
       booking: created,
       // The claimed row, not the pre-claim read: its `bookedCount` already
@@ -433,6 +440,9 @@ export async function cancelGuestBookingByToken(token: string): Promise<GuestBoo
       })
       .where(eq(timeSlots.id, cancelled.timeSlotId))
       .returning()
+
+    // The guest cancelled, so the organizer is the one who needs telling.
+    await enqueueBookingCancelled(tx, cancelled.id, 'guest')
 
     return toGuestBooking({
       booking: cancelled,
@@ -506,6 +516,9 @@ export async function cancelOwnedBooking(
       .update(timeSlots)
       .set({ bookedCount: sql`greatest(0, ${timeSlots.bookedCount} - ${cancelled.seats})` })
       .where(eq(timeSlots.id, cancelled.timeSlotId))
+
+    // The organizer cancelled, so the guest is the one who needs telling.
+    await enqueueBookingCancelled(tx, cancelled.id, 'organizer')
 
     return toBookingRecord(cancelled)
   })

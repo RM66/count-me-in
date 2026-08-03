@@ -1,7 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import type { Messenger } from '@repo/api-contracts'
-
-import { getRedis } from '../redis'
+import { getRedis } from '@repo/redis'
 
 import 'server-only'
 

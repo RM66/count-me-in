@@ -1,8 +1,10 @@
+import { isDemoOrganizerId } from '@repo/api-contracts'
 import { db, organizers } from '@repo/db'
 import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { and, eq } from 'drizzle-orm'
 import Credentials from 'next-auth/providers/credentials'
 
+import { consumeLoginLink } from './login-link'
 import { consumeTicket, issueTicket, TICKET_BASE64URL_LENGTH } from './ticket'
 
 import 'server-only'
@@ -15,9 +17,13 @@ import 'server-only'
  * issues a short-lived signup ticket (stored in Redis) and returns an
  * error so the client can redirect to /signup carrying the ticket.
  *
- * The provider also handles the `signIn('telegram', { ticket })` call that
- * the signup page makes after profile completion: it detects a ticket-only
- * credential and consumes it to establish the session.
+ * The provider also handles two token-shaped credentials, both of which are
+ * *already* proof of a validated messenger identity and so bypass the widget:
+ * - `ticket` — the `signIn('telegram', { ticket })` call the signup page makes
+ *   after profile completion.
+ * - `loginLinkToken` — a one-time link from a notification message
+ *   (`/login/link/{token}`), minted by `apps/worker` into the organizer's own
+ *   Telegram chat.
  */
 export function createTelegramProvider() {
   return Credentials({
@@ -25,6 +31,34 @@ export function createTelegramProvider() {
     name: 'Telegram',
     credentials: {},
     async authorize(credentials, req) {
+      // ── One-time login link (notification deep link) ──────────────────────
+      // Checked before the bot token: this path never talks to Telegram, so a
+      // missing token must not block an organizer who already holds a link.
+      const rawLoginLink = (credentials as Record<string, unknown>)?.loginLinkToken
+      if (typeof rawLoginLink === 'string' && rawLoginLink.length > 0) {
+        // Single-use: the token is spent here, so a replayed POST fails.
+        const payload = await consumeLoginLink(rawLoginLink)
+        if (!payload) {
+          return null
+        }
+
+        // No path may mint a session for the read-only demo account (ADR-010),
+        // even though the worker is not supposed to notify it in the first place.
+        if (isDemoOrganizerId(payload.organizerId)) {
+          console.error('[TelegramProvider] Refused a login link for the demo organizer')
+          return null
+        }
+
+        const organizer = await db.query.organizers.findFirst({
+          where: eq(organizers.id, payload.organizerId),
+        })
+        if (!organizer) {
+          return null
+        }
+
+        return { id: organizer.id, name: organizer.name, slug: organizer.slug }
+      }
+
       const botToken = process.env.TELEGRAM_BOT_TOKEN
       if (!botToken) {
         console.error('[TelegramProvider] TELEGRAM_BOT_TOKEN is not configured')

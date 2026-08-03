@@ -1,6 +1,6 @@
 # ADR-001: Monorepo layout
 
-- **Status:** Accepted (amended 2026-07-20, 2026-07-31)
+- **Status:** Accepted (amended 2026-07-20, 2026-07-31, 2026-08-03)
 - **Date:** 2026-07-18
 
 ## Context
@@ -15,7 +15,7 @@ Use **Turborepo + Bun** with:
 apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP API
   lib/           # Business logic
     api/         # client-only React Query, one file per entity + keys.ts
-    server/      # server-only: auth/, db/, storage/, demo.ts, redis.ts
+    server/      # server-only: auth/, db/, storage/, demo.ts, queue.ts
     helpers/     # presentation formatting (date.ts, name.ts, contact.ts)
     constants/   # static data tables (timezones.ts)
     utils.ts     # cn() — shadcn `utils` alias target
@@ -24,6 +24,7 @@ apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP 
   proxy.ts       # Auth.js v5 middleware — root location required by Next, do not move
 apps/worker      # job consumer (notifications)
 packages/db
+packages/redis
 packages/api-contracts
 packages/storage
 packages/eslint-config
@@ -127,6 +128,27 @@ no: the server/client split remains the only compile-time enforced invariant, an
 `lib/api/booking.ts` beside `lib/server/db/booking.ts` reads clearly without a
 folder that would have to hold both. The entity-sliced `lib/api/` above is a
 strict subset of that layout, so it is not wasted work if we go vertical later.
+
+**Amendment 2026-08-03 — Redis client extracted to `packages/redis`.** The
+notification worker needed Redis to mint one-time login links, and a second
+singleton was written in `apps/worker/src/redis.ts` alongside the existing
+`apps/web/lib/server/redis.ts`. That was a misapplication of the `lib/server/`
+rule above: it governs _business logic_, while a connection pool is a library,
+and the `apps`/`packages` test is deployability — `packages/db` was already the
+precedent for exactly this.
+
+The duplication had produced real drift before it was noticed: the two apps
+declared **different `ioredis` majors** (`^5` vs `^6`) against the same server,
+and the two `getRedis` functions had incompatible signatures (one read
+`REDIS_URL`, the other took a url argument), which forced `redisUrl` to be
+threaded through `WorkerEnv` into every job handler. Both are gone; the package
+owns the single dependency and reads the env itself.
+
+`packages/redis` cannot carry `import 'server-only'` — the worker is not a Next
+app and that module throws outside it. `@repo/db` has the same property. The
+guard therefore sits one layer up, on the modules that wrap Redis with secrets
+(`lib/server/auth/ticket.ts`, `lib/server/auth/login-link.ts`), which is where
+it was doing the real work anyway.
 
 Shared lint/tsconfig come from the Turborepo starter as `eslint-config` + `typescript-config` (instead of a single `packages/config`).
 

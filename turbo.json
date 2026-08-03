@@ -5,6 +5,7 @@
     "DATABASE_URL",
     "REDIS_URL",
     "AUTH_SECRET",
+    "APP_URL",
     "R2_ACCOUNT_ID",
     "R2_ACCESS_KEY_ID",
     "R2_SECRET_ACCESS_KEY",
