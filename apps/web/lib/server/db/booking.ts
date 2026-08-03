@@ -442,3 +442,71 @@ export async function cancelGuestBookingByToken(token: string): Promise<GuestBoo
     })
   })
 }
+
+// ── Organizer-facing writes ──────────────────────────────────────────────────
+
+/**
+ * Cancel a booking **scoped to its owner** and release its seats.
+ *
+ * The cabinet counterpart of {@link cancelGuestBookingByToken}: same state
+ * transition and the same seat release, reached by a different credential. The
+ * guest proves ownership with a `manageToken`; the organizer proves it by owning
+ * the service the booking hangs off, so the id is scoped through
+ * {@link ownedSlotIds} in the `WHERE` clause. A booking on someone else's
+ * service therefore matches no row and comes back `null` — the caller answers
+ * `404` without confirming that a foreign id exists.
+ *
+ * Returns the organizer's DTO, not the guest's: {@link toBookingRecord} drops
+ * `manageToken`, which the cabinet must never receive even as a side effect of
+ * writing.
+ *
+ * Status flip and `bookedCount` decrement share one transaction for the reason
+ * invariant 1 gives — the counter equals the seats held by `confirmed` bookings,
+ * so updating one without the other breaks it. The `status = 'confirmed'`
+ * predicate makes a double-tap idempotent: the second call updates no row and is
+ * reported as already cancelled instead of decrementing twice.
+ *
+ * @throws {BookingAlreadyCancelledError} the booking is already cancelled
+ * @throws {DemoReadOnlyError} the demo organizer (ADR-010)
+ */
+export async function cancelOwnedBooking(
+  organizerId: string,
+  bookingId: string,
+): Promise<BookingRecord | null> {
+  // The route guard already refuses the demo id, but this is a write and the
+  // rule is per write path, not per route (ADR-010) — the worker and any future
+  // caller reach this function without passing that guard.
+  assertNotDemo(organizerId)
+
+  return db.transaction(async (tx) => {
+    const [target] = await tx
+      .select()
+      .from(bookings)
+      .where(
+        and(eq(bookings.id, bookingId), inArray(bookings.timeSlotId, ownedSlotIds(organizerId))),
+      )
+      .limit(1)
+
+    if (!target) return null
+
+    const [cancelled] = await tx
+      .update(bookings)
+      .set({ status: 'cancelled' })
+      .where(and(eq(bookings.id, target.id), eq(bookings.status, 'confirmed')))
+      .returning()
+
+    if (!cancelled) {
+      throw new BookingAlreadyCancelledError()
+    }
+
+    // Floored at zero so a counter that has already drifted cannot be driven
+    // negative — the CHECK constraint would reject the whole transaction and
+    // turn a stale counter into a failed cancellation.
+    await tx
+      .update(timeSlots)
+      .set({ bookedCount: sql`greatest(0, ${timeSlots.bookedCount} - ${cancelled.seats})` })
+      .where(eq(timeSlots.id, cancelled.timeSlotId))
+
+    return toBookingRecord(cancelled)
+  })
+}

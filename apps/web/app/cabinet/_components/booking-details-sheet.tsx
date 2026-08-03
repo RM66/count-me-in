@@ -1,9 +1,21 @@
 'use client'
 
 import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
-import { PhoneIcon, SendIcon, XIcon } from 'lucide-react'
+import { XIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,11 +24,11 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { useCancelBookingByOrganizer } from '@/lib/api'
 import { formatDateTime } from '@/lib/helpers/date'
 import { initials } from '@/lib/helpers/name'
 
@@ -45,9 +57,14 @@ type BookingDetailsSheetProps = {
  * The booking details panel, shared by the bookings table and the cabinet
  * overview.
  *
- * Presentational and fully controlled — the selection lives in whichever list
- * opened it. That is what lets two very different rows (a table row, an avatar
- * line in a summary card) share one panel without sharing their markup.
+ * Fully controlled — the selection lives in whichever list opened it. That is
+ * what lets two very different rows (a table row, an avatar line in a summary
+ * card) share one panel without sharing their markup.
+ *
+ * Cancellation lives **here** rather than in each caller: it is an action on the
+ * booking this panel already describes, and both surfaces would otherwise
+ * duplicate the mutation, the confirm dialog and the refresh — three chances to
+ * drift apart.
  */
 export function BookingDetailsSheet({
   booking,
@@ -57,12 +74,32 @@ export function BookingDetailsSheet({
   isReadOnly,
   onOpenChange,
 }: BookingDetailsSheetProps) {
+  const router = useRouter()
+  const cancelBooking = useCancelBookingByOrganizer()
+
+  async function handleCancel(target: BookingRecord) {
+    try {
+      await cancelBooking.mutateAsync(target.id)
+      toast.success('Booking cancelled', {
+        description: `${target.guestName}'s seats have been released.`,
+      })
+      // The panel closes before the refresh lands: the callers hold the selected
+      // booking in state, so the copy behind this sheet still says `confirmed`
+      // until their server data arrives. Closing avoids showing that stale row.
+      onOpenChange(false)
+      // Cabinet pages are server components — this is what re-reads Postgres and
+      // repaints the released seat in the lists and slot counts.
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not cancel the booking')
+    }
+  }
+
   return (
     <Sheet open={Boolean(booking)} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col">
         <SheetHeader>
           <SheetTitle>Booking details</SheetTitle>
-          <SheetDescription>Reference {booking?.id}</SheetDescription>
         </SheetHeader>
         {booking && (
           <div className="flex flex-1 flex-col gap-5 overflow-auto px-4">
@@ -72,9 +109,6 @@ export function BookingDetailsSheet({
               </Avatar>
               <div className="flex flex-col">
                 <span className="font-medium">{booking.guestName}</span>
-                <span className="text-sm text-muted-foreground">
-                  {booking.guestMessengerLogin ?? booking.guestMessengerId}
-                </span>
               </div>
               <Badge
                 className="ml-auto"
@@ -101,10 +135,24 @@ export function BookingDetailsSheet({
                 <dt className="text-muted-foreground">Seats</dt>
                 <dd className="text-right font-medium">{booking.seats}</dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Messenger</dt>
-                <dd className="text-right font-medium capitalize">{booking.guestMessenger}</dd>
-              </div>
+              {booking.guestMessengerLogin && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground capitalize">{booking.guestMessenger}</dt>
+                  <dd className="text-right font-medium capitalize">
+                    {
+                      booking.guestMessenger === 'telegram' ? (
+                        <a
+                          href={`https://t.me/${booking.guestMessengerLogin.replace(/^@/, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {booking.guestMessengerLogin}
+                        </a>
+                      ) : null /* TODO: add other messengers */
+                    }
+                  </dd>
+                </div>
+              )}
               {booking.selectedOptions && booking.selectedOptions.length > 0 && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Options</dt>
@@ -121,35 +169,39 @@ export function BookingDetailsSheet({
           </div>
         )}
         <SheetFooter>
-          <Button
-            disabled={isReadOnly}
-            onClick={() =>
-              toast.success('Reminder sent', {
-                description: 'This is a mockup — no message was sent.',
-              })
-            }
-          >
-            <SendIcon data-icon="inline-start" />
-            Send reminder
-          </Button>
-          <Button
-            variant="outline"
-            disabled={isReadOnly}
-            onClick={() => toast('Calling guest', { description: 'This is a mockup.' })}
-          >
-            <PhoneIcon data-icon="inline-start" />
-            Call guest
-          </Button>
           {booking?.status === 'confirmed' && (
-            <Button
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              disabled={isReadOnly}
-              onClick={() => toast('Cancel booking?', { description: 'This is a mockup.' })}
-            >
-              <XIcon data-icon="inline-start" />
-              Cancel booking
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  // The demo organizer is read-only (ADR-010). The server
+                  // refuses it too — this only spares the pointless round trip.
+                  disabled={isReadOnly || cancelBooking.isPending}
+                >
+                  <XIcon data-icon="inline-start" />
+                  {cancelBooking.isPending ? 'Cancelling…' : 'Cancel booking'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {booking.guestName}&apos;s {booking.seats}{' '}
+                    {booking.seats > 1 ? 'seats ' : 'seat '}
+                    {service ? `for ${service.title} ` : ''}
+                    {slot ? `on ${formatDateTime(slot.startsAt, timezone)} ` : ''}
+                    will be released and offered to other guests. This can&apos;t be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep booking</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleCancel(booking)}>
+                    Yes, cancel
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <SheetClose asChild>
             <Button variant="ghost">Close</Button>

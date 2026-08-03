@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  BookingRecord,
   CreateBookingInput,
   GuestBooking,
   GuestTicketResponse,
@@ -12,16 +13,16 @@ import { post } from './client'
 import { queryKeys } from './keys'
 
 /**
- * Client-side API for the **Booking** entity — the guest's side of it.
+ * Client-side API for the **Booking** entity — both audiences of it.
  *
- * All three operations are mutations, including the lookup: every one of them
- * spends a single-use credential (a guest ticket, or the `manageToken`), so none
- * can be a cache-backed `useQuery` that React Query is free to refetch on a
- * whim. The results are written into the cache by hand instead.
+ * Every guest operation is a mutation, including the lookup: each spends a
+ * single-use credential (a guest ticket, or the `manageToken`), so none can be a
+ * cache-backed `useQuery` that React Query is free to refetch on a whim. The
+ * results are written into the cache by hand instead.
  *
- * The guest pages themselves are server components that read Postgres directly
+ * The pages themselves are server components that read Postgres directly
  * (`lib/server/db/booking.ts`); this file exists for the interactive parts —
- * the booking dialog, the cancel button, the lookup form.
+ * the booking dialog, the cancel buttons, the lookup form.
  */
 
 /**
@@ -70,6 +71,34 @@ export function useCancelBooking() {
     // A cancelled booking changes what a lookup list should show, so any cached
     // list is dropped. The management page itself re-renders from the response.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+  })
+}
+
+/**
+ * Cancel a booking from the **cabinet**, as the organizer who owns it.
+ *
+ * Separate hook from {@link useCancelBooking} because it is a different
+ * credential against a different endpoint: the session and service ownership
+ * rather than the guest's `manageToken`. It also resolves to a `BookingRecord`,
+ * which carries no `manageToken` — the cabinet never sees that secret.
+ *
+ * Invalidating `bookings.all` is not enough on its own: the cabinet lists are
+ * server-rendered, so the caller follows this with `router.refresh()` to pick up
+ * the released seat. The invalidation covers any client-side booking cache.
+ */
+export function useCancelBookingByOrganizer() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (bookingId: string) =>
+      post<{ booking: BookingRecord }>('/api/bookings/cancel-by-organizer', { bookingId }),
+    // Cancelling releases seats, so slot `bookedCount`s are stale too.
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
+      ])
+    },
   })
 }
 

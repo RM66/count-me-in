@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
 import { type ComponentProps, type CSSProperties, useEffect, useState } from 'react'
 
+import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-preview'
 import { cn } from '@/lib/utils'
 
 import '@uiw/react-markdown-editor/markdown-editor.css'
@@ -19,6 +20,25 @@ type MarkdownEditorProps = ComponentProps<typeof MarkdownEditorImpl> & {
 }
 
 const TOOLBARS: MarkdownEditorProps['toolbars'] = ['undo', 'redo', 'bold', 'italic', 'link']
+
+/**
+ * Render the live-preview pane with *our* `MarkdownPreview` instead of the
+ * library's built-in one.
+ *
+ * Without this the editor previews through `@uiw`'s `.wmde-markdown` GitHub
+ * stylesheet while the public page renders through our own element styles, so
+ * the two disagree on exactly the details an organizer is checking — list
+ * indentation and bullet markers, heading scale, link colour. Two renderers
+ * cannot be kept in agreement by adding more CSS overrides; the fix is to have
+ * one renderer.
+ *
+ * `renderPreview` is the library's own escape hatch, and it receives
+ * `previewProps` with `source` already set to the current editor value (the
+ * editor assigns it on every change), so the pane stays live.
+ */
+const renderPreview: MarkdownEditorProps['renderPreview'] = ({ source }) => (
+  <MarkdownPreview source={source ?? ''} className={cn(MARKDOWN_CLASS, 'px-3 py-2')} />
+)
 
 // The @uiw editor derives its backgrounds from these GitHub-markdown CSS variables.
 // Pointing them at our design token makes the whole editor use the app control color.
@@ -50,14 +70,13 @@ export function MarkdownEditor({ className, ...props }: MarkdownEditorProps) {
         '[&_.cm-editor_.cm-scroller]:font-sans!',
         '[&_.cm-editor_.cm-content]:text-sm! [&_.cm-editor_.cm-content]:text-foreground!',
         '[&_.cm-editor_.cm-gutters]:font-sans! [&_.cm-editor_.cm-gutters]:text-muted-foreground!',
-        // The live-preview pane renders with `.wmde-markdown` and keeps the library's
-        // built-in typography; align it with the app text style too.
-        '[&_.wmde-markdown]:bg-transparent! [&_.wmde-markdown]:font-sans!',
-        '[&_.wmde-markdown]:text-sm! [&_.wmde-markdown]:text-foreground!',
+        // No `.wmde-markdown` overrides needed here: `renderPreview` above replaces
+        // the library's preview pane with our own component, which already carries
+        // the app's typography.
         className,
       )}
     >
-      <MarkdownEditorImpl toolbars={TOOLBARS} {...props} />
+      <MarkdownEditorImpl renderPreview={renderPreview} toolbars={TOOLBARS} {...props} />
     </div>
   )
 }

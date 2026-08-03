@@ -17,7 +17,7 @@ export function StatCard({
   icon: LucideIcon
 }) {
   return (
-    <Card className="justify-between">
+    <Card className="justify-between gap-1">
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <Icon className="size-4 text-muted-foreground" />

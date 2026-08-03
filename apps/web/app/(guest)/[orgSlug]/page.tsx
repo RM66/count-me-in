@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { ContactLink } from '@/components/contact-link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MarkdownPreview } from '@/components/ui/markdown-preview'
+import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-preview'
 import { Separator } from '@/components/ui/separator'
 import { getPublicOrganizerBySlug } from '@/lib/server/db/organizer'
 import { listServices } from '@/lib/server/db/service'
@@ -99,11 +99,12 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
             />
           ) : null}
         </div>
+        {/*
+          The presentation is shared with the settings editor's preview pane
+          (`MARKDOWN_CLASS`) so what an organizer previews is what ships.
+        */}
         {organizer.description ? (
-          <MarkdownPreview
-            source={organizer.description}
-            className="text-left leading-relaxed text-muted-foreground text-pretty"
-          />
+          <MarkdownPreview source={organizer.description} className={MARKDOWN_CLASS} />
         ) : null}
       </div>
 
