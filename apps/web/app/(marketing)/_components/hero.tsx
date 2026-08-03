@@ -42,14 +42,14 @@ export function Hero() {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Link
                 href={DEMO_ORGANIZER_PATH}
-                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:text-muted-foreground"
+                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 decoration-[rgba(127,127,127,0.33)] hover:text-muted-foreground"
               >
                 <TicketIcon className="size-4" />
                 See a guest booking page
               </Link>
               <Link
                 href={DEMO_CABINET_PATH}
-                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:text-muted-foreground"
+                className="inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 decoration-[rgba(127,127,127,0.33)] hover:text-muted-foreground"
               >
                 <LayoutDashboardIcon className="size-4" />
                 See the organizer cabinet

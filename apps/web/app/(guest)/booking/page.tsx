@@ -48,44 +48,46 @@ export default function FindBookingPage() {
         </p>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col items-center gap-4 pt-6">
-          {lookupBookings.isPending ? (
-            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-              <Spinner />
-              Looking up your bookings…
-            </div>
-          ) : botUsername ? (
-            <TelegramLoginButton
-              botUsername={botUsername}
-              buttonSize="large"
-              mode="guest"
-              onGuestTicket={async (ticket) => {
-                try {
-                  setFound(
-                    await lookupBookings.mutateAsync({
-                      ticket: ticket.ticket,
-                      messenger: ticket.messenger,
-                      messengerId: ticket.messengerId,
-                    }),
-                  )
-                } catch (error) {
-                  toast.error(
-                    error instanceof Error ? error.message : 'Could not look up your bookings',
-                  )
-                }
-              }}
-            />
-          ) : (
-            <p className="text-center text-sm text-destructive">
-              Telegram login is not configured, so lookup is unavailable.
+      {found === null && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 pt-6">
+            {lookupBookings.isPending ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                <Spinner />
+                Looking up your bookings…
+              </div>
+            ) : botUsername ? (
+              <TelegramLoginButton
+                botUsername={botUsername}
+                buttonSize="large"
+                mode="guest"
+                onGuestTicket={async (ticket) => {
+                  try {
+                    setFound(
+                      await lookupBookings.mutateAsync({
+                        ticket: ticket.ticket,
+                        messenger: ticket.messenger,
+                        messengerId: ticket.messengerId,
+                      }),
+                    )
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error ? error.message : 'Could not look up your bookings',
+                    )
+                  }
+                }}
+              />
+            ) : (
+              <p className="text-center text-sm text-destructive">
+                Telegram login is not configured, so lookup is unavailable.
+              </p>
+            )}
+            <p className="text-center text-sm text-muted-foreground">
+              We&apos;ll only show bookings made with this account.
             </p>
-          )}
-          <p className="text-center text-sm text-muted-foreground">
-            We&apos;ll only show bookings made with this account.
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {found !== null && found.length > 0 && (
         <div className="mt-8 flex flex-col gap-3">
