@@ -1,9 +1,10 @@
 import type { ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
 import { seatsLeft } from '@repo/api-contracts'
-import { ChevronRight, Clock, Users } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatTime } from '@/lib/helpers/date'
 
@@ -54,16 +55,8 @@ export function ServiceCard({
             {service.description}
           </p>
         ) : null}
-        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Clock className="size-3.5" />
-            {service.defaultDurationMinutes} min
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="size-3.5" />
-            up to {service.defaultCapacity}
-          </span>
-          <span className="font-medium text-foreground">{service.defaultPrice}</span>
+        <div className="mt-auto pt-1">
+          <ServiceMetaBadges service={service} />
         </div>
         {nextOpen ? (
           <Badge variant="secondary" className="mt-1 w-fit font-normal">

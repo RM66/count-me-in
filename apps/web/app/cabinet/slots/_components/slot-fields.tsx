@@ -4,7 +4,7 @@ import type { ServiceRecord } from '@repo/api-contracts'
 import type { ComponentProps } from 'react'
 import { useController } from 'react-hook-form'
 
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { FieldShell } from '@/components/field-shell'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -15,40 +15,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { SlotFormControl, SlotTextFieldName } from './use-slot-form'
-
-/**
- * Wraps a field in the invalid-state plumbing: `data-invalid` on the `Field`
- * (styles the label and description) *and* `aria-invalid` on the control
- * (styles the control and announces it to assistive tech). Written once here so
- * it cannot be forgotten when a field is added.
- *
- * The ids are prefixed `slot-` because this form renders inside a dialog on a
- * page that already has controls of its own.
- */
-function FieldShell({
-  htmlFor,
-  label,
-  description,
-  invalid,
-  error,
-  children,
-}: {
-  htmlFor: string
-  label: string
-  description?: string
-  invalid: boolean
-  error?: { message?: string }
-  children: React.ReactNode
-}) {
-  return (
-    <Field data-invalid={invalid || undefined}>
-      <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
-      {children}
-      {description && <FieldDescription>{description}</FieldDescription>}
-      <FieldError errors={error ? [error] : undefined} />
-    </Field>
-  )
-}
 
 /** Single-line text, date, time or number field. */
 export function SlotTextField({

@@ -3,7 +3,7 @@
 import type { ComponentProps } from 'react'
 import { useController } from 'react-hook-form'
 
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { FieldShell } from '@/components/field-shell'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { ServiceFormControl, ServiceTextFieldName } from './use-service-form'
@@ -14,34 +14,6 @@ type SharedProps = {
   label: string
   description?: string
   disabled?: boolean
-}
-
-/**
- * Wraps a field in the invalid-state plumbing: `data-invalid` on the `Field`
- * (styles the label and description) *and* `aria-invalid` on the control (styles
- * the control and announces it to assistive tech). Written once here so it
- * cannot be forgotten when a field is added.
- */
-function FieldShell({
-  name,
-  label,
-  description,
-  invalid,
-  error,
-  children,
-}: Pick<SharedProps, 'name' | 'label' | 'description'> & {
-  invalid: boolean
-  error?: { message?: string }
-  children: React.ReactNode
-}) {
-  return (
-    <Field data-invalid={invalid || undefined}>
-      <FieldLabel htmlFor={name}>{label}</FieldLabel>
-      {children}
-      {description && <FieldDescription>{description}</FieldDescription>}
-      <FieldError errors={error ? [error] : undefined} />
-    </Field>
-  )
 }
 
 /** Single-line text or number field. */
@@ -57,7 +29,7 @@ export function ServiceTextField({
 
   return (
     <FieldShell
-      name={name}
+      htmlFor={name}
       label={label}
       description={description}
       invalid={fieldState.invalid}
@@ -87,7 +59,7 @@ export function ServiceTextareaField({
 
   return (
     <FieldShell
-      name={name}
+      htmlFor={name}
       label={label}
       description={description}
       invalid={fieldState.invalid}

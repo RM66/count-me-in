@@ -2,19 +2,11 @@
 
 import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/api-contracts'
 import { fillLabel, seatsLeft, slotPrice } from '@repo/api-contracts'
-import { CalendarPlusIcon, MoreHorizontalIcon, PlusIcon, XIcon } from 'lucide-react'
+import { CalendarPlusIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { toast } from 'sonner'
 
-import {
-  DAY_MARK,
-  DayFilterChip,
-  DayFilterPicker,
-  dayKeyToDate,
-  useDayFilter,
-} from '@/app/cabinet/_components/day-filter'
+import { DayFilterChip, DayFilterPicker } from '@/app/cabinet/_components/day-filter'
+import { FilterChip } from '@/app/cabinet/_components/filter-chip'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,10 +38,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useDeleteSlot } from '@/lib/api'
 import { formatDate, formatTime } from '@/lib/helpers/date'
-import type { SlotDialogMode } from './slot-dialog'
 import { SlotDialog } from './slot-dialog'
+import { DAY_MARK, useSlotsTable } from './use-slots-table'
 
 const FILL_BADGE: Record<
   SlotFill,
@@ -59,9 +50,6 @@ const FILL_BADGE: Record<
   filling: { label: 'Filling up', variant: 'default' },
   full: { label: 'Full', variant: 'secondary' },
 }
-
-/** What the dialog is currently doing, or `null` when it is closed. */
-type DialogState = { mode: SlotDialogMode; slot?: TimeSlotRecord } | null
 
 type SlotsTableProps = {
   slots: TimeSlotRecord[]
@@ -84,7 +72,8 @@ type SlotsTableProps = {
  * is passed in** — the page is a server component that reads Postgres directly,
  * the same split the services list uses. Writes go through the mutation hooks
  * and finish with `router.refresh()`, so the server render is the single source
- * of truth for what the table shows.
+ * of truth for what the table shows. The filtering, day-selection and delete
+ * logic lives in [`useSlotsTable`](use-slots-table.ts).
  */
 export function SlotsTable({
   slots,
@@ -94,96 +83,7 @@ export function SlotsTable({
   activeServiceId,
   isReadOnly,
 }: SlotsTableProps) {
-  const router = useRouter()
-  const [dialog, setDialog] = useState<DialogState>(null)
-  const [pendingDelete, setPendingDelete] = useState<TimeSlotRecord | null>(null)
-  const [showPast, setShowPast] = useState(false)
-  // Day key, label and timezone-correct day grouping — shared with the
-  // bookings table via `_components/day-filter`.
-  const { day, setDay, dayLabel, dayKeyOf } = useDayFilter(timezone)
-
-  const servicesById = new Map(services.map((service) => [service.id, service]))
-  const activeService = activeServiceId ? servicesById.get(activeServiceId) : undefined
-
-  const dayOf = (slot: TimeSlotRecord) => dayKeyOf(slot.startsAt)
-
-  // Service filter first, so the Upcoming/Past counts describe what the
-  // organizer is actually looking at rather than the whole schedule.
-  const scopedByService = activeServiceId
-    ? slots.filter((slot) => slot.serviceId === activeServiceId)
-    : slots
-  const scoped = scopedByService.filter((slot) => day === '' || dayOf(slot) === day)
-
-  // Past sessions stay reachable behind a toggle rather than being dropped: a
-  // slot saved with a stale date would otherwise just never appear, which
-  // reads as "the save failed".
-  const upcoming = scoped.filter((slot) => slot.startsAt >= nowIso)
-  const past = scoped.filter((slot) => slot.startsAt < nowIso)
-  const visible = showPast ? past : upcoming
-
-  /**
-   * Which days to mark in the picker — the reason it exists rather than the
-   * native control, which cannot say anything about a day's contents.
-   *
-   * Marks follow the **service filter**: while scoped to one service, the
-   * calendar answers "when does *this* run", not "when does anything run".
-   */
-  const upcomingDates = [
-    ...new Set(scopedByService.filter((slot) => slot.startsAt >= nowIso).map(dayOf)),
-  ].map(dayKeyToDate)
-
-  // A day counts as past only if nothing upcoming shares it, so a day holding
-  // both is marked as upcoming — the actionable state wins.
-  const upcomingKeys = new Set(scopedByService.filter((slot) => slot.startsAt >= nowIso).map(dayOf))
-  const pastDates = [
-    ...new Set(
-      scopedByService
-        .filter((slot) => slot.startsAt < nowIso)
-        .map(dayOf)
-        .filter((key) => !upcomingKeys.has(key)),
-    ),
-  ].map(dayKeyToDate)
-
-  /**
-   * Which month to open on: the next session, else now. (A selected day wins —
-   * the picker handles that itself.)
-   *
-   * Deliberately *not* the earliest scheduled date — that is the oldest past
-   * session, so the calendar would open on a bygone month with none of the
-   * upcoming marks in view.
-   */
-  const firstUpcoming = [...upcomingDates].sort((a, b) => a.getTime() - b.getTime())[0]
-  const defaultMonth = firstUpcoming ?? new Date(nowIso)
-
-  /**
-   * Picking a day also switches Upcoming/Past when the chosen day only has
-   * sessions on the other side of "now" — otherwise selecting a past date
-   * lands on an empty "Upcoming" tab and looks like the filter found nothing.
-   */
-  const selectDay = (next: string) => {
-    setDay(next)
-    if (next === '') return
-
-    const onDay = scopedByService.filter((slot) => dayOf(slot) === next)
-
-    if (onDay.length === 0) return
-    setShowPast(onDay.every((slot) => slot.startsAt < nowIso))
-  }
-
-  // The id is bound at hook level, so the dialog owns the pending slot and the
-  // mutation is re-created as the selection changes.
-  const deleteSlot = useDeleteSlot(pendingDelete?.id ?? '')
-
-  const confirmDelete = () => {
-    deleteSlot.mutate(undefined, {
-      onSuccess: () => {
-        toast.success('Slot cancelled')
-        setPendingDelete(null)
-        router.refresh()
-      },
-      onError: (error) => toast.error(error.message || 'Failed to cancel the slot'),
-    })
-  }
+  const t = useSlotsTable({ slots, services, timezone, nowIso, activeServiceId })
 
   // Nothing to hang a slot on yet — point at the service editor rather than
   // opening a dialog whose service picker would be empty.
@@ -216,42 +116,39 @@ export function SlotsTable({
         <div className="flex flex-wrap items-center gap-3">
           <ToggleGroup
             type="single"
-            value={showPast ? 'past' : 'upcoming'}
-            onValueChange={(value) => value && setShowPast(value === 'past')}
+            value={t.showPast ? 'past' : 'upcoming'}
+            onValueChange={(value) => value && t.setShowPast(value === 'past')}
             variant="outline"
           >
-            <ToggleGroupItem value="upcoming">Upcoming ({upcoming.length})</ToggleGroupItem>
-            <ToggleGroupItem value="past">Past ({past.length})</ToggleGroupItem>
+            <ToggleGroupItem value="upcoming">Upcoming ({t.upcoming.length})</ToggleGroupItem>
+            <ToggleGroupItem value="past">Past ({t.past.length})</ToggleGroupItem>
           </ToggleGroup>
 
           {/*
             The filter is in the URL, so clearing it is a link back to the
             unfiltered page rather than local state — back/forward keep working.
           */}
-          {activeService && (
-            <Badge variant="secondary" className="gap-1 py-1 pr-1 pl-2.5 h-6 text-sm text-primary">
-              {activeService.title}
-              <Button variant="ghost" size="icon" className="size-5 hover:bg-transparent" asChild>
-                <Link href="/cabinet/slots" aria-label="Show every service">
-                  <XIcon className="size-3.5" />
-                </Link>
-              </Button>
-            </Badge>
+          {t.activeService && (
+            <FilterChip
+              label={t.activeService.title}
+              clearHref="/cabinet/slots"
+              ariaLabel="Show every service"
+            />
           )}
 
-          {day && <DayFilterChip dayLabel={dayLabel} onClear={() => selectDay('')} />}
+          {t.day && <DayFilterChip dayLabel={t.dayLabel} onClear={() => t.selectDay('')} />}
         </div>
 
         <div className="flex items-center gap-2">
           <DayFilterPicker
-            day={day}
-            dayLabel={dayLabel}
-            onSelect={selectDay}
-            defaultMonth={defaultMonth}
+            day={t.day}
+            dayLabel={t.dayLabel}
+            onSelect={t.selectDay}
+            defaultMonth={t.defaultMonth}
             entityLabel="slots"
             // The whole point: days that have sessions are marked, and the
             // marking distinguishes "still to come" from "already ran".
-            modifiers={{ hasUpcoming: upcomingDates, hasPast: pastDates }}
+            modifiers={{ hasUpcoming: t.upcomingDates, hasPast: t.pastDates }}
             modifiersClassNames={{
               hasUpcoming: DAY_MARK.strong.calendarCell,
               hasPast: DAY_MARK.muted.calendarCell,
@@ -266,7 +163,7 @@ export function SlotsTable({
             }
           />
 
-          <Button size="sm" disabled={isReadOnly} onClick={() => setDialog({ mode: 'create' })}>
+          <Button size="sm" disabled={isReadOnly} onClick={() => t.setDialog({ mode: 'create' })}>
             <PlusIcon data-icon="inline-start" />
             Add slot
           </Button>
@@ -275,46 +172,46 @@ export function SlotsTable({
 
       <Card>
         <CardHeader>
-          <CardTitle>{showPast ? 'Past sessions' : 'Upcoming schedule'}</CardTitle>
+          <CardTitle>{t.showPast ? 'Past sessions' : 'Upcoming schedule'}</CardTitle>
           <CardDescription>
-            {visible.length === 0
-              ? showPast
+            {t.visible.length === 0
+              ? t.showPast
                 ? 'Nothing has run yet.'
                 : 'No upcoming sessions.'
-              : `${visible.length} ${showPast ? 'past' : 'upcoming'} ${
-                  visible.length === 1 ? 'slot' : 'slots'
-                }${activeService ? ` for ${activeService.title}` : ''}${
-                  day ? ` on ${dayLabel}` : ''
+              : `${t.visible.length} ${t.showPast ? 'past' : 'upcoming'} ${
+                  t.visible.length === 1 ? 'slot' : 'slots'
+                }${t.activeService ? ` for ${t.activeService.title}` : ''}${
+                  t.day ? ` on ${t.dayLabel}` : ''
                 }.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {visible.length === 0 ? (
+          {t.visible.length === 0 ? (
             <Empty className="border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <CalendarPlusIcon />
                 </EmptyMedia>
                 <EmptyTitle>
-                  {day
+                  {t.day
                     ? 'Nothing on this day'
-                    : showPast
+                    : t.showPast
                       ? 'No past sessions'
                       : 'Nothing scheduled'}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {day
-                    ? `No ${showPast ? 'past' : 'upcoming'} sessions on ${dayLabel}${
-                        activeService ? ` for ${activeService.title}` : ''
+                  {t.day
+                    ? `No ${t.showPast ? 'past' : 'upcoming'} sessions on ${t.dayLabel}${
+                        t.activeService ? ` for ${t.activeService.title}` : ''
                       }.`
-                    : showPast
+                    : t.showPast
                       ? 'Sessions move here once their start time passes.'
-                      : activeService
-                        ? `${activeService.title} has no upcoming sessions yet.`
+                      : t.activeService
+                        ? `${t.activeService.title} has no upcoming sessions yet.`
                         : 'Add a time slot and guests will be able to book it.'}
                 </EmptyDescription>
-                {day && (
-                  <Button variant="outline" size="sm" onClick={() => selectDay('')}>
+                {t.day && (
+                  <Button variant="outline" size="sm" onClick={() => t.selectDay('')}>
                     Show every day
                   </Button>
                 )}
@@ -325,7 +222,7 @@ export function SlotsTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>Service</TableHead>
-                  <TableHead>Date &amp; time</TableHead>
+                  <TableHead>Date & time</TableHead>
                   <TableHead>Capacity</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
@@ -333,8 +230,8 @@ export function SlotsTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visible.map((slot) => {
-                  const service = servicesById.get(slot.serviceId)
+                {t.visible.map((slot) => {
+                  const service = t.servicesById.get(slot.serviceId)
                   const left = seatsLeft(slot)
                   const pct = Math.round((slot.bookedCount / slot.capacity) * 100)
                   const fill = FILL_BADGE[fillLabel(slot)]
@@ -374,7 +271,7 @@ export function SlotsTable({
                             <DropdownMenuGroup>
                               <DropdownMenuItem
                                 disabled={isReadOnly}
-                                onSelect={() => setDialog({ mode: 'edit', slot })}
+                                onSelect={() => t.setDialog({ mode: 'edit', slot })}
                               >
                                 Edit slot
                               </DropdownMenuItem>
@@ -386,14 +283,14 @@ export function SlotsTable({
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={isReadOnly}
-                                onSelect={() => setDialog({ mode: 'duplicate', slot })}
+                                onSelect={() => t.setDialog({ mode: 'duplicate', slot })}
                               >
                                 Duplicate
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 disabled={isReadOnly}
-                                onSelect={() => setPendingDelete(slot)}
+                                onSelect={() => t.setPendingDelete(slot)}
                               >
                                 Cancel slot
                               </DropdownMenuItem>
@@ -415,46 +312,46 @@ export function SlotsTable({
         `defaultValues` are read once per mount, so a reused instance would show
         the previously edited slot's values.
       */}
-      {dialog && (
+      {t.dialog && (
         <SlotDialog
-          key={`${dialog.mode}-${dialog.slot?.id ?? 'new'}`}
+          key={`${t.dialog.mode}-${t.dialog.slot?.id ?? 'new'}`}
           open
-          onOpenChange={(open) => !open && setDialog(null)}
+          onOpenChange={(open) => !open && t.setDialog(null)}
           services={services}
           defaultServiceId={activeServiceId}
           timezone={timezone}
-          mode={dialog.mode}
-          slot={dialog.slot}
+          mode={t.dialog.mode}
+          slot={t.dialog.slot}
         />
       )}
 
       <AlertDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
+        open={Boolean(t.pendingDelete)}
+        onOpenChange={(open) => !open && t.setPendingDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this slot?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDelete?.bookedCount
-                ? `This session has ${pendingDelete.bookedCount} booked ${
-                    pendingDelete.bookedCount === 1 ? 'seat' : 'seats'
+              {t.pendingDelete?.bookedCount
+                ? `This session has ${t.pendingDelete.bookedCount} booked ${
+                    t.pendingDelete.bookedCount === 1 ? 'seat' : 'seats'
                   }. Cancelling removes the slot and every booking on it. This cannot be undone.`
                 : 'The slot will be removed and guests will no longer see it. This cannot be undone.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteSlot.isPending}>Keep slot</AlertDialogCancel>
+            <AlertDialogCancel disabled={t.deleteSlot.isPending}>Keep slot</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 // Keep the dialog up while the request is in flight; it closes
                 // in `onSuccess`, so a failure leaves the confirm recoverable.
                 event.preventDefault()
-                confirmDelete()
+                t.confirmDelete()
               }}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {deleteSlot.isPending ? 'Cancelling...' : 'Cancel slot'}
+              {t.deleteSlot.isPending ? 'Cancelling...' : 'Cancel slot'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

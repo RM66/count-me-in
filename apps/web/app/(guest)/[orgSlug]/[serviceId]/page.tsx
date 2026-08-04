@@ -1,10 +1,11 @@
 import { effectiveContact, effectiveLocation, seatsLeft, slotPrice } from '@repo/api-contracts'
-import { ArrowLeft, CalendarX, Clock, MapPin, Tag, Users } from 'lucide-react'
+import { ArrowLeft, CalendarX, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges'
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { ContactLink } from '@/components/contact-link'
@@ -95,18 +96,10 @@ export default async function ServicePage({
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-balance">{service.title}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Clock className="size-4" />
-              {service.defaultDurationMinutes} min
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Users className="size-4" />
-              up to {service.defaultCapacity} seats
-            </span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <Tag className="size-4" />
-              {service.defaultPrice}
-            </span>
+            <ServiceMetaBadges
+              service={service}
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground"
+            />
             {location ? (
               <span className="flex items-center gap-1.5">
                 <MapPin className="size-4" />

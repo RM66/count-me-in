@@ -9,7 +9,7 @@ Simple online booking for group events: organizers publish services with time sl
 - **Runtime / monorepo:** Bun, Turborepo
 - **App:** Next.js (`apps/web`) — landing, public booking, organizer cabinet, API
 - **UI:** React, Tailwind, shadcn/ui (Radix)
-- **State:** TanStack Query (server), Zustand (local UI)
+- **State:** TanStack Query (server)
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
 - **Validation:** Zod (`packages/api-contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis

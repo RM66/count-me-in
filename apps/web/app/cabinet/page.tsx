@@ -7,12 +7,12 @@ import {
   TicketIcon,
   TrendingUpIcon,
   UsersIcon,
-  XIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 
 import { BookingPreviewList } from '@/app/cabinet/_components/booking-preview-list'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
+import { FilterChip } from '@/app/cabinet/_components/filter-chip'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -265,22 +265,11 @@ export default async function CabinetOverviewPage({
               */}
               {activeSlotLabel && (
                 <div className="pb-2">
-                  <Badge
-                    variant="secondary"
-                    className="max-w-full gap-1 py-1 pr-1 pl-2.5 h-6 text-sm text-primary"
-                  >
-                    <span className="truncate">{activeSlotLabel}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-5 shrink-0 hover:bg-transparent"
-                      asChild
-                    >
-                      <Link href="/cabinet" scroll={false} aria-label="Show every booking">
-                        <XIcon className="size-3.5" />
-                      </Link>
-                    </Button>
-                  </Badge>
+                  <FilterChip
+                    label={activeSlotLabel}
+                    clearHref="/cabinet"
+                    ariaLabel="Show every booking"
+                  />
                 </div>
               )}
               {previewBookings.length === 0 ? (
