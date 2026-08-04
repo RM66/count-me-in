@@ -6,6 +6,7 @@ import {
   ChevronsUpDownIcon,
   ExternalLinkIcon,
   LayoutDashboardIcon,
+  LifeBuoyIcon,
   LogInIcon,
   LogOutIcon,
   SettingsIcon,
@@ -47,6 +48,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentOrganizer } from '@/lib/api'
 import { initials } from '@/lib/helpers/name'
 import { cn } from '@/lib/utils'
+
+const SUPPORT_EMAIL = 'support@countmein.group'
 
 const nav = [
   { title: 'Overview', href: '/cabinet', icon: LayoutDashboardIcon },
@@ -121,6 +124,22 @@ export function CabinetSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Help</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Contact support">
+                  <a href={`mailto:${SUPPORT_EMAIL}`}>
+                    <LifeBuoyIcon />
+                    <span>Support</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
