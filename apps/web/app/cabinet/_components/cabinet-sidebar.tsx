@@ -8,6 +8,7 @@ import {
   LayoutDashboardIcon,
   LogInIcon,
   LogOutIcon,
+  MailIcon,
   SettingsIcon,
   SparklesIcon,
   TicketIcon,
@@ -45,6 +46,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentOrganizer } from '@/lib/api'
+import { SUPPORT_EMAIL } from '@/lib/constants/site'
 import { initials } from '@/lib/helpers/name'
 import { cn } from '@/lib/utils'
 
@@ -121,6 +123,22 @@ export function CabinetSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Support</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Contact support">
+                  <a href={`mailto:${SUPPORT_EMAIL}`}>
+                    <MailIcon />
+                    <span>Contact support</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>

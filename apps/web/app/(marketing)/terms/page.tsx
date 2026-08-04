@@ -12,11 +12,11 @@ export const dynamic = 'force-static'
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="July 1, 2026">
+    <LegalPage title="Terms of Service" updated="August 1, 2026">
       <p>
-        These terms are a placeholder for the CountMeIn design mockups. They outline the general
-        structure of an agreement between CountMeIn and the organizers who publish bookable services
-        on the platform.
+        These terms govern your use of CountMeIn. They outline the agreement between CountMeIn and
+        the organizers who publish bookable services on the platform, as well as the guests who book
+        them.
       </p>
       <LegalSection heading="1. Using CountMeIn">
         <p>
@@ -34,8 +34,9 @@ export default function TermsPage() {
       </LegalSection>
       <LegalSection heading="3. Guest data">
         <p>
-          Guests provide a name and phone number to book. You agree to handle guest contact details
-          responsibly and only for the purpose of delivering the booked service.
+          Guests provide a display name and authenticate with their messenger account to book. You
+          agree to handle guest details responsibly and only for the purpose of delivering the
+          booked service.
         </p>
       </LegalSection>
       <LegalSection heading="4. Cancellations">
