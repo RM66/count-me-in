@@ -1,6 +1,6 @@
 import { Audiences } from '@/app/(marketing)/_components/audiences'
 import { Cta } from '@/app/(marketing)/_components/cta'
-import { Faq } from '@/app/(marketing)/_components/faq'
+import { Faq, faqs } from '@/app/(marketing)/_components/faq'
 import { Features } from '@/app/(marketing)/_components/features'
 import { Hero } from '@/app/(marketing)/_components/hero'
 import { HowItWorks } from '@/app/(marketing)/_components/how-it-works'
@@ -12,10 +12,17 @@ export const dynamic = 'force-static'
 const SITE_URL = 'https://countmein.group'
 
 // JSON-LD structured data. Emitted server-side into the static HTML so search
-// engines can render a rich result. Kept in sync with the FAQ copy in faq.tsx.
+// engines can render a rich result. The FAQ entries are generated from the same
+// `faqs` array the visible section renders, so the two can never drift.
 const structuredData = {
   '@context': 'https://schema.org',
   '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'CountMeIn',
+      url: SITE_URL,
+      logo: `${SITE_URL}/logo.svg`,
+    },
     {
       '@type': 'WebApplication',
       name: 'CountMeIn',
@@ -32,40 +39,14 @@ const structuredData = {
     },
     {
       '@type': 'FAQPage',
-      mainEntity: [
-        {
-          '@type': 'Question',
-          name: 'Is CountMeIn really free?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Yes — you can create your account, publish services, and take bookings for free. Set up your first bookable service in a few minutes.',
-          },
+      mainEntity: faqs.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
         },
-        {
-          '@type': 'Question',
-          name: 'Do my guests need to install an app or create an account?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'No. Guests open your link, pick a slot, and confirm with their messenger login and a name. There is no separate app to download and no password to remember.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Does CountMeIn handle payments?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Not yet. Prices are shown as text on your services so guests know the cost, but payment happens the way you already collect it. Booking is about reserving the seat.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Can a slot ever be overbooked?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'No. Every slot has a seat count and bookings are claimed atomically, so once a class is full it stops accepting bookings.',
-          },
-        },
-      ],
+      })),
     },
   ],
 }

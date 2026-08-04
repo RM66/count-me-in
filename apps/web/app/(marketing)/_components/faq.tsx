@@ -5,7 +5,9 @@ import { ChevronDown } from 'lucide-react'
 // - guests need no account, just a messenger login (ADR-002, ADR-008)
 // - cancellations via a secure manage link (domain.md Booking / manageToken)
 // Messenger is kept generic on purpose — more messengers are planned beyond the MVP.
-const faqs = [
+// Exported so the FAQPage JSON-LD in page.tsx is generated from this single
+// source of truth and can never drift from the visible copy.
+export const faqs = [
   {
     q: 'Is CountMeIn really free?',
     a: 'Yes — while the service is new, it’s completely free: create your account, publish services, and take bookings at no cost. Down the road we may introduce an optional paid subscription at a symbolic price, but you can get started for free today.',
