@@ -8,12 +8,53 @@ import './globals.css'
 
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' })
 
+const SITE_URL = 'https://countmein.group'
+const TITLE = 'CountMeIn — online booking for group events'
+const DESCRIPTION =
+  'Publish services with time slots and capacity; guests book on a public page — no account, no app. Simple online booking for group classes, events, and outings.'
+
 export const metadata: Metadata = {
-  title: 'CountMeIn — online booking for group events',
-  description:
-    'Publish services with time slots and capacity; guests book on a public page. Simple online booking for group events.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: TITLE,
+    template: '%s · CountMeIn',
+  },
+  description: DESCRIPTION,
+  applicationName: 'CountMeIn',
+  keywords: [
+    'group booking',
+    'event booking',
+    'class booking',
+    'online scheduling',
+    'reservation',
+    'capacity management',
+  ],
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: [{ url: '/logo.svg', type: 'image/svg+xml' }],
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'CountMeIn',
+    url: SITE_URL,
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'CountMeIn — online booking for group events',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/og-image.png'],
   },
 }
 
