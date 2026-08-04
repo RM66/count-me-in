@@ -16,6 +16,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
+import { SITE_DOMAIN } from '@/lib/constants/site'
 import {
   Select,
   SelectContent,
@@ -125,7 +126,7 @@ function SignupPageInner() {
               <FieldLabel htmlFor="slug">Public handle</FieldLabel>
               <InputGroup>
                 <InputGroupAddon>
-                  <InputGroupText>countmein.group/</InputGroupText>
+                  <InputGroupText>{SITE_DOMAIN}/</InputGroupText>
                 </InputGroupAddon>
                 <InputGroupInput
                   id="slug"

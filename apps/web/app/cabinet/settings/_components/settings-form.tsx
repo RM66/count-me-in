@@ -23,6 +23,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
+import { SITE_DOMAIN, SITE_URL } from '@/lib/constants/site'
 import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import {
   Select,
@@ -115,7 +116,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               <FieldLabel htmlFor="slug">Public page URL</FieldLabel>
               <InputGroup>
                 <InputGroupAddon>
-                  <InputGroupText>countmein.group/</InputGroupText>
+                  <InputGroupText>{SITE_DOMAIN}/</InputGroupText>
                 </InputGroupAddon>
                 <InputGroupInput
                   id="slug"
@@ -134,7 +135,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      navigator.clipboard.writeText(`https://countmein.group/${form.state.slug}`)
+                      navigator.clipboard.writeText(`${SITE_URL}/${form.state.slug}`)
                       toast.success('Link copied')
                     }}
                   >

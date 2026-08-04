@@ -1,8 +1,8 @@
 import { DEMO_CABINET_PATH, DEMO_ORGANIZER_PATH } from '@repo/api-contracts'
 import { ArrowRight, CalendarCheck, LayoutDashboardIcon, TicketIcon } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 
+import { HeroCarousel } from '@/app/(marketing)/_components/hero-carousel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -58,22 +58,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="relative">
-          <div className="overflow-hidden rounded-2xl border shadow-sm">
-            <Image
-              src="/service-yoga.png"
-              alt="A morning yoga class in a bright studio"
-              width={720}
-              height={560}
-              className="aspect-4/3 w-full object-cover"
-              priority
-            />
-          </div>
-          <div className="absolute -bottom-5 -left-5 hidden rounded-xl border bg-card p-4 shadow-md sm:block">
-            <p className="text-sm font-medium">Morning Vinyasa Flow</p>
-            <p className="text-sm text-muted-foreground">Tomorrow · 07:00 · 3 seats left</p>
-          </div>
-        </div>
+        <HeroCarousel />
       </div>
     </section>
   )
