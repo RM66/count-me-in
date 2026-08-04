@@ -4,6 +4,18 @@ Simple online booking for group events: organizers publish services with time sl
 
 **Host:** `https://countmein.group` — public booking at `/{orgSlug}` (min 4 chars, reserved: `api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`, `demo`).
 
+## Target audience
+
+Organizers of group classes, events, and outings who need to manage schedule, capacity, and bookings without endless chats and spreadsheets.
+
+- **Sport & active recreation** — group training, team sports, dance, martial arts, running/cycling/climbing clubs, SUP/kayak/surf/ski.
+- **Wellness & practices** — meditation, breathwork, sound healing, bath ceremonies, retreats, support groups.
+- **Learning & creativity** — masterclasses, courses, workshops, art/ceramics/photography, cooking, music, language clubs.
+- **Entertainment & communities** — quizzes, mafia, board/RPG games, book/film clubs, networking, speed dating, kids' events, expat communities.
+- **Excursions & outings** — city walks, food tours, hiking, camping, diving, fishing, yachting, wine/foraging/gastro tours.
+- **Animals** — group sessions with a cynologist, dog socialization, training, horseback, pet-friendly events.
+- **Beauty & professional services** — group beauty procedures, makeup/styling lessons, group consultations, coworking sessions, mastermind groups.
+
 ## Stack
 
 - **Runtime / monorepo:** Bun, Turborepo

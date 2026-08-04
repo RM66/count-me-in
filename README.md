@@ -4,6 +4,18 @@ Online booking for group events — `https://countmein.group`
 
 Organizers publish services with time slots and capacity; guests book on a public page; organizers manage a web cabinet opened from messenger notification links.
 
+## Target audience
+
+Organizers of group classes, events, and outings who need to manage schedule, capacity, and bookings without endless chats and spreadsheets.
+
+- **Sport & active recreation** — group training, team sports, dance, martial arts, running/cycling/climbing clubs, SUP/kayak/surf/ski.
+- **Wellness & practices** — meditation, breathwork, sound healing, bath ceremonies, retreats, support groups.
+- **Learning & creativity** — masterclasses, courses, workshops, art/ceramics/photography, cooking, music, language clubs.
+- **Entertainment & communities** — quizzes, mafia, board/RPG games, book/film clubs, networking, speed dating, kids' events, expat communities.
+- **Excursions & outings** — city walks, food tours, hiking, camping, diving, fishing, yachting, wine/foraging/gastro tours.
+- **Animals** — group sessions with a cynologist, dog socialization, training, horseback, pet-friendly events.
+- **Beauty & professional services** — group beauty procedures, makeup/styling lessons, group consultations, coworking sessions, mastermind groups.
+
 ## Apps
 
 | App           | Role                                                      |

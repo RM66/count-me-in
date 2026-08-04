@@ -16,11 +16,11 @@ export function Hero() {
             Online booking for group events
           </Badge>
           <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Fill your classes without the back-and-forth
+            Fill your classes, events, and outings without the back-and-forth
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground text-pretty">
             Publish your services with time slots and capacity. Share one link. Guests book in
-            seconds — no account, no app, just their phone.
+            seconds — no account, no app, just their messenger.
           </p>
           <Button size="lg" asChild>
             <Link href="/signup">

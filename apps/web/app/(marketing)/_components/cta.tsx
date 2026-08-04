@@ -9,7 +9,7 @@ export function Cta() {
     <section className="border-t bg-muted/30">
       <div className="mx-auto max-w-4xl px-6 py-16 text-center sm:py-24">
         <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Ready to fill your next class?
+          Ready to fill your next event?
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground text-pretty">
           Set up your first bookable service today. It only takes a few minutes.

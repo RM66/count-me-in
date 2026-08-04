@@ -9,7 +9,7 @@ const features = [
   {
     icon: LinkIcon,
     title: 'No account for guests',
-    body: 'Guests book with just a name and phone. One shareable link does all the work.',
+    body: 'Guests book with just a name and a messenger login button. One shareable link does all the work.',
   },
   {
     icon: MessageCircle,
@@ -41,7 +41,7 @@ export function Features() {
           Everything you need to run group bookings
         </h2>
         <p className="mt-4 text-muted-foreground text-pretty">
-          Purpose-built for small-group classes, workshops, and sessions.
+          Purpose-built for small-group classes, events, and outings.
         </p>
       </div>
 

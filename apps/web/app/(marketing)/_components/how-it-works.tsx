@@ -4,7 +4,7 @@ const steps = [
   {
     icon: UserPlus,
     title: 'Create your account',
-    body: 'Sign up with your phone and messenger. Set your public handle, name, and timezone.',
+    body: 'Sign up with your messenger. Set your public handle, name, and timezone.',
   },
   {
     icon: CalendarPlus,
