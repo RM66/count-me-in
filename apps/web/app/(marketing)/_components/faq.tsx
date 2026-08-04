@@ -8,7 +8,7 @@ import { ChevronDown } from 'lucide-react'
 const faqs = [
   {
     q: 'Is CountMeIn really free?',
-    a: 'Yes — you can create your account, publish services, and take bookings for free. Set up your first bookable service in a few minutes.',
+    a: 'Yes — while the service is new, it’s completely free: create your account, publish services, and take bookings at no cost. Down the road we may introduce an optional paid subscription at a symbolic price, but you can get started for free today.',
   },
   {
     q: 'Do my guests need to install an app or create an account?',
