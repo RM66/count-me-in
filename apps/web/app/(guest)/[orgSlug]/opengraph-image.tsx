@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 import { SITE_DOMAIN } from '@/lib/constants/site'
+import { loadFigtreeFonts, loadLogoDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/lib/server/db/organizer'
 
 // Route segment config for the generated image. The size doubles as the
@@ -22,7 +23,11 @@ export default async function OrganizerOgImage({
   params: Promise<{ orgSlug: string }>
 }) {
   const { orgSlug } = await params
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
+  const [organizer, fonts, logo] = await Promise.all([
+    getPublicOrganizerBySlug(orgSlug),
+    loadFigtreeFonts(),
+    loadLogoDataUri(),
+  ])
 
   // Brand gradient lifted from logo.svg (#2726CF → #6F23F7).
   const gradient = 'linear-gradient(135deg, #2726CF 0%, #6F23F7 100%)'
@@ -41,12 +46,13 @@ export default async function OrganizerOgImage({
             color: 'white',
             fontSize: 64,
             fontWeight: 700,
+            fontFamily: 'Figtree',
           }}
         >
           CountMeIn
         </div>
       ),
-      size,
+      { ...size, fonts },
     )
   }
 
@@ -63,7 +69,7 @@ export default async function OrganizerOgImage({
           justifyContent: 'space-between',
           background: 'white',
           padding: 80,
-          fontFamily: 'sans-serif',
+          fontFamily: 'Figtree',
         }}
       >
         {/* A thin brand bar keeps the service identity present but subordinate. */}
@@ -121,27 +127,13 @@ export default async function OrganizerOgImage({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30, color: '#A1A1AA' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: gradient,
-              color: 'white',
-              fontSize: 26,
-              fontWeight: 700,
-            }}
-          >
-            C
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logo} width={44} height={44} alt="" style={{ borderRadius: 12 }} />
           <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
         </div>
       </div>
     ),
-    size,
+    { ...size, fonts },
   )
 }

@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 import { SITE_DOMAIN } from '@/lib/constants/site'
+import { loadFigtreeFonts, loadLogoDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/lib/server/db/organizer'
 import { getPublicService } from '@/lib/server/db/service'
 
@@ -22,7 +23,11 @@ export default async function ServiceOgImage({
   const { orgSlug, serviceId } = await params
   const gradient = 'linear-gradient(135deg, #2726CF 0%, #6F23F7 100%)'
 
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
+  const [organizer, fonts, logo] = await Promise.all([
+    getPublicOrganizerBySlug(orgSlug),
+    loadFigtreeFonts(),
+    loadLogoDataUri(),
+  ])
   const service = organizer ? await getPublicService(organizer.id, serviceId) : null
 
   if (!organizer || !service) {
@@ -39,18 +44,19 @@ export default async function ServiceOgImage({
             color: 'white',
             fontSize: 64,
             fontWeight: 700,
+            fontFamily: 'Figtree',
           }}
         >
           CountMeIn
         </div>
       ),
-      size,
+      { ...size, fonts },
     )
   }
 
   return new ImageResponse(
     (
-      <div style={{ width: '100%', height: '100%', display: 'flex', background: 'white' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', background: 'white', fontFamily: 'Figtree' }}>
         {/* Left: the photo carries the visual weight of the card. */}
         <div style={{ display: 'flex', width: 520, height: '100%', position: 'relative' }}>
           {service.photoUrl ? (
@@ -107,28 +113,14 @@ export default async function ServiceOgImage({
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 28, color: '#A1A1AA' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 40,
-                height: 40,
-                borderRadius: 11,
-                background: gradient,
-                color: 'white',
-                fontSize: 24,
-                fontWeight: 700,
-              }}
-            >
-              C
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 28 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logo} width={40} height={40} alt="" style={{ borderRadius: 11 }} />
             <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
           </div>
         </div>
       </div>
     ),
-    size,
+    { ...size, fonts },
   )
 }
