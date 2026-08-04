@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { SITE_DOMAIN } from '@/lib/constants/site'
 import { formatDateTime } from '@/lib/helpers/date'
 import { listBookings } from '@/lib/server/db/booking'
 import { getOrganizerProfile } from '@/lib/server/db/organizer'
@@ -307,7 +308,7 @@ export default async function CabinetOverviewPage({
             </CardHeader>
             <CardContent>
               <code className="rounded-md bg-muted px-3 py-2 text-sm">
-                countmein.group/{organizer.slug}
+                {SITE_DOMAIN}/{organizer.slug}
               </code>
             </CardContent>
           </Card>

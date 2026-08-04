@@ -5,11 +5,10 @@ import { Features } from '@/app/(marketing)/_components/features'
 import { Hero } from '@/app/(marketing)/_components/hero'
 import { HowItWorks } from '@/app/(marketing)/_components/how-it-works'
 import { Trust } from '@/app/(marketing)/_components/trust'
+import { SITE_URL } from '@/lib/constants/site'
 
 // Static marketing content — prerendered at build time.
 export const dynamic = 'force-static'
-
-const SITE_URL = 'https://countmein.group'
 
 // JSON-LD structured data. Emitted server-side into the static HTML so search
 // engines can render a rich result. The FAQ entries are generated from the same

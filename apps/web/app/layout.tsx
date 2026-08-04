@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Figtree } from 'next/font/google'
 
+import { SITE_URL } from '@/lib/constants/site'
 import { cn } from '@/lib/utils'
 import { Providers } from './providers'
 
@@ -8,7 +9,6 @@ import './globals.css'
 
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' })
 
-const SITE_URL = 'https://countmein.group'
 const TITLE = 'CountMeIn — online booking for group events'
 const DESCRIPTION =
   'Publish services with time slots and capacity; guests book on a public page — no account, no app. Simple online booking for group classes, events, and outings.'

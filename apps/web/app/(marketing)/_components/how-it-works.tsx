@@ -1,5 +1,7 @@
 import { CalendarPlus, PhoneCall, Share2, UserPlus } from 'lucide-react'
 
+import { SITE_DOMAIN } from '@/lib/constants/site'
+
 const steps = [
   {
     icon: UserPlus,
@@ -14,7 +16,7 @@ const steps = [
   {
     icon: Share2,
     title: 'Share your link',
-    body: 'Send guests your countmein.group/you page. They pick a slot and book in seconds.',
+    body: `Send guests your ${SITE_DOMAIN}/you page. They pick a slot and book in seconds.`,
   },
   {
     icon: PhoneCall,
