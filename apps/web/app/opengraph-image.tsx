@@ -34,11 +34,10 @@ export default async function OpengraphImage() {
           fontFamily: 'Figtree',
         }}
       >
-        {/* Logo + wordmark lockup */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+        {/* Logo mark — the SVG already contains the wordmark, so no extra text. */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logo} width={132} height={132} alt="" style={{ borderRadius: 30 }} />
-          <span style={{ fontSize: 60, fontWeight: 700, color: '#18181B' }}>CountMeIn</span>
         </div>
 
         {/* Headline */}
