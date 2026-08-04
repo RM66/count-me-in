@@ -21,17 +21,14 @@ interface TelegramLoginButtonProps {
   usePic?: boolean
   className?: string
 
-  // ── Login mode ───────────────────────────────────────────────────────────────
   /** Redirect on successful login (default: /cabinet). Only used in login mode. */
   redirectTo?: string
   /**
    * Called when the widget auth succeeds but no organizer exists for the identity.
    * Receives the signup ticket so the caller can redirect to /signup?ticket=…
-   * Only used in login mode.
    */
   onSignupRequired?: (ticket: string) => void
 
-  // ── Signup mode ──────────────────────────────────────────────────────────────
   /**
    * Set to `'signup'` to run the ticket-issuance flow instead of direct sign-in,
    * or `'guest'` for the booking flow (no organizer account, no session).
@@ -39,12 +36,10 @@ interface TelegramLoginButtonProps {
   mode?: 'login' | 'signup' | 'guest'
   /**
    * Called after the server validates the widget payload and issues a ticket.
-   * `organizerExists` is true if the identity is already registered (login path).
-   * Only used in signup mode.
+   * `organizerExists` is true if the identity is already registered.
    */
   onTicketIssued?: (ticket: string, organizerExists: boolean) => void
 
-  // ── Guest mode ───────────────────────────────────────────────────────────────
   /**
    * Called with the guest ticket and the identity behind it (ADR-002).
    * Only used in guest mode — the caller spends the ticket on a booking or a
@@ -61,8 +56,7 @@ interface TelegramLoginButtonProps {
  * organizer already exists for this identity.
  *
  * **Login mode** (default): if `organizerExists` → signs in via Auth.js with
- * the ticket and redirects. If not → calls `onSignupRequired(ticket)` so the
- * page can show a toast and redirect to /signup.
+ * the ticket and redirects. If not → calls `onSignupRequired(ticket)`.
  *
  * **Signup mode**: calls `onTicketIssued(ticket, organizerExists)` so the page
  * can either proceed to profile creation or sign in directly.
@@ -99,7 +93,6 @@ export function TelegramLoginButton({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any)[callback] = async (user: TelegramUser) => {
       if (mode === 'guest') {
-        // ── Guest flow: validate via the guest API, hand the ticket back ──────
         try {
           const response = await fetch('/api/auth/telegram-guest', {
             method: 'POST',
@@ -116,7 +109,6 @@ export function TelegramLoginButton({
           console.error('[TelegramLoginButton] Guest fetch error:', err)
         }
       } else if (mode === 'signup') {
-        // ── Signup flow: validate via our API, get a ticket ──────────────────
         try {
           const response = await fetch('/api/auth/telegram-signup', {
             method: 'POST',
@@ -137,7 +129,6 @@ export function TelegramLoginButton({
           console.error('[TelegramLoginButton] Signup fetch error:', err)
         }
       } else {
-        // ── Login flow: validate via our API, then sign in or redirect ────────
         try {
           const response = await fetch('/api/auth/telegram-signup', {
             method: 'POST',
@@ -156,7 +147,6 @@ export function TelegramLoginButton({
           }
 
           if (data.organizerExists) {
-            // Known organizer → sign in with the ticket and redirect
             const { signIn } = await import('next-auth/react')
             const result = await signIn('telegram', { ticket: data.ticket, redirect: false })
             if (result?.ok) {
@@ -165,7 +155,6 @@ export function TelegramLoginButton({
               console.error('[TelegramLoginButton] Sign-in with ticket failed:', result?.error)
             }
           } else {
-            // Unknown identity → notify the page to show toast + redirect to signup
             onSignupRequired?.(data.ticket)
           }
         } catch (err) {

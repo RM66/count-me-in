@@ -18,7 +18,6 @@ const serviceFields = {
   title: displayName,
   description: serviceDescription.optional(),
   location: location.optional(),
-  /** Optional display-only contact; overrides organizer.contact when set. */
   contact: contact.optional(),
   defaultPrice: priceText,
   defaultCapacity: capacity,
@@ -29,10 +28,8 @@ const serviceFields = {
 
 /**
  * `optionsSelectMode` is required iff the service defines options.
- *
  * `null` counts as "no options": the cabinet clears an option list by sending
- * `options: null` together with `optionsSelectMode: null`, so both absent and
- * explicitly-nulled values must land on the same branch.
+ * `options: null` together with `optionsSelectMode: null`.
  */
 function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
   return schema.superRefine((value, ctx) => {
@@ -61,7 +58,6 @@ function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
 export const createServiceInput = refineOptionsConsistency(
   z.object({
     ...serviceFields,
-    /** Public R2 URL of the cover image, already uploaded via a signed URL. */
     photoUrl: z.url().optional(),
   }),
 )
@@ -114,10 +110,8 @@ export type ServiceRecord = z.infer<typeof serviceRecord>
 /**
  * Display-field inheritance: a service may override its organizer's `location`
  * and `contact`, and falls back to the organizer's value when it has none.
- *
- * Isomorphic on purpose — the public page renders these, the calendar link
- * embeds the location, and the worker puts both in notification copy, so the
- * override rule cannot live in a component.
+ * Isomorphic on purpose — the public page, calendar link, and worker all need
+ * this rule, so it cannot live in a component.
  */
 
 interface OverridableDisplayFields {

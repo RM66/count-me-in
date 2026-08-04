@@ -1,6 +1,5 @@
 /**
  * `booking.created` — tell one recipient that a booking exists.
- *
  * One job per recipient (see `api-contracts/jobs.ts`), so this handler always
  * sends exactly one message and a retry re-sends only to the party that failed.
  */
@@ -17,8 +16,6 @@ import { bookingCreatedForGuest, bookingCreatedForOrganizer } from '../telegram/
 export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promise<void> {
   const parsed = bookingCreatedJob.safeParse(data)
   if (!parsed.success) {
-    // Not retryable: the payload will never become valid. Failing loudly is the
-    // point — this can only be a contract mismatch between the two apps.
     throw new Error(`[booking.created] invalid payload: ${parsed.error.message}`)
   }
 
@@ -26,23 +23,16 @@ export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promi
 
   const context = await getNotificationContext(bookingId)
   if (!context) {
-    // The booking is gone. Nothing to announce, and no retry will bring it back.
     console.warn(`[booking.created] booking ${bookingId} no longer exists — skipping`)
     return
   }
 
-  // The demo organizer's messenger ids are sentinels, not real accounts
-  // (ADR-010). Writes already reject the demo before enqueueing, so reaching
-  // this line means something upstream changed — refuse rather than message a
-  // stranger who might one day hold that id.
   if (isDemoOrganizerId(context.organizer.id)) {
     console.warn(`[booking.created] refusing to notify the demo organizer (${bookingId})`)
     return
   }
 
   if (recipient === 'organizer') {
-    // Minted per attempt: a retry issues a fresh token, so a delivered message
-    // never carries a button an earlier attempt already spent.
     const token = await issueLoginLink(context.organizer.id, cabinetSlotPath(context.slot.id))
 
     const message = bookingCreatedForOrganizer(context, loginLinkUrl(env.appUrl, token))

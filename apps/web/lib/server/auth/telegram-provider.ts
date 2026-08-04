@@ -32,18 +32,13 @@ export function createTelegramProvider() {
     credentials: {},
     async authorize(credentials, req) {
       // ── One-time login link (notification deep link) ──────────────────────
-      // Checked before the bot token: this path never talks to Telegram, so a
-      // missing token must not block an organizer who already holds a link.
       const rawLoginLink = (credentials as Record<string, unknown>)?.loginLinkToken
       if (typeof rawLoginLink === 'string' && rawLoginLink.length > 0) {
-        // Single-use: the token is spent here, so a replayed POST fails.
         const payload = await consumeLoginLink(rawLoginLink)
         if (!payload) {
           return null
         }
 
-        // No path may mint a session for the read-only demo account (ADR-010),
-        // even though the worker is not supposed to notify it in the first place.
         if (isDemoOrganizerId(payload.organizerId)) {
           console.error('[TelegramProvider] Refused a login link for the demo organizer')
           return null
@@ -66,8 +61,6 @@ export function createTelegramProvider() {
       }
 
       // ── Ticket-based sign-in (post-signup) ───────────────────────────────
-      // After the signup form creates the organizer, it calls
-      // signIn('telegram', { ticket }) to establish a session.
       const rawTicket = (credentials as Record<string, unknown>)?.ticket
       if (typeof rawTicket === 'string' && rawTicket.length === TICKET_BASE64URL_LENGTH) {
         const payload = await consumeTicket(rawTicket)
@@ -110,16 +103,12 @@ export function createTelegramProvider() {
         })
 
         if (!organizer) {
-          // Unknown identity → issue a signup ticket so the client can proceed
-          // to the signup form without re-authenticating.
           const ticket = await issueTicket({
             messenger: 'telegram',
             messengerId,
             displayName: [telegramUser.first_name, telegramUser.last_name ?? ''].join(' ').trim(),
             photoUrl: telegramUser.photo_url,
           })
-          // Auth.js does not support custom return values on failure, so we
-          // encode the ticket in the error string. The client parses it.
           throw new Error(`SIGNUP_REQUIRED:${ticket}`)
         }
 

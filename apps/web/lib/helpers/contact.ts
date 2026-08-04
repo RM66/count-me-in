@@ -2,10 +2,7 @@
  * Contact string classifier (ADR-008).
  *
  * The DB stores one free-text `contact` string; this decides which *link kind*
- * renders it. The separate rule for which contact value wins (service overrides
- * organizer) is specified in docs/domain.md and is not implemented yet.
- *
- * Classification order (first match wins):
+ * renders it. Classification order (first match wins):
  * 1. phone  — E.164-ish / digits with separators  → `tel:` link
  * 2. email  — single valid email address           → `mailto:` link
  * 3. url    — http(s)://, t.me/, www., bare domain → `https:` link (scheme added when missing)
@@ -16,17 +13,11 @@ export type ContactKind = 'phone' | 'email' | 'url' | 'text'
 
 export interface ContactInfo {
   kind: ContactKind
-  /** Normalised href to use in the anchor (undefined for `text`). */
   href?: string
 }
 
-// E.164 / national formats: starts with optional +, then digits, spaces, hyphens, parens.
 const PHONE_RE = /^\+?[\d\s\-().]{7,20}$/
-
-// Simplified but practical email pattern.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-// Covers http(s), t.me, www., or bare domain-like strings with a path.
 const URL_EXPLICIT_RE = /^(https?:\/\/|t\.me\/|www\.)/i
 const BARE_DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*\.)+[a-z]{2,}(\/\S*)?$/i
 
@@ -41,19 +32,15 @@ export function detectContactKind(raw: string): ContactInfo {
     return { kind: 'text' }
   }
 
-  // 1. Phone
   if (PHONE_RE.test(text)) {
-    // Strip whitespace/formatting for the href; keep leading +.
     const digits = text.replace(/[\s\-().]/g, '')
     return { kind: 'phone', href: `tel:${digits}` }
   }
 
-  // 2. Email
   if (EMAIL_RE.test(text)) {
     return { kind: 'email', href: `mailto:${text}` }
   }
 
-  // 3. URL
   if (URL_EXPLICIT_RE.test(text)) {
     const href = /^https?:\/\//i.test(text) ? text : `https://${text.replace(/^www\./i, 'www.')}`
     return { kind: 'url', href }
@@ -62,6 +49,5 @@ export function detectContactKind(raw: string): ContactInfo {
     return { kind: 'url', href: `https://${text}` }
   }
 
-  // 4. Plain text
   return { kind: 'text' }
 }

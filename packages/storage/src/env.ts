@@ -1,6 +1,5 @@
 /**
  * R2 environment variables — lazy validation (throw on first use).
- * Server-only module.
  */
 
 interface R2Config {

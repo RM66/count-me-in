@@ -10,7 +10,6 @@ import { createSignedUploadUrl, publicUrl, servicePhotoKey } from '@repo/storage
 
 import 'server-only'
 
-/** Map an accepted content type to the extension stored in R2. */
 const EXT_BY_CONTENT_TYPE: Record<string, 'jpg' | 'png' | 'webp'> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -19,7 +18,6 @@ const EXT_BY_CONTENT_TYPE: Record<string, 'jpg' | 'png' | 'webp'> = {
 
 /**
  * Create a signed upload URL for a service cover photo.
- *
  * Keyed by **organizer**, not by service: covers are uploaded from the "new
  * service" form before the service row exists (see `servicePhotoKey`).
  */

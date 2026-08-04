@@ -36,13 +36,9 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
     redirect('/login')
   }
 
-  // Bound outside the action: inside the closure TypeScript can no longer see
-  // the null check above, and the target is a fixed value anyway.
   const next = payload.next
 
-  // Already signed in as this organizer? Then the link has nothing left to do —
-  // go straight to the target and leave the token unspent, so the same message
-  // keeps working from this browser for the token's whole life.
+  // Already signed in as this organizer? Then the link has nothing left to do.
   const session = await auth()
   if (session?.user?.id === payload.organizerId) {
     redirect(next)
@@ -50,7 +46,6 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
 
   /**
    * Spend the token and establish the session.
-   *
    * A server action rather than a route handler: it is a `POST` bound to this
    * page's form, so there is no separate endpoint to guard, and Next's action
    * ids are per-build rather than a stable URL a scanner might follow.
@@ -61,8 +56,6 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
     try {
       await signIn('telegram', { loginLinkToken: token, redirectTo: next })
     } catch (error) {
-      // `signIn` throws a redirect on success — Next uses exceptions for
-      // control flow here, so it has to travel rather than be swallowed.
       if (error instanceof Error && error.message === 'NEXT_REDIRECT') throw error
       if (
         typeof error === 'object' &&
@@ -74,7 +67,6 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
         throw error
       }
 
-      // A genuinely invalid token (raced, expired between peek and submit).
       redirect('/login')
     }
   }

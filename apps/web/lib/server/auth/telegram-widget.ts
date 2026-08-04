@@ -27,13 +27,10 @@ export type ValidatedTelegramIdentity = Required<Pick<AuthTicketPayload, 'messen
 
 /**
  * Parse and HMAC-validate a widget payload from a request body.
- *
  * Returns a {@link Guarded} so route handlers keep their single-expression
  * opening — check `.ok`, never truthiness. Failures are `400`: the payload is
  * malformed or unsigned, which is a bad request rather than an expired session.
- *
- * A missing `TELEGRAM_BOT_TOKEN` is the one `500` here — it is our
- * misconfiguration, not the caller's mistake.
+ * A missing `TELEGRAM_BOT_TOKEN` is the one `500` here.
  */
 export async function validateTelegramWidget(
   body: unknown,
@@ -56,8 +53,6 @@ export async function validateTelegramWidget(
 
   try {
     const validator = new AuthDataValidator({ botToken })
-    // Validated against the raw body: the map has to carry exactly the fields
-    // Telegram signed, so a Zod-transformed object could not reproduce the hash.
     await validator.validate(objectToAuthDataMap(body as Record<string, string>))
   } catch {
     return {
@@ -75,8 +70,6 @@ export async function validateTelegramWidget(
       messengerId: widget.id.toString(),
       displayName: [widget.first_name, widget.last_name ?? ''].join(' ').trim(),
       photoUrl: widget.photo_url,
-      // Telegram username as the human-readable login (e.g. @alice). Absent for
-      // accounts that never set one — nullable all the way down to the column.
       messengerLogin: widget.username ? `@${widget.username}` : undefined,
     },
   }

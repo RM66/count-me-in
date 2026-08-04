@@ -1,6 +1,5 @@
 /**
  * Memoized S3Client for Cloudflare R2.
- * Server-only module.
  */
 import { S3Client } from '@aws-sdk/client-s3'
 

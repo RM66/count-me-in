@@ -7,7 +7,6 @@ interface ContactLinkProps {
 
 /**
  * Renders a contact string as the appropriate link type or plain text.
- *
  * Uses `detectContactKind` to classify the string at render time (ADR-008):
  * - phone  → `<a href="tel:…">`
  * - email  → `<a href="mailto:…">`

@@ -60,7 +60,6 @@ export function toOrganizerProfile(row: Organizer, isDemo: boolean): OrganizerPr
 
 /**
  * Normalize an `organizers` row into the **public** DTO for `/{orgSlug}`.
- *
  * `isDemo` is derived here rather than passed in: unlike the cabinet, a public
  * page has no session to resolve it from — the slug alone decides which row is
  * being shown.
@@ -81,11 +80,8 @@ export function toPublicOrganizer(row: Organizer): PublicOrganizer {
 
 /**
  * The organizer behind a public slug, or `null` when no such page exists — the
- * caller answers `404`.
- *
- * Slugs are stored lowercase (the `slug` primitive transforms them), so the
- * lookup lowercases too: `/Demo` and `/demo` are the same page, and without
- * this a capitalised link would 404 on a slug that plainly exists.
+ * caller answers `404`. Slugs are stored lowercase (the `slug` primitive
+ * transforms them), so the lookup lowercases too.
  */
 export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {
   const [row] = await db
@@ -100,7 +96,6 @@ export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrga
 /**
  * Profile for the organizer this request may view — the signed-in organizer,
  * or the demo organizer for anonymous visitors (ADR-010).
- *
  * Returns `null` when the id does not exist (e.g. the demo seed has not run).
  */
 export async function getOrganizerProfile(
@@ -117,9 +112,7 @@ export async function getOrganizerProfile(
 /**
  * Update the current organizer's profile.
  * Editable fields: name, slug, timezone, description, location, contact, photoUrl.
- * Messenger identity is not editable.
- *
- * Returns `null` when the organizer id does not exist.
+ * Messenger identity is not editable. Returns `null` when the id does not exist.
  */
 export async function updateOrganizerProfile(
   organizerId: string,
@@ -135,6 +128,5 @@ export async function updateOrganizerProfile(
 
   if (!updated) return null
 
-  // A successful write means this is not the demo account.
   return toOrganizerProfile(updated, false)
 }

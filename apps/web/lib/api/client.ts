@@ -1,14 +1,8 @@
-/**
- * Shared HTTP client utilities for API calls.
- * Used by both queries and mutations.
- */
+/** Shared HTTP client utilities for API calls. */
 
 import { ApiError } from './error'
 
-/**
- * Generic POST helper with error handling.
- * Throws ApiError on non-2xx responses.
- */
+/** Generic POST helper with error handling. */
 export async function post<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -22,10 +16,7 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
   return data
 }
 
-/**
- * Generic GET helper with error handling.
- * Throws ApiError on non-2xx responses.
- */
+/** Generic GET helper with error handling. */
 export async function get<T>(url: string): Promise<T> {
   const res = await fetch(url)
   const data = (await res.json().catch(() => ({}))) as { error?: string } & T
@@ -35,10 +26,7 @@ export async function get<T>(url: string): Promise<T> {
   return data
 }
 
-/**
- * Generic PUT helper with error handling.
- * Throws ApiError on non-2xx responses.
- */
+/** Generic PUT helper with error handling. */
 export async function put<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'PUT',
@@ -52,10 +40,7 @@ export async function put<T>(url: string, body: unknown): Promise<T> {
   return data
 }
 
-/**
- * Generic DELETE helper with error handling.
- * Throws ApiError on non-2xx responses.
- */
+/** Generic DELETE helper with error handling. */
 export async function del<T>(url: string): Promise<T> {
   const res = await fetch(url, { method: 'DELETE' })
   const data = (await res.json().catch(() => ({}))) as { error?: string } & T

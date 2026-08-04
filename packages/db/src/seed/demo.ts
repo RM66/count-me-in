@@ -234,7 +234,6 @@ const demoSlotTemplates = [
 
 /**
  * Resolve slot templates against `now`.
- *
  * `bookedCount` is seeded as a plain number rather than derived from the
  * `bookings` rows below: the demo intentionally shows realistic fill levels
  * without needing a booking row per seat. Because the account is read-only,
@@ -243,7 +242,6 @@ const demoSlotTemplates = [
 export function buildDemoSlots(now: Date = new Date()) {
   return demoSlotTemplates.map((template) => {
     const startsAt = new Date(now)
-    // +1 → offsets count from tomorrow, so no slot can resolve to the past.
     startsAt.setUTCDate(startsAt.getUTCDate() + template.dayOffset + 1)
     startsAt.setUTCHours(template.hour, 0, 0, 0)
 
@@ -261,7 +259,6 @@ export function buildDemoSlots(now: Date = new Date()) {
 
 /**
  * A few illustrative bookings for the cabinet's bookings table.
- *
  * `manageToken`s are deterministic and publicly known — acceptable only because
  * every write path rejects the demo account (ADR-010), so a leaked demo token
  * cannot cancel anything.
@@ -291,7 +288,6 @@ export function buildDemoBookings(now: Date = new Date()) {
       guestName: 'Noah Ellis',
       guestMessenger: 'telegram' as const,
       guestMessengerId: 'demo-guest-2',
-      // No username set — exercises the nullable `guestMessengerLogin` path.
       guestMessengerLogin: null,
       manageToken: 'demo-manage-token-2',
       selectedOptions: ['Take-home glaze kit', 'Photo of your piece'],

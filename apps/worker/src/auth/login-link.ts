@@ -18,7 +18,6 @@ import { getRedis } from '@repo/redis'
 
 /**
  * Entropy behind a login link.
- *
  * The token is a bearer credential for a cabinet session, so it is sized to be
  * unguessable rather than short — nobody ever types it, they tap a button.
  */
@@ -26,15 +25,10 @@ const LOGIN_TOKEN_BYTES = 32
 
 /**
  * Mint a single-use login link token pointing at `next`.
- *
  * Called **per send attempt**, immediately before the message goes out: a retry
  * mints a fresh token and the abandoned one simply expires. That is cheaper
  * than tracking and cleaning up tokens, and it guarantees a delivered message
  * never carries a button that was already spent by an earlier attempt.
- *
- * @param next relative path to open once the session exists — always built
- * server-side, never taken from input, which is what keeps this from being an
- * open redirect.
  */
 export async function issueLoginLink(organizerId: string, next: string): Promise<string> {
   const token = randomBytes(LOGIN_TOKEN_BYTES).toString('base64url')

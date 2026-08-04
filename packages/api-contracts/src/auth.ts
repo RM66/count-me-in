@@ -4,8 +4,8 @@ import { messengerEnum } from './enums'
 import { authTicket, messengerId, uuid } from './primitives'
 
 /**
- * Telegram Login Widget payload received from the client after widget auth.
- * The server re-validates the HMAC before trusting any field.
+ * Telegram Login Widget payload from the client.
+ * Server re-validates the HMAC before trusting any field.
  */
 export const telegramWidgetPayload = z.object({
   id: z.number().int().positive(),
@@ -20,19 +20,18 @@ export type TelegramWidgetPayload = z.infer<typeof telegramWidgetPayload>
 
 /**
  * Response from POST /api/auth/telegram-signup.
- * Contains a short-lived auth ticket that the signup form exchanges for a session.
- * `organizerExists` tells the client whether to go to login or signup.
+ * Contains a short-lived auth ticket; `organizerExists` tells the client
+ * whether to go to login or signup.
  */
 export const authTicketResponse = z.object({
   ticket: authTicket,
-  /** Whether an organizer already exists for this messenger identity. */
   organizerExists: z.boolean(),
 })
 export type AuthTicketResponse = z.infer<typeof authTicketResponse>
 
 /**
- * POST /api/auth/telegram-guest — same widget validation but issues a guest ticket
- * for the booking flow instead of an organizer session.
+ * POST /api/auth/telegram-guest — same widget validation but issues a guest
+ * ticket for the booking flow instead of an organizer session.
  */
 export const guestTicketResponse = z.object({
   ticket: authTicket,
@@ -54,27 +53,21 @@ export type GuestTicketResponse = z.infer<typeof guestTicketResponse>
 // format and payload shape live here where both can see them.
 
 /**
- * How long a login link stays valid.
- *
- * Sized against the message, not the session: a booking notification is still a
- * plausible thing to tap days later, and a token that outlives the chat message
- * buys nothing. Every notification mints a fresh one, so the newest message
- * always carries a live link.
+ * How long a login link stays valid (30 days).
+ * Sized against the message, not the session: a booking notification is still
+ * plausible to tap days later. Every notification mints a fresh one.
  */
 export const LOGIN_LINK_TTL_S = 30 * 24 * 60 * 60
 
-/** Redis key holding a login link's payload. */
 export function loginLinkKey(token: string): string {
   return `auth:login-link:${token}`
 }
 
 /**
  * What a login link resolves to once consumed.
- *
- * `next` is stored **with the token rather than in the URL** so the redirect
- * target cannot be rewritten by whoever holds the link — it is always a
- * relative cabinet path built server-side, which is what keeps this from being
- * an open redirect.
+ * `next` is stored with the token (not in the URL) so the redirect target
+ * cannot be rewritten by whoever holds the link — always a relative cabinet
+ * path built server-side, preventing open redirect.
  */
 export const loginLinkPayload = z.object({
   organizerId: uuid,

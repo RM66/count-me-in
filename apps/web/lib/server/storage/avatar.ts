@@ -15,7 +15,6 @@ export async function createAvatarUpload(
   organizerId: string,
   input: CreateAvatarUploadInput,
 ): Promise<AvatarUploadTarget> {
-  // Map contentType to file extension
   const extMap: Record<string, 'jpg' | 'png' | 'webp'> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
@@ -26,10 +25,8 @@ export async function createAvatarUpload(
     throw new Error(`Unsupported content type: ${input.contentType}`)
   }
 
-  // Generate versioned key
   const key = avatarKey(organizerId, ext)
 
-  // Create signed upload URL
   const { uploadUrl, expiresAt } = await createSignedUploadUrl({
     key,
     contentType: input.contentType,

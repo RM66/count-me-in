@@ -80,16 +80,10 @@ export async function getOwnedService(
 }
 
 /**
- * A service reached through a public page, scoped to the organizer whose slug is
- * in the URL.
- *
- * The same shape as {@link getOwnedService} and for the same reason, but the
- * scope here is the *page* rather than a session: `/{orgSlug}/{serviceId}` must
- * `404` when the service belongs to a different organizer, or one organizer's
- * service would render under another's name and header.
- *
- * There is no separate public DTO: every column of `serviceRecord` is already
- * shown on the service page, so a projection would only duplicate the type.
+ * A service reached through a public page, scoped to the organizer whose slug
+ * is in the URL. `/{orgSlug}/{serviceId}` must `404` when the service belongs
+ * to a different organizer. There is no separate public DTO: every column of
+ * `serviceRecord` is already shown on the service page.
  */
 export async function getPublicService(
   organizerId: string,
@@ -106,7 +100,6 @@ export async function getPublicService(
 
 /**
  * Number of *upcoming* slots per service id, for the cabinet list.
- *
  * One grouped query rather than a count per card — the list renders every
  * service, so per-row lookups would be a textbook N+1.
  */
@@ -124,12 +117,10 @@ export async function countUpcomingSlots(serviceIds: string[]): Promise<Record<s
 
 /**
  * Create a service owned by `organizerId`.
- *
  * The owner always comes from the caller's session — never from the payload —
  * so a service cannot be created under someone else's account.
- *
  * Optional columns are normalized to `null`: the DTO and the database agree
- * that "absent" is `null`, and leaving `undefined` here would make Drizzle fall
+ * that "absent" is `null`, and leaving `undefined` would make Drizzle fall
  * back to column defaults instead.
  */
 export async function createService(
@@ -166,11 +157,9 @@ export class NoServiceUpdatesError extends Error {
 
 /**
  * Update a service **scoped to its owner**.
- *
  * Returns `null` when the id does not exist or belongs to someone else — the
- * caller answers `404` either way, so the endpoint never confirms that a
- * foreign id exists. Throws {@link NoServiceUpdatesError} when the payload
- * carries no writable field, which is a client mistake rather than a miss.
+ * caller answers `404` either way. Throws {@link NoServiceUpdatesError} when
+ * the payload carries no writable field.
  */
 export async function updateOwnedService(
   organizerId: string,
@@ -194,7 +183,6 @@ export async function updateOwnedService(
 
 /**
  * Delete a service **scoped to its owner**, returning its id.
- *
  * Slots and their bookings cascade (see the `services` FK), so this also
  * removes any scheduled sessions. Returns `null` when nothing matched.
  */

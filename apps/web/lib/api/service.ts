@@ -15,15 +15,12 @@ import { resizeServicePhoto } from './image'
 import { queryKeys } from './keys'
 
 /**
- * Client-side API for the **Service** entity (услуга) — writes plus the cover
- * upload flow.
- *
- * Cabinet pages read services on the server (`lib/server/db/service.ts`), so
- * there is no list/detail query here yet; the mutations still have to drop that
- * cache when a server component refetches.
+ * Client-side API for the **Service** entity — writes plus the cover upload
+ * flow. Cabinet pages read services on the server (`lib/server/db/service.ts`),
+ * so there is no list/detail query here yet; the mutations still have to drop
+ * that cache when a server component refetches.
  */
 
-/** Drop every cached service list/detail so the next read refetches. */
 function invalidateServices(queryClient: ReturnType<typeof useQueryClient>) {
   return queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
 }
@@ -62,27 +59,22 @@ export function useDeleteService(serviceId: string) {
 
 /**
  * Upload a service cover and resolve to its public URL.
- *
- * Unlike {@link useUploadAvatar} this deliberately **does not persist** the URL:
- * the "new service" form has no row to attach it to yet, so the caller keeps the
- * returned URL in form state and it is saved with the rest of the fields. That
- * also makes "pick a photo, then cancel" a no-op on the database.
+ * Unlike {@link useUploadAvatar} this deliberately **does not persist** the
+ * URL: the "new service" form has no row to attach it to yet, so the caller
+ * keeps the returned URL in form state and it is saved with the rest of the
+ * fields. That also makes "pick a photo, then cancel" a no-op on the database.
  *
  * Flow: resize in-browser → signed URL → PUT to R2 → return the public URL.
  */
 export function useUploadServicePhoto() {
   return useMutation({
     mutationFn: async (file: File): Promise<string> => {
-      // Resize before signing — the signed URL commits to an exact
-      // Content-Type and Content-Length, so bytes must be final at this point.
       const image = await resizeServicePhoto(file)
 
       if (image.size > SERVICE_PHOTO_UPLOAD_MAX_BYTES) {
         throw new ApiError('Could not compress that image enough — try another one', 413)
       }
 
-      // `image.type` is authoritative: a browser without WebP encoding may have
-      // fallen back to another format.
       const target = await post<ImageUploadTarget>('/api/organizers/me/service-photo', {
         contentType: image.type,
         size: image.size,

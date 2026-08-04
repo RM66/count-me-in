@@ -2,8 +2,8 @@ import { z } from 'zod'
 
 /**
  * Max size of the *source* file the organizer may pick in the file dialog.
- * The browser downscales before upload (see `apps/web/lib/helpers/image.ts`),
- * so this only guards against decoding absurdly large files in the tab.
+ * The browser downscales before upload, so this only guards against decoding
+ * absurdly large files in the tab.
  */
 export const AVATAR_MAX_BYTES = 5 * 1024 * 1024
 
@@ -48,8 +48,8 @@ export type AvatarUploadTarget = z.infer<typeof avatarUploadTarget>
 
 /**
  * Service covers are **landscape**, not square like avatars, so they get their
- * own limits instead of reusing the avatar constants — a 16:9 cover rendered at
- * card width needs more horizontal pixels than a 512px avatar.
+ * own limits instead of reusing the avatar constants — a 16:9 cover rendered
+ * at card width needs more horizontal pixels than a 512px avatar.
  */
 export const SERVICE_PHOTO_MAX_BYTES = 10 * 1024 * 1024
 
@@ -76,8 +76,8 @@ export type CreateServicePhotoUploadInput = z.infer<typeof createServicePhotoUpl
 
 /**
  * Shape returned by any signed-upload endpoint. Identical to
- * {@link avatarUploadTarget} — aliased rather than duplicated so a future change
- * to the handshake lands in one place.
+ * {@link avatarUploadTarget} — aliased rather than duplicated so a future
+ * change to the handshake lands in one place.
  */
 export const imageUploadTarget = avatarUploadTarget
 export type ImageUploadTarget = z.infer<typeof imageUploadTarget>

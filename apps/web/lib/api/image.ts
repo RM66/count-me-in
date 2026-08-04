@@ -9,11 +9,9 @@ import {
 
 /**
  * Browser-side image downscaling for uploads.
- *
  * Runs before the signed upload URL is requested: the URL commits to an exact
  * Content-Type and Content-Length, so the bytes must be final by then.
  * Keeps stored objects ~50–100× smaller than raw phone photos (see ADR-007).
- *
  * Client-only — depends on canvas / createImageBitmap.
  */
 
@@ -41,7 +39,6 @@ function toBlob(canvas: Canvas, type: string, quality: number): Promise<Blob | n
 /** Decode a file into a bitmap with EXIF orientation already applied. */
 async function decode(file: File | Blob): Promise<ImageBitmap> {
   try {
-    // 'from-image' applies EXIF orientation, otherwise phone photos come out rotated.
     return await createImageBitmap(file, { imageOrientation: 'from-image' })
   } catch {
     throw new Error('That file could not be read as an image')
@@ -49,12 +46,10 @@ async function decode(file: File | Blob): Promise<ImageBitmap> {
 }
 
 interface DrawRegion {
-  /** Source rectangle to sample from the bitmap. */
   sourceX: number
   sourceY: number
   sourceWidth: number
   sourceHeight: number
-  /** Destination canvas size. */
   outputWidth: number
   outputHeight: number
 }
@@ -99,24 +94,18 @@ async function render(
 
 /**
  * Decode, center-crop to a square, downscale to at most AVATAR_TARGET_SIZE
- * and re-encode as WebP.
- *
- * Never upscales: a source smaller than the target keeps its own dimensions.
- * The returned blob's `type` is authoritative — a browser without WebP encoding
- * support may hand back PNG instead, so callers must read it rather than assume.
- *
- * @throws if the file cannot be decoded as an image or encoding fails.
+ * and re-encode as WebP. Never upscales: a source smaller than the target
+ * keeps its own dimensions. The returned blob's `type` is authoritative — a
+ * browser without WebP encoding may hand back PNG instead.
  */
 export async function resizeAvatar(file: File | Blob): Promise<Blob> {
   const bitmap = await decode(file)
 
   try {
-    // Center-crop the largest possible square from the source.
     const cropSide = Math.min(bitmap.width, bitmap.height)
     const cropX = (bitmap.width - cropSide) / 2
     const cropY = (bitmap.height - cropSide) / 2
 
-    // Downscale only — never enlarge a small source.
     const outputSide = Math.min(AVATAR_TARGET_SIZE, cropSide)
 
     return await render(
@@ -139,21 +128,15 @@ export async function resizeAvatar(file: File | Blob): Promise<Blob> {
 
 /**
  * Decode, downscale to fit SERVICE_PHOTO_TARGET_SIZE on the longest edge and
- * re-encode as WebP.
- *
- * Unlike {@link resizeAvatar} this **preserves the aspect ratio** — service
- * covers are displayed in a 16:9 frame with `object-cover`, so cropping to a
- * fixed ratio here would throw away pixels the layout may still want. Never
- * upscales; the returned blob's `type` is authoritative.
- *
- * @throws if the file cannot be decoded as an image or encoding fails.
+ * re-encode as WebP. Unlike {@link resizeAvatar} this **preserves the aspect
+ * ratio** — service covers are displayed in a 16:9 frame with `object-cover`.
+ * Never upscales; the returned blob's `type` is authoritative.
  */
 export async function resizeServicePhoto(file: File | Blob): Promise<Blob> {
   const bitmap = await decode(file)
 
   try {
     const longestEdge = Math.max(bitmap.width, bitmap.height)
-    // Downscale only — never enlarge a small source.
     const scale = Math.min(1, SERVICE_PHOTO_TARGET_SIZE / longestEdge)
 
     return await render(

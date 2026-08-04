@@ -13,8 +13,7 @@
  *
  * `start()` still runs the schema install/migration, which is deliberate: it
  * means the very first booking can enqueue even if the worker has never been
- * deployed yet, instead of failing on a missing `pgboss` schema. `createQueue`
- * is idempotent, so both processes may declare the same queues.
+ * deployed yet, instead of failing on a missing `pgboss` schema.
  */
 
 import {
@@ -31,7 +30,6 @@ import 'server-only'
 
 /**
  * The subset of a Drizzle transaction the pg-boss adapter needs.
- *
  * Typed structurally rather than as `PgTransaction<…>`: the callers are already
  * inside `db.transaction()`, and naming the full generic here would drag the
  * whole Drizzle type surface into this module for no benefit.
@@ -42,7 +40,6 @@ const globalForQueue = globalThis as unknown as { boss?: Promise<PgBoss> }
 
 /**
  * How long a notification job may sit unclaimed, and how hard it is retried.
- *
  * Retries are backed off because the failures worth retrying are rate limits
  * and Telegram outages — hammering either makes them worse. Permanent failures
  * (the recipient never pressed Start) are completed by the worker rather than
@@ -72,9 +69,6 @@ function getBoss(): Promise<PgBoss> {
         schedule: false,
       })
 
-      // Surfaced rather than swallowed: pg-boss emits `error` on background
-      // connection trouble, and an EventEmitter with no `error` listener takes
-      // the process down.
       boss.on('error', (error) => {
         console.error('[queue] pg-boss error:', error)
       })
@@ -89,8 +83,6 @@ function getBoss(): Promise<PgBoss> {
       return boss
     })()
 
-    // A failed start must not be cached forever — the next caller should retry
-    // instead of inheriting a permanently rejected promise.
     globalForQueue.boss.catch(() => {
       globalForQueue.boss = undefined
     })
@@ -101,13 +93,9 @@ function getBoss(): Promise<PgBoss> {
 
 /**
  * Publish the two `booking.created` notifications for a fresh booking.
- *
  * **Call inside the booking transaction.** `fromDrizzle(tx, sql)` routes the
  * job insert through the caller's transaction, which is the only way the job
- * and the booking share a fate: published after the commit a job can be lost if
- * the process dies in between, and published on its own connection before the
- * commit it can notify about a booking that then rolls back.
- *
+ * and the booking share a fate.
  * One job **per recipient** — see the fan-out note in `api-contracts/jobs.ts`.
  */
 export async function enqueueBookingCreated(tx: Tx, bookingId: string): Promise<void> {
@@ -124,7 +112,6 @@ export async function enqueueBookingCreated(tx: Tx, bookingId: string): Promise<
 
 /**
  * Publish the `booking.cancelled` notification for a cancelled booking.
- *
  * Same transactional contract as {@link enqueueBookingCreated}. Only the actor
  * is recorded; the worker notifies the counterparty.
  */

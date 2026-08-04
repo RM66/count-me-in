@@ -52,7 +52,6 @@ function offsetAt(instant: Date, timeZone: string): number {
     field.year ?? 0,
     (field.month ?? 1) - 1,
     field.day ?? 1,
-    // `hour12: false` yields 24 for midnight in some ICU versions.
     (field.hour ?? 0) % 24,
     field.minute ?? 0,
     field.second ?? 0,
@@ -63,15 +62,13 @@ function offsetAt(instant: Date, timeZone: string): number {
 
 /**
  * The instant at which `wall` reads on a clock in `timeZone`.
- *
  * Resolved in two passes because the offset depends on the very instant being
  * computed: the first guess uses the offset at the naive UTC reading, the
  * second re-checks it at the resulting instant. That second pass is what makes
  * times just after a DST transition land correctly instead of an hour out.
  *
  * Ambiguous and skipped wall-clock times (the hour a DST jump repeats or
- * removes) resolve to a single defined instant rather than throwing — a slot
- * scheduled inside the gap is a scheduling curiosity, not an input error.
+ * removes) resolve to a single defined instant rather than throwing.
  */
 export function wallClockToInstant(wall: WallClock, timeZone: string): Date {
   const naiveUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute)
@@ -91,7 +88,6 @@ function pad(value: number): string {
 /**
  * Split an instant into the `value` strings an `<input type="date">` and an
  * `<input type="time">` expect (`YYYY-MM-DD` / `HH:mm`), as read in `timeZone`.
- *
  * The exact inverse of {@link wallClockToInstant}, so seeding an edit form from
  * a stored slot and saving it again without touching a field is a no-op.
  */

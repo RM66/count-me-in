@@ -15,8 +15,8 @@ import {
 import type { CreateServiceInput, ServiceRecord } from './service'
 
 /**
- * The cabinet service form, as the *inputs* hold it — deliberately distinct from
- * {@link CreateServiceInput} / {@link UpdateServiceInput}.
+ * The cabinet service form, as the *inputs* hold it — deliberately distinct
+ * from {@link CreateServiceInput} / {@link UpdateServiceInput}.
  *
  * Three reasons the wire schemas cannot be reused directly as a form resolver:
  * 1. A controlled number input yields a `string`, including `''` mid-edit.
@@ -39,8 +39,8 @@ const serviceFormFields = {
   defaultDurationMinutes: numericText(durationMinutes, 'Duration'),
   /**
    * Uniqueness is enforced here rather than by reusing `optionsList`: that
-   * schema also requires `.min(1)`, while an empty form list is legal and simply
-   * means "this service has no options".
+   * schema also requires `.min(1)`, while an empty form list is legal and
+   * simply means "this service has no options".
    */
   options: z
     .array(optionLabel)
@@ -54,7 +54,6 @@ const serviceFormFields = {
 
 /**
  * Validates the form and normalizes it into the wire shape.
- *
  * `options` and `optionsSelectMode` always travel together — the wire contract
  * rejects a mode without options and vice versa — so an empty list clears both.
  */
@@ -71,11 +70,9 @@ export type ServiceFormValues = z.input<typeof serviceFormSchema>
 
 /**
  * What a valid submit produces: parsed, trimmed, `''` collapsed to `null`.
- *
  * This is already a valid `UpdateServiceInput` — that contract is `.partial()`
- * and nullable, so `null` clears a column and re-sending an unchanged value is a
- * no-op write. No update-side conversion is needed; dirty-field tracking belongs
- * in the UI (to enable/disable Save), not in the payload.
+ * and nullable, so `null` clears a column and re-sending an unchanged value is
+ * a no-op write. No update-side conversion is needed.
  */
 export type ServiceFormOutput = z.output<typeof serviceFormSchema>
 
@@ -87,7 +84,6 @@ const NEW_SERVICE_DEFAULTS = {
 
 /**
  * Seed the form from an existing service, or from defaults when creating.
- *
  * Pure and dependency-free so it can be unit tested and reused by any surface
  * that needs to render this form.
  */
@@ -103,7 +99,6 @@ export function toServiceFormValues(service?: ServiceRecord): ServiceFormValues 
       service?.defaultDurationMinutes ?? NEW_SERVICE_DEFAULTS.durationMinutes,
     ),
     options: service?.options ?? [],
-    // Only meaningful once options exist; `single` is the harmless default.
     optionsSelectMode: service?.optionsSelectMode ?? 'single',
     photoUrl: service?.photoUrl ?? null,
   }

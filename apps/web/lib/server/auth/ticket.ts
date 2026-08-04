@@ -29,7 +29,6 @@ export interface AuthTicketPayload {
   /**
    * Human-readable messenger login the organizer can use to reach the guest.
    * Telegram: @username (may be absent if the user has no username set).
-   * WhatsApp (future): phone number.
    */
   messengerLogin?: string
 }

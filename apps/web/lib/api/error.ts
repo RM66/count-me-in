@@ -1,7 +1,4 @@
-/**
- * Custom error class for API operations.
- * Includes HTTP status code for proper error handling.
- */
+/** Custom error class for API operations. Includes HTTP status code. */
 
 export class ApiError extends Error {
   constructor(

@@ -1,6 +1,5 @@
 /**
  * R2 object key builders and URL mapping.
- * Server-only module.
  */
 import { randomUUID } from 'node:crypto'
 
@@ -19,7 +18,6 @@ export function avatarKey(organizerId: string, ext: ImageExt): string {
 
 /**
  * Generate a versioned cover-photo key for a service.
- *
  * Deliberately **organizer-scoped**, not `services/{serviceId}/…`: the cover is
  * uploaded from the "new service" form *before* the row (and therefore the
  * service id) exists. Keeping it under the organizer prefix means the same
@@ -31,9 +29,7 @@ export function servicePhotoKey(organizerId: string, ext: ImageExt): string {
   return `organizers/${organizerId}/services/photo-${random}.${ext}`
 }
 
-/**
- * Convert an R2 object key to its public URL.
- */
+/** Convert an R2 object key to its public URL. */
 export function publicUrl(key: string): string {
   const config = getR2Config()
   return `${config.publicBaseUrl}/${key}`
@@ -41,8 +37,8 @@ export function publicUrl(key: string): string {
 
 /**
  * Get the public URL prefix for all media belonging to an organizer
- * (avatar *and* service covers).
- * Used to validate that a client-submitted photoUrl belongs to this organizer.
+ * (avatar *and* service covers). Used to validate that a client-submitted
+ * photoUrl belongs to this organizer.
  */
 export function organizerMediaUrlPrefix(organizerId: string): string {
   const config = getR2Config()

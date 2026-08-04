@@ -23,10 +23,6 @@ export interface WorkerEnv {
 }
 
 export function readEnv(): WorkerEnv {
-  // `REDIS_URL` is read by `@repo/redis` at first connect, not held here — but
-  // it is still asserted at boot, for the reason above: the worker's login
-  // links are useless without it, and discovering that on the first booking is
-  // discovering it too late.
   required('REDIS_URL')
 
   return {

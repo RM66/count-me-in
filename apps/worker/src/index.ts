@@ -26,7 +26,6 @@ import { TelegramUnreachableError } from './telegram/client'
 
 /**
  * Queue policy for the notification queues.
- *
  * Must match the web publisher's `createQueue` options: both processes declare
  * the same queues, and disagreeing about retries would make behaviour depend on
  * which one happened to start first.
@@ -64,8 +63,6 @@ async function main(): Promise<void> {
 
   const boss = new PgBoss({ connectionString: env.databaseUrl })
 
-  // An EventEmitter with no `error` listener would take the process down on the
-  // first background connection hiccup.
   boss.on('error', (error) => {
     console.error('[worker] pg-boss error:', error)
   })
@@ -92,15 +89,10 @@ async function main(): Promise<void> {
     await refreshDemoSeed()
   })
 
-  // Demo slots are seeded relative to seed time, so without this the public
-  // example page slides into the past (ADR-010, and exactly what happened with
-  // the old hardcoded mock). `seedDemo()` is idempotent.
   await boss.schedule(QUEUE_DEMO_REFRESH, DEMO_REFRESH_CRON)
 
   console.log('[worker] ready — consuming booking notifications')
 
-  // Drain in-flight jobs before exiting so a deploy does not orphan a job in
-  // `active` and leave it to the expiration sweep.
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal} received — stopping`)
     try {

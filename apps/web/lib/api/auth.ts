@@ -10,7 +10,6 @@ import { ApiError } from './error'
 /**
  * Validates the Telegram Login Widget payload server-side (HMAC) and returns
  * a short-lived auth ticket plus whether an organizer exists for this identity.
- * Call this from the TelegramLoginButton callback in the auth pages.
  */
 export function useValidateTelegramWidget() {
   return useMutation({

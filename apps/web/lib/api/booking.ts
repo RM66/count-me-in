@@ -16,21 +16,18 @@ import { queryKeys } from './keys'
  * Client-side API for the **Booking** entity — both audiences of it.
  *
  * Every guest operation is a mutation, including the lookup: each spends a
- * single-use credential (a guest ticket, or the `manageToken`), so none can be a
- * cache-backed `useQuery` that React Query is free to refetch on a whim. The
- * results are written into the cache by hand instead.
+ * single-use credential (a guest ticket, or the `manageToken`), so none can be
+ * a cache-backed `useQuery` that React Query is free to refetch on a whim.
+ * Results are written into the cache by hand instead.
  *
  * The pages themselves are server components that read Postgres directly
- * (`lib/server/db/booking.ts`); this file exists for the interactive parts —
- * the booking dialog, the cancel buttons, the lookup form.
+ * (`lib/server/db/booking.ts`); this file exists for the interactive parts.
  */
 
 /**
  * Exchange a Telegram widget payload for a guest ticket (ADR-008).
- *
- * Distinct from `useValidateTelegramWidget` in `auth.ts`: this one hits the guest
- * endpoint, which issues a ticket for booking and never a session. The two are
- * kept apart on the client for the same reason they are separate routes.
+ * Distinct from `useValidateTelegramWidget` in `auth.ts`: this one hits the
+ * guest endpoint, which issues a ticket for booking and never a session.
  */
 export function useGuestTicket() {
   return useMutation({
@@ -41,13 +38,10 @@ export function useGuestTicket() {
 
 /**
  * Reserve seats on a slot.
- *
- * The response carries the created booking **with its `manageToken`**, which is
- * what lets the success screen link straight to the management page.
- *
+ * The response carries the created booking **with its `manageToken`**, which
+ * lets the success screen link straight to the management page.
  * Nothing is invalidated here: the guest pages are server-rendered, so the
- * caller follows a successful booking with `router.refresh()` to pick up the new
- * `bookedCount`. Dropping a client cache would refetch nothing.
+ * caller follows a successful booking with `router.refresh()`.
  */
 export function useCreateBooking() {
   return useMutation({
@@ -58,9 +52,8 @@ export function useCreateBooking() {
 
 /**
  * Cancel a booking with its `manageToken`.
- *
- * The token goes in the body, never the URL — it is a secret, and query strings
- * end up in logs and `Referer` headers.
+ * The token goes in the body, never the URL — it is a secret, and query
+ * strings end up in logs and `Referer` headers.
  */
 export function useCancelBooking() {
   const queryClient = useQueryClient()
@@ -68,23 +61,17 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: (manageToken: string) =>
       post<{ booking: GuestBooking }>('/api/bookings/cancel', { manageToken }),
-    // A cancelled booking changes what a lookup list should show, so any cached
-    // list is dropped. The management page itself re-renders from the response.
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
   })
 }
 
 /**
  * Cancel a booking from the **cabinet**, as the organizer who owns it.
- *
- * Separate hook from {@link useCancelBooking} because it is a different
- * credential against a different endpoint: the session and service ownership
- * rather than the guest's `manageToken`. It also resolves to a `BookingRecord`,
- * which carries no `manageToken` — the cabinet never sees that secret.
- *
+ * Separate hook from {@link useCancelBooking} because it uses a different
+ * credential (session + ownership) against a different endpoint, and resolves
+ * to a `BookingRecord` (no `manageToken`).
  * Invalidating `bookings.all` is not enough on its own: the cabinet lists are
- * server-rendered, so the caller follows this with `router.refresh()` to pick up
- * the released seat. The invalidation covers any client-side booking cache.
+ * server-rendered, so the caller follows this with `router.refresh()`.
  */
 export function useCancelBookingByOrganizer() {
   const queryClient = useQueryClient()
@@ -92,7 +79,6 @@ export function useCancelBookingByOrganizer() {
   return useMutation({
     mutationFn: (bookingId: string) =>
       post<{ booking: BookingRecord }>('/api/bookings/cancel-by-organizer', { bookingId }),
-    // Cancelling releases seats, so slot `bookedCount`s are stale too.
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
@@ -104,9 +90,8 @@ export function useCancelBookingByOrganizer() {
 
 /**
  * Look up every booking of a messenger identity, for the "lost my link" flow.
- *
- * Takes the ticket, but caches under the **identity** the server echoed back
- * with it: tickets are one-shot, so keying by ticket would never hit.
+ * Takes the ticket, but caches under the **identity** the server echoed back:
+ * tickets are one-shot, so keying by ticket would never hit.
  */
 export function useLookupBookings() {
   const queryClient = useQueryClient()

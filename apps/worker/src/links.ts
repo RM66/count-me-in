@@ -9,12 +9,8 @@
 
 /**
  * Cabinet bookings, filtered to one slot.
- *
  * Relative on purpose: this is the `next` stored inside a login-link payload,
- * and the redirect happens after the session is established. The bookings page
- * already understands `?slot=` (see `app/cabinet/bookings/page.tsx`), so the
- * organizer lands on exactly the session that changed rather than a list they
- * have to search.
+ * and the redirect happens after the session is established.
  */
 export function cabinetSlotPath(timeSlotId: string): string {
   return `/cabinet/bookings?slot=${encodeURIComponent(timeSlotId)}`

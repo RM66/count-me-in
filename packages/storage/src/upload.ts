@@ -1,6 +1,5 @@
 /**
  * Signed upload URL generation for Cloudflare R2.
- * Server-only module.
  */
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'

@@ -39,7 +39,6 @@ export interface BookingView {
 
 /**
  * Escape the five characters that would otherwise be read as markup.
- *
  * Every interpolated value goes through this: guest names, service titles and
  * option labels are user input, and an unescaped `<` turns the whole message
  * into a `400 can't parse entities` — a delivery failure caused by a guest
@@ -47,11 +46,11 @@ export interface BookingView {
  */
 export function escapeHtml(value: string): string {
   return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, "'")
 }
 
 /** "Sat, 25 Jul 2026, 07:00" as read in `timeZone`. */
@@ -77,7 +76,6 @@ function seatsLabel(seats: number): string {
 
 /**
  * The lines both audiences need: what, when, how many.
- *
  * Shared so a change to how a booking is described cannot land in the guest's
  * message and be forgotten in the organizer's.
  */
@@ -124,7 +122,6 @@ function organizerDetailLines(view: BookingView): string[] {
 
 /**
  * To the organizer: someone just booked.
- *
  * Leads with the guest because that is the new information — the organizer
  * already knows their own schedule. The remaining-seats line is what makes the
  * message worth reading at a glance instead of opening the cabinet.
@@ -174,11 +171,9 @@ export function bookingCancelledForOrganizer(view: BookingView, cabinetUrl: stri
 
 /**
  * To the guest: the organizer cancelled your booking.
- *
  * Carries the organizer's contact and a link back to their page: the guest did
- * not choose this, so the message's job is to explain and offer the next step,
- * not just to inform. No management link — the booking is already `cancelled`,
- * and a button to a page whose only action is "Cancel" would be nonsense.
+ * not choose this, so the message's job is to explain and offer the next step.
+ * No management link — the booking is already `cancelled`.
  */
 export function bookingCancelledForGuest(view: BookingView, organizerUrl: string): Message {
   const text = [

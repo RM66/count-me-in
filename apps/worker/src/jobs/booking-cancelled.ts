@@ -1,6 +1,5 @@
 /**
  * `booking.cancelled` — tell the *other* party that a booking was cancelled.
- *
  * The actor already saw the result on screen, so only the counterparty is
  * notified; the job records who cancelled and the recipient is derived from it.
  */
@@ -52,9 +51,6 @@ export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Pro
     return
   }
 
-  // The guest is being told about someone else's decision, so the link goes to
-  // the organizer's public page — the next useful action is rebooking, and the
-  // management page for a cancelled booking has nothing left to offer.
   const message = bookingCancelledForGuest(
     context,
     organizerPageUrl(env.appUrl, context.organizer.slug),

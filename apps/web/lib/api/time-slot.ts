@@ -8,16 +8,14 @@ import { queryKeys } from './keys'
 
 /**
  * Client-side API for the **TimeSlot** entity.
- *
- * The cabinet reads slots on the server (`lib/server/db/time-slot.ts`), so there
- * is no list/detail query here yet; the mutations still have to drop that cache
- * when a server component refetches.
+ * The cabinet reads slots on the server (`lib/server/db/time-slot.ts`), so
+ * there is no list/detail query here yet; the mutations still have to drop
+ * that cache when a server component refetches.
  *
  * Slot writes also invalidate **services**: the services list shows an upcoming
  * slot count per card, so adding or deleting a slot changes it.
  */
 
-/** Drop every cached slot list/detail, plus the service list's slot counts. */
 function invalidateSlots(queryClient: ReturnType<typeof useQueryClient>) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),

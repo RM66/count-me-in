@@ -50,11 +50,9 @@ export type OrganizerProfile = z.infer<typeof organizerProfile>
 
 /**
  * An organizer as the **public booking pages** see them (`/{orgSlug}`).
- *
- * A deliberately narrower projection than {@link organizerProfile}: the
- * messenger identity is the login credential (ADR-008) and `createdAt` is
- * bookkeeping, so neither may cross to an unauthenticated visitor. Everything
- * left is already meant to be read by guests.
+ * A deliberately narrower projection than {@link organizerProfile}: messenger
+ * identity is the login credential (ADR-008) and `createdAt` is bookkeeping,
+ * so neither may cross to an unauthenticated visitor.
  */
 export const publicOrganizer = z.object({
   id: uuid,
@@ -67,9 +65,8 @@ export const publicOrganizer = z.object({
   contact: z.string().nullable(),
   /**
    * Read-only demo account (ADR-010), derived server-side from
-   * `DEMO_ORGANIZER_ID`. The public page uses it to say so up front rather than
-   * letting a guest reach the last step of the booking flow and be refused;
-   * enforcement still lives in the API.
+   * `DEMO_ORGANIZER_ID`. The public page uses it to warn guests before the
+   * booking flow; enforcement still lives in the API.
    */
   isDemo: z.boolean(),
 })

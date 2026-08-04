@@ -20,8 +20,6 @@ export function LoginLinkForm({ action }: { action: () => Promise<void> }) {
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
-    // `requestSubmit` rather than `submit`: it runs the normal submit path, so
-    // React's action handling fires instead of a raw browser navigation.
     formRef.current?.requestSubmit()
   }, [])
 

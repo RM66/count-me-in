@@ -22,7 +22,6 @@ import { getRedis } from '@repo/redis'
 
 import 'server-only'
 
-/** Parse a stored payload, treating anything malformed as a miss. */
 function parse(raw: string | null): LoginLinkPayload | null {
   if (!raw) return null
 
@@ -30,14 +29,12 @@ function parse(raw: string | null): LoginLinkPayload | null {
     const result = loginLinkPayload.safeParse(JSON.parse(raw))
     return result.success ? result.data : null
   } catch {
-    // Not JSON at all — same outcome as an expired key.
     return null
   }
 }
 
 /**
  * Read a login link **without** consuming it.
- *
  * Used by the landing page to decide what to render. Consuming on `GET` would
  * hand the single use to Telegram's link preview crawler instead of the
  * organizer.
@@ -48,7 +45,6 @@ export async function peekLoginLink(token: string): Promise<LoginLinkPayload | n
 
 /**
  * Atomically read **and delete** a login link.
- *
  * `getdel` is what makes the link single-use: two concurrent submissions race
  * on one Redis command and only the winner receives a payload, so a replayed
  * POST cannot mint a second session.

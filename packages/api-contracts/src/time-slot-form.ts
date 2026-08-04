@@ -42,7 +42,6 @@ const timeSlotFormFields = {
 
 /**
  * Validate the form and fold `date` + `time` into the `startsAt` instant.
- *
  * `timeZone` is the organizer's — the same value the table renders with — so
  * "07:00" means 07:00 to the organizer regardless of where the browser or the
  * server happens to be.
@@ -54,9 +53,7 @@ const timeSlotFormFields = {
  * `originalStartsAt` mirrors `updateTimeSlotInput`'s own escape hatch: an edit
  * that leaves the instant untouched must stay submittable however far in the
  * past it already is, since the alternative is trapping the organizer with a
- * slot they can only view, never save. The check only ever waives the rule
- * for the one value the slot already had — moving it to any other past moment
- * still fails.
+ * slot they can only view, never save.
  */
 export function timeSlotFormSchema(timeZone: string, options: { originalStartsAt?: string } = {}) {
   const { originalStartsAt } = options
@@ -101,16 +98,9 @@ const DAY_MS = 24 * 60 * MINUTE_MS
 
 /**
  * Default start for a new slot: the next whole hour, at least an hour out.
- *
- * Anchored to the clock rather than to a fixed "today at 09:00" — that constant
- * is already in the past for most of the working day, and a default that fails
- * validation the moment the dialog opens is worse than no default at all.
- *
+ * Anchored to the clock rather than to a fixed "today at 09:00" — that
+ * constant is already in the past for most of the working day.
  * All arithmetic is done on the **instant** and only then read in `timeZone`.
- * Using `Date#setHours` here would round in whatever zone the runtime happens
- * to be in, which is the bug this whole module exists to avoid. Every zone has
- * a whole-minute offset, so adding minutes to an instant shifts the wall clock
- * by the same amount, and the date rolls over on its own.
  */
 function defaultStart(timeZone: string, now: Date): { date: string; time: string } {
   const lead = new Date(now.getTime() + NEW_SLOT_LEAD_HOURS * 60 * MINUTE_MS)
@@ -122,10 +112,7 @@ function defaultStart(timeZone: string, now: Date): { date: string; time: string
 
 /**
  * The soonest date on which `time` still lies in the future.
- *
- * Re-dating to "today" is not enough: duplicating an 07:00 session at 18:00
- * would land back in the past, save, and then vanish from the schedule. Walks
- * forward a day at a time so the kept time of day is preserved.
+ * Walks forward a day at a time so the kept time of day is preserved.
  */
 function nextDateForTime(time: string, timeZone: string, now: Date): string {
   const [hour, minute] = time.split(':').map(Number)
@@ -145,25 +132,19 @@ function nextDateForTime(time: string, timeZone: string, now: Date): string {
     if (isAcceptableSlotStart(instant, now)) return date
   }
 
-  // Unreachable in practice — a time of day recurs every 24h, so the first or
-  // second iteration always matches. Fall back rather than return nothing.
   return defaultStart(timeZone, now).date
 }
 
 /**
  * Seed the form from an existing slot, or from a service's defaults when
- * creating — `defaultCapacity` / `defaultDurationMinutes` exist precisely to be
- * the template for a new slot (docs/domain.md, Service).
+ * creating — `defaultCapacity` / `defaultDurationMinutes` exist precisely to
+ * be the template for a new slot (docs/domain.md, Service).
  *
  * Duplicating keeps the source slot's time of day but moves it to the next
- * default date: two slots at the same instant would be a copy nobody wants, and
- * the original's date is often already past.
+ * default date: two slots at the same instant would be a copy nobody wants.
  *
  * Editing never re-dates, even when the stored slot is already in the past:
- * the dialog must show the organizer what is actually saved, not a value it
- * invented. `timeSlotFormSchema`'s `originalStartsAt` is what lets that
- * untouched-but-past value still be submitted.
- *
+ * the dialog must show the organizer what is actually saved.
  * `price` stays empty for a new slot: an empty override means "use the service
  * default", so pre-filling it would silently freeze today's price onto the slot.
  */
@@ -172,9 +153,7 @@ export function toTimeSlotFormValues(
   options: {
     slot?: TimeSlotRecord
     service?: ServiceRecord
-    /** Treat this as "now" — for duplicating, and to keep tests deterministic. */
     now?: Date
-    /** `duplicate` keeps the slot's values but re-dates it. */
     intent?: 'edit' | 'duplicate'
   } = {},
 ): TimeSlotFormValues {
@@ -185,10 +164,6 @@ export function toTimeSlotFormValues(
 
     return {
       serviceId: slot.serviceId,
-      // Duplicating always re-dates onto the next occurrence of the kept time
-      // of day — not simply "today", since an 07:00 session duplicated at
-      // 18:00 must land tomorrow, not back in the past. Editing keeps the
-      // slot's own date untouched, past or not.
       date: intent === 'duplicate' ? nextDateForTime(time, timeZone, now) : date,
       time,
       durationMinutes: String(slot.durationMinutes),
@@ -225,10 +200,9 @@ export function toCreateTimeSlotInput(values: TimeSlotFormOutput): CreateTimeSlo
 
 /**
  * Narrow the form output to the update contract.
- *
- * `serviceId` is dropped rather than sent: a slot cannot be moved to another
- * service (see {@link updateTimeSlotInput}), and `price: null` is meaningful
- * here — it clears an override back to the service default.
+ * `serviceId` is dropped: a slot cannot be moved to another service
+ * (see {@link updateTimeSlotInput}), and `price: null` is meaningful here —
+ * it clears an override back to the service default.
  */
 export function toUpdateTimeSlotInput(values: TimeSlotFormOutput): UpdateTimeSlotInput {
   return {

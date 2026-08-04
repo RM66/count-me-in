@@ -10,14 +10,12 @@
  * organizer id and callers use {@link resolveCabinetOrganizerId} to get it.
  *
  * Coverage checklist (keep in sync as endpoints land):
- * - cabinet: profile update ✓, avatar upload ✓, service create/update/delete ✓,
- *   service cover upload ✓, slot create/update/delete ✓, organizer-side booking
- *   cancel
- * - guest: create booking ✓, cancel booking by `manageToken` ✓ — both go through
+ * - cabinet: profile update, avatar upload, service CRUD, service cover upload,
+ *   slot CRUD, organizer-side booking cancel
+ * - guest: create booking, cancel booking by `manageToken` — both go through
  *   {@link assertNotDemo} *inside* the booking transaction rather than a route
  *   guard, because they carry no session: the organizer is only known once the
- *   slot has been joined to its service. Without them anyone could move
- *   `bookedCount` and vandalise the public example page.
+ *   slot has been joined to its service.
  * - worker: skip notification jobs entirely (see `isDemoOrganizerId`)
  */
 
@@ -36,7 +34,6 @@ import 'server-only'
 /**
  * The organizer whose data the cabinet should show for this request:
  * the signed-in organizer, or the demo organizer when there is no session.
- *
  * Returns `isDemo` alongside the id so callers never re-derive it.
  */
 export async function resolveCabinetOrganizerId(): Promise<{
@@ -56,7 +53,6 @@ export async function resolveCabinetOrganizerId(): Promise<{
 /**
  * Whether this request should see the cabinet as read-only — true for anonymous
  * visitors (who get the demo) and for the demo id itself.
- *
  * For **server components** that render controls as disabled. Client components
  * use the `useIsDemo()` hook, which reads the derived `isDemo` field from the
  * organizer profile.
@@ -82,17 +78,9 @@ export function demoReadOnlyResponse(): NextResponse {
 
 /**
  * Returns a ready-to-return `403` when `organizerId` is the demo account,
- * otherwise `null`. Intended for early-return use in route handlers:
- *
- * ```ts
- * const organizerId = (await auth())?.user?.id
- * const denied = rejectDemoWrite(organizerId)
- * if (denied || !organizerId) return denied ?? demoReadOnlyResponse()
- * ```
+ * otherwise `null`. Intended for early-return use in route handlers.
  */
 export function rejectDemoWrite(organizerId: string | null | undefined): NextResponse | null {
-  // `null`/`undefined` = anonymous. Anonymous callers are browsing the demo, so
-  // they get the same friendly `DEMO_READ_ONLY` refusal rather than a bare 401.
   return !organizerId || isDemoOrganizerId(organizerId) ? demoReadOnlyResponse() : null
 }
 

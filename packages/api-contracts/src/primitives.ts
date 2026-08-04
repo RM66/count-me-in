@@ -6,10 +6,8 @@ const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 /**
  * Reserved slugs that conflict with system routes (ADR-009) or with the seeded
- * demo organizer (ADR-010). These values are rejected during registration.
- *
- * `demo` passes the 4-character minimum, so without reserving it a real
- * organizer could register it and squat the public example page.
+ * demo organizer (ADR-010). `demo` passes the 4-character minimum, so without
+ * reserving it a real organizer could register it and squat the public example.
  */
 const RESERVED_SLUGS = new Set([
   'api',

@@ -1,8 +1,7 @@
 /**
  * Telegram Bot API client — just `sendMessage`, over `fetch`.
- *
- * No SDK: one endpoint, one method, and a dependency here would be more code to
- * audit than the request it replaces.
+ * No SDK: one endpoint, one method, and a dependency here would be more code
+ * to audit than the request it replaces.
  *
  * The interesting part is not the call but the **error classification**. A
  * notification worker that retries everything is worse than one that retries
@@ -28,7 +27,6 @@ export interface SendMessageInput {
 
 /**
  * Why a send did not happen, when it is not worth retrying.
- *
  * `unreachable` covers both "never started the bot" (403) and "chat not found"
  * (400): from the queue's point of view they are the same event — the recipient
  * cannot be messaged, and the job is done as well as it ever will be.
@@ -59,15 +57,11 @@ interface TelegramResponse {
 
 /**
  * Send one message.
- *
  * `link_preview_options.is_disabled` keeps Telegram from unfurling the cabinet
  * or booking URL: the preview would be a screenshot-sized card for a page that
  * requires the recipient's own credentials, and — for the one-time login link —
  * a preview fetch is exactly the robot request the POST-to-consume design
  * exists to defeat.
- *
- * @throws {TelegramUnreachableError} recipient cannot be messaged — do not retry
- * @throws {TelegramTransientError} rate limited, 5xx or network — retry
  */
 export async function sendMessage(botToken: string, input: SendMessageInput): Promise<void> {
   const body = {
@@ -92,7 +86,6 @@ export async function sendMessage(botToken: string, input: SendMessageInput): Pr
       body: JSON.stringify(body),
     })
   } catch (error) {
-    // DNS, TLS, socket — nothing was delivered, so it is safe to try again.
     throw new TelegramTransientError(
       `Telegram request failed: ${error instanceof Error ? error.message : String(error)}`,
     )
@@ -103,18 +96,13 @@ export async function sendMessage(botToken: string, input: SendMessageInput): Pr
   const payload = (await response.json().catch(() => null)) as TelegramResponse | null
   const description = payload?.description ?? `HTTP ${response.status}`
 
-  // 403: blocked, or Start never pressed. 400 "chat not found": the id is not a
-  // chat this bot can open. Both are permanent for this recipient.
   if (response.status === 403 || (response.status === 400 && /chat not found/i.test(description))) {
     throw new TelegramUnreachableError(input.chatId, description)
   }
 
-  // 429 and 5xx are the retryable ones; pg-boss applies the backoff.
   if (response.status === 429 || response.status >= 500) {
     throw new TelegramTransientError(`Telegram ${response.status}: ${description}`)
   }
 
-  // Anything else is our bug — malformed HTML, a bad button URL. Retrying an
-  // identical request cannot fix it, so it fails loudly instead of silently.
   throw new Error(`Telegram rejected the message (${response.status}): ${description}`)
 }

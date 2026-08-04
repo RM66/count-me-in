@@ -4,7 +4,6 @@ import { capacity, durationMinutes, priceText, serviceId, uuid } from './primiti
 
 /**
  * How far into the past a slot start may still be accepted.
- *
  * Not zero, because the browser validates against its own clock and the server
  * re-validates against a different one a round trip later. Without a grace
  * window, "the next available minute" would pass in the form and fail on the
@@ -18,11 +17,9 @@ export const SLOT_START_IN_PAST_MESSAGE =
 
 /**
  * Whether a slot may start at `startsAt`.
- *
  * A slot in the past is not a harmless oddity: nobody can book it, and the
  * cabinet's schedule lists upcoming sessions, so such a row is written and then
- * immediately invisible. Rejecting it is what turns that silence into an error
- * the organizer can act on.
+ * immediately invisible. Rejecting it turns that silence into an error.
  */
 export function isAcceptableSlotStart(startsAt: Date, now: Date = new Date()): boolean {
   return startsAt.getTime() > now.getTime() - SLOT_START_TOLERANCE_MS
@@ -50,8 +47,6 @@ export const updateTimeSlotInput = z
     capacity: capacity.optional(),
     price: priceText.nullable().optional(),
   })
-  // Only when the payload actually moves the slot — an edit that leaves
-  // `startsAt` alone must stay possible whatever the clock says.
   .refine(({ startsAt }) => startsAt === undefined || isAcceptableSlotStart(startsAt), {
     path: ['startsAt'],
     message: SLOT_START_IN_PAST_MESSAGE,
@@ -61,7 +56,6 @@ export type UpdateTimeSlotInput = z.infer<typeof updateTimeSlotInput>
 /**
  * A slot as returned by the API. Mirrors the `time_slots` table with dates
  * normalized to ISO strings so it can cross the server/client boundary.
- *
  * `bookedCount` is read-only over the wire: seats are claimed by the atomic
  * reserve in the booking flow (invariant 2 in docs/domain.md), never by a
  * cabinet edit.
@@ -80,7 +74,6 @@ export type TimeSlotRecord = z.infer<typeof timeSlotRecord>
 
 /**
  * Slot capacity rules.
- *
  * These live here rather than in `apps/web` because they are **isomorphic**:
  * the public page, the cabinet and the notification worker must all agree on
  * when a slot counts as full. They take structural shapes rather than a schema
@@ -96,14 +89,12 @@ export interface SlotOccupancy {
 
 /** Everything needed to place a slot on a timeline. */
 export interface SlotTiming {
-  /** ISO 8601 instant. */
   startsAt: string
   durationMinutes: number
 }
 
 /**
  * Remaining seats, floored at zero.
- *
  * `bookedCount` should never exceed `capacity` (a CHECK constraint enforces it),
  * but a negative number rendered as "-2 seats left" would be a worse failure
  * than silently showing "full".
@@ -119,7 +110,6 @@ export type SlotFill = 'open' | 'filling' | 'full'
 
 /**
  * How full a slot is, as a label for badges and copy.
- *
  * The "filling" band is proportional, not a fixed seat count: 3 seats left out
  * of 4 is nearly full, out of 40 it is not.
  */
@@ -132,7 +122,6 @@ export function fillLabel(slot: SlotOccupancy): SlotFill {
 
 /**
  * End instant of a slot as an ISO string.
- *
  * `endsAt` is deliberately not a column (see the `time_slots` schema) — it is
  * always `startsAt + durationMinutes`, and storing it would allow the two to
  * disagree.
@@ -145,9 +134,7 @@ export function slotEnd(slot: SlotTiming): string {
 /**
  * Display price for a slot: its own override when set, otherwise the service's
  * default. Returns an empty string when neither exists.
- *
- * Prices are display text only in MVP — there are no payments, so this is never
- * used for arithmetic.
+ * Prices are display text only in MVP — there are no payments.
  */
 export function slotPrice(
   slot: { price?: string | null },
