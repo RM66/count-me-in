@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { SUPPORT_EMAIL } from '@/lib/constants/site'
+
 export function SiteFooter() {
   return (
     <footer className="border-t">
@@ -23,6 +25,9 @@ export function SiteFooter() {
           <Link href="/privacy" className="hover:text-foreground">
             Privacy
           </Link>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-foreground">
+            Contact
+          </a>
         </nav>
         <p className="text-sm text-muted-foreground">© 2026 CountMeIn</p>
       </div>

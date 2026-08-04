@@ -11,3 +11,5 @@ export const SITE_URL = rawSiteUrl.replace(/\/$/, '')
 
 /** Bare host without protocol — e.g. `countmein.group`. Use for display. */
 export const SITE_DOMAIN = SITE_URL.replace(/^https?:\/\//, '')
+
+export const SUPPORT_EMAIL = `support@${SITE_DOMAIN}`
