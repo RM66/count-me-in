@@ -76,6 +76,17 @@ bun run db:studio     # open Drizzle Studio
 
 A read-only demo organizer is seeded at `/demo`. All write paths reject it; the worker never notifies it. See [ADR-010](docs/decisions/010-demo-organizer-account.md).
 
+### Testing
+
+Tests use **Vitest** + **React Testing Library**, co-located beside source (`*.test.ts` / `*.test.tsx`):
+
+```sh
+bun run test          # all packages (Turborepo)
+bun run test:watch    # watch mode
+```
+
+Coverage spans Zod schemas (`packages/api-contracts`), helpers, API client, server guards, React hooks, components (`apps/web`), and Telegram templates/client (`apps/worker`).
+
 ## Key conventions
 
 - **Messenger-only identity** — no phone/OTP ([ADR-008](docs/decisions/008-messenger-only-auth.md)).

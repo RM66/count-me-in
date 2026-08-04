@@ -87,6 +87,21 @@ docs/
 
 See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/007-cloudflare-r2.md).
 
+## Testing
+
+**Vitest** is the test runner; **React Testing Library** covers components and hooks. Tests are **co-located** (`*.test.ts` / `*.test.tsx` beside source). Run all tests via the Turborepo pipeline:
+
+```sh
+bun run test          # all packages
+bun run test:watch    # watch mode
+```
+
+Per-package: `cd <package> && bun run test`.
+
+- **`packages/api-contracts`** — Zod schemas, slot/timezone/options logic (node env).
+- **`apps/web`** — helpers, API client, server guards, React hooks, components (happy-dom env). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.
+- **`apps/worker`** — Telegram templates, client error classification, link builders (node env).
+
 ## Documentation
 
 | Doc                                          | Purpose                            |
