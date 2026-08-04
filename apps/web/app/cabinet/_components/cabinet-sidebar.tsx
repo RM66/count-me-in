@@ -132,7 +132,7 @@ export function CabinetSidebar() {
                 <SidebarMenuButton asChild tooltip="Contact support">
                   <a href={`mailto:${SUPPORT_EMAIL}`}>
                     <MailIcon />
-                    <span>Contact support</span>
+                    <span>Contact</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
