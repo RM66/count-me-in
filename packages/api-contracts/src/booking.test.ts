@@ -111,6 +111,7 @@ describe('guestBooking (guest view)', () => {
       defaultPrice: '€15',
       defaultCapacity: 10,
       defaultDurationMinutes: 60,
+      maxSeatsPerBooking: 1,
       options: ['Beginner'],
       optionsSelectMode: 'single',
       createdAt: '2026-07-15T10:00:00.000Z',

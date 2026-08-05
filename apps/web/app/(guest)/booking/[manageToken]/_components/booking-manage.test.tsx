@@ -66,6 +66,7 @@ function makeBooking(overrides: Partial<GuestBooking> = {}): GuestBooking {
       defaultPrice: '15 EUR',
       defaultCapacity: 10,
       defaultDurationMinutes: 60,
+      maxSeatsPerBooking: 1,
       options: null,
       optionsSelectMode: null,
       createdAt: '2025-01-01T10:00:00.000Z',

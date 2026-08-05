@@ -35,6 +35,7 @@ const serviceWithoutOptions: ServiceRecord = {
   defaultPrice: '€15',
   defaultCapacity: 10,
   defaultDurationMinutes: 60,
+  maxSeatsPerBooking: 1,
   options: null,
   optionsSelectMode: null,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -44,6 +45,12 @@ const serviceWithOptions: ServiceRecord = {
   ...serviceWithoutOptions,
   options: ['Beginner', 'Intermediate'],
   optionsSelectMode: 'single',
+} as ServiceRecord
+
+/** A service that permits group bookings (party of up to 4). */
+const serviceWithGroupBookings: ServiceRecord = {
+  ...serviceWithoutOptions,
+  maxSeatsPerBooking: 4,
 } as ServiceRecord
 
 const guestBooking: GuestBooking = {
@@ -83,6 +90,7 @@ const guestBooking: GuestBooking = {
     defaultPrice: '€15',
     defaultCapacity: 10,
     defaultDurationMinutes: 60,
+    maxSeatsPerBooking: 1,
     options: ['Beginner', 'Intermediate'],
     optionsSelectMode: 'single',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -150,6 +158,13 @@ describe('useBookingDialog — initial state', () => {
     })
     expect(result.current.selectedOptions).toEqual([])
     expect(result.current.name).toBe('')
+  })
+
+  it('starts with a party of one seat', () => {
+    const { result } = renderHook(() => useBookingDialog({ service: serviceWithGroupBookings }), {
+      wrapper: createWrapper(),
+    })
+    expect(result.current.seats).toBe(1)
   })
 
   it('starts with null booking and null error', () => {
@@ -225,10 +240,12 @@ describe('useBookingDialog — reset', () => {
       result.current.setSlotId('slot-99')
       result.current.setSelectedOptions(['Beginner'])
       result.current.setName('Jane')
+      result.current.setSeats(3)
     })
 
     expect(result.current.step).toBe('details')
     expect(result.current.slotId).toBe('slot-99')
+    expect(result.current.seats).toBe(3)
 
     act(() => result.current.reset())
 
@@ -236,6 +253,7 @@ describe('useBookingDialog — reset', () => {
     expect(result.current.slotId).toBe('slot-1')
     expect(result.current.selectedOptions).toEqual([])
     expect(result.current.name).toBe('')
+    expect(result.current.seats).toBe(1)
   })
 })
 
@@ -269,6 +287,35 @@ describe('useBookingDialog — handleTicket', () => {
       guestTicket: 'guest-ticket-123',
       selectedOptions: undefined,
     })
+    expect(result.current.step).toBe('success')
+    expect(result.current.booking).toEqual(guestBooking)
+    expect(result.current.error).toBeNull()
+    expect(mockRouterRefresh).toHaveBeenCalled()
+  })
+
+  it('sends the chosen party size', async () => {
+    mockMutateAsync.mockResolvedValueOnce({ booking: guestBooking })
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithGroupBookings, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+
+    act(() => {
+      result.current.setName('Jane Doe')
+      result.current.setSeats(3)
+    })
+
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'guest-ticket-123',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane Doe',
+      })
+    })
+
+    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ seats: 3 }))
     expect(result.current.step).toBe('success')
     expect(result.current.booking).toEqual(guestBooking)
     expect(result.current.error).toBeNull()
