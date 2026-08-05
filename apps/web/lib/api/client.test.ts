@@ -47,6 +47,18 @@ describe('post', () => {
     })
   })
 
+  it('passes the code field through to ApiError when present', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'You already have a booking', code: 'duplicate_booking' }, false, 409),
+    )
+
+    await expect(post('/api/test', {})).rejects.toMatchObject({
+      message: 'You already have a booking',
+      status: 409,
+      code: 'duplicate_booking',
+    })
+  })
+
   it('throws ApiError with default message when server sends no error field', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({}, false, 500))
 

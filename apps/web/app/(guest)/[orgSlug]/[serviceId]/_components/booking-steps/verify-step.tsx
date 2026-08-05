@@ -18,14 +18,20 @@ import { Spinner } from '@/components/ui/spinner'
 export function VerifyStep({
   organizer,
   error,
+  isDuplicate,
   isCreating,
+  attempted,
   botUsername,
   onTicket,
   onBack,
 }: {
   organizer: PublicOrganizer
   error: string | null
+  /** Whether `error` is a duplicate-booking 409 — shows a "find my bookings" link. */
+  isDuplicate: boolean
   isCreating: boolean
+  /** Whether the guest has already tapped Telegram — keeps the button hidden after. */
+  attempted: boolean
   botUsername?: string
   onTicket: (ticket: GuestTicketResponse) => void
   onBack: () => void
@@ -48,28 +54,42 @@ export function VerifyStep({
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive"
+              className="flex flex-col gap-2 rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive"
             >
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <p className="text-pretty">{error}</p>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <p className="text-pretty">{error}</p>
+              </div>
+              {isDuplicate && (
+                <Link
+                  href="/booking"
+                  className="self-start rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive underline-offset-2 hover:underline"
+                >
+                  Find my bookings →
+                </Link>
+              )}
             </div>
           )}
-          <p className="text-center text-sm text-muted-foreground text-pretty">
-            Confirm with Telegram — no account needed, and it only proves who you are.
-          </p>
-          {isCreating ? (
-            <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
-              <Spinner />
-              Reserving your seat…
-            </div>
-          ) : botUsername ? (
+          {!attempted && (
+            <p className="text-center text-sm text-muted-foreground text-pretty">
+              Confirm with Telegram — no account needed, and it only proves who you are.
+            </p>
+          )}
+          {botUsername ? (
             <div className="flex justify-center">
-              <TelegramLoginButton
-                botUsername={botUsername}
-                buttonSize="large"
-                mode="guest"
-                onGuestTicket={onTicket}
-              />
+              {isCreating ? (
+                <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
+                  <Spinner />
+                  Reserving your seat…
+                </div>
+              ) : attempted ? null : (
+                <TelegramLoginButton
+                  botUsername={botUsername}
+                  buttonSize="large"
+                  mode="guest"
+                  onGuestTicket={onTicket}
+                />
+              )}
             </div>
           ) : (
             <p className="text-center text-sm text-destructive">

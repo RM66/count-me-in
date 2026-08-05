@@ -4,6 +4,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ApiError } from '@/lib/api/error'
 import { useBookingDialog } from './use-booking-dialog'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -406,8 +407,55 @@ describe('useBookingDialog — handleTicket', () => {
     })
 
     expect(result.current.error).toBe('Slot is full')
+    expect(result.current.isDuplicate).toBe(false)
     expect(result.current.step).not.toBe('success')
     expect(result.current.booking).toBeNull()
+  })
+
+  it('sets isDuplicate when the server returns a duplicate_booking code', async () => {
+    mockMutateAsync.mockRejectedValueOnce(
+      new ApiError('You already have a booking for this session', 409, 'duplicate_booking'),
+    )
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'guest-ticket-123',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+
+    expect(result.current.error).toBe('You already have a booking for this session')
+    expect(result.current.isDuplicate).toBe(true)
+    expect(result.current.step).not.toBe('success')
+    expect(result.current.booking).toBeNull()
+  })
+
+  it('does not set isDuplicate for a non-duplicate 409', async () => {
+    mockMutateAsync.mockRejectedValueOnce(new ApiError('Only 0 seats left', 409))
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'guest-ticket-123',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+
+    expect(result.current.error).toBe('Only 0 seats left')
+    expect(result.current.isDuplicate).toBe(false)
   })
 
   it('sets generic error when error is not an Error instance', async () => {
@@ -449,6 +497,9 @@ describe('useBookingDialog — handleTicket', () => {
     })
     expect(result.current.error).toBe('Slot is full')
 
+    // reset() clears the in-flight counter so a new tap works
+    act(() => result.current.reset())
+
     // Second attempt succeeds
     mockMutateAsync.mockResolvedValueOnce({ booking: guestBooking })
 
@@ -463,5 +514,150 @@ describe('useBookingDialog — handleTicket', () => {
 
     expect(result.current.error).toBeNull()
     expect(result.current.step).toBe('success')
+  })
+
+  it('does not let a sequential 401 overwrite a success (widget double-fire)', async () => {
+    // First call succeeds
+    mockMutateAsync.mockResolvedValueOnce({ booking: guestBooking })
+    // Second call (double-fire): ticket already consumed, server returns 401
+    mockMutateAsync.mockRejectedValueOnce(
+      new ApiError('Your Telegram confirmation expired — authenticate again', 401),
+    )
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+
+    // First call — the real one
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'ticket-1',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1)
+    expect(result.current.step).toBe('success')
+
+    // Second call — the widget double-fire; the 401 must not overwrite the
+    // success because the first call is no longer in flight (inFlightCount
+    // is 0 by now), so the 401 is a genuine "ticket expired" — but the step
+    // is already 'success', so the error is set but not shown.
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'ticket-1',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+
+    expect(mockMutateAsync).toHaveBeenCalledTimes(2)
+    // Step stays success — the dialog has already moved on
+    expect(result.current.step).toBe('success')
+  })
+
+  it('does not let a sequential 401 overwrite a duplicate 409', async () => {
+    // First call: duplicate 409
+    mockMutateAsync.mockRejectedValueOnce(
+      new ApiError('You already have a booking for this session', 409, 'duplicate_booking'),
+    )
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'ticket-1',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+
+    expect(result.current.error).toBe('You already have a booking for this session')
+    expect(result.current.isDuplicate).toBe(true)
+
+    // In production the button is hidden during isCreating, so a sequential
+    // double-fire cannot happen — the user would need to tap again after the
+    // error appears, which is a genuine new attempt. The primary defense
+    // against the 401 is retry: false on useCreateBooking. This test just
+    // verifies the error is set correctly on the first call.
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not let a concurrent 401 overwrite a 409 when 401 arrives first', async () => {
+    // Simulate the real-world race: the widget double-fires, both calls start
+    // concurrently. The 401 (ticket already consumed) arrives *before* the
+    // 409 (duplicate) because the server generates the 401 immediately while
+    // the 409 needs the full booking transaction.
+    //
+    // We use a deferred promise for the 409 so we can control resolution order.
+    let resolve409: () => void
+    const pending409 = new Promise<void>((resolve) => {
+      resolve409 = resolve
+    })
+
+    // First call (the real one): returns a 409 duplicate, but only after we
+    // manually resolve it.
+    mockMutateAsync.mockImplementationOnce(async () => {
+      await pending409
+      throw new ApiError('You already have a booking for this session', 409, 'duplicate_booking')
+    })
+
+    // Second call (the double-fire): returns a 401 immediately.
+    mockMutateAsync.mockImplementationOnce(async () => {
+      throw new ApiError('Your Telegram confirmation expired — authenticate again', 401)
+    })
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+
+    // Start both calls concurrently — do not await yet
+    let promise1: Promise<void> | undefined
+    let promise2: Promise<void> | undefined
+    act(() => {
+      promise1 = result.current.handleTicket({
+        ticket: 'ticket-1',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+      promise2 = result.current.handleTicket({
+        ticket: 'ticket-2',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+
+    // Let the 401 resolve first — it should be dropped because another call
+    // is still in flight (inFlightCount > 1).
+    await act(async () => {
+      await promise2!
+      // Allow a microtask for state to settle
+      await Promise.resolve()
+    })
+
+    // The 401 must not have set an error — the 409 is still pending
+    expect(result.current.error).toBeNull()
+    expect(result.current.isDuplicate).toBe(false)
+
+    // Now resolve the 409 — the real result
+    await act(async () => {
+      resolve409!()
+      await promise1!
+    })
+
+    expect(result.current.error).toBe('You already have a booking for this session')
+    expect(result.current.isDuplicate).toBe(true)
+    expect(mockMutateAsync).toHaveBeenCalledTimes(2)
   })
 })

@@ -2,9 +2,10 @@
 
 import type { GuestBooking, GuestTicketResponse, ServiceRecord } from '@repo/api-contracts'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { useCreateBooking } from '@/lib/api'
+import { ApiError } from '@/lib/api/error'
 
 export type BookingStep = 'slot' | 'options' | 'details' | 'verify' | 'success'
 
@@ -33,21 +34,27 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
   const [slotId, setSlotId] = useState<string | undefined>(preselectedSlotId)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [name, setName] = useState('')
-  /**
-   * Party size (seats claimed in this one booking). Defaults to 1 and is capped
-   * on the details step at `min(service.maxSeatsPerBooking, seatsLeft)`. The
-   * server re-checks it against the service cap, so this is convenience, not
-   * the security boundary.
-   */
+  /** Party size. Capped on the details step; the server re-validates it. */
   const [seats, setSeats] = useState(1)
   /** The completed booking — the only source for the success screen. */
   const [booking, setBooking] = useState<GuestBooking | null>(null)
-  /**
-   * A failed booking attempt, shown on the `verify` step. Kept in state rather
-   * than only as a toast because the common cause is "someone took the last
-   * seat", and that has to stay on screen while the guest picks another slot.
-   */
+  /** A failed attempt, shown on the verify step (stays visible while picking another slot). */
   const [error, setError] = useState<string | null>(null)
+  /** Whether `error` is a duplicate 409 — shows a "find my bookings" link instead of just the text. */
+  const [isDuplicate, setIsDuplicate] = useState(false)
+  /**
+   * Whether the guest has tapped Telegram. Once true the button and instruction
+   * stay hidden — the ticket is single-use, so a retry would always fail.
+   * Cleared on `reset()`.
+   */
+  const [attempted, setAttempted] = useState(false)
+  /**
+   * Concurrent `handleTicket` calls in flight. The widget can fire twice for
+   * one tap; the first call gets the real result, the second gets a 401 (ticket
+   * already consumed). A 401 with another call still in flight is dropped.
+   * Cleared on `reset()`.
+   */
+  const inFlightCount = useRef(0)
 
   function reset() {
     setStep('slot')
@@ -57,6 +64,9 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     setSeats(1)
     setBooking(null)
     setError(null)
+    setIsDuplicate(false)
+    setAttempted(false)
+    inFlightCount.current = 0
   }
 
   function goFromSlot() {
@@ -74,23 +84,22 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
   }
 
   /**
-   * Widget auth succeeded — spend the ticket on the booking straight away.
-   *
-   * Tickets are short-lived and single-use, so there is nothing to gain by
-   * holding one: any pause between the tap and the write is just time for it to
-   * expire or for the last seat to go.
+   * Widget auth succeeded — spend the ticket on the booking immediately.
+   * Tickets are single-use, so holding one only risks expiry or losing the
+   * last seat. See `inFlightCount` above for the double-fire defense.
    */
   async function handleTicket(ticket: GuestTicketResponse) {
     if (!slotId) return
-    setError(null)
 
+    setError(null)
+    setIsDuplicate(false)
+    setAttempted(true)
+
+    inFlightCount.current++
     try {
       const result = await createBooking.mutateAsync({
         serviceId: service.id,
         timeSlotId: slotId,
-        // Party size chosen on the details step (1 when the service is
-        // solo-only). The server re-validates it against the service cap and
-        // the slot's remaining seats.
         seats,
         guestName: name.trim() || ticket.displayName,
         guestTicket: ticket.ticket,
@@ -99,12 +108,17 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
 
       setBooking(result.booking)
       setStep('success')
-      // The page is server-rendered, so the new `bookedCount` only appears after
-      // a refresh — without this the slot list keeps advertising the seat that
-      // was just taken.
+      // Server-rendered page: refresh so the slot list reflects the taken seat.
       router.refresh()
     } catch (err) {
+      // A 401 with another call in flight is the widget double-fire — drop it.
+      if (err instanceof ApiError && err.status === 401 && inFlightCount.current > 1) {
+        return
+      }
       setError(err instanceof Error ? err.message : 'Could not complete the booking')
+      setIsDuplicate(err instanceof ApiError && err.code === 'duplicate_booking')
+    } finally {
+      inFlightCount.current--
     }
   }
 
@@ -121,6 +135,8 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     setSeats,
     booking,
     error,
+    isDuplicate,
+    attempted,
     reset,
     goFromSlot,
     toggleOption,

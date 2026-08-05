@@ -37,16 +37,15 @@ export function useGuestTicket() {
 }
 
 /**
- * Reserve seats on a slot.
- * The response carries the created booking **with its `manageToken`**, which
- * lets the success screen link straight to the management page.
- * Nothing is invalidated here: the guest pages are server-rendered, so the
- * caller follows a successful booking with `router.refresh()`.
+ * Reserve seats on a slot. The response includes `manageToken` for the
+ * success screen. `retry: false` — the booking spends a single-use guest
+ * ticket, so a retry always hits a 401 that overwrites the real result.
  */
 export function useCreateBooking() {
   return useMutation({
     mutationFn: (input: CreateBookingInput) =>
       post<{ booking: GuestBooking }>('/api/bookings', input),
+    retry: false,
   })
 }
 
@@ -89,9 +88,9 @@ export function useCancelBookingByOrganizer() {
 }
 
 /**
- * Look up every booking of a messenger identity, for the "lost my link" flow.
- * Takes the ticket, but caches under the **identity** the server echoed back:
- * tickets are one-shot, so keying by ticket would never hit.
+ * Look up all bookings for a messenger identity ("lost my link" flow).
+ * Caches under the identity (not the ticket — tickets are one-shot).
+ * `retry: false` — same reason as `useCreateBooking`.
  */
 export function useLookupBookings() {
   const queryClient = useQueryClient()
@@ -106,5 +105,6 @@ export function useLookupBookings() {
 
       return data.bookings
     },
+    retry: false,
   })
 }

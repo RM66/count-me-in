@@ -29,10 +29,7 @@ export function useRegisterOrganizer() {
   })
 }
 
-/**
- * Signs in with a previously issued auth ticket.
- * Exchanges the ticket for an Auth.js JWT session (ticket is consumed).
- */
+/** Signs in with a previously issued auth ticket (consumed on use). `retry: false` — ticket is single-use. */
 export function useSignInWithTicket() {
   return useMutation({
     mutationFn: async (ticket: string) => {
@@ -41,5 +38,6 @@ export function useSignInWithTicket() {
         throw new ApiError('Could not sign you in — authenticate with Telegram again', 401)
       }
     },
+    retry: false,
   })
 }

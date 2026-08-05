@@ -131,6 +131,17 @@ export const bookings = pgTable(
     index('bookings_time_slot_id_idx').on(t.timeSlotId),
     index('bookings_guest_messenger_idx').on(t.guestMessenger, t.guestMessengerId),
     uniqueIndex('bookings_manage_token_key').on(t.manageToken),
+    /**
+     * One active booking per guest per slot. A partial unique index so a guest
+     * cannot hold two `confirmed` bookings on the same slot at once — cancelled
+     * bookings are excluded, so a guest who cancels and re-books is not blocked.
+     * Enforced in the database so two concurrent attempts cannot both succeed;
+     * the second INSERT raises a 23505 that `createGuestBooking` maps to a
+     * `DuplicateBookingError`.
+     */
+    uniqueIndex('bookings_one_active_per_guest_per_slot')
+      .on(t.timeSlotId, t.guestMessenger, t.guestMessengerId)
+      .where(sql`${t.status} = 'confirmed'`),
     check('bookings_seats_check', sql`${t.seats} >= 1`),
   ],
 )

@@ -9,9 +9,9 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = (await res.json().catch(() => ({}))) as { error?: string } & T
+  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string } & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? 'Something went wrong — try again', res.status)
+    throw new ApiError(data.error ?? 'Something went wrong — try again', res.status, data.code)
   }
   return data
 }

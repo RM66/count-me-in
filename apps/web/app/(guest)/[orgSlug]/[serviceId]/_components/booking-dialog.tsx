@@ -142,7 +142,9 @@ export function BookingDialog({
           <VerifyStep
             organizer={organizer}
             error={booking.error}
+            isDuplicate={booking.isDuplicate}
             isCreating={booking.isCreating}
+            attempted={booking.attempted}
             botUsername={botUsername}
             onTicket={booking.handleTicket}
             onBack={() => booking.setStep('details')}

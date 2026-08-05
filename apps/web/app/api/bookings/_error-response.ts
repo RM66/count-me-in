@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import {
   BookingAlreadyCancelledError,
+  DuplicateBookingError,
   InvalidOptionSelectionError,
   PartyTooLargeError,
   SlotNotBookableError,
@@ -33,9 +34,11 @@ import 'server-only'
  * The status codes carry meaning:
  * - `403` demo account — correctly identified, action forbidden (ADR-010)
  * - `404` slot/service gone — nothing to book
- * - `409` sold out / already cancelled — well-formed request, conflicting state
+ * - `409` sold out / already cancelled / duplicate booking — well-formed
+ *   request, conflicting state
  * - `400` invalid option selection / party over the per-booking cap — the
  *   payload itself is wrong
+ *
  */
 export function bookingErrorResponse(error: unknown): NextResponse | null {
   if (error instanceof DemoReadOnlyError) {
@@ -48,6 +51,9 @@ export function bookingErrorResponse(error: unknown): NextResponse | null {
     // `seatsLeft` travels with it so the dialog can say how many are actually
     // left rather than only that the attempt failed.
     return NextResponse.json({ error: error.message, seatsLeft: error.seatsLeft }, { status: 409 })
+  }
+  if (error instanceof DuplicateBookingError) {
+    return NextResponse.json({ error: error.message, code: 'duplicate_booking' }, { status: 409 })
   }
   if (error instanceof BookingAlreadyCancelledError) {
     return NextResponse.json({ error: error.message }, { status: 409 })

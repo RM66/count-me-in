@@ -15,6 +15,13 @@
       "when": 1785241082770,
       "tag": "0001_max_seats_per_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785241082771,
+      "tag": "0002_one_active_booking_per_guest_per_slot",
+      "breakpoints": true
     }
   ]
 }

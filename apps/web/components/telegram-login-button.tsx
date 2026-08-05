@@ -84,6 +84,20 @@ export function TelegramLoginButton({
   const containerRef = useRef<HTMLDivElement>(null)
   const callbackName = useRef(`onTelegramAuth_${Math.random().toString(36).substring(7)}`)
 
+  // Callbacks stored in refs so the widget-creation effect doesn't re-run on
+  // parent re-renders (which would tear down and re-create the widget script,
+  // re-firing its auth callback).
+  const onGuestTicketRef = useRef(onGuestTicket)
+  const onTicketIssuedRef = useRef(onTicketIssued)
+  const onSignupRequiredRef = useRef(onSignupRequired)
+  onGuestTicketRef.current = onGuestTicket
+  onTicketIssuedRef.current = onTicketIssued
+  onSignupRequiredRef.current = onSignupRequired
+
+  // Dedup: the widget can fire its callback twice for one tap. Each auth event
+  // has a unique `hash`, so a repeat with the same hash is dropped.
+  const lastAuthHash = useRef<string | null>(null)
+
   useEffect(() => {
     const container = containerRef.current
     const callback = callbackName.current
@@ -92,6 +106,9 @@ export function TelegramLoginButton({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any)[callback] = async (user: TelegramUser) => {
+      if (lastAuthHash.current === user.hash) return
+      lastAuthHash.current = user.hash
+
       if (mode === 'guest') {
         try {
           const response = await fetch('/api/auth/telegram-guest', {
@@ -104,7 +121,7 @@ export function TelegramLoginButton({
             console.error('[TelegramLoginButton] Guest ticket error:', data.error)
             return
           }
-          onGuestTicket?.(data)
+          onGuestTicketRef.current?.(data)
         } catch (err) {
           console.error('[TelegramLoginButton] Guest fetch error:', err)
         }
@@ -124,7 +141,7 @@ export function TelegramLoginButton({
             console.error('[TelegramLoginButton] Signup ticket error:', data.error)
             return
           }
-          onTicketIssued?.(data.ticket, data.organizerExists ?? false)
+          onTicketIssuedRef.current?.(data.ticket, data.organizerExists ?? false)
         } catch (err) {
           console.error('[TelegramLoginButton] Signup fetch error:', err)
         }
@@ -155,7 +172,7 @@ export function TelegramLoginButton({
               console.error('[TelegramLoginButton] Sign-in with ticket failed:', result?.error)
             }
           } else {
-            onSignupRequired?.(data.ticket)
+            onSignupRequiredRef.current?.(data.ticket)
           }
         } catch (err) {
           console.error('[TelegramLoginButton] Login fetch error:', err)
@@ -185,18 +202,7 @@ export function TelegramLoginButton({
       delete (window as any)[callback]
       if (container) container.innerHTML = ''
     }
-  }, [
-    botUsername,
-    buttonSize,
-    cornerRadius,
-    requestAccess,
-    usePic,
-    redirectTo,
-    mode,
-    onSignupRequired,
-    onTicketIssued,
-    onGuestTicket,
-  ])
+  }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, redirectTo, mode])
 
   return <div ref={containerRef} className={className} />
 }

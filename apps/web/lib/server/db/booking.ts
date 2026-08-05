@@ -14,6 +14,33 @@ import { toTimeSlotRecord } from './time-slot'
 import 'server-only'
 
 /**
+ * Postgres SQLSTATE for a unique constraint violation — the code the
+ * `postgres` driver puts on the error when a unique index rejects an insert.
+ */
+const UNIQUE_VIOLATION = '23505'
+
+/**
+ * Narrow to a Postgres unique violation (`23505`). The `postgres` driver can
+ * surface it directly or wrapped in a generic `Error` with the real error in
+ * `cause` — both are checked.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+
+  if ('code' in error && (error as { code: unknown }).code === UNIQUE_VIOLATION) {
+    return true
+  }
+
+  const cause = (error as { cause?: unknown }).cause
+  return (
+    cause !== null &&
+    typeof cause === 'object' &&
+    'code' in cause &&
+    (cause as { code: unknown }).code === UNIQUE_VIOLATION
+  )
+}
+
+/**
  * Server-side reads, writes and DTO mapping for bookings.
  *
  * Cabinet pages are server components that query Postgres directly, while the
@@ -238,6 +265,19 @@ export class BookingAlreadyCancelledError extends Error {
 }
 
 /**
+ * Raised when the guest already has a `confirmed` booking on the same slot.
+ * The partial unique index (`WHERE status = 'confirmed'`) rejects the second
+ * INSERT with a `23505`; this class lets the route handler answer `409`.
+ * Cancelling and re-booking is allowed — only a second active booking is refused.
+ */
+export class DuplicateBookingError extends Error {
+  constructor() {
+    super('You already have a booking for this session')
+    this.name = 'DuplicateBookingError'
+  }
+}
+
+/**
  * Bytes of entropy behind a `manageToken`.
  * The token is the only credential guarding `/booking/{manageToken}`, so it is
  * sized to be unguessable rather than short — it is never typed by hand.
@@ -276,6 +316,11 @@ function newManageToken(): string {
  * The booking row is inserted **only** if that statement affected a row, and
  * both live in one transaction: a claimed seat with no booking would be capacity
  * lost forever, and a booking with no claim is an overbooking.
+ *
+ * A duplicate (same guest, same slot, already `confirmed`) is caught at the
+ * INSERT by the partial unique index (invariant 4). The transaction rolls back,
+ * releasing the claimed seat, and the `23505` is rethrown as a
+ * {@link DuplicateBookingError} for a `409`.
  */
 export async function createGuestBooking(input: {
   serviceId: string
@@ -329,23 +374,33 @@ export async function createGuestBooking(input: {
       throw new SlotSoldOutError(Math.max(0, target.slot.capacity - target.slot.bookedCount))
     }
 
-    const [created] = await tx
-      .insert(bookings)
-      .values({
-        timeSlotId: claimed.id,
-        status: 'confirmed',
-        seats: input.seats,
-        guestName: input.guestName,
-        guestMessenger: input.guest.messenger,
-        guestMessengerId: input.guest.messengerId,
-        guestMessengerLogin: input.guest.messengerLogin ?? null,
-        manageToken: newManageToken(),
-        selectedOptions: options.data,
-      })
-      .returning()
+    let created: typeof bookings.$inferSelect
+    try {
+      const [row] = await tx
+        .insert(bookings)
+        .values({
+          timeSlotId: claimed.id,
+          status: 'confirmed',
+          seats: input.seats,
+          guestName: input.guestName,
+          guestMessenger: input.guest.messenger,
+          guestMessengerId: input.guest.messengerId,
+          guestMessengerLogin: input.guest.messengerLogin ?? null,
+          manageToken: newManageToken(),
+          selectedOptions: options.data,
+        })
+        .returning()
 
-    if (!created) {
-      throw new SlotNotBookableError('Could not create the booking — try again')
+      if (!row) {
+        throw new SlotNotBookableError('Could not create the booking — try again')
+      }
+      created = row
+    } catch (error) {
+      // Duplicate booking — the transaction rolls back, releasing the claimed seat.
+      if (isUniqueViolation(error)) {
+        throw new DuplicateBookingError()
+      }
+      throw error
     }
 
     await enqueueBookingCreated(tx, created.id)

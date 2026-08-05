@@ -26,4 +26,14 @@ describe('ApiError', () => {
     expect(new ApiError('forbidden', 403).status).toBe(403)
     expect(new ApiError('server', 500).status).toBe(500)
   })
+
+  it('stores an optional machine-readable code', () => {
+    const err = new ApiError('You already have a booking', 409, 'duplicate_booking')
+    expect(err.code).toBe('duplicate_booking')
+  })
+
+  it('defaults code to undefined when not provided', () => {
+    const err = new ApiError('Slot is full', 409)
+    expect(err.code).toBeUndefined()
+  })
 })
