@@ -8,6 +8,7 @@ import {
   displayName,
   durationMinutes,
   location,
+  maxSeatsPerBooking,
   priceText,
   serviceDescription,
   serviceId,
@@ -22,6 +23,7 @@ const serviceFields = {
   defaultPrice: priceText,
   defaultCapacity: capacity,
   defaultDurationMinutes: durationMinutes,
+  maxSeatsPerBooking,
   options: optionsList.optional(),
   optionsSelectMode: optionsSelectModeEnum.optional(),
 }
@@ -78,6 +80,7 @@ export const updateServiceInput = refineOptionsConsistency(
       defaultPrice: priceText,
       defaultCapacity: capacity,
       defaultDurationMinutes: durationMinutes,
+      maxSeatsPerBooking,
       options: optionsList.nullable(),
       optionsSelectMode: optionsSelectModeEnum.nullable(),
       photoUrl: z.url().nullable(), // null = remove cover photo
@@ -101,6 +104,7 @@ export const serviceRecord = z.object({
   defaultPrice: priceText,
   defaultCapacity: capacity,
   defaultDurationMinutes: durationMinutes,
+  maxSeatsPerBooking,
   options: z.array(z.string()).nullable(),
   optionsSelectMode: optionsSelectModeEnum.nullable(),
   createdAt: z.string(),

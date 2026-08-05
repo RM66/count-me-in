@@ -69,6 +69,13 @@ export const contact = z.string().trim().min(1).max(300)
 
 export const seats = z.number().int().min(1).max(1000)
 export const capacity = z.number().int().min(1).max(100_000)
+
+/**
+ * Cap on seats a single guest may claim in one booking (party size).
+ * `1` means solo-only; higher values let a guest bring others without one
+ * person swallowing a whole slot. Bounded by `seats`, the per-booking max.
+ */
+export const maxSeatsPerBooking = z.number().int().min(1).max(1000)
 export const durationMinutes = z.number().int().min(1).max(1440)
 
 /** A single option label. */

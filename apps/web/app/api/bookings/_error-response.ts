@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   BookingAlreadyCancelledError,
   InvalidOptionSelectionError,
+  PartyTooLargeError,
   SlotNotBookableError,
   SlotSoldOutError,
 } from '@/lib/server/db/booking'
@@ -33,7 +34,8 @@ import 'server-only'
  * - `403` demo account — correctly identified, action forbidden (ADR-010)
  * - `404` slot/service gone — nothing to book
  * - `409` sold out / already cancelled — well-formed request, conflicting state
- * - `400` invalid option selection — the payload itself is wrong
+ * - `400` invalid option selection / party over the per-booking cap — the
+ *   payload itself is wrong
  */
 export function bookingErrorResponse(error: unknown): NextResponse | null {
   if (error instanceof DemoReadOnlyError) {
@@ -52,6 +54,9 @@ export function bookingErrorResponse(error: unknown): NextResponse | null {
   }
   if (error instanceof InvalidOptionSelectionError) {
     return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+  if (error instanceof PartyTooLargeError) {
+    return NextResponse.json({ error: error.message, maxSeats: error.maxSeats }, { status: 400 })
   }
   return null
 }

@@ -123,6 +123,29 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Group bookings</CardTitle>
+            <CardDescription>
+              How many seats one guest may reserve in a single booking.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <ServiceTextField
+                control={control}
+                name="maxSeatsPerBooking"
+                label="Max seats per booking"
+                type="number"
+                min={1}
+                inputMode="numeric"
+                description="Set to 1 for solo bookings only. A higher number lets a guest bring others, but never more than this many at once — so one person cannot claim every seat in a slot."
+                disabled={isReadOnly}
+              />
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
         <ServiceOptionsField control={control} disabled={isReadOnly} />
       </div>
 
