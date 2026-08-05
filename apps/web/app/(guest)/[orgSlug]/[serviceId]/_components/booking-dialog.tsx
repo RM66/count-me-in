@@ -1,6 +1,7 @@
 'use client'
 
 import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import { seatsLeft } from '@repo/api-contracts'
 import { type ComponentProps, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,17 @@ export function BookingDialog({
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
+  // The seat ceiling for the chosen slot: the organizer's per-booking cap, but
+  // never more than the seats actually left. Falls back to the service cap
+  // before a slot is picked (the details step is only reached with one).
+  const selectedSlot = booking.slotId ? slots.find((s) => s.id === booking.slotId) : undefined
+  const maxSeats = Math.max(
+    1,
+    selectedSlot
+      ? Math.min(service.maxSeatsPerBooking, seatsLeft(selectedSlot))
+      : service.maxSeatsPerBooking,
+  )
+
   const stepTitles: Record<BookingStep, string> = {
     slot: 'Pick a time',
     options: 'Choose options',
@@ -118,6 +130,9 @@ export function BookingDialog({
           <DetailsStep
             name={booking.name}
             onNameChange={booking.setName}
+            seats={booking.seats}
+            onSeatsChange={booking.setSeats}
+            maxSeats={maxSeats}
             onBack={() => booking.setStep(service.options?.length ? 'options' : 'slot')}
             onContinue={() => booking.setStep('verify')}
           />

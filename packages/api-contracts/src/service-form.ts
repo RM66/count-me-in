@@ -8,6 +8,7 @@ import {
   displayName,
   durationMinutes,
   location,
+  maxSeatsPerBooking,
   optionLabel,
   priceText,
   serviceDescription,
@@ -37,6 +38,7 @@ const serviceFormFields = {
   defaultPrice: priceText,
   defaultCapacity: numericText(capacity, 'Capacity'),
   defaultDurationMinutes: numericText(durationMinutes, 'Duration'),
+  maxSeatsPerBooking: numericText(maxSeatsPerBooking, 'Max seats per booking'),
   /**
    * Uniqueness is enforced here rather than by reusing `optionsList`: that
    * schema also requires `.min(1)`, while an empty form list is legal and
@@ -80,6 +82,9 @@ export type ServiceFormOutput = z.output<typeof serviceFormSchema>
 const NEW_SERVICE_DEFAULTS = {
   capacity: '10',
   durationMinutes: '60',
+  // Solo-only by default, matching the DB column default — an organizer opts
+  // into group bookings by raising this.
+  maxSeatsPerBooking: '1',
 } as const
 
 /**
@@ -98,6 +103,9 @@ export function toServiceFormValues(service?: ServiceRecord): ServiceFormValues 
     defaultDurationMinutes: String(
       service?.defaultDurationMinutes ?? NEW_SERVICE_DEFAULTS.durationMinutes,
     ),
+    maxSeatsPerBooking: String(
+      service?.maxSeatsPerBooking ?? NEW_SERVICE_DEFAULTS.maxSeatsPerBooking,
+    ),
     options: service?.options ?? [],
     optionsSelectMode: service?.optionsSelectMode ?? 'single',
     photoUrl: service?.photoUrl ?? null,
@@ -114,6 +122,7 @@ export function toCreateServiceInput(values: ServiceFormOutput): CreateServiceIn
     defaultPrice: values.defaultPrice,
     defaultCapacity: values.defaultCapacity,
     defaultDurationMinutes: values.defaultDurationMinutes,
+    maxSeatsPerBooking: values.maxSeatsPerBooking,
     ...(values.description !== null && { description: values.description }),
     ...(values.location !== null && { location: values.location }),
     ...(values.contact !== null && { contact: values.contact }),

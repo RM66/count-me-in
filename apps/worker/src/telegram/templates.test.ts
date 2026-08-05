@@ -37,6 +37,7 @@ const service = {
   defaultPrice: '€15',
   defaultCapacity: 10,
   defaultDurationMinutes: 60,
+  maxSeatsPerBooking: 1,
   options: ['Beginner', 'Intermediate'],
   optionsSelectMode: 'single',
   createdAt: new Date('2026-01-01'),

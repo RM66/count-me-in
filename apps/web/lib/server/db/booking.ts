@@ -213,6 +213,22 @@ export class InvalidOptionSelectionError extends Error {
   }
 }
 
+/**
+ * Raised when a booking requests more seats than the service allows one guest
+ * to claim at once (`services.maxSeatsPerBooking`). This is the organizer's
+ * per-booking cap — distinct from {@link SlotSoldOutError}, which is about the
+ * slot running out of room. Checked server-side so a crafted request cannot
+ * bypass the stepper's client-side limit.
+ */
+export class PartyTooLargeError extends Error {
+  constructor(readonly maxSeats: number) {
+    super(
+      `You can book at most ${maxSeats} ${maxSeats === 1 ? 'seat' : 'seats'} in a single booking`,
+    )
+    this.name = 'PartyTooLargeError'
+  }
+}
+
 /** Raised when a booking is already `cancelled` and cancel is called again. */
 export class BookingAlreadyCancelledError extends Error {
   constructor() {
@@ -289,6 +305,13 @@ export async function createGuestBooking(input: {
       throw new InvalidOptionSelectionError(
         options.error.issues[0]?.message ?? 'Invalid option selection',
       )
+    }
+
+    // Organizer's per-booking cap. Enforced before the atomic reserve so an
+    // oversized party is refused outright rather than competing for seats.
+    // `seatsLeft` (below) still governs whether an allowed party actually fits.
+    if (input.seats > target.service.maxSeatsPerBooking) {
+      throw new PartyTooLargeError(target.service.maxSeatsPerBooking)
     }
 
     const [claimed] = await tx

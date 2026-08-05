@@ -28,6 +28,7 @@ const UPDATABLE_FIELDS = [
   'defaultPrice',
   'defaultCapacity',
   'defaultDurationMinutes',
+  'maxSeatsPerBooking',
   'options',
   'optionsSelectMode',
   'photoUrl',
@@ -46,6 +47,7 @@ export function toServiceRecord(row: Service): ServiceRecord {
     defaultPrice: row.defaultPrice,
     defaultCapacity: row.defaultCapacity,
     defaultDurationMinutes: row.defaultDurationMinutes,
+    maxSeatsPerBooking: row.maxSeatsPerBooking,
     options: row.options,
     optionsSelectMode: row.optionsSelectMode,
     createdAt: row.createdAt.toISOString(),
@@ -139,6 +141,7 @@ export async function createService(
       defaultPrice: input.defaultPrice,
       defaultCapacity: input.defaultCapacity,
       defaultDurationMinutes: input.defaultDurationMinutes,
+      maxSeatsPerBooking: input.maxSeatsPerBooking,
       options: input.options ?? null,
       optionsSelectMode: input.optionsSelectMode ?? null,
     })

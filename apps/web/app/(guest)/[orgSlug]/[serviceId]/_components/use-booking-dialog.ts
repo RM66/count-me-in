@@ -33,6 +33,13 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
   const [slotId, setSlotId] = useState<string | undefined>(preselectedSlotId)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [name, setName] = useState('')
+  /**
+   * Party size (seats claimed in this one booking). Defaults to 1 and is capped
+   * on the details step at `min(service.maxSeatsPerBooking, seatsLeft)`. The
+   * server re-checks it against the service cap, so this is convenience, not
+   * the security boundary.
+   */
+  const [seats, setSeats] = useState(1)
   /** The completed booking — the only source for the success screen. */
   const [booking, setBooking] = useState<GuestBooking | null>(null)
   /**
@@ -47,6 +54,7 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     setSlotId(preselectedSlotId)
     setSelectedOptions([])
     setName('')
+    setSeats(1)
     setBooking(null)
     setError(null)
   }
@@ -80,9 +88,10 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
       const result = await createBooking.mutateAsync({
         serviceId: service.id,
         timeSlotId: slotId,
-        // One booking is one seat in MVP; `seats` exists on the wire for the
-        // group bookings the domain already allows.
-        seats: 1,
+        // Party size chosen on the details step (1 when the service is
+        // solo-only). The server re-validates it against the service cap and
+        // the slot's remaining seats.
+        seats,
         guestName: name.trim() || ticket.displayName,
         guestTicket: ticket.ticket,
         selectedOptions: selectedOptions.length > 0 ? selectedOptions : undefined,
@@ -108,6 +117,8 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     setSelectedOptions,
     name,
     setName,
+    seats,
+    setSeats,
     booking,
     error,
     reset,

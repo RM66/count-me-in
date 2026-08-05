@@ -43,6 +43,7 @@ describe('createServiceInput', () => {
     defaultPrice: '€15',
     defaultCapacity: 10,
     defaultDurationMinutes: 60,
+    maxSeatsPerBooking: 1,
   }
 
   it('parses a valid service without options', () => {

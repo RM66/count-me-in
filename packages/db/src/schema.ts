@@ -59,6 +59,13 @@ export const services = pgTable(
     defaultPrice: text('default_price').notNull(),
     defaultCapacity: integer('default_capacity').notNull(),
     defaultDurationMinutes: integer('default_duration_minutes').notNull(),
+    /**
+     * Cap on how many seats a single guest may claim in one booking (party
+     * size). `1` keeps the solo-only behavior; a higher value lets a guest
+     * bring others without letting one person swallow the whole slot. The
+     * effective ceiling at booking time is `min(maxSeatsPerBooking, seatsLeft)`.
+     */
+    maxSeatsPerBooking: integer('max_seats_per_booking').notNull().default(1),
     options: text('options').array(),
     optionsSelectMode: optionsSelectMode('options_select_mode'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -67,6 +74,7 @@ export const services = pgTable(
     index('services_organizer_id_idx').on(t.organizerId),
     check('services_default_capacity_check', sql`${t.defaultCapacity} > 0`),
     check('services_default_duration_check', sql`${t.defaultDurationMinutes} > 0`),
+    check('services_max_seats_per_booking_check', sql`${t.maxSeatsPerBooking} >= 1`),
   ],
 )
 
