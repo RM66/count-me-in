@@ -128,7 +128,6 @@ export default async function OrganizerOgImage({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logo} width={44} height={44} alt="" style={{ borderRadius: 12 }} />
           <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
         </div>

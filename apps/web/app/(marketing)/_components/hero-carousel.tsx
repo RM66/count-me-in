@@ -107,8 +107,8 @@ export function HeroCarousel() {
         className="absolute -bottom-5 -left-5 hidden rounded-xl border bg-card p-4 shadow-md sm:block"
         aria-live="polite"
       >
-        <p className="text-sm font-medium">{current.title}</p>
-        <p className="text-sm text-muted-foreground">{current.meta}</p>
+        <p className="text-sm font-medium">{current?.title}</p>
+        <p className="text-sm text-muted-foreground">{current?.meta}</p>
       </div>
 
       {/* Dot controls. */}
@@ -122,9 +122,7 @@ export function HeroCarousel() {
             aria-current={index === active}
             className={cn(
               'size-2.5 rounded-full border border-black/10 transition-all',
-              index === active
-                ? 'w-5 bg-background'
-                : 'bg-background/60 hover:bg-background/90',
+              index === active ? 'w-5 bg-background' : 'bg-background/60 hover:bg-background/90',
             )}
           />
         ))}

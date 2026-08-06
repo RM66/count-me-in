@@ -16,7 +16,6 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import { SITE_DOMAIN } from '@/lib/constants/site'
 import {
   Select,
   SelectContent,
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { SITE_DOMAIN } from '@/lib/constants/site'
 import { TIMEZONES } from '@/lib/constants/timezones'
 import { cn } from '@/lib/utils'
 

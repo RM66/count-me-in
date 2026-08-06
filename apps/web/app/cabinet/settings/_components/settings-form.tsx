@@ -23,7 +23,6 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@/components/ui/input-group'
-import { SITE_DOMAIN, SITE_URL } from '@/lib/constants/site'
 import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import {
   Select,
@@ -35,6 +34,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentOrganizer } from '@/lib/api'
+import { SITE_DOMAIN, SITE_URL } from '@/lib/constants/site'
 import { TIMEZONES } from '@/lib/constants/timezones'
 import { initials } from '@/lib/helpers/name'
 import { useProfileForm } from './use-profile-form'

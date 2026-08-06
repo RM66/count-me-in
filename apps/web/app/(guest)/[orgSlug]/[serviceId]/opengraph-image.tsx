@@ -114,7 +114,6 @@ export default async function ServiceOgImage({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 28 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={logo} width={40} height={40} alt="" style={{ borderRadius: 11 }} />
             <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
           </div>

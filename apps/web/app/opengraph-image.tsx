@@ -36,7 +36,6 @@ export default async function OpengraphImage() {
       >
         {/* Logo mark — the SVG already contains the wordmark, so no extra text. */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logo} width={132} height={132} alt="" style={{ borderRadius: 30 }} />
         </div>
 
