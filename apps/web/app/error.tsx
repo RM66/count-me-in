@@ -1,6 +1,6 @@
 'use client'
 
-import Sentry from '@sentry/nextjs'
+import * as Sentry from '@sentry/nextjs'
 import { HomeIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'

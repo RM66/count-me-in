@@ -5,27 +5,34 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { SessionProvider, useSession } from 'next-auth/react'
 import { type ReactNode, useEffect, useState } from 'react'
 
+import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useCookieConsent } from '@/hooks/use-cookie-consent'
 import { identifyOrganizer, initPostHog, resetPostHog } from '@/lib/posthog'
 
 const isProduction = process.env.NODE_ENV === 'production'
 
-/** Inits PostHog and identifies the signed-in organizer. Guests stay anonymous. */
+/**
+ * Inits PostHog and identifies the signed-in organizer. Guests stay anonymous.
+ * Analytics is opt-in: nothing initializes until the visitor accepts cookies.
+ */
 function PostHogIdentity() {
   const { data: session, status } = useSession()
+  const { consent } = useCookieConsent()
 
   useEffect(() => {
-    initPostHog()
-  }, [])
+    if (consent === 'accepted') initPostHog()
+  }, [consent])
 
   useEffect(() => {
+    if (consent !== 'accepted') return
     if (status === 'authenticated' && session?.user?.id) {
       identifyOrganizer(session.user.id)
     } else if (status === 'unauthenticated') {
       resetPostHog()
     }
-  }, [status, session?.user?.id])
+  }, [consent, status, session?.user?.id])
 
   return null
 }
@@ -52,6 +59,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <PostHogIdentity />
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+        <CookieConsentBanner />
         <Toaster />
         {!isProduction && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
