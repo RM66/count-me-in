@@ -1,10 +1,21 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // Figtree is the site's UI font (see layout.tsx). We bundle the TTFs so the
 // generated OG cards render with the exact same typeface as the site, instead
-// of Satori's generic sans-serif fallback. Reading via a literal path lets
-// Next's file tracing include these files in the deployment bundle.
+// of Satori's generic sans-serif fallback. Resolving relative to this module
+// (via import.meta.url) keeps the path correct regardless of process.cwd()
+// and lets Next's file tracing include these files in the deployment bundle.
+// In test runtimes (vitest/happy-dom) import.meta.url is not a file: URL, so we
+// fall back to a cwd-relative path — the module's known location under src/.
+const moduleDir = (() => {
+  try {
+    return fileURLToPath(new URL('.', import.meta.url))
+  } catch {
+    return join(process.cwd(), 'src/lib/og')
+  }
+})()
 export type OgFont = {
   name: string
   data: Buffer
@@ -17,8 +28,8 @@ let fontCache: OgFont[] | null = null
 export async function loadFigtreeFonts(): Promise<OgFont[]> {
   if (fontCache) return fontCache
   const [regular, bold] = await Promise.all([
-    readFile(join(process.cwd(), 'lib/og/fonts/Figtree-Regular.ttf')),
-    readFile(join(process.cwd(), 'lib/og/fonts/Figtree-Bold.ttf')),
+    readFile(join(moduleDir, 'fonts/Figtree-Regular.ttf')),
+    readFile(join(moduleDir, 'fonts/Figtree-Bold.ttf')),
   ])
   fontCache = [
     { name: 'Figtree', data: regular, weight: 400, style: 'normal' },
