@@ -1,6 +1,6 @@
 # ADR-001: Monorepo layout
 
-- **Status:** Accepted (amended 2026-07-20, 2026-07-31, 2026-08-03)
+- **Status:** Accepted (amended 2026-07-20, 2026-07-31, 2026-08-03, 2026-08-07, 2026-08-07b)
 - **Date:** 2026-07-18
 
 ## Context
@@ -13,15 +13,19 @@ Use **Turborepo + Bun** with:
 
 ```
 apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP API
-  lib/           # Business logic
-    api/         # client-only React Query, one file per entity + keys.ts
-    server/      # server-only: auth/, db/, storage/, demo.ts, queue.ts
+  src/           # All app source (Next.js src/ convention)
+    app/         # App Router: pages, layouts, route handlers
+    server/      # server-only: auth/, db/, storage/, demo.ts, queue.ts (import 'server-only')
+    api-client/  # client-only React Query, one file per entity + keys.ts
     helpers/     # presentation formatting (date.ts, name.ts, contact.ts)
-    constants/   # static data tables (timezones.ts)
-    utils.ts     # cn() — shadcn `utils` alias target
-  hooks/         # React hooks (shadcn-owned alias `@/hooks`)
-  types/         # TypeScript utility types
-  proxy.ts       # Auth.js v5 middleware — root location required by Next, do not move
+    constants/   # static data tables (timezones.ts, site.ts)
+    components/  # React components (shadcn/ui + app components)
+    hooks/       # React hooks (shadcn-owned alias `@/hooks`)
+    lib/         # cross-cutting singletons: posthog.ts, og/, utils.ts (cn)
+    types/       # TypeScript utility types
+    proxy.ts     # Auth.js v5 middleware — src/ root, do not move
+    instrumentation.ts # Sentry server-side init
+  public/        # Static assets
 apps/worker      # job consumer (notifications)
 packages/db
 packages/redis
@@ -33,18 +37,27 @@ packages/typescript-config
 
 **`apps/` vs `packages/`:** `apps/*` are deployable processes. `packages/*` are libraries imported by apps.
 
-**`apps/web/lib/` structure:** Organized by layer (api, server, helpers, constants) for scalability. See implementation for details.
+**`apps/web/src/` structure:** Organized by kind of code, with the server/client
+boundary as the load-bearing seam. `server/` (server-only) and `api-client/`
+(client-only) are the two ends of the data wire, promoted to top-level peers so
+the compile-time boundary sits at the top of the tree. `helpers/`,
+`constants/`, `components/`, `hooks/`, `types/` are the kind-of-code peers.
+`lib/` holds only cross-cutting singletons (`posthog.ts`, `og/`, `utils.ts`).
+See implementation for details.
 
-**Root-file convention (`apps/web/`).** A file sits at the app root only if a
-framework or tool discovers it there: `app/`, `proxy.ts`, `next.config.js`,
-`postcss.config.mjs`, `tsconfig.json`, `eslint.config.js`, `components.json`,
-`next-env.d.ts`. Everything we organise ourselves goes under `lib/`, `hooks/`,
-`components/`, `types/`.
+**Root-file convention (`apps/web/`).** A file sits at the project root only if
+a framework or tool discovers it there: `next.config.js`, `postcss.config.mjs`,
+`tsconfig.json`, `eslint.config.js`, `components.json`, `next-env.d.ts`,
+`sentry.client.config.ts`. Everything we organise ourselves goes under `src/`
+(`app/`, `server/`, `api-client/`, `helpers/`, `constants/`, `components/`,
+`hooks/`, `lib/`, `types/`). Inside `src/`, the convention files `proxy.ts`
+and `instrumentation.ts` sit at the `src/` root (next to `app/`) — also
+load-bearing.
 
 The test for whether a root file can move is **whether a config option points at
 it.** `utils.ts` could move into `lib/` because `components.json` has a `utils`
 alias to repoint (see the 2026-08-01 amendment). `proxy.ts` cannot: it is Next
-16's rename of `middleware.ts`, matched by convention at the project root only,
+16's rename of `middleware.ts`, matched by convention at the `src/` root only,
 with no config knob. Verified 2026-08-01 — moving it to `lib/proxy.ts` keeps the
 build green while dropping `ƒ Proxy (Middleware)` from the output, i.e. the app
 ships with no middleware and signed-in organizers are no longer redirected off
@@ -155,6 +168,65 @@ Shared lint/tsconfig come from the Turborepo starter as `eslint-config` + `types
 **MVP:** do **not** add `apps/organizer` / Capacitor. Organizer UI is route group(s) inside `apps/web`. See [ADR-006](006-organizer-capacitor.md).
 
 Do not add `apps/api` until API must outlive the Next deployment.
+
+**Amendment 2026-08-07 — app source moved under `src/`.** All app-owned source
+(`app/`, `lib/`, `hooks/`, `components/`, `types/`) plus the convention files
+`proxy.ts` and `instrumentation.ts` moved from the project root into `src/`,
+following the Next.js `src/` convention. The `@/*` path alias in `tsconfig.json`
+was repointed from `./*` to `./src/*`, so every `@/lib/...`, `@/components/...`,
+`@/hooks/...` import kept working unchanged. Relative intra-directory imports
+(`./client`, `./error`, …) were unaffected by the move.
+
+The root-file convention is unchanged in spirit but shifted one level down: the
+project root keeps only files a tool discovers there (`next.config.js`,
+`postcss.config.mjs`, `tsconfig.json`, `eslint.config.js`, `components.json`,
+`next-env.d.ts`, `sentry.client.config.ts`); the `src/` root keeps the
+convention files Next looks for next to `app/` — `proxy.ts` and
+`instrumentation.ts`. `proxy.ts` still cannot move into `lib/`: Next matches it
+at the `src/` root only. `sentry.client.config.ts` stays at the project root
+because the Sentry webpack plugin resolves it there (it has no `@/` imports).
+
+Config files that held root-relative paths were updated: `components.json`
+(`css` → `src/app/globals.css`), `vitest.config.ts` (`@` alias → `src/`,
+`include` globs prefixed with `src/`), and `.storybook/main.ts` + `preview.tsx`
+(stories glob and css import repointed at `../src/...`).
+
+**Amendment 2026-08-07b — `lib/` flattened; the data wire promoted to the
+top level.** `lib/` was a grab-bag conflating three different things: the data
+wire (`api/` + `server/`), presentation utilities (`helpers/`, `constants/`),
+and cross-cutting singletons (`posthog.ts`, `og/`, `utils.ts`). The data wire is
+the one compile-time-enforced boundary, and burying both ends inside `lib/`
+hid the most important architectural seam one level down.
+
+Four sub-trees were promoted to top-level `src/` peers, and `api/` was renamed
+to disambiguate from `app/api/` (the server route handlers):
+
+- `lib/server/` → `server/` (server-only; `import 'server-only'`)
+- `lib/api/` → `api-client/` (client-only React Query; the browser end of the wire)
+- `lib/helpers/` → `helpers/` (pure presentation formatting)
+- `lib/constants/` → `constants/` (static data tables)
+
+`lib/` now holds only the genuine leftovers — cross-cutting singletons that
+don't fit a semantic bucket: `posthog.ts` (analytics), `og/` (OpenGraph image
+assets), `utils.ts` (`cn()`, shadcn-owned).
+
+The rename `api/` → `api-client/` fixes the ambiguity that `app/api/` (server
+route handlers, the URL) and `lib/api/` (browser client) both used the word
+"api" for opposite ends of the wire. `api-client/` makes the browser end
+unambiguous. All `@/lib/api` imports became `@/api-client`; all `@/lib/server`
+became `@/server`; `@/lib/helpers` → `@/helpers`; `@/lib/constants` →
+`@/constants`. Relative intra-directory imports (`./client`, `./error`,
+`../demo`, `../queue`) were unaffected by the move. `vitest.config.ts` `include`
+globs were simplified to `src/**/*.test.{ts,tsx}` since tests are now spread
+across the promoted top-level folders.
+
+The server/client boundary now sits at the top of the `src/` tree where it
+can't be missed: `server/` and `api-client/` are visible peers, mirroring how
+`app/api/` (the URL) and `api-client/` (the browser client) are two ends of one
+wire. Feature-slicing (`features/{entity}/`) was again rejected for the same
+reason as 2026-08-01: it cuts across the server/client boundary, and a barrel
+re-exporting a feature would silently leak `server-only` DB code into a client
+bundle. The layer-first layout keeps that leak impossible by construction.
 
 ## Consequences
 

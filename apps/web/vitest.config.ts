@@ -14,19 +14,13 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    include: [
-      'lib/**/*.test.ts',
-      'lib/**/*.test.tsx',
-      'app/**/*.test.ts',
-      'app/**/*.test.tsx',
-      'components/**/*.test.tsx',
-    ],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     exclude: ['node_modules', '.next', 'dist'],
     setupFiles: ['./vitest.setup.ts'],
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(__dirname, 'src'),
       'server-only': path.resolve(__dirname, 'vitest.server-only-stub.ts'),
       '@repo/api-contracts': path.resolve(__dirname, '../../packages/api-contracts/src'),
       '@repo/db': path.resolve(__dirname, '../../packages/db/src'),

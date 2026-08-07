@@ -99,7 +99,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 **One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — worker refetches at send time, so `manageToken` and login tokens never reach `pgboss.job`. Contracts in `packages/api-contracts/src/jobs.ts`.
 
-**Enqueue inside the booking transaction** (`apps/web/lib/server/queue.ts`, pg-boss `fromDrizzle` over caller's `tx`). Web instance is send-only; maintenance/cron belong to the single worker.
+**Enqueue inside the booking transaction** (`apps/web/src/server/queue.ts`, pg-boss `fromDrizzle` over caller's `tx`). Web instance is send-only; maintenance/cron belong to the single worker.
 
 ### Links in messages
 
@@ -145,16 +145,16 @@ Two tools, one job each — Sentry for errors and performance, PostHog for produ
 
 ### Sentry
 
-- **Server init:** [`apps/web/instrumentation.ts`](../apps/web/instrumentation.ts) — root-level Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
+- **Server init:** [`apps/web/src/instrumentation.ts`](../apps/web/src/instrumentation.ts) — `src/`-root Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
 - **Client init:** [`apps/web/sentry.client.config.ts`](../apps/web/sentry.client.config.ts) — loaded automatically by `@sentry/nextjs` in the browser bundle.
-- **Error boundaries:** [`apps/web/app/error.tsx`](../apps/web/app/error.tsx) and [`apps/web/app/global-error.tsx`](../apps/web/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
+- **Error boundaries:** [`apps/web/src/app/error.tsx`](../apps/web/src/app/error.tsx) and [`apps/web/src/app/global-error.tsx`](../apps/web/src/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
 - **Worker:** [`apps/worker/src/index.ts`](../apps/worker/src/index.ts) inits `@sentry/bun` and captures in `runHandler` (both retriable and unretriable failures) and `boss.on('error')`.
 - **Source maps:** `withSentryConfig` in [`apps/web/next.config.js`](../apps/web/next.config.js) uploads source maps during CI builds when `SENTRY_AUTH_TOKEN` is set.
 - **Replay is off** — PostHog session replay covers the "what did the user do" question; enabling Sentry replay too would double the client payload cost.
 
 ### PostHog
 
-- **Browser client:** [`apps/web/lib/posthog.ts`](../apps/web/lib/posthog.ts) — lazy singleton, initialised from [`apps/web/app/providers.tsx`](../apps/web/app/providers.tsx). Autocaptures page views; session replay masks all inputs (no PII).
+- **Browser client:** [`apps/web/src/lib/posthog.ts`](../apps/web/src/lib/posthog.ts) — lazy singleton, initialised from [`apps/web/src/app/providers.tsx`](../apps/web/src/app/providers.tsx). Autocaptures page views; session replay masks all inputs (no PII).
 - **User identification:** signed-in organizers are identified by `Organizer.id`. Guests stay anonymous — their messenger identity is PII that does not belong in analytics.
 - **Worker events:** [`apps/worker/src/posthog.ts`](../apps/worker/src/posthog.ts) exposes a `posthog-node` client. Job handlers emit `notification_sent` with `{ queue, recipient, bookingId }` after a successful send. Flushed on shutdown.
 - **PostHog Cloud** — `NEXT_PUBLIC_POSTHOG_HOST` defaults to `https://app.posthog.com`.

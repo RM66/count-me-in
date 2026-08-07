@@ -37,10 +37,19 @@ No separate organizer native app in MVP — [ADR-006](docs/decisions/006-organiz
 ```
 apps/
   web/                 # Next.js: landing + public booking + cabinet + API
-    lib/               # Business logic (api, server, helpers, constants) + utils.ts (cn)
-    hooks/             # React hooks (shadcn-owned alias `@/hooks`)
-    types/             # TypeScript utility types
-    proxy.ts           # Auth.js v5 middleware — root location required, do not move
+    src/               # All app source lives under src/ (Next.js src/ convention)
+      app/             # App Router: pages, layouts, route handlers
+      components/      # React components (shadcn/ui + app components)
+      hooks/           # React hooks (shadcn-owned alias `@/hooks`)
+      server/          # server-only: db, auth, storage, queue, demo (import 'server-only')
+      api-client/      # client-only React Query layer — the browser end of the wire
+      helpers/         # pure presentation utilities (date, name, contact)
+      constants/       # static data tables (timezones, site)
+      lib/             # cross-cutting singletons: posthog.ts, og/, utils.ts (cn)
+      types/           # TypeScript utility types
+      proxy.ts         # Auth.js v5 middleware — src/ root, do not move
+      instrumentation.ts # Sentry server-side init
+    public/            # Static assets
   worker/              # notifications / jobs: pg-boss consumer, Telegram sender
 packages/
   db/                  # Drizzle schema, migrations
@@ -52,24 +61,24 @@ packages/
 docs/
 ```
 
-**Root of `apps/web/` — two kinds of file, only one of them ours.** Everything we organise lives under `lib/`, `hooks/`, `components/`, `types/`. What remains at the root is discovered _by convention_ and its path is load-bearing: `app/`, `proxy.ts`, `next.config.js`, `postcss.config.mjs`, `tsconfig.json`, `eslint.config.js`, `components.json`, `next-env.d.ts`.
+**Root of `apps/web/` — two kinds of file, only one of them ours.** Everything we organise lives under `src/` (`app/`, `server/`, `api-client/`, `helpers/`, `constants/`, `hooks/`, `components/`, `lib/`, `types/`). What remains at the project root is discovered _by convention_ and its path is load-bearing: `next.config.js`, `postcss.config.mjs`, `tsconfig.json`, `eslint.config.js`, `components.json`, `next-env.d.ts`. Inside `src/`, the convention files are `app/`, `proxy.ts`, `instrumentation.ts` — also load-bearing.
 
-`proxy.ts` is Next 16's rename of `middleware.ts`, found only at the project root with **no config option pointing at it**. Moving it breaks auth silently — the `ƒ Proxy (Middleware)` line vanishes from build output and signed-in organizers stop being redirected off `/login` and `/signup`. Contrast `lib/utils.ts`, which _was_ movable because `components.json` holds an alias that can be repointed.
+`proxy.ts` is Next 16's rename of `middleware.ts`, found only at the `src/` root (next to `app/`) with **no config option pointing at it**. Moving it breaks auth silently — the `ƒ Proxy (Middleware)` line vanishes from build output and signed-in organizers stop being redirected off `/login` and `/signup`. Contrast `lib/utils.ts`, which _was_ movable because `components.json` holds an alias that can be repointed.
 
-**`apps/web/lib/` structure:**
+**`apps/web/src/` structure — the data wire is the load-bearing seam:**
 
-- `api/` — **client-only** React Query layer, one file per entity (`organizer.ts`, `service.ts`, `auth.ts`), each holding queries _and_ mutations. `keys.ts` is the cache-key factory, `client.ts` the fetch helpers, `image.ts` browser-side downscaling. Import via `@/lib/api`.
-- `server/` — **server-only** code; every module carries `import 'server-only'`
+- `server/` — **server-only** code; every module carries `import 'server-only'`. The server end of the wire.
   - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`
   - `db/` — Postgres reads **and writes** + DTO mapping, one file per entity (`organizer.ts`, `service.ts`); `shared.ts` holds `pickDefined`. Route handlers must not run SQL inline.
   - `http.ts` — route-handler plumbing: `requireWritableOrganizer()` (session + demo guard), `requireGuestIdentity()` (consumes an auth ticket) and `parseJsonBody()` (Zod + `400`). All return a `Guarded<T>` discriminated union — check `.ok`, never truthiness. **Request-level only: must not import from `db/`.**
   - `storage/` — Cloudflare R2 orchestration (avatar, service-photo, media ownership)
   - `demo.ts`, `queue.ts` — cross-cutting policy guard / job publisher
+- `api-client/` — **client-only** React Query layer, one file per entity (`organizer.ts`, `service.ts`, `auth.ts`), each holding queries _and_ mutations. `keys.ts` is the cache-key factory, `client.ts` the fetch helpers, `image.ts` browser-side downscaling. Import via `@/api-client`. The browser end of the wire.
 - `helpers/` — pure presentation utilities: formatting and adapters (`date.ts`, `name.ts`, `contact.ts`).
-- `constants/` — static data tables (`timezones.ts`).
-- `utils.ts` — `cn()` only. **Shadcn-owned:** path is the `utils` alias in `components.json`. Do not add non-shadcn helpers here.
+- `constants/` — static data tables (`timezones.ts`, `site.ts`).
+- `lib/` — cross-cutting singletons that don't fit a semantic bucket: `posthog.ts` (analytics), `og/` (OpenGraph image assets), `utils.ts` (`cn()`). **`utils.ts` is shadcn-owned:** path is the `utils` alias in `components.json`. Do not add non-shadcn helpers here.
 
-**No `lib/domain/`** — deleted as dead code. Entity invariants live in `lib/server/db/` or `packages/api-contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/api-contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
+**No `lib/domain/`** — deleted as dead code. Entity invariants live in `server/db/` or `packages/api-contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/api-contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
 
 **No mock data** — `lib/mock-data.ts` was deleted. Sample content is the **demo seed** (`packages/db/src/seed/`), real rows behind `/demo` (ADR-010). Do not reintroduce fixtures.
 
@@ -77,13 +86,13 @@ docs/
 
 **Form schemas are not wire schemas.** Controlled inputs hold `string` (including `''` mid-edit), while the API takes numbers and `null`. Each entity has a `*-form.ts` beside its wire schema, with adapters (`optionalText`, `numericText`) shared from `form-fields.ts`. Bounds compose from `primitives.ts`.
 
-**Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and entity files live at `lib/server/db/service.ts` (layer → kind → entity). Never reintroduce `lib/services/`.
+**Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and entity files live at `server/db/service.ts` (kind → entity). Never reintroduce `services/`.
 
-**`app/api/` vs `lib/api/`** — two ends of one wire. `app/api/**/route.ts` is the URL and holds server handlers. `lib/api/` is the browser client. They never import each other — contract is HTTP + Zod schemas in `packages/api-contracts`.
+**`app/api/` vs `api-client/`** — two ends of one wire. `app/api/**/route.ts` is the URL and holds server handlers. `api-client/` is the browser client. They never import each other — contract is HTTP + Zod schemas in `packages/api-contracts`.
 
 **What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/api-contracts`.
 
-**Query keys live in `lib/api/keys.ts`.** Never write a `queryKey` array literal inline — duplicated literals break invalidation silently. Keys are hierarchical, so `queryKeys.services.all` invalidates every service query beneath it.
+**Query keys live in `api-client/keys.ts`.** Never write a `queryKey` array literal inline — duplicated literals break invalidation silently. Keys are hierarchical, so `queryKeys.services.all` invalidates every service query beneath it.
 
 See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/007-cloudflare-r2.md).
 
@@ -122,10 +131,10 @@ Per-package: `cd <package> && bun run test`.
 - Optional display `location` and `contact` on `Organizer` and `Service`; `Service.*` overrides the organizer's — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/api-contracts`. Every write path must reject it, including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. Scope every cabinet read through `resolveCabinetOrganizerId()` and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `requireGuestIdentity()` in `apps/web/lib/server/http.ts` is the only way it enters a write; single-use, so a replayed booking fails.
-- **Notifications are enqueued inside the booking/cancel transaction**, via `enqueueBookingCreated` / `enqueueBookingCancelled` in `apps/web/lib/server/queue.ts` (pg-boss `fromDrizzle` over the caller's `tx`). Queue names and payloads in `packages/api-contracts/src/jobs.ts`; jobs carry **ids only**, and `apps/worker` refetches at send time. `booking.created` fans out to one job **per recipient**.
+- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `requireGuestIdentity()` in `apps/web/src/server/http.ts` is the only way it enters a write; single-use, so a replayed booking fails.
+- **Notifications are enqueued inside the booking/cancel transaction**, via `enqueueBookingCreated` / `enqueueBookingCancelled` in `apps/web/src/server/queue.ts` (pg-boss `fromDrizzle` over the caller's `tx`). Queue names and payloads in `packages/api-contracts/src/jobs.ts`; jobs carry **ids only**, and `apps/worker` refetches at send time. `booking.created` fans out to one job **per recipient**.
 - **Organizer deep links are one-time login links.** The worker mints `{ organizerId, next }` into Redis and links to `/login/link/{token}`, consumed on **`POST`** (never `GET` — previewers fetch URLs before a human clicks). Single-use, `noindex`, demo id refused.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the job with a log instead of retrying — only `429`/`5xx`/network are retried.
-- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `lib/server/db/booking.ts`, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers.
+- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `src/server/db/booking.ts`, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers.
 - Seats move only through atomic reserve — a single conditional `UPDATE … WHERE bookedCount + :seats <= capacity` inside the booking transaction. Never read `bookedCount`, check in JS, then write back.
 - Do not expand scope without ADR/roadmap update.
