@@ -30,7 +30,10 @@ export function CookieConsentBanner() {
         <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
           {'We use analytics cookies to understand how CountMeIn is used and improve it. '}
           {'Essential cookies for sign-in and booking are always on. '}
-          <Link href="/privacy" className="text-foreground underline underline-offset-4">
+          <Link
+            href="/privacy"
+            className="font-medium underline underline-offset-4 decoration-[rgba(127,127,127,0.33)] hover:text-foreground"
+          >
             Privacy Policy
           </Link>
         </p>
