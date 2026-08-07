@@ -1,7 +1,7 @@
 'use client'
 
 /** Global error boundary — catches root-layout errors that `error.tsx` cannot. Must render its own `<html>`/`<body>`. */
-import Sentry from '@sentry/nextjs'
+import * as Sentry from '@sentry/nextjs'
 import { HomeIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'

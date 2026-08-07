@@ -35,6 +35,13 @@ export default function PrivacyPage() {
           organizers are identified by an internal id so their activity can be grouped; guests are
           not identified in analytics. Neither service receives your messenger credentials.
         </p>
+        <p>
+          Analytics cookies are off by default and load only after you accept them in the cookie
+          banner; if you reject or ignore it, PostHog is never initialized and no analytics cookies
+          are set. Essential cookies required for sign-in and booking are always active and do not
+          require consent. Sentry error monitoring runs without cookies. You can change your choice
+          at any time by clearing this site&apos;s data in your browser.
+        </p>
       </LegalSection>
       <LegalSection heading="Retention">
         <p>
