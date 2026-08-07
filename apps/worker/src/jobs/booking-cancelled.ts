@@ -14,6 +14,7 @@ import { issueLoginLink } from '../auth/login-link'
 import { getNotificationContext } from '../db/notification-context'
 import type { WorkerEnv } from '../env'
 import { cabinetSlotPath, loginLinkUrl, organizerPageUrl } from '../links'
+import { getPostHog } from '../posthog'
 import { sendMessage } from '../telegram/client'
 import { bookingCancelledForGuest, bookingCancelledForOrganizer } from '../telegram/templates'
 
@@ -37,6 +38,7 @@ export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Pro
   }
 
   const recipient = cancelNotificationRecipient(cancelledBy)
+  const ph = getPostHog()
 
   if (recipient === 'organizer') {
     const token = await issueLoginLink(context.organizer.id, cabinetSlotPath(context.slot.id))
@@ -47,6 +49,11 @@ export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Pro
       chatId: context.organizer.messengerId,
       text: message.text,
       button: message.button,
+    })
+    ph?.capture({
+      distinctId: context.organizer.id,
+      event: 'notification_sent',
+      properties: { queue: 'booking.cancelled', recipient, bookingId },
     })
     return
   }
@@ -60,5 +67,10 @@ export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Pro
     chatId: context.booking.guestMessengerId,
     text: message.text,
     button: message.button,
+  })
+  ph?.capture({
+    distinctId: context.organizer.id,
+    event: 'notification_sent',
+    properties: { queue: 'booking.cancelled', recipient, bookingId },
   })
 }

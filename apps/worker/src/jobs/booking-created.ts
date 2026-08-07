@@ -10,6 +10,7 @@ import { issueLoginLink } from '../auth/login-link'
 import { getNotificationContext } from '../db/notification-context'
 import type { WorkerEnv } from '../env'
 import { cabinetSlotPath, loginLinkUrl, manageBookingUrl } from '../links'
+import { getPostHog } from '../posthog'
 import { sendMessage } from '../telegram/client'
 import { bookingCreatedForGuest, bookingCreatedForOrganizer } from '../telegram/templates'
 
@@ -32,6 +33,8 @@ export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promi
     return
   }
 
+  const ph = getPostHog()
+
   if (recipient === 'organizer') {
     const token = await issueLoginLink(context.organizer.id, cabinetSlotPath(context.slot.id))
 
@@ -41,6 +44,11 @@ export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promi
       chatId: context.organizer.messengerId,
       text: message.text,
       button: message.button,
+    })
+    ph?.capture({
+      distinctId: context.organizer.id,
+      event: 'notification_sent',
+      properties: { queue: 'booking.created', recipient, bookingId },
     })
     return
   }
@@ -54,5 +62,10 @@ export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promi
     chatId: context.booking.guestMessengerId,
     text: message.text,
     button: message.button,
+  })
+  ph?.capture({
+    distinctId: context.organizer.id,
+    event: 'notification_sent',
+    properties: { queue: 'booking.created', recipient, bookingId },
   })
 }

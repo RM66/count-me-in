@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 
@@ -34,4 +35,10 @@ const nextConfig = {
   allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
 }
 
-export default nextConfig
+// Source-map upload only runs in CI with SENTRY_AUTH_TOKEN; no-op otherwise.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
+})

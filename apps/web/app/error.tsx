@@ -1,7 +1,9 @@
 'use client'
 
+import Sentry from '@sentry/nextjs'
 import { HomeIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -13,7 +15,11 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center p-6">
       <Empty>

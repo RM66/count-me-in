@@ -134,6 +134,35 @@ from pgboss.job order by created_on desc limit 10;
 
 Both processes read repo-root `.env` — worker via `--env-file=../../.env`.
 
+## Observability
+
+Two tools, one job each — Sentry for errors and performance, PostHog for product analytics and behaviour.
+
+| Tool        | Scope                                                                        | Where it runs                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload   | `apps/web` (client + server via `instrumentation.ts` + `sentry.client.config.ts`), `apps/worker` (`@sentry/bun`) |
+| **PostHog** | Page views, funnels, feature flags, session replay, notification-sent events | `apps/web` (browser via `lib/posthog.ts`), `apps/worker` (`posthog-node` for server events)                      |
+
+### Sentry
+
+- **Server init:** [`apps/web/instrumentation.ts`](../apps/web/instrumentation.ts) — root-level Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
+- **Client init:** [`apps/web/sentry.client.config.ts`](../apps/web/sentry.client.config.ts) — loaded automatically by `@sentry/nextjs` in the browser bundle.
+- **Error boundaries:** [`apps/web/app/error.tsx`](../apps/web/app/error.tsx) and [`apps/web/app/global-error.tsx`](../apps/web/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
+- **Worker:** [`apps/worker/src/index.ts`](../apps/worker/src/index.ts) inits `@sentry/bun` and captures in `runHandler` (both retriable and unretriable failures) and `boss.on('error')`.
+- **Source maps:** `withSentryConfig` in [`apps/web/next.config.js`](../apps/web/next.config.js) uploads source maps during CI builds when `SENTRY_AUTH_TOKEN` is set.
+- **Replay is off** — PostHog session replay covers the "what did the user do" question; enabling Sentry replay too would double the client payload cost.
+
+### PostHog
+
+- **Browser client:** [`apps/web/lib/posthog.ts`](../apps/web/lib/posthog.ts) — lazy singleton, initialised from [`apps/web/app/providers.tsx`](../apps/web/app/providers.tsx). Autocaptures page views; session replay masks all inputs (no PII).
+- **User identification:** signed-in organizers are identified by `Organizer.id`. Guests stay anonymous — their messenger identity is PII that does not belong in analytics.
+- **Worker events:** [`apps/worker/src/posthog.ts`](../apps/worker/src/posthog.ts) exposes a `posthog-node` client. Job handlers emit `notification_sent` with `{ queue, recipient, bookingId }` after a successful send. Flushed on shutdown.
+- **PostHog Cloud** — `NEXT_PUBLIC_POSTHOG_HOST` defaults to `https://app.posthog.com`.
+
+### No-op without keys
+
+Both SDKs check their env var before initialising, so local dev and CI run without accounts and tests are unaffected.
+
 ## Out of scope
 
 - Concrete DDL (Drizzle later).

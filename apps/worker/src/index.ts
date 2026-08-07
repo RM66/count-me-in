@@ -16,12 +16,14 @@
 import { QUEUE_BOOKING_CANCELLED, QUEUE_BOOKING_CREATED } from '@repo/api-contracts'
 import { client as dbClient } from '@repo/db'
 import { closeRedis } from '@repo/redis'
+import Sentry from '@sentry/bun'
 import { PgBoss } from 'pg-boss'
 
 import { readEnv, type WorkerEnv } from './env'
 import { handleBookingCancelled } from './jobs/booking-cancelled'
 import { handleBookingCreated } from './jobs/booking-created'
 import { DEMO_REFRESH_CRON, QUEUE_DEMO_REFRESH, refreshDemoSeed } from './jobs/demo-refresh'
+import { shutdownPostHog } from './posthog'
 import { TelegramUnreachableError } from './telegram/client'
 
 /**
@@ -52,8 +54,10 @@ async function runHandler(name: string, run: () => Promise<void>): Promise<void>
   } catch (error) {
     if (error instanceof TelegramUnreachableError) {
       console.warn(`[${name}] recipient unreachable — completing without retry:`, error.message)
+      Sentry.captureException(error, { tags: { queue: name, unretriable: true } })
       return
     }
+    Sentry.captureException(error, { tags: { queue: name } })
     throw error
   }
 }
@@ -61,10 +65,20 @@ async function runHandler(name: string, run: () => Promise<void>): Promise<void>
 async function main(): Promise<void> {
   const env: WorkerEnv = readEnv()
 
+  // Sentry init — no-op without SENTRY_DSN.
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+      tracesSampleRate: 0.1,
+    })
+  }
+
   const boss = new PgBoss({ connectionString: env.databaseUrl })
 
   boss.on('error', (error) => {
     console.error('[worker] pg-boss error:', error)
+    Sentry.captureException(error, { tags: { source: 'pg-boss' } })
   })
 
   await boss.start()
@@ -99,6 +113,8 @@ async function main(): Promise<void> {
       await boss.stop({ graceful: true })
       await closeRedis()
       await dbClient.end()
+      await shutdownPostHog()
+      await Sentry.close()
     } catch (error) {
       console.error('[worker] error during shutdown:', error)
     } finally {
@@ -112,5 +128,6 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   console.error('[worker] fatal:', error)
-  process.exit(1)
+  Sentry.captureException(error)
+  void Sentry.close().finally(() => process.exit(1))
 })

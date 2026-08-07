@@ -15,8 +15,10 @@
     "@repo/api-contracts": "*",
     "@repo/db": "*",
     "@repo/redis": "workspace:*",
+    "@sentry/bun": "^10.69.0",
     "drizzle-orm": "^0.45.2",
-    "pg-boss": "^12.27.0"
+    "pg-boss": "^12.27.0",
+    "posthog-node": "^5.48.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
