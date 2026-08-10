@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { useCancelBooking } from '@/api-client'
 import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
 import { ContactLink } from '@/components/contact-link'
 import {
@@ -32,7 +33,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { useCancelBooking } from '@/api-client'
 import { formatDate, formatTime } from '@/helpers/date'
 
 /**

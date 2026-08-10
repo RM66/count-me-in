@@ -34,24 +34,22 @@ export default async function OrganizerOgImage({
 
   if (!organizer) {
     return new ImageResponse(
-      (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: gradient,
-            color: 'white',
-            fontSize: 64,
-            fontWeight: 700,
-            fontFamily: 'Figtree',
-          }}
-        >
-          CountMeIn
-        </div>
-      ),
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: gradient,
+          color: 'white',
+          fontSize: 64,
+          fontWeight: 700,
+          fontFamily: 'Figtree',
+        }}
+      >
+        CountMeIn
+      </div>,
       { ...size, fonts },
     )
   }
@@ -59,80 +57,80 @@ export default async function OrganizerOgImage({
   const initials = organizer.name.slice(0, 2).toUpperCase()
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        background: 'white',
+        padding: 80,
+        fontFamily: 'Figtree',
+      }}
+    >
+      {/* A thin brand bar keeps the service identity present but subordinate. */}
       <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          background: 'white',
-          padding: 80,
-          fontFamily: 'Figtree',
-        }}
-      >
-        {/* A thin brand bar keeps the service identity present but subordinate. */}
-        <div style={{ display: 'flex', height: 12, width: 160, borderRadius: 999, background: gradient }} />
+        style={{ display: 'flex', height: 12, width: 160, borderRadius: 999, background: gradient }}
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
-          {organizer.photoUrl ? (
-            <img
-              src={organizer.photoUrl}
-              width={220}
-              height={220}
-              alt=""
-              style={{ borderRadius: 999, objectFit: 'cover', border: '6px solid #F1F0FB' }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 220,
-                height: 220,
-                borderRadius: 999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: gradient,
-                color: 'white',
-                fontSize: 88,
-                fontWeight: 700,
-              }}
-            >
-              {initials}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 720 }}>
-            <div
-              style={{
-                fontSize: 68,
-                fontWeight: 700,
-                color: '#18181B',
-                lineHeight: 1.1,
-                // Long names must not overflow the card; clamp to two lines.
-                display: '-webkit-box',
-                WebkitBoxOrient: 'vertical',
-                WebkitLineClamp: 2,
-                overflow: 'hidden',
-              }}
-            >
-              {organizer.name}
-            </div>
-            {organizer.location ? (
-              <div style={{ fontSize: 34, color: '#71717A', marginTop: 16 }}>
-                {organizer.location}
-              </div>
-            ) : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
+        {organizer.photoUrl ? (
+          <img
+            src={organizer.photoUrl}
+            width={220}
+            height={220}
+            alt=""
+            style={{ borderRadius: 999, objectFit: 'cover', border: '6px solid #F1F0FB' }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 220,
+              height: 220,
+              borderRadius: 999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: gradient,
+              color: 'white',
+              fontSize: 88,
+              fontWeight: 700,
+            }}
+          >
+            {initials}
           </div>
-        </div>
+        )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30 }}>
-          <img src={logo} width={44} height={44} alt="" style={{ borderRadius: 12 }} />
-          <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 720 }}>
+          <div
+            style={{
+              fontSize: 68,
+              fontWeight: 700,
+              color: '#18181B',
+              lineHeight: 1.1,
+              // Long names must not overflow the card; clamp to two lines.
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
+              overflow: 'hidden',
+            }}
+          >
+            {organizer.name}
+          </div>
+          {organizer.location ? (
+            <div style={{ fontSize: 34, color: '#71717A', marginTop: 16 }}>
+              {organizer.location}
+            </div>
+          ) : null}
         </div>
       </div>
-    ),
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30 }}>
+        <img src={logo} width={44} height={44} alt="" style={{ borderRadius: 12 }} />
+        <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
+      </div>
+    </div>,
     { ...size, fonts },
   )
 }

@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 
+import { useCurrentOrganizer } from '@/api-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,7 +46,6 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCurrentOrganizer } from '@/api-client'
 import { SUPPORT_EMAIL } from '@/constants/site'
 import { initials } from '@/helpers/name'
 import { cn } from '@/lib/utils'

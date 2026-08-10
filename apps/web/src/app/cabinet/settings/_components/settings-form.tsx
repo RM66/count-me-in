@@ -5,6 +5,7 @@ import { CopyIcon, ImageIcon, PencilIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { useCurrentOrganizer } from '@/api-client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,7 +34,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCurrentOrganizer } from '@/api-client'
 import { SITE_DOMAIN, SITE_URL } from '@/constants/site'
 import { TIMEZONES } from '@/constants/timezones'
 import { initials } from '@/helpers/name'

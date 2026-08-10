@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { DAY_MARK, dayKeyToDate, useDayFilter } from '@/app/cabinet/_components/day-filter'
 import { useDeleteSlot } from '@/api-client'
+import { DAY_MARK, dayKeyToDate, useDayFilter } from '@/app/cabinet/_components/day-filter'
 import type { SlotDialogMode } from './slot-dialog'
 
 /** What the dialog is currently doing, or `null` when it is closed. */

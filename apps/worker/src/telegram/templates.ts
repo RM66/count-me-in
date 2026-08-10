@@ -50,7 +50,7 @@ export function escapeHtml(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, "&#39;")
+    .replace(/'/g, '&#39;')
 }
 
 /** "Sat, 25 Jul 2026, 07:00" as read in `timeZone`. */

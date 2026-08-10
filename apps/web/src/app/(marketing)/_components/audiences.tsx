@@ -1,12 +1,4 @@
-import {
-  Dumbbell,
-  Flower2,
-  GraduationCap,
-  PawPrint,
-  Sparkles,
-  Tent,
-  Users2,
-} from 'lucide-react'
+import { Dumbbell, Flower2, GraduationCap, PawPrint, Sparkles, Tent, Users2 } from 'lucide-react'
 
 // Audience categories mirror the "Target audience" list in README.md.
 // Kept broad on purpose: the product spans many niches, and a visitor should
@@ -25,7 +17,8 @@ const audiences = [
   {
     icon: GraduationCap,
     title: 'Learning & creativity',
-    examples: 'Masterclasses, courses, art & ceramics, photography, cooking, music, language clubs.',
+    examples:
+      'Masterclasses, courses, art & ceramics, photography, cooking, music, language clubs.',
   },
   {
     icon: Users2,

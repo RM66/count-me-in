@@ -3,8 +3,8 @@
 import { EyeIcon } from 'lucide-react'
 import Link from 'next/link'
 
-import { Button } from '@/components/ui/button'
 import { useIsDemo } from '@/api-client'
+import { Button } from '@/components/ui/button'
 
 /**
  * Read-only notice shown across the cabinet when viewing the demo organizer —

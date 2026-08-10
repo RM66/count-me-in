@@ -20,12 +20,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { SITE_DOMAIN } from '@/constants/site'
 import { formatDateTime } from '@/helpers/date'
+import { cn } from '@/lib/utils'
 import { listBookings } from '@/server/db/booking'
 import { getOrganizerProfile } from '@/server/db/organizer'
 import { listServices } from '@/server/db/service'
 import { listSlots } from '@/server/db/time-slot'
 import { resolveCabinetOrganizerId } from '@/server/demo'
-import { cn } from '@/lib/utils'
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 

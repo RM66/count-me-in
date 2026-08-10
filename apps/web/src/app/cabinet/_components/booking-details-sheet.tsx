@@ -5,6 +5,7 @@ import { XIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
+import { useCancelBookingByOrganizer } from '@/api-client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +29,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { useCancelBookingByOrganizer } from '@/api-client'
 import { formatDateTime } from '@/helpers/date'
 import { initials } from '@/helpers/name'
 

@@ -4,6 +4,7 @@ import type { ServiceRecord } from '@repo/api-contracts'
 import { Trash2Icon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+import { useIsDemo } from '@/api-client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FieldGroup } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
-import { useIsDemo } from '@/api-client'
 import { ServiceOptionsField } from './service-options-field'
 import { ServicePhotoField } from './service-photo-field'
 import { ServiceTextareaField, ServiceTextField } from './service-text-field'

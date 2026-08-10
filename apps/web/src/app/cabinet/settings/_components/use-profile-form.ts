@@ -3,8 +3,8 @@ import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/api-contracts'
 import { useReducer } from 'react'
 import { toast } from 'sonner'
 
-import { useImageUpload } from '@/hooks/use-image-upload'
 import { useUpdateOrganizerProfile, useUploadAvatar } from '@/api-client'
+import { useImageUpload } from '@/hooks/use-image-upload'
 
 type ProfileFormState = {
   name: string

@@ -2,20 +2,35 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Figtree is the site's UI font (see layout.tsx). We bundle the TTFs so the
-// generated OG cards render with the exact same typeface as the site, instead
-// of Satori's generic sans-serif fallback. Resolving relative to this module
-// (via import.meta.url) keeps the path correct regardless of process.cwd()
-// and lets Next's file tracing include these files in the deployment bundle.
-// In test runtimes (vitest/happy-dom) import.meta.url is not a file: URL, so we
-// fall back to a cwd-relative path — the module's known location under src/.
-const moduleDir = (() => {
+// Figtree is the site's UI font (see layout.tsx); we bundle the TTFs so OG
+// cards match the site typeface instead of Satori's generic fallback.
+// Resolving per concrete file via `new URL('./…', import.meta.url)` keeps
+// paths cwd-independent and lets Next trace them into the deployment bundle.
+// We resolve files, not the '.' directory — Turbopack can't trace the latter
+// and warns. In tests (vitest/happy-dom) import.meta.url isn't a file: URL,
+// so each falls back to a cwd-relative path under src/.
+const regularFontPath = (() => {
   try {
-    return fileURLToPath(new URL('.', import.meta.url))
+    return fileURLToPath(new URL('./fonts/Figtree-Regular.ttf', import.meta.url))
   } catch {
-    return join(process.cwd(), 'src/lib/og')
+    return join(process.cwd(), 'src/lib/og/fonts/Figtree-Regular.ttf')
   }
 })()
+const boldFontPath = (() => {
+  try {
+    return fileURLToPath(new URL('./fonts/Figtree-Bold.ttf', import.meta.url))
+  } catch {
+    return join(process.cwd(), 'src/lib/og/fonts/Figtree-Bold.ttf')
+  }
+})()
+const logoPath = (() => {
+  try {
+    return fileURLToPath(new URL('../../../public/logo.svg', import.meta.url))
+  } catch {
+    return join(process.cwd(), 'public/logo.svg')
+  }
+})()
+
 export type OgFont = {
   name: string
   data: Buffer
@@ -27,10 +42,7 @@ let fontCache: OgFont[] | null = null
 
 export async function loadFigtreeFonts(): Promise<OgFont[]> {
   if (fontCache) return fontCache
-  const [regular, bold] = await Promise.all([
-    readFile(join(moduleDir, 'fonts/Figtree-Regular.ttf')),
-    readFile(join(moduleDir, 'fonts/Figtree-Bold.ttf')),
-  ])
+  const [regular, bold] = await Promise.all([readFile(regularFontPath), readFile(boldFontPath)])
   fontCache = [
     { name: 'Figtree', data: regular, weight: 400, style: 'normal' },
     { name: 'Figtree', data: bold, weight: 700, style: 'normal' },
@@ -40,12 +52,11 @@ export async function loadFigtreeFonts(): Promise<OgFont[]> {
 
 let logoCache: string | null = null
 
-// The real app icon (logo.svg) inlined as a data URI so Satori can render the
-// actual brand mark — the same file used for the favicon — rather than an
-// approximation.
+// logo.svg inlined as a data URI so Satori renders the real brand mark (the
+// favicon file) rather than an approximation.
 export async function loadLogoDataUri(): Promise<string> {
   if (logoCache) return logoCache
-  const svg = await readFile(join(process.cwd(), 'public/logo.svg'))
+  const svg = await readFile(logoPath)
   logoCache = `data:image/svg+xml;base64,${svg.toString('base64')}`
   return logoCache
 }

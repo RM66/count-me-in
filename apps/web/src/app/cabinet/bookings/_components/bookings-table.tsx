@@ -23,7 +23,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { formatDateTime } from '@/helpers/date'
 import { initials } from '@/helpers/name'
-import { SORT_KEYS, type SortKey,useBookingsTable } from './use-bookings-table'
+import { SORT_KEYS, type SortKey, useBookingsTable } from './use-bookings-table'
 
 type BookingsTableProps = {
   bookings: BookingRecord[]
