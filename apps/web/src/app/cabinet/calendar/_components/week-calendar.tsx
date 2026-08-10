@@ -2,13 +2,14 @@
 
 import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/api-contracts'
 import { fillLabel, instantToWallClockInputs, seatsLeft, slotEnd } from '@repo/api-contracts'
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { dateToDayKey, DAY_MARK, dayKeyToDate } from '@/app/cabinet/_components/day-filter'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import {
   addDays,
@@ -73,6 +74,9 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
   // The day the mini calendar and week both hang off. Starts on today.
   const [selectedDate, setSelectedDate] = useState(() => dayKeyToDate(todayKey))
   const [month, setMonth] = useState(() => dayKeyToDate(todayKey))
+  // The month picker now lives in a popover (like the "Any day" filter), so we
+  // track its own open state and close it once a day is chosen.
+  const [isPickerOpen, setPickerOpen] = useState(false)
 
   const goToDate = (date: Date) => {
     setSelectedDate(date)
@@ -140,41 +144,11 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
         </p>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-        {/* Navigation rail: month picker + legend. Above the grid on mobile. */}
-        <aside className="flex shrink-0 flex-col gap-4 lg:w-64">
-          <Calendar
-            mode="single"
-            className="w-full rounded-lg border p-3"
-            selected={selectedDate}
-            month={month}
-            onMonthChange={setMonth}
-            onSelect={(date) => date && goToDate(date)}
-            modifiers={{ hasSlots: slotDates, activeWeek: weekDays }}
-            modifiersClassNames={{
-              hasSlots: DAY_MARK.strong.calendarCell,
-              // Tint the whole selected week so the grid on the right has an
-              // obvious anchor in the month.
-              activeWeek: 'rounded-none bg-accent/60',
-            }}
-          />
-
-          <dl className="flex flex-col gap-2 text-sm">
-            {FILL_LEGEND.map(({ fill, label }) => (
-              <div key={fill} className="flex items-center gap-2">
-                <span
-                  className={cn('size-3 shrink-0 rounded-sm border-l-2', FILL_STYLES[fill])}
-                  aria-hidden
-                />
-                <dt className="text-muted-foreground">{label}</dt>
-              </div>
-            ))}
-          </dl>
-        </aside>
-
-        {/* The week grid itself. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* The week grid, now full width — the month picker is tucked into the
+            toolbar popover instead of a permanent side rail. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between gap-2 border-b p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => goToDate(dayKeyToDate(todayKey))}>
                 Today
@@ -199,8 +173,57 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                   <ChevronRightIcon />
                 </Button>
               </div>
+              <span className="text-sm font-medium">{rangeLabel}</span>
             </div>
-            <span className="text-sm font-medium">{rangeLabel}</span>
+
+            <div className="flex items-center gap-3">
+              {/* Legend, quiet on the right so a full week still reads at a glance. */}
+              <dl className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
+                {FILL_LEGEND.map(({ fill, label }) => (
+                  <div key={fill} className="flex items-center gap-1.5">
+                    <span
+                      className={cn('size-3 shrink-0 rounded-sm border-l-2', FILL_STYLES[fill])}
+                      aria-hidden
+                    />
+                    <dt>{label}</dt>
+                  </div>
+                ))}
+              </dl>
+
+              {/* Month picker behind a button, mirroring the "Any day" filter. */}
+              <Popover open={isPickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Jump to a week"
+                  >
+                    <CalendarIcon data-icon="inline-start" />
+                    Jump to date
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    month={month}
+                    onMonthChange={setMonth}
+                    onSelect={(date) => {
+                      if (!date) return
+                      goToDate(date)
+                      setPickerOpen(false)
+                    }}
+                    modifiers={{ hasSlots: slotDates, activeWeek: weekDays }}
+                    modifiersClassNames={{
+                      hasSlots: DAY_MARK.strong.calendarCell,
+                      // Tint the whole selected week so the picker echoes the grid.
+                      activeWeek: 'rounded-none bg-accent/60',
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           {/* One horizontal scroll owner so day headers and the time grid stay
