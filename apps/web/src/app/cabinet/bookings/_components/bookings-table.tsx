@@ -154,13 +154,6 @@ export function BookingsTable({
             // The whole point: days whose sessions have bookings are marked.
             modifiers={{ hasBookings: t.bookedDates }}
             modifiersClassNames={{ hasBookings: DAY_MARK.strong.calendarCell }}
-            legend={
-              <>
-                {/* Swatch mirrors the day styling, so the key is self-evident. */}
-                <span className={DAY_MARK.strong.legend}>Has bookings</span>
-                <span>No bookings — unmarked</span>
-              </>
-            }
           />
 
           <div className="relative w-full sm:w-64">
