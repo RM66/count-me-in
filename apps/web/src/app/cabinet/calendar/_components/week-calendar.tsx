@@ -83,6 +83,18 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
     setMonth(date)
   }
 
+  // Day columns register themselves here so picking a date can scroll the grid
+  // horizontally to that column, not just switch the week. The scroll is
+  // deferred to an effect because the target column may only exist after the
+  // week (and therefore the columns) has re-rendered.
+  const dayColumnRefs = useRef(new Map<string, HTMLDivElement | null>())
+  const [pendingScrollDay, setPendingScrollDay] = useState<string | null>(null)
+
+  const jumpToDate = (date: Date) => {
+    goToDate(date)
+    setPendingScrollDay(dateToDayKey(date))
+  }
+
   const weekStart = useMemo(() => startOfWeek(selectedDate), [selectedDate])
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
@@ -132,6 +144,23 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
     const target = Math.max(0, (firstEventMinute - 30) / 60) * HOUR_HEIGHT
     scrollRef.current.scrollTop = target
   }, [firstEventMinute])
+
+  // After a date is picked, centre its column in the (possibly overflowing)
+  // grid. Runs once the new week's columns exist; the browser clamps the value
+  // so desktop weeks that already fit simply don't move.
+  useEffect(() => {
+    if (!pendingScrollDay) return
+    const container = scrollRef.current
+    const column = dayColumnRefs.current.get(pendingScrollDay)
+    if (container && column) {
+      const containerRect = container.getBoundingClientRect()
+      const columnRect = column.getBoundingClientRect()
+      const delta =
+        columnRect.left - containerRect.left - (containerRect.width - columnRect.width) / 2
+      container.scrollBy({ left: delta, behavior: 'smooth' })
+    }
+    setPendingScrollDay(null)
+  }, [pendingScrollDay])
 
   const rangeLabel = formatRange(weekStart, addDays(weekStart, 6))
 
@@ -211,7 +240,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                     onMonthChange={setMonth}
                     onSelect={(date) => {
                       if (!date) return
-                      goToDate(date)
+                      jumpToDate(date)
                       setPickerOpen(false)
                     }}
                     modifiers={{ hasSlots: slotDates, activeWeek: weekDays }}
@@ -278,7 +307,13 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                   const events = eventsByDay.get(dayKey) ?? []
                   const isToday = dayKey === todayKey
                   return (
-                    <div key={dayKey} className="relative flex-1 border-l">
+                    <div
+                      key={dayKey}
+                      ref={(el) => {
+                        dayColumnRefs.current.set(dayKey, el)
+                      }}
+                      className="relative flex-1 border-l"
+                    >
                       {/* Hour lines. */}
                       {HOURS.map((hour) => (
                         <div
