@@ -229,7 +229,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
           {/* One horizontal scroll owner so day headers and the time grid stay
               aligned when the week is wider than the panel on small screens. */}
           <div className="min-h-0 flex-1 overflow-auto" ref={scrollRef}>
-            <div className="min-w-[640px]">
+            <div className="min-w-[1224px] md:min-w-[640px]">
               {/* Day headers, sticky so they survive the vertical scroll. */}
               <div className="sticky top-0 z-20 flex border-b bg-background">
                 <div className="w-14 shrink-0" />
