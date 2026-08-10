@@ -13,16 +13,18 @@
 export const MINUTES_PER_DAY = 24 * 60
 
 /**
- * Monday 00:00 of the week containing `date`, as a local `Date`.
+ * 00:00 of the week containing `date`, as a local `Date`.
  *
- * Monday-based because the audience is European (prices in RSD, Belgrade
- * timezone) and a booking week reads Mon–Sun there. Normalised to midnight so
- * the seven day keys are stable regardless of the time of day passed in.
+ * `weekStartsOn` follows react-day-picker's convention (0 = Sunday …
+ * 6 = Saturday) so the grid and the mini pickers agree on which day a week
+ * opens on; it defaults to Monday, the project's European default (prices in
+ * RSD, Belgrade timezone). Normalised to midnight so the seven day keys are
+ * stable regardless of the time of day passed in.
  */
-export function startOfWeek(date: Date): Date {
+export function startOfWeek(date: Date, weekStartsOn = 1): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const sinceMonday = (d.getDay() + 6) % 7 // getDay(): 0 = Sunday
-  d.setDate(d.getDate() - sinceMonday)
+  const sinceStart = (d.getDay() - weekStartsOn + 7) % 7 // getDay(): 0 = Sunday
+  d.setDate(d.getDate() - sinceStart)
   return d
 }
 

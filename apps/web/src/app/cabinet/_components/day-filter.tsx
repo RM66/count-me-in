@@ -2,7 +2,7 @@
 
 import { instantToWallClockInputs, wallClockToInstant } from '@repo/api-contracts'
 import { CalendarIcon, XIcon } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,45 @@ export function dateToDayKey(date: Date): string {
   ).padStart(2, '0')}`
 }
 
+/** `weekStartsOn` values as react-day-picker (and our week grid) expect them. */
+export type WeekStartsOn = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
+/**
+ * The viewer's first day of the week, in react-day-picker's `weekStartsOn`
+ * convention (0 = Sunday … 6 = Saturday), read from their locale.
+ *
+ * `Intl.Locale.getWeekInfo()` reports `firstDay` in ISO form (1 = Monday …
+ * 7 = Sunday — older engines exposed it as the `weekInfo` property), so Sunday
+ * folds `7 → 0`. Falls back to Monday when the API or `navigator` is missing
+ * (SSR, older browsers), which also matches the project's European default.
+ */
+export function localeWeekStartsOn(): WeekStartsOn {
+  if (typeof navigator === 'undefined') return 1
+  try {
+    const locale = new Intl.Locale(navigator.language) as Intl.Locale & {
+      getWeekInfo?: () => { firstDay: number }
+      weekInfo?: { firstDay: number }
+    }
+    const firstDay = (locale.getWeekInfo?.() ?? locale.weekInfo)?.firstDay
+    if (typeof firstDay === 'number') return (firstDay % 7) as WeekStartsOn
+  } catch {
+    // Fall through to the Monday default below.
+  }
+  return 1
+}
+
+/**
+ * `localeWeekStartsOn` as a hook that is SSR-safe: renders Monday first (the
+ * server has no `navigator`, and this is the app's default), then settles to
+ * the viewer's real locale after mount. Every cabinet calendar shares it so
+ * the mini pickers and the week grid always start the week on the same day.
+ */
+export function useWeekStartsOn(): WeekStartsOn {
+  const [weekStartsOn, setWeekStartsOn] = useState<WeekStartsOn>(1)
+  useEffect(() => setWeekStartsOn(localeWeekStartsOn()), [])
+  return weekStartsOn
+}
+
 /**
  * Day-mark styling, shared so every cabinet calendar speaks the same visual
  * language: `strong` = actionable content on that day, `muted` = only history.
@@ -47,13 +86,17 @@ export function dateToDayKey(date: Date): string {
  * `<button>` inside it — styling the cell alone leaves the number untouched
  * and nothing appears. Hence the child selector. `legend` mirrors the same
  * styling on a plain `<span>` so the key is self-evident.
+ *
+ * `strong` marks a day by turning the *number itself* the brand colour rather
+ * than underlining it — a selected day (white on a solid brand fill) still
+ * wins, since its own `data-selected` rule outranks this descendant class.
+ * `muted` stays a dotted underline: history is a different kind of mark, not a
+ * quieter shade of the same one.
  */
 export const DAY_MARK = {
   strong: {
-    calendarCell:
-      '[&_button]:font-bold [&_button]:underline [&_button]:decoration-primary [&_button]:decoration-2 [&_button]:underline-offset-4',
-    legend:
-      'font-bold text-foreground underline decoration-primary decoration-2 underline-offset-4',
+    calendarCell: '[&_button]:font-bold [&_button]:text-primary',
+    legend: 'font-bold text-primary',
   },
   muted: {
     calendarCell:
@@ -161,6 +204,7 @@ export function DayFilterPicker({
   entityLabel,
 }: DayFilterPickerProps) {
   const [isOpen, setOpen] = useState(false)
+  const weekStartsOn = useWeekStartsOn()
 
   const selectedDate = day ? dayKeyToDate(day) : undefined
 
@@ -180,6 +224,7 @@ export function DayFilterPicker({
       <PopoverContent className="w-auto p-0" align="end">
         <Calendar
           mode="single"
+          weekStartsOn={weekStartsOn}
           // Only honoured while nothing is selected; a selected day wins.
           defaultMonth={selectedDate ?? defaultMonth}
           selected={selectedDate}

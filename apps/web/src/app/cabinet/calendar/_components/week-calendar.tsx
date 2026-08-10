@@ -6,7 +6,12 @@ import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { dateToDayKey, DAY_MARK, dayKeyToDate } from '@/app/cabinet/_components/day-filter'
+import {
+  dateToDayKey,
+  DAY_MARK,
+  dayKeyToDate,
+  useWeekStartsOn,
+} from '@/app/cabinet/_components/day-filter'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -95,7 +100,13 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
     setPendingScrollDay(dateToDayKey(date))
   }
 
-  const weekStart = useMemo(() => startOfWeek(selectedDate), [selectedDate])
+  // Locale-driven first day of the week, shared with the mini picker so both
+  // start the week on the same day (Sunday in en-US, Monday in ru-RU, etc.).
+  const weekStartsOn = useWeekStartsOn()
+  const weekStart = useMemo(
+    () => startOfWeek(selectedDate, weekStartsOn),
+    [selectedDate, weekStartsOn],
+  )
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
     [weekStart],
@@ -235,6 +246,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                 <PopoverContent className="w-auto p-0" align="end">
                   <Calendar
                     mode="single"
+                    weekStartsOn={weekStartsOn}
                     selected={selectedDate}
                     month={month}
                     onMonthChange={setMonth}
