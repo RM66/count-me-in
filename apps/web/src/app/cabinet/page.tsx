@@ -1,4 +1,4 @@
-import { seatsLeft } from '@repo/api-contracts'
+import { fillRate, seatsLeft } from '@repo/api-contracts'
 import {
   ArrowRightIcon,
   CalendarClockIcon,
@@ -79,12 +79,11 @@ export default async function CabinetOverviewPage({
   // Seats and fill rate both describe the *upcoming* schedule and are read off
   // `bookedCount`, the column the atomic reserve maintains (invariant 2 in
   // docs/domain.md). Summing booking seats instead would drift from it the
-  // moment a cancellation released a seat.
+  // moment a cancellation released a seat. The ratio is shared with the
+  // analytics page via `@repo/api-contracts` (ADR-001).
   const seatsBooked = upcoming.reduce((sum, slot) => sum + slot.bookedCount, 0)
   const seatsOffered = upcoming.reduce((sum, slot) => sum + slot.capacity, 0)
-  // No upcoming capacity means the ratio is undefined, not zero — "0%" would
-  // read as an empty room rather than an empty calendar.
-  const fillRate = seatsOffered === 0 ? null : Math.round((seatsBooked / seatsOffered) * 100)
+  const fillRateValue = fillRate(upcoming)
 
   const nextSlots = upcoming.slice(0, PREVIEW_LIMIT)
 
@@ -163,9 +162,9 @@ export default async function CabinetOverviewPage({
           />
           <StatCard
             title="Fill rate"
-            value={fillRate === null ? '—' : `${fillRate}%`}
+            value={fillRateValue === null ? '—' : `${fillRateValue}%`}
             hint={
-              fillRate === null
+              fillRateValue === null
                 ? 'no upcoming capacity yet'
                 : `${seatsBooked} of ${seatsOffered} seats taken`
             }

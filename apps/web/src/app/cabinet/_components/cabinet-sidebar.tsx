@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  //BarChart3Icon,
+  BarChart3Icon,
   CalendarClockIcon,
   CalendarDaysIcon,
   ChevronsUpDownIcon,
@@ -57,7 +57,7 @@ const nav = [
   { title: 'Slots', href: '/cabinet/slots', icon: CalendarClockIcon },
   { title: 'Calendar', href: '/cabinet/calendar', icon: CalendarDaysIcon },
   { title: 'Bookings', href: '/cabinet/bookings', icon: TicketIcon },
-  // TODO: { title: 'Analytics', href: '/cabinet/analytics', icon: BarChart3Icon },
+  { title: 'Analytics', href: '/cabinet/analytics', icon: BarChart3Icon },
   { title: 'Settings', href: '/cabinet/settings', icon: SettingsIcon },
 ]
 

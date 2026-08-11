@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createTimeSlotInput,
   fillLabel,
+  fillRate,
   isAcceptableSlotStart,
   seatsLeft,
   SLOT_START_TOLERANCE_MS,
@@ -51,6 +52,26 @@ describe('fillLabel', () => {
     expect(fillLabel({ capacity: 8, bookedCount: 6 })).toBe('filling')
     // 3 left = open
     expect(fillLabel({ capacity: 8, bookedCount: 5 })).toBe('open')
+  })
+})
+
+describe('fillRate', () => {
+  it('returns the aggregate percentage across slots', () => {
+    expect(
+      fillRate([
+        { capacity: 10, bookedCount: 5 },
+        { capacity: 10, bookedCount: 3 },
+      ]),
+    ).toBe(40)
+  })
+
+  it('returns null when there is no capacity at all', () => {
+    expect(fillRate([])).toBeNull()
+    expect(fillRate([{ capacity: 0, bookedCount: 0 }])).toBeNull()
+  })
+
+  it('rounds to a whole percentage', () => {
+    expect(fillRate([{ capacity: 3, bookedCount: 1 }])).toBe(33)
   })
 })
 

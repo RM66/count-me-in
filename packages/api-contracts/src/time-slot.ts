@@ -121,6 +121,21 @@ export function fillLabel(slot: SlotOccupancy): SlotFill {
 }
 
 /**
+ * Aggregate fill rate across a set of slots, as a whole percentage.
+ * Reads off `bookedCount`, the column the atomic reserve maintains (invariant 2
+ * in docs/domain.md), not a sum of booking seats — the two drift apart the
+ * moment a cancellation releases a seat. Returns `null` when there is no
+ * capacity at all, so the caller can render "no upcoming capacity" rather than
+ * a misleading "0%".
+ */
+export function fillRate(slots: SlotOccupancy[]): number | null {
+  const seatsBooked = slots.reduce((sum, slot) => sum + slot.bookedCount, 0)
+  const seatsOffered = slots.reduce((sum, slot) => sum + slot.capacity, 0)
+  if (seatsOffered === 0) return null
+  return Math.round((seatsBooked / seatsOffered) * 100)
+}
+
+/**
  * End instant of a slot as an ISO string.
  * `endsAt` is deliberately not a column (see the `time_slots` schema) — it is
  * always `startsAt + durationMinutes`, and storing it would allow the two to
