@@ -153,14 +153,6 @@ export function SlotsTable({
               hasUpcoming: DAY_MARK.strong.calendarCell,
               hasPast: DAY_MARK.muted.calendarCell,
             }}
-            legend={
-              <>
-                {/* Swatches mirror the day styling, so the key is self-evident. */}
-                <span className={DAY_MARK.strong.legend}>Upcoming</span>
-                <span className={DAY_MARK.muted.legend}>Past</span>
-                <span>No sessions — unmarked</span>
-              </>
-            }
           />
 
           <Button size="sm" disabled={isReadOnly} onClick={() => t.setDialog({ mode: 'create' })}>
