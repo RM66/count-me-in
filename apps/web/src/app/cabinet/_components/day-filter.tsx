@@ -2,7 +2,7 @@
 
 import { instantToWallClockInputs, wallClockToInstant } from '@repo/api-contracts'
 import { CalendarIcon, XIcon } from 'lucide-react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -177,8 +177,6 @@ type DayFilterPickerProps = {
   modifiers: Record<string, Date[]>
   /** Cell classes per modifier name; compose from {@link DAY_MARK}. */
   modifiersClassNames: Record<string, string>
-  /** Legend row explaining the marks; sits above the clear button. */
-  legend: ReactNode
   /** Month to open on when nothing is selected — the table knows its data. */
   defaultMonth: Date
   /** Accessible name of what is being filtered, e.g. "slots" or "bookings". */
@@ -199,7 +197,6 @@ export function DayFilterPicker({
   onSelect,
   modifiers,
   modifiersClassNames,
-  legend,
   defaultMonth,
   entityLabel,
 }: DayFilterPickerProps) {
@@ -235,14 +232,12 @@ export function DayFilterPicker({
           modifiers={modifiers}
           modifiersClassNames={modifiersClassNames}
         />
-        <div className="flex flex-col gap-2 border-t p-3">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            {legend}
-          </div>
-          {day && (
+        {day && (
+          <div className="border-t p-3">
             <Button
               variant="ghost"
               size="sm"
+              className="w-full"
               onClick={() => {
                 onSelect('')
                 setOpen(false)
@@ -250,8 +245,8 @@ export function DayFilterPicker({
             >
               Show every day
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
