@@ -1,12 +1,6 @@
 'use client'
 
-import type {
-  BookingRecord,
-  CreateBookingInput,
-  GuestBooking,
-  GuestTicketResponse,
-  Messenger,
-} from '@repo/contracts'
+import type { BookingRecord, CreateBookingInput, GuestBooking, Messenger } from '@repo/contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { post } from './client'
@@ -23,18 +17,6 @@ import { queryKeys } from './keys'
  * The pages themselves are server components that read Postgres directly
  * (`lib/server/db/booking.ts`); this file exists for the interactive parts.
  */
-
-/**
- * Exchange a Telegram widget payload for a guest ticket (ADR-008).
- * Distinct from `useValidateTelegramWidget` in `auth.ts`: this one hits the
- * guest endpoint, which issues a ticket for booking and never a session.
- */
-export function useGuestTicket() {
-  return useMutation({
-    mutationFn: (widgetData: Record<string, unknown>) =>
-      post<GuestTicketResponse>('/api/auth/telegram-guest', widgetData),
-  })
-}
 
 /**
  * Reserve seats on a slot. The response includes `manageToken` for the

@@ -63,4 +63,3 @@ const nextAuth = NextAuth({
 export const handlers: NextAuthResult['handlers'] = nextAuth.handlers
 export const auth: NextAuthResult['auth'] = nextAuth.auth
 export const signIn: NextAuthResult['signIn'] = nextAuth.signIn
-export const signOut: NextAuthResult['signOut'] = nextAuth.signOut

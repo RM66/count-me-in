@@ -28,5 +28,3 @@ export function resetPostHog(): void {
   if (!initialized) return
   posthog.reset()
 }
-
-export { posthog }
