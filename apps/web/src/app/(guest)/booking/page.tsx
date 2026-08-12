@@ -1,6 +1,6 @@
 'use client'
 
-import type { GuestBooking } from '@repo/api-contracts'
+import type { GuestBooking } from '@repo/contracts'
 import { ArrowRightIcon, CalendarIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'

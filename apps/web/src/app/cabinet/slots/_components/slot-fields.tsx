@@ -1,6 +1,6 @@
 'use client'
 
-import type { ServiceRecord } from '@repo/api-contracts'
+import type { ServiceRecord } from '@repo/contracts'
 import type { ComponentProps } from 'react'
 import { useController } from 'react-hook-form'
 

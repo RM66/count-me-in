@@ -6,13 +6,13 @@ import type {
   TimeSlotFormOutput,
   TimeSlotFormValues,
   TimeSlotRecord,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 import {
   timeSlotFormSchema,
   toCreateTimeSlotInput,
   toTimeSlotFormValues,
   toUpdateTimeSlotInput,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 import type { Control } from 'react-hook-form'

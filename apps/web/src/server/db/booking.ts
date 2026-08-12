@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import type { BookingRecord, GuestBooking, Messenger } from '@repo/api-contracts'
-import { buildSelectedOptionsSchema } from '@repo/api-contracts'
+import type { BookingRecord, GuestBooking, Messenger } from '@repo/contracts'
+import { buildSelectedOptionsSchema } from '@repo/contracts'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { bookings, db, organizers, services, timeSlots } from '@repo/db'
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
@@ -73,7 +73,7 @@ function ownedSlotIds(organizerId: string) {
 /**
  * Normalize a `bookings` row into the API/DTO shape (dates → ISO strings).
  * `manageToken` is deliberately dropped: it is the guest's cancellation secret,
- * and the cabinet must never see it (see `bookingRecord` in api-contracts).
+ * and the cabinet must never see it (see `bookingRecord` in contracts).
  */
 export function toBookingRecord(row: Booking): BookingRecord {
   return {

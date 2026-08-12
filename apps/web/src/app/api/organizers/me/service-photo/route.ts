@@ -1,5 +1,5 @@
-import type { ImageUploadTarget } from '@repo/api-contracts'
-import { createServicePhotoUploadInput } from '@repo/api-contracts'
+import type { ImageUploadTarget } from '@repo/contracts'
+import { createServicePhotoUploadInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { parseJsonBody, requireWritableOrganizer } from '@/server/http'

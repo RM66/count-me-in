@@ -1,6 +1,6 @@
 'use client'
 
-import type { OrganizerProfile } from '@repo/api-contracts'
+import type { OrganizerProfile } from '@repo/contracts'
 import { CopyIcon, ImageIcon, PencilIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'

@@ -18,7 +18,7 @@ Two problems with keeping the example in the mock:
 1. **It is a second data path.** The demo page never touches Drizzle, the API route handlers, or
    the React Query hooks. Any regression in the real query path is invisible on the one page we
    point prospects at, and the mock's own shapes are duplicates of the Zod contracts in
-   `packages/api-contracts`.
+   `packages/contracts`.
 
 2. **It silently expires.** The mock pins `DEMO_NOW` to a fixed instant and generates slots at
    `+0…+6` days from it. That window elapsed before this ADR was written: every advertised demo
@@ -35,7 +35,7 @@ endpoints; `apps/web/lib/server/db/booking/` is an empty placeholder.
    by the same queries as any real page.
 
 2. **Mark the demo account with a code constant, not a database column.**
-   `DEMO_ORGANIZER_ID` / `DEMO_ORGANIZER_SLUG` live in `packages/api-contracts/src/demo.ts`,
+   `DEMO_ORGANIZER_ID` / `DEMO_ORGANIZER_SLUG` live in `packages/contracts/src/demo.ts`,
    shared by `apps/web` and `apps/worker`.
 
 3. **Reserve the `demo` slug** by adding it to `RESERVED_SLUGS` (ADR-009's list).
@@ -91,7 +91,7 @@ the API layer and every mutating endpoint must check the session itself.
 - **A mutable boolean is a security-relevant switch.** A bad seed or a stray `UPDATE` could set
   `is_demo` on a real account (silently making it read-only) or clear it on the demo one (making
   the public example writable). A constant only changes via deploy and code review.
-- **The worker needs the same answer.** Sharing one constant through `api-contracts` avoids two
+- **The worker needs the same answer.** Sharing one constant through `contracts` avoids two
   services disagreeing about which account is fake.
 
 A column becomes the better choice if we ever want multiple demos, per-visitor sandboxes, or to
@@ -157,10 +157,10 @@ indistinguishable from real data at read time, which is the entire point.
 
 ## Implementation
 
-1. `packages/api-contracts/src/demo.ts` — id, slug, path, service ids, `DEMO_READ_ONLY` code and
+1. `packages/contracts/src/demo.ts` — id, slug, path, service ids, `DEMO_READ_ONLY` code and
    message, `isDemoOrganizerId()` / `isDemoOrganizerSlug()`.
-2. `packages/api-contracts/src/primitives.ts` — add `demo` to `RESERVED_SLUGS`.
-3. `packages/api-contracts/src/organizer.ts` — add `isDemo: boolean` to `organizerProfile`.
+2. `packages/contracts/src/primitives.ts` — add `demo` to `RESERVED_SLUGS`.
+3. `packages/contracts/src/organizer.ts` — add `isDemo: boolean` to `organizerProfile`.
 4. `packages/db/src/seed/demo.ts` + `run-demo.ts` — seed data and idempotent upsert; exposed as
    `bun run --filter @repo/db db:seed:demo` and as `seedDemo()` for the worker.
 5. `apps/web/lib/server/demo.ts` — `resolveCabinetOrganizerId()` (per-request "whose cabinet is

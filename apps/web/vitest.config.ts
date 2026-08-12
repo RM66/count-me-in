@@ -22,7 +22,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
       'server-only': path.resolve(__dirname, 'vitest.server-only-stub.ts'),
-      '@repo/api-contracts': path.resolve(__dirname, '../../packages/api-contracts/src'),
+      '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
       '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
       '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
       '@repo/storage': path.resolve(__dirname, '../../packages/storage/src'),

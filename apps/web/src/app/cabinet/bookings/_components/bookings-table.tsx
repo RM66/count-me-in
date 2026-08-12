@@ -1,6 +1,6 @@
 'use client'
 
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon, SearchIcon } from 'lucide-react'
 import { useState } from 'react'
 

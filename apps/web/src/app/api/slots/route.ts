@@ -1,4 +1,4 @@
-import { createTimeSlotInput } from '@repo/api-contracts'
+import { createTimeSlotInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { createSlot, listSlots } from '@/server/db/time-slot'

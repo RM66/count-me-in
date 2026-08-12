@@ -1,4 +1,4 @@
-import { effectiveContact, effectiveLocation, seatsLeft, slotPrice } from '@repo/api-contracts'
+import { effectiveContact, effectiveLocation, seatsLeft, slotPrice } from '@repo/contracts'
 import { ArrowLeft, CalendarX, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
@@ -66,7 +66,7 @@ export default async function ServicePage({
   const hasOpen = slots.some((slot) => seatsLeft(slot) > 0)
 
   // A service may override its organizer's location and contact; the fallback
-  // rule lives in api-contracts because the worker and calendar links need it
+  // rule lives in contracts because the worker and calendar links need it
   // too (docs/domain.md).
   const location = effectiveLocation(service, organizer)
   const contact = effectiveContact(service, organizer)

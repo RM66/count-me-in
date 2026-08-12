@@ -29,7 +29,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 | ------------------------- | ------------------------------------------------------- |
 | `@repo/db`                | Drizzle schema & client                                 |
 | `@repo/redis`             | ioredis singleton (sessions, auth tickets, rate limits) |
-| `@repo/api-contracts`     | Shared Zod / API types                                  |
+| `@repo/contracts`         | Shared Zod / API types                                  |
 | `@repo/storage`           | Cloudflare R2 helpers                                   |
 | `@repo/eslint-config`     | ESLint configs                                          |
 | `@repo/typescript-config` | TypeScript configs                                      |
@@ -41,7 +41,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **UI:** React, Tailwind, shadcn/ui (Radix)
 - **State:** TanStack Query (server)
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget)
-- **Validation:** Zod (`packages/api-contracts`)
+- **Validation:** Zod (`packages/contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
 - **Media:** Cloudflare R2
 - **Jobs:** `pg-boss` + `apps/worker`
@@ -85,7 +85,7 @@ bun run test          # all packages (Turborepo)
 bun run test:watch    # watch mode
 ```
 
-Coverage spans Zod schemas (`packages/api-contracts`), helpers, API client, server guards, React hooks, components (`apps/web`), and Telegram templates/client (`apps/worker`).
+Coverage spans Zod schemas (`packages/contracts`), helpers, API client, server guards, React hooks, components (`apps/web`), and Telegram templates/client (`apps/worker`).
 
 ## Key conventions
 

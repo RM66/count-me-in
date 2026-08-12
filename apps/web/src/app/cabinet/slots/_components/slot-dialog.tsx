@@ -1,7 +1,7 @@
 'use client'
 
-import type { ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
-import { instantToWallClockInputs } from '@repo/api-contracts'
+import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { instantToWallClockInputs } from '@repo/contracts'
 
 import { Button } from '@/components/ui/button'
 import {

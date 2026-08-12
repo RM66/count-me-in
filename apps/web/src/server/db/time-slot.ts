@@ -13,7 +13,7 @@
  * and there is no read-then-write gap to exploit.
  */
 
-import type { CreateTimeSlotInput, TimeSlotRecord, UpdateTimeSlotInput } from '@repo/api-contracts'
+import type { CreateTimeSlotInput, TimeSlotRecord, UpdateTimeSlotInput } from '@repo/contracts'
 import type { TimeSlot } from '@repo/db'
 import { db, services, timeSlots } from '@repo/db'
 import { and, asc, eq, gte, inArray } from 'drizzle-orm'

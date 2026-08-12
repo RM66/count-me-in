@@ -24,7 +24,7 @@ import {
   DEMO_READ_ONLY_CODE,
   DEMO_READ_ONLY_MESSAGE,
   isDemoOrganizerId,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { auth } from './auth'

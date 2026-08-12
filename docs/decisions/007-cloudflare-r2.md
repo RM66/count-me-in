@@ -38,7 +38,7 @@ square, longest edge 512 px, re-encoded as WebP (quality 0.85). That lands at
 and making object cleanup unnecessary for the foreseeable future.
 
 Implemented in `apps/web/lib/api/image.ts` via `createImageBitmap` +
-`OffscreenCanvas`; constants live in `packages/api-contracts` (`storage.ts`) so
+`OffscreenCanvas`; constants live in `packages/contracts` (`storage.ts`) so
 client and server agree. Resizing must happen **before** the signed URL is
 issued, since the signature commits to an exact `Content-Type` and
 `Content-Length`.

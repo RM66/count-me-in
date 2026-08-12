@@ -5,7 +5,7 @@
  * PUT, uploads straight to R2, and only then sends the resulting public URL to
  * the services API (ADR-007).
  */
-import type { CreateServicePhotoUploadInput, ImageUploadTarget } from '@repo/api-contracts'
+import type { CreateServicePhotoUploadInput, ImageUploadTarget } from '@repo/contracts'
 import { createSignedUploadUrl, publicUrl, servicePhotoKey } from '@repo/storage'
 
 import 'server-only'

@@ -1,6 +1,6 @@
 'use client'
 
-import { SERVICE_PHOTO_MAX_BYTES, servicePhotoContentType } from '@repo/api-contracts'
+import { SERVICE_PHOTO_MAX_BYTES, servicePhotoContentType } from '@repo/contracts'
 import { ImageIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useController } from 'react-hook-form'

@@ -1,6 +1,6 @@
 'use client'
 
-import type { GuestBooking, GuestTicketResponse, ServiceRecord } from '@repo/api-contracts'
+import type { GuestBooking, GuestTicketResponse, ServiceRecord } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 

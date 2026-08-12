@@ -1,6 +1,6 @@
 'use client'
 
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { XIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'

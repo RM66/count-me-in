@@ -1,6 +1,6 @@
 'use client'
 
-import type { AuthTicketResponse, RegisterOrganizerInput } from '@repo/api-contracts'
+import type { AuthTicketResponse, RegisterOrganizerInput } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 import { signIn } from 'next-auth/react'
 

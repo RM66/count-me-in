@@ -5,8 +5,8 @@ import type {
   ImageUploadTarget,
   ServiceRecord,
   UpdateServiceInput,
-} from '@repo/api-contracts'
-import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/api-contracts'
+} from '@repo/contracts'
+import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { del, post, put } from './client'

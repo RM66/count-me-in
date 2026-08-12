@@ -1,10 +1,10 @@
 /**
  * `booking.created` — tell one recipient that a booking exists.
- * One job per recipient (see `api-contracts/jobs.ts`), so this handler always
+ * One job per recipient (see `contracts/jobs.ts`), so this handler always
  * sends exactly one message and a retry re-sends only to the party that failed.
  */
 
-import { bookingCreatedJob, isDemoOrganizerId } from '@repo/api-contracts'
+import { bookingCreatedJob, isDemoOrganizerId } from '@repo/contracts'
 
 import { issueLoginLink } from '../auth/login-link'
 import { getNotificationContext } from '../db/notification-context'

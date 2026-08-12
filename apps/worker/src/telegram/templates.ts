@@ -20,7 +20,7 @@ import {
   effectiveLocation,
   seatsLeft,
   slotPrice,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 
 import type { MessageButton } from './client'

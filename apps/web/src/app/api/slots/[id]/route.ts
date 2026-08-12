@@ -1,4 +1,4 @@
-import { updateTimeSlotInput } from '@repo/api-contracts'
+import { updateTimeSlotInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import {

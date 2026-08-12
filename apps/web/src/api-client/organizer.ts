@@ -4,8 +4,8 @@ import type {
   AvatarUploadTarget,
   OrganizerProfile,
   UpdateOrganizerProfileInput,
-} from '@repo/api-contracts'
-import { AVATAR_UPLOAD_MAX_BYTES } from '@repo/api-contracts'
+} from '@repo/contracts'
+import { AVATAR_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { get, post, put } from './client'

@@ -10,7 +10,7 @@
  * row and there is no read-then-write gap to exploit.
  */
 
-import type { CreateServiceInput, ServiceRecord, UpdateServiceInput } from '@repo/api-contracts'
+import type { CreateServiceInput, ServiceRecord, UpdateServiceInput } from '@repo/contracts'
 import type { Service } from '@repo/db'
 import { db, services, timeSlots } from '@repo/db'
 import { and, asc, count, eq, gte, inArray } from 'drizzle-orm'

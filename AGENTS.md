@@ -23,7 +23,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **UI:** React, Tailwind, shadcn/ui (Radix)
 - **State:** TanStack Query (server)
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
-- **Validation:** Zod (`packages/api-contracts`)
+- **Validation:** Zod (`packages/contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
 - **Media:** Cloudflare R2 (`packages/storage`)
 - **Jobs:** `pg-boss` + `apps/worker`
@@ -54,7 +54,7 @@ apps/
 packages/
   db/                  # Drizzle schema, migrations
   redis/               # ioredis singleton (tickets, login links, rate limits)
-  api-contracts/       # Zod schemas, shared types
+  contracts/           # Zod schemas, shared types
   storage/             # Cloudflare R2 helpers
   eslint-config/       # shared ESLint
   typescript-config/   # shared tsconfig
@@ -78,19 +78,19 @@ docs/
 - `constants/` — static data tables (`timezones.ts`, `site.ts`).
 - `lib/` — cross-cutting singletons that don't fit a semantic bucket: `posthog.ts` (analytics), `og/` (OpenGraph image assets), `utils.ts` (`cn()`). **`utils.ts` is shadcn-owned:** path is the `utils` alias in `components.json`. Do not add non-shadcn helpers here.
 
-**No `lib/domain/`** — deleted as dead code. Entity invariants live in `server/db/` or `packages/api-contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/api-contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
+**No `lib/domain/`** — deleted as dead code. Entity invariants live in `server/db/` or `packages/contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
 
 **No mock data** — `lib/mock-data.ts` was deleted. Sample content is the **demo seed** (`packages/db/src/seed/`), real rows behind `/demo` (ADR-010). Do not reintroduce fixtures.
 
-**Wall-clock time is a contract.** A slot is stored as `timestamptz` but authored in the organizer's timezone. Both directions live in `packages/api-contracts/src/timezone.ts` (`wallClockToInstant`, `instantToWallClockInputs`); `helpers/date.ts` stays purely about rendering an instant that already exists.
+**Wall-clock time is a contract.** A slot is stored as `timestamptz` but authored in the organizer's timezone. Both directions live in `packages/contracts/src/timezone.ts` (`wallClockToInstant`, `instantToWallClockInputs`); `helpers/date.ts` stays purely about rendering an instant that already exists.
 
 **Form schemas are not wire schemas.** Controlled inputs hold `string` (including `''` mid-edit), while the API takes numbers and `null`. Each entity has a `*-form.ts` beside its wire schema, with adapters (`optionalText`, `numericText`) shared from `form-fields.ts`. Bounds compose from `primitives.ts`.
 
 **Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and entity files live at `server/db/service.ts` (kind → entity). Never reintroduce `services/`.
 
-**`app/api/` vs `api-client/`** — two ends of one wire. `app/api/**/route.ts` is the URL and holds server handlers. `api-client/` is the browser client. They never import each other — contract is HTTP + Zod schemas in `packages/api-contracts`.
+**`app/api/` vs `api-client/`** — two ends of one wire. `app/api/**/route.ts` is the URL and holds server handlers. `api-client/` is the browser client. They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
 
-**What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/api-contracts`.
+**What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/contracts`.
 
 **Query keys live in `api-client/keys.ts`.** Never write a `queryKey` array literal inline — duplicated literals break invalidation silently. Keys are hierarchical, so `queryKeys.services.all` invalidates every service query beneath it.
 
@@ -107,7 +107,7 @@ bun run test:watch    # watch mode
 
 Per-package: `cd <package> && bun run test`.
 
-- **`packages/api-contracts`** — Zod schemas, slot/timezone/options logic (node env).
+- **`packages/contracts`** — Zod schemas, slot/timezone/options logic (node env).
 - **`apps/web`** — helpers, API client, server guards, React hooks, components (happy-dom env). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.
 - **`apps/worker`** — Telegram templates, client error classification, link builders (node env).
 
@@ -129,10 +129,10 @@ Per-package: `cd <package> && bun run test`.
 - Capacity updates atomic; bookings only `confirmed` | `cancelled`.
 - Prices are display text only in MVP (no payments).
 - Optional display `location` and `contact` on `Organizer` and `Service`; `Service.*` overrides the organizer's — [domain](docs/domain.md).
-- Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/api-contracts`. Every write path must reject it, including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
+- Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/contracts`. Every write path must reject it, including guest booking + cancel, and the worker must not notify it — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. Scope every cabinet read through `resolveCabinetOrganizerId()` and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
 - Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `requireGuestIdentity()` in `apps/web/src/server/http.ts` is the only way it enters a write; single-use, so a replayed booking fails.
-- **Notifications are enqueued inside the booking/cancel transaction**, via `enqueueBookingCreated` / `enqueueBookingCancelled` in `apps/web/src/server/queue.ts` (pg-boss `fromDrizzle` over the caller's `tx`). Queue names and payloads in `packages/api-contracts/src/jobs.ts`; jobs carry **ids only**, and `apps/worker` refetches at send time. `booking.created` fans out to one job **per recipient**.
+- **Notifications are enqueued inside the booking/cancel transaction**, via `enqueueBookingCreated` / `enqueueBookingCancelled` in `apps/web/src/server/queue.ts` (pg-boss `fromDrizzle` over the caller's `tx`). Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and `apps/worker` refetches at send time. `booking.created` fans out to one job **per recipient**.
 - **Organizer deep links are one-time login links.** The worker mints `{ organizerId, next }` into Redis and links to `/login/link/{token}`, consumed on **`POST`** (never `GET` — previewers fetch URLs before a human clicks). Single-use, `noindex`, demo id refused.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the job with a log instead of retrying — only `429`/`5xx`/network are retried.
 - `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `src/server/db/booking.ts`, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers.

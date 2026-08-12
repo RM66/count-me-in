@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreateTimeSlotInput, TimeSlotRecord, UpdateTimeSlotInput } from '@repo/api-contracts'
+import type { CreateTimeSlotInput, TimeSlotRecord, UpdateTimeSlotInput } from '@repo/contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { del, post, put } from './client'

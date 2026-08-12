@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@repo/api-contracts": "*",
+    "@repo/contracts": "*",
     "@repo/db": "*",
     "@repo/redis": "workspace:*",
     "@sentry/bun": "^10.69.0",

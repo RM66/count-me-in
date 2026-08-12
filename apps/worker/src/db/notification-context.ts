@@ -1,7 +1,7 @@
 /**
  * The rows a notification needs, fetched by booking id.
  *
- * Jobs carry only ids (see `api-contracts/jobs.ts`), so every handler starts
+ * Jobs carry only ids (see `contracts/jobs.ts`), so every handler starts
  * here. Deliberately a *fresh* read at send time: a job that waited out a retry
  * backoff — or sat in the queue while the worker was down — must render the
  * booking as it is now, not as it was when the transaction committed.

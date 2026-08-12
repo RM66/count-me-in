@@ -1,7 +1,7 @@
 'use client'
 
-import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/api-contracts'
-import { fillLabel, seatsLeft, slotPrice } from '@repo/api-contracts'
+import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/contracts'
+import { fillLabel, seatsLeft, slotPrice } from '@repo/contracts'
 import { CalendarPlusIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import Link from 'next/link'
 

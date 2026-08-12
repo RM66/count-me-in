@@ -1,7 +1,7 @@
 'use client'
 
-import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
-import { seatsLeft, slotPrice } from '@repo/api-contracts'
+import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { seatsLeft, slotPrice } from '@repo/contracts'
 
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { Button } from '@/components/ui/button'

@@ -1,6 +1,6 @@
 'use client'
 
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { useState } from 'react'
 
 import { BookingDetailsSheet } from '@/app/cabinet/_components/booking-details-sheet'

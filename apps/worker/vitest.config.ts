@@ -15,7 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@repo/api-contracts': path.resolve(__dirname, '../../packages/api-contracts/src'),
+      '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
       '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
       '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
     },

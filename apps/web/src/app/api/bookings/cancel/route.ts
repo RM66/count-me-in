@@ -1,4 +1,4 @@
-import { cancelBookingByTokenInput } from '@repo/api-contracts'
+import { cancelBookingByTokenInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { cancelGuestBookingByToken } from '@/server/db/booking'

@@ -5,7 +5,7 @@ import {
   SERVICE_PHOTO_OUTPUT_CONTENT_TYPE,
   SERVICE_PHOTO_TARGET_SIZE,
   SERVICE_PHOTO_WEBP_QUALITY,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 
 /**
  * Browser-side image downscaling for uploads.

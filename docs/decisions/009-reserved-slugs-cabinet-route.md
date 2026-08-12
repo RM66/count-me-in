@@ -18,7 +18,7 @@ CountMeIn uses a flat URL scheme where organizer public pages live at `/{orgSlug
 
 An organizer could register a slug like `"cabinet"`, `"booking"`, `"api"`, or `"signup"`,
 which would shadow the system routes and break the application. The current slug validation
-([`packages/api-contracts/src/primitives.ts`](../../packages/api-contracts/src/primitives.ts))
+([`packages/contracts/src/primitives.ts`](../../packages/contracts/src/primitives.ts))
 enforces a minimum length of 3 characters and a pattern of lowercase letters, digits, and
 hyphens, but does **not** reserve any specific values.
 
@@ -85,7 +85,7 @@ hyphens, but does **not** reserve any specific values.
 
 ## Implementation
 
-1. Update [`packages/api-contracts/src/primitives.ts`](../../packages/api-contracts/src/primitives.ts):
+1. Update [`packages/contracts/src/primitives.ts`](../../packages/contracts/src/primitives.ts):
    - Change `slug` schema: `.min(3)` → `.min(4)`.
    - Add `.refine()` to reject reserved words: `"api"`, `"booking"`, `"cabinet"`, `"signup"`, `"login"`, `"terms"`, `"privacy"`.
 

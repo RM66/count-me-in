@@ -1,5 +1,5 @@
-import type { SlotOccupancy } from '@repo/api-contracts'
-import { fillLabel, seatsLeft } from '@repo/api-contracts'
+import type { SlotOccupancy } from '@repo/contracts'
+import { fillLabel, seatsLeft } from '@repo/contracts'
 
 import { Badge } from '@/components/ui/badge'
 

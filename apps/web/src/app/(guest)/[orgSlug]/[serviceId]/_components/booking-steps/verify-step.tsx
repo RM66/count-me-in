@@ -1,6 +1,6 @@
 'use client'
 
-import type { GuestTicketResponse, PublicOrganizer } from '@repo/api-contracts'
+import type { GuestTicketResponse, PublicOrganizer } from '@repo/contracts'
 import { AlertCircle } from 'lucide-react'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'

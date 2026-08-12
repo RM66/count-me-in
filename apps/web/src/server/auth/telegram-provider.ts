@@ -1,4 +1,4 @@
-import { isDemoOrganizerId } from '@repo/api-contracts'
+import { isDemoOrganizerId } from '@repo/contracts'
 import { db, organizers } from '@repo/db'
 import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { and, eq } from 'drizzle-orm'

@@ -50,7 +50,7 @@ flowchart LR
 | `apps/worker`                                  | Jobs: messenger notifications with cabinet deep links (Telegram first)        |
 | `packages/db`                                  | Drizzle schema, migrations, client                                            |
 | `packages/redis`                               | ioredis singleton (sessions, auth tickets, rate limits)                       |
-| `packages/api-contracts`                       | Zod schemas shared by web and worker                                          |
+| `packages/contracts`                       | Zod schemas shared by web and worker                                          |
 | `packages/storage`                             | R2 signed upload helpers                                                      |
 | `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                      |
 | Postgres                                       | Domain + `pg-boss`                                                            |
@@ -97,7 +97,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 | `booking.cancelled` | `{ bookingId, cancelledBy }` | One — counterparty only                 |
 | `demo.refresh`      | —                            | Scheduled daily (`seedDemo()`, ADR-010) |
 
-**One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — worker refetches at send time, so `manageToken` and login tokens never reach `pgboss.job`. Contracts in `packages/api-contracts/src/jobs.ts`.
+**One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — worker refetches at send time, so `manageToken` and login tokens never reach `pgboss.job`. Contracts in `packages/contracts/src/jobs.ts`.
 
 **Enqueue inside the booking transaction** (`apps/web/src/server/queue.ts`, pg-boss `fromDrizzle` over caller's `tx`). Web instance is send-only; maintenance/cron belong to the single worker.
 

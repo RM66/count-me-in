@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
-    "@repo/api-contracts": "workspace:*",
+    "@repo/contracts": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/redis": "workspace:*",
     "@repo/storage": "workspace:*",

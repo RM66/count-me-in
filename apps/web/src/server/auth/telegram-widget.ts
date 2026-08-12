@@ -8,7 +8,7 @@
  * may be persisted.
  */
 
-import { telegramWidgetPayload } from '@repo/api-contracts'
+import { telegramWidgetPayload } from '@repo/contracts'
 import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { NextResponse } from 'next/server'
 

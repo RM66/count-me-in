@@ -1,5 +1,5 @@
-import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/api-contracts'
-import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/api-contracts'
+import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/contracts'
+import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/contracts'
 import { useReducer } from 'react'
 import { toast } from 'sonner'
 

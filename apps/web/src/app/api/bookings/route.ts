@@ -1,4 +1,4 @@
-import { createBookingInput } from '@repo/api-contracts'
+import { createBookingInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { createGuestBooking } from '@/server/db/booking'

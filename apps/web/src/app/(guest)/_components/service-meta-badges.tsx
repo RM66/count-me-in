@@ -1,4 +1,4 @@
-import type { ServiceRecord } from '@repo/api-contracts'
+import type { ServiceRecord } from '@repo/contracts'
 import { Clock, Users } from 'lucide-react'
 
 /**

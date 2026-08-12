@@ -1,4 +1,4 @@
-import { lookupBookingsInput } from '@repo/api-contracts'
+import { lookupBookingsInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { listGuestBookings } from '@/server/db/booking'

@@ -8,7 +8,7 @@ import {
   bookingCancelledJob,
   cancelNotificationRecipient,
   isDemoOrganizerId,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 
 import { issueLoginLink } from '../auth/login-link'
 import { getNotificationContext } from '../db/notification-context'

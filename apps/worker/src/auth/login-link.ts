@@ -9,11 +9,11 @@
  * guests, ADR-002).
  *
  * Consumed by `apps/web` at `/login/link/{token}`; the key, TTL and payload
- * shape are shared through `@repo/api-contracts`.
+ * shape are shared through `@repo/contracts`.
  */
 
 import { randomBytes } from 'node:crypto'
-import { LOGIN_LINK_TTL_S, loginLinkKey, type LoginLinkPayload } from '@repo/api-contracts'
+import { LOGIN_LINK_TTL_S, loginLinkKey, type LoginLinkPayload } from '@repo/contracts'
 import { getRedis } from '@repo/redis'
 
 /**

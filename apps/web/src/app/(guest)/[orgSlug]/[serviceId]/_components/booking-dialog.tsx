@@ -1,7 +1,7 @@
 'use client'
 
-import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
-import { seatsLeft } from '@repo/api-contracts'
+import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { seatsLeft } from '@repo/contracts'
 import { type ComponentProps, useState } from 'react'
 
 import { Button } from '@/components/ui/button'

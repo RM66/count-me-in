@@ -1,5 +1,5 @@
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
-import { fillRate } from '@repo/api-contracts'
+import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { fillRate } from '@repo/contracts'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -117,7 +117,7 @@ export function computeAnalytics(
   )
 
   // Fill rate across upcoming slots, shared with the overview page via
-  // `@repo/api-contracts` (ADR-001). Reads off `bookedCount`, the
+  // `@repo/contracts` (ADR-001). Reads off `bookedCount`, the
   // atomic-reserve column.
   const upcoming = slots.filter((slot) => new Date(slot.startsAt).getTime() >= now)
   const fillRateValue = fillRate(upcoming)

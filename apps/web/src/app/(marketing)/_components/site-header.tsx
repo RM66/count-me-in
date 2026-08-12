@@ -1,6 +1,6 @@
 'use client'
 
-import { DEMO_ORGANIZER_PATH } from '@repo/api-contracts'
+import { DEMO_ORGANIZER_PATH } from '@repo/contracts'
 import { Menu } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'

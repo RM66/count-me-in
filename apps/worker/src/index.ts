@@ -3,7 +3,7 @@
  *
  * Consumes what `apps/web` publishes inside its booking transactions and turns
  * each job into one Telegram message (ADR-008, Telegram first). Queue names and
- * payload schemas come from `@repo/api-contracts` so the two apps cannot drift.
+ * payload schemas come from `@repo/contracts` so the two apps cannot drift.
  *
  * Unlike the web publisher this instance **does** supervise: maintenance,
  * expiration and cron belong to exactly one process, and this is it.
@@ -13,7 +13,7 @@
  * past.
  */
 
-import { QUEUE_BOOKING_CANCELLED, QUEUE_BOOKING_CREATED } from '@repo/api-contracts'
+import { QUEUE_BOOKING_CANCELLED, QUEUE_BOOKING_CREATED } from '@repo/contracts'
 import { client as dbClient } from '@repo/db'
 import { closeRedis } from '@repo/redis'
 import Sentry from '@sentry/bun'

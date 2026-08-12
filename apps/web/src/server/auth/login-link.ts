@@ -9,7 +9,7 @@
  *
  * Tokens are **minted by `apps/worker`** at send time; this module only reads
  * them. The key format, TTL and payload schema are shared through
- * `@repo/api-contracts` so the two apps cannot drift apart.
+ * `@repo/contracts` so the two apps cannot drift apart.
  *
  * Same idiom as `ticket.ts`: a peek that leaves the token alone and a
  * single-use consume. The split matters here — the landing page must be able to
@@ -17,7 +17,7 @@
  * fetch URLs before any human does.
  */
 
-import { loginLinkKey, type LoginLinkPayload, loginLinkPayload } from '@repo/api-contracts'
+import { loginLinkKey, type LoginLinkPayload, loginLinkPayload } from '@repo/contracts'
 import { getRedis } from '@repo/redis'
 
 import 'server-only'

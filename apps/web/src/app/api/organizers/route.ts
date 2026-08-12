@@ -1,4 +1,4 @@
-import { registerOrganizerInput } from '@repo/api-contracts'
+import { registerOrganizerInput } from '@repo/contracts'
 import { db, organizers } from '@repo/db'
 import { NextResponse } from 'next/server'
 import { flattenError } from 'zod'

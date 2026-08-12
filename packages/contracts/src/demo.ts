@@ -7,7 +7,7 @@
  * name the organizer in code anyway (auth is messenger-only — ADR-008).
  * A mutable `is_demo` flag would be additional security-relevant state.
  *
- * Lives in `api-contracts` so that `apps/web` and `apps/worker` share one
+ * Lives in `contracts` so that `apps/web` and `apps/worker` share one
  * source of truth.
  */
 

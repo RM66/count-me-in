@@ -1,4 +1,4 @@
-import { updateServiceInput } from '@repo/api-contracts'
+import { updateServiceInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import {

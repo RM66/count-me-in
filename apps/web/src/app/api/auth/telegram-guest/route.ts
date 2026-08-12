@@ -1,4 +1,4 @@
-import type { GuestTicketResponse } from '@repo/api-contracts'
+import type { GuestTicketResponse } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { validateTelegramWidget } from '@/server/auth/telegram-widget'

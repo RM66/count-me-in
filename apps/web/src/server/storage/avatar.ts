@@ -2,7 +2,7 @@
  * Server-side avatar upload orchestration.
  * See docs/plans/avatar-upload-r2.md
  */
-import type { AvatarUploadTarget, CreateAvatarUploadInput } from '@repo/api-contracts'
+import type { AvatarUploadTarget, CreateAvatarUploadInput } from '@repo/contracts'
 import { avatarKey, createSignedUploadUrl, publicUrl } from '@repo/storage'
 
 import 'server-only'

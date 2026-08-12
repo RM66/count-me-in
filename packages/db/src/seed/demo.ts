@@ -14,7 +14,7 @@
  *    past. Offsets are resolved against `now` at seed/refresh time instead.
  */
 
-import { DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG, DEMO_SERVICE_IDS } from '@repo/api-contracts'
+import { DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG, DEMO_SERVICE_IDS } from '@repo/contracts'
 
 /** Deterministic demo slot ids (uuid — `time_slots.id` is a uuid column). */
 const DEMO_SLOT_IDS = {

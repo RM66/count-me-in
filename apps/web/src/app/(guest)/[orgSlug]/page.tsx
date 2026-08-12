@@ -1,4 +1,4 @@
-import { seatsLeft } from '@repo/api-contracts'
+import { seatsLeft } from '@repo/contracts'
 import { MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'

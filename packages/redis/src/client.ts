@@ -10,7 +10,7 @@ import Redis from 'ioredis'
  * exactly the failure a shared package prevents.
  *
  * What is *not* here: key names and payload shapes. Those are contracts between
- * the two apps and live in `@repo/api-contracts` (see `loginLinkKey`).
+ * the two apps and live in `@repo/contracts` (see `loginLinkKey`).
  *
  * Note this package cannot carry `import 'server-only'` — the worker is not a
  * Next app and that module would throw there.

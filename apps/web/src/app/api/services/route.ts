@@ -1,4 +1,4 @@
-import { createServiceInput } from '@repo/api-contracts'
+import { createServiceInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { createService, listServices } from '@/server/db/service'

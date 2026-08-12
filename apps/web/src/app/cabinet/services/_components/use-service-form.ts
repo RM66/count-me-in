@@ -1,8 +1,8 @@
 'use client'
 
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-import type { ServiceFormOutput, ServiceFormValues, ServiceRecord } from '@repo/api-contracts'
-import { serviceFormSchema, toCreateServiceInput, toServiceFormValues } from '@repo/api-contracts'
+import type { ServiceFormOutput, ServiceFormValues, ServiceRecord } from '@repo/contracts'
+import { serviceFormSchema, toCreateServiceInput, toServiceFormValues } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
 import type { Control } from 'react-hook-form'
 import { useForm } from 'react-hook-form'

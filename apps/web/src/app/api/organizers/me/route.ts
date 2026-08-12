@@ -1,4 +1,4 @@
-import { updateOrganizerProfileInput } from '@repo/api-contracts'
+import { updateOrganizerProfileInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { getOrganizerProfile, updateOrganizerProfile } from '@/server/db/organizer'

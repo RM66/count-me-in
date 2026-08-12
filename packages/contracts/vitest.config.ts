@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 
 /**
- * Vitest config for `packages/api-contracts` — pure logic, no DOM.
+ * Vitest config for `packages/contracts` — pure logic, no DOM.
  */
 export default defineConfig({
   test: {

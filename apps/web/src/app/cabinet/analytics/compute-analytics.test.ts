@@ -1,4 +1,4 @@
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { describe, expect, it } from 'vitest'
 
 import { computeAnalytics } from './compute-analytics'

@@ -1,6 +1,6 @@
 'use client'
 
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { useState } from 'react'
 
 import { useDayFilter } from '@/app/cabinet/_components/day-filter'

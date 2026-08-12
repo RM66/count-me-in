@@ -6,7 +6,7 @@ import type {
   GuestBooking,
   GuestTicketResponse,
   Messenger,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { post } from './client'

@@ -1,6 +1,6 @@
 'use client'
 
-import { instantToWallClockInputs, wallClockToInstant } from '@repo/api-contracts'
+import { instantToWallClockInputs, wallClockToInstant } from '@repo/contracts'
 import { CalendarIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 

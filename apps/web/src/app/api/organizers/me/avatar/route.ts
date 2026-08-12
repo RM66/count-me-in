@@ -1,5 +1,5 @@
-import type { AvatarUploadTarget } from '@repo/api-contracts'
-import { createAvatarUploadInput } from '@repo/api-contracts'
+import type { AvatarUploadTarget } from '@repo/contracts'
+import { createAvatarUploadInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
 
 import { parseJsonBody, requireWritableOrganizer } from '@/server/http'

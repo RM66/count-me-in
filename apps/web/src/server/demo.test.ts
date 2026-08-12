@@ -1,4 +1,4 @@
-import { DEMO_ORGANIZER_ID } from '@repo/api-contracts'
+import { DEMO_ORGANIZER_ID } from '@repo/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the auth module to avoid pulling in next/server

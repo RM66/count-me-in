@@ -1,4 +1,4 @@
-import { DEMO_CABINET_PATH, DEMO_ORGANIZER_PATH } from '@repo/api-contracts'
+import { DEMO_CABINET_PATH, DEMO_ORGANIZER_PATH } from '@repo/contracts'
 import { ArrowRight, CalendarCheck, LayoutDashboardIcon, TicketIcon } from 'lucide-react'
 import Link from 'next/link'
 

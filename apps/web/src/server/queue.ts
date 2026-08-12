@@ -22,7 +22,7 @@ import {
   type CancelActor,
   QUEUE_BOOKING_CANCELLED,
   QUEUE_BOOKING_CREATED,
-} from '@repo/api-contracts'
+} from '@repo/contracts'
 import { sql } from 'drizzle-orm'
 import { fromDrizzle, PgBoss } from 'pg-boss'
 
@@ -96,7 +96,7 @@ function getBoss(): Promise<PgBoss> {
  * **Call inside the booking transaction.** `fromDrizzle(tx, sql)` routes the
  * job insert through the caller's transaction, which is the only way the job
  * and the booking share a fate.
- * One job **per recipient** — see the fan-out note in `api-contracts/jobs.ts`.
+ * One job **per recipient** — see the fan-out note in `contracts/jobs.ts`.
  */
 export async function enqueueBookingCreated(tx: Tx, bookingId: string): Promise<void> {
   const boss = await getBoss()

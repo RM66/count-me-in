@@ -29,7 +29,7 @@ apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP 
 apps/worker      # job consumer (notifications)
 packages/db
 packages/redis
-packages/api-contracts
+packages/contracts
 packages/storage
 packages/eslint-config
 packages/typescript-config
@@ -106,7 +106,7 @@ the rest was deleted:
   logic must be re-homed when `mock-data.ts` is dismantled, not resurrected as
   `lib/domain/`.
 
-**Resolved 2026-08-02.** Those rules now live in `packages/api-contracts`
+**Resolved 2026-08-02.** Those rules now live in `packages/contracts`
 (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice` in `time-slot.ts`;
 `effectiveLocation` / `effectiveContact` in `service.ts`) and `mock-data.ts` is
 gone — the guest section reads Postgres. No app-local rules layer was

@@ -1,6 +1,6 @@
 'use client'
 
-import type { GuestTicketResponse } from '@repo/api-contracts'
+import type { GuestTicketResponse } from '@repo/contracts'
 import { useEffect, useRef } from 'react'
 
 interface TelegramUser {

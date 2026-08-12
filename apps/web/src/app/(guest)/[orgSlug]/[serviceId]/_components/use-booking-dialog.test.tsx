@@ -1,4 +1,4 @@
-import type { GuestBooking, ServiceRecord } from '@repo/api-contracts'
+import type { GuestBooking, ServiceRecord } from '@repo/contracts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'

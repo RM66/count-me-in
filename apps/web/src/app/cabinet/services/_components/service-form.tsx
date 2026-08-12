@@ -1,6 +1,6 @@
 'use client'
 
-import type { ServiceRecord } from '@repo/api-contracts'
+import type { ServiceRecord } from '@repo/contracts'
 import { Trash2Icon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 

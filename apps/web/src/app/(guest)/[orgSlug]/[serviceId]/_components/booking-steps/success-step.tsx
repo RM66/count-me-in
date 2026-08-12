@@ -1,7 +1,7 @@
 'use client'
 
-import type { GuestBooking } from '@repo/api-contracts'
-import { effectiveLocation, slotEnd } from '@repo/api-contracts'
+import type { GuestBooking } from '@repo/contracts'
+import { effectiveLocation, slotEnd } from '@repo/contracts'
 import { CheckCircle2, PartyPopper } from 'lucide-react'
 import Link from 'next/link'
 

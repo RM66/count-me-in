@@ -1,6 +1,6 @@
 'use client'
 
-import type { ServiceRecord } from '@repo/api-contracts'
+import type { ServiceRecord } from '@repo/contracts'
 import { ArrowLeft } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'

@@ -25,7 +25,7 @@
     "typescript": "6.0.3"
   },
   "dependencies": {
-    "@repo/api-contracts": "workspace:*",
+    "@repo/contracts": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "nanoid": "^6.0.0",
     "postgres": "^3.4.9",

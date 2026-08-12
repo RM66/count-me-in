@@ -1,4 +1,4 @@
-import { fillRate, seatsLeft } from '@repo/api-contracts'
+import { fillRate, seatsLeft } from '@repo/contracts'
 import {
   ArrowRightIcon,
   CalendarClockIcon,
@@ -80,7 +80,7 @@ export default async function CabinetOverviewPage({
   // `bookedCount`, the column the atomic reserve maintains (invariant 2 in
   // docs/domain.md). Summing booking seats instead would drift from it the
   // moment a cancellation released a seat. The ratio is shared with the
-  // analytics page via `@repo/api-contracts` (ADR-001).
+  // analytics page via `@repo/contracts` (ADR-001).
   const seatsBooked = upcoming.reduce((sum, slot) => sum + slot.bookedCount, 0)
   const seatsOffered = upcoming.reduce((sum, slot) => sum + slot.capacity, 0)
   const fillRateValue = fillRate(upcoming)

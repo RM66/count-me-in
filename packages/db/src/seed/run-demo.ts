@@ -1,4 +1,4 @@
-import { DEMO_ORGANIZER_ID } from '@repo/api-contracts'
+import { DEMO_ORGANIZER_ID } from '@repo/contracts'
 import { eq, inArray } from 'drizzle-orm'
 
 import { client, db } from '../client'

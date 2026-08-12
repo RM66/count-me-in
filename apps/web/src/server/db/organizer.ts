@@ -15,8 +15,8 @@ import type {
   OrganizerProfile,
   PublicOrganizer,
   UpdateOrganizerProfileInput,
-} from '@repo/api-contracts'
-import { isDemoOrganizerId } from '@repo/api-contracts'
+} from '@repo/contracts'
+import { isDemoOrganizerId } from '@repo/contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
 import { eq } from 'drizzle-orm'

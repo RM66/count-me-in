@@ -1,6 +1,6 @@
 'use client'
 
-import type { ServiceRecord, TimeSlotRecord } from '@repo/api-contracts'
+import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
