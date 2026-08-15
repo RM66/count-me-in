@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
 
 # A force-push supersedes the run already in flight; keep only the newest.
 concurrency:
@@ -54,7 +54,7 @@ jobs:
     name: Apply DB migrations
     runs-on: ubuntu-latest
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     env:
       POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
     steps:
