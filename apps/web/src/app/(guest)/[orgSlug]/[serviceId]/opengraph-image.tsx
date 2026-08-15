@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og'
 
-import { SITE_DOMAIN } from '@/constants/site'
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
 import { getPublicService } from '@/server/db/service'
@@ -136,7 +135,7 @@ export default async function ServiceOgImage({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 28 }}>
           <img src={logo} width={40} height={40} alt="" style={{ borderRadius: 11 }} />
-          <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
+          <span style={{ color: '#52525B' }}>Book online</span>
         </div>
       </div>
     </div>,

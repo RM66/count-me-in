@@ -61,18 +61,49 @@ export async function loadLogoDataUri(): Promise<string> {
   return logoCache
 }
 
+// Public assets live under `public/`; a relative `photoUrl` (e.g. the demo
+// seed's `/organizer-avatar.png`) resolves there. Unlike the logo, the file is
+// dynamic (comes from the DB), so it cannot be statically traced — resolve the
+// directory from `process.cwd()` (the app root) at runtime instead. Turbopack
+// cannot trace a directory URL, so `new URL('…/public/', …)` is avoided here.
+const publicDir = join(process.cwd(), 'public')
+
+// Map a public asset path to its content type. Satori needs the MIME type to
+// build the data URI; the extension is the only reliable signal for files read
+// from disk (no HTTP headers there).
+const EXT_TO_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+}
+
 /**
- * Fetch a remote image (e.g. an R2-hosted avatar or service photo) and inline
- * it as a data URI so Satori can render it. Satori cannot fetch remote URLs
- * itself, so the landing card works only because the logo is inlined — this
- * brings the per-organizer / per-service cards to the same behaviour.
+ * Inline an image as a data URI so Satori can render it. Satori cannot fetch
+ * remote URLs itself, so the landing card works only because the logo is
+ * inlined — this brings the per-organizer / per-service cards to the same
+ * behaviour.
  *
- * Returns `null` when the fetch fails or the response is not an image, so the
- * caller can fall back to its initials / gradient placeholder instead of
- * throwing and breaking the whole OG route.
+ * Accepts either a remote URL (e.g. an R2-hosted avatar or service photo,
+ * fetched over HTTP) or a relative public path (e.g. the demo seed's
+ * `/organizer-avatar.png`, read from disk). Returns `null` on any failure or
+ * when the response is not an image, so the caller can fall back to its
+ * initials / gradient placeholder instead of throwing and breaking the whole
+ * OG route.
  */
 export async function loadRemoteImageDataUri(url: string): Promise<string | null> {
   try {
+    // Relative public asset — read from disk, like the logo.
+    if (url.startsWith('/')) {
+      const ext = url.slice(url.lastIndexOf('.'))
+      const mime = EXT_TO_MIME[ext]
+      if (!mime) return null
+      const buffer = await readFile(join(publicDir, url))
+      return `data:${mime};base64,${buffer.toString('base64')}`
+    }
+
     const res = await fetch(url)
     if (!res.ok) return null
     const contentType = res.headers.get('content-type')

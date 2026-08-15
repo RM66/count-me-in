@@ -63,4 +63,18 @@ describe('loadRemoteImageDataUri', () => {
 
     expect(result).toBeNull()
   })
+
+  it('inlines a relative public asset from disk', async () => {
+    // The demo seed's photoUrl is a relative public path (e.g.
+    // `/organizer-avatar.png`); it must be read from disk, not fetched.
+    const result = await loadRemoteImageDataUri('/logo.svg')
+
+    expect(result).toMatch(/^data:image\/svg\+xml;base64,/)
+  })
+
+  it('returns null for a relative path with an unknown extension', async () => {
+    const result = await loadRemoteImageDataUri('/some-file.bin')
+
+    expect(result).toBeNull()
+  })
 })

@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og'
 
-import { SITE_DOMAIN } from '@/constants/site'
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
 
@@ -133,7 +132,7 @@ export default async function OrganizerOgImage({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30 }}>
         <img src={logo} width={44} height={44} alt="" style={{ borderRadius: 12 }} />
-        <span style={{ color: '#52525B' }}>Book online · {SITE_DOMAIN}</span>
+        <span style={{ color: '#52525B' }}>Book online</span>
       </div>
     </div>,
     { ...size, fonts },
