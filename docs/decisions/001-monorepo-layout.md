@@ -30,7 +30,7 @@ apps/worker      # job consumer (notifications)
 packages/db
 packages/redis
 packages/contracts
-packages/storage
+packages/media-storage
 packages/eslint-config
 packages/typescript-config
 ```

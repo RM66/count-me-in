@@ -25,7 +25,7 @@ export default defineConfig({
       '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
       '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
       '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
-      '@repo/storage': path.resolve(__dirname, '../../packages/storage/src'),
+      '@repo/media-storage': path.resolve(__dirname, '../../packages/media-storage/src'),
     },
   },
 })

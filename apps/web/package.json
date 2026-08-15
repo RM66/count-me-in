@@ -19,7 +19,7 @@
     "@repo/contracts": "workspace:*",
     "@repo/db": "workspace:*",
     "@repo/redis": "workspace:*",
-    "@repo/storage": "workspace:*",
+    "@repo/media-storage": "workspace:*",
     "@sentry/nextjs": "^10.69.0",
     "@tanstack/react-query": "^5.101.4",
     "@telegram-auth/server": "^1.0.4",

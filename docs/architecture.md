@@ -50,8 +50,8 @@ flowchart LR
 | `apps/worker`                                  | Jobs: messenger notifications with cabinet deep links (Telegram first)        |
 | `packages/db`                                  | Drizzle schema, migrations, client                                            |
 | `packages/redis`                               | ioredis singleton (sessions, auth tickets, rate limits)                       |
-| `packages/contracts`                       | Zod schemas shared by web and worker                                          |
-| `packages/storage`                             | R2 signed upload helpers                                                      |
+| `packages/contracts`                           | Zod schemas shared by web and worker                                          |
+| `packages/media-storage`                       | R2 signed upload helpers                                                      |
 | `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                      |
 | Postgres                                       | Domain + `pg-boss`                                                            |
 | Redis                                          | Sessions, short-lived auth tickets, rate limits                               |

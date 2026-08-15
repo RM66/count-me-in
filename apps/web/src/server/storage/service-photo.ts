@@ -6,7 +6,7 @@
  * the services API (ADR-007).
  */
 import type { CreateServicePhotoUploadInput, ImageUploadTarget } from '@repo/contracts'
-import { createSignedUploadUrl, publicUrl, servicePhotoKey } from '@repo/storage'
+import { createSignedUploadUrl, publicUrl, servicePhotoKey } from '@repo/media-storage'
 
 import 'server-only'
 

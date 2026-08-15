@@ -11,7 +11,9 @@ if (existsSync(envPath)) {
     const match = envRe.exec(line)
     if (match && match[1] !== undefined) {
       const key = match[1]
-      const value = match[2] ?? ''
+      // Strip surrounding single/double quotes (bun --env-file does this too),
+      // so a quoted value like POSTGRES_URL="postgres://..." parses correctly.
+      const value = (match[2] ?? '').replace(/^(['"])(.*)\1$/, '$2')
       if (!(key in process.env)) {
         process.env[key] = value
       }

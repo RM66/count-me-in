@@ -5,7 +5,7 @@ import { Features } from '@/app/(marketing)/_components/features'
 import { Hero } from '@/app/(marketing)/_components/hero'
 import { HowItWorks } from '@/app/(marketing)/_components/how-it-works'
 import { Trust } from '@/app/(marketing)/_components/trust'
-import { SITE_URL } from '@/constants/site'
+import { SITE_DESCRIPTION, SITE_URL } from '@/constants/site'
 
 // Static marketing content — prerendered at build time.
 export const dynamic = 'force-static'
@@ -28,8 +28,7 @@ const structuredData = {
       url: SITE_URL,
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
-      description:
-        'Publish services with time slots and capacity; guests book on a public page. Online booking for group classes, events, and outings.',
+      description: SITE_DESCRIPTION,
       offers: {
         '@type': 'Offer',
         price: '0',

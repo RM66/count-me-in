@@ -6,7 +6,7 @@
  * covers live under `organizers/{organizerId}/` (see `servicePhotoKey`), so a
  * single check covers them.
  */
-import { organizerMediaUrlPrefix } from '@repo/storage'
+import { organizerMediaUrlPrefix } from '@repo/media-storage'
 
 import 'server-only'
 
