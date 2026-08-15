@@ -1,0 +1,34 @@
+{
+  "name": "count-me-in",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "knip": "knip --exclude duplicates"
+  },
+  "devDependencies": {
+    "knip": "^6.32.2",
+    "prettier": "^3.7.4",
+    "turbo": "^2.10.5",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "bun@1.3.14",
+  "engines": {
+    "node": ">=22"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.3.14"
+    }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

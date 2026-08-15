@@ -1,0 +1,23 @@
+{
+  "name": "@repo/vitest-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.ts",
+    "./dom": "./dom.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint --max-warnings 0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/node": "^22.15.3",
+    "eslint": "^9.39.1",
+    "happy-dom": "^18.0.0",
+    "typescript": "6.0.3",
+    "vitest": "^3.2.0"
+  }
+}
