@@ -18,8 +18,8 @@
         "@hookform/resolvers": "^5.5.7",
         "@repo/contracts": "workspace:*",
         "@repo/db": "workspace:*",
+        "@repo/media-storage": "workspace:*",
         "@repo/redis": "workspace:*",
-        "@repo/storage": "workspace:*",
         "@sentry/nextjs": "^10.69.0",
         "@tanstack/react-query": "^5.101.4",
         "@telegram-auth/server": "^1.0.4",
@@ -145,11 +145,12 @@
         "typescript-eslint": "^8.50.0",
       },
     },
-    "packages/redis": {
-      "name": "@repo/redis",
+    "packages/media-storage": {
+      "name": "@repo/media-storage",
       "version": "0.0.0",
       "dependencies": {
-        "ioredis": "^6.0.0",
+        "@aws-sdk/client-s3": "^3.709.0",
+        "@aws-sdk/s3-request-presigner": "^3.709.0",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",
@@ -159,12 +160,11 @@
         "typescript": "6.0.3",
       },
     },
-    "packages/storage": {
-      "name": "@repo/storage",
+    "packages/redis": {
+      "name": "@repo/redis",
       "version": "0.0.0",
       "dependencies": {
-        "@aws-sdk/client-s3": "^3.709.0",
-        "@aws-sdk/s3-request-presigner": "^3.709.0",
+        "ioredis": "^6.0.0",
       },
       "devDependencies": {
         "@repo/eslint-config": "*",
@@ -859,9 +859,9 @@
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
 
-    "@repo/redis": ["@repo/redis@workspace:packages/redis"],
+    "@repo/media-storage": ["@repo/media-storage@workspace:packages/media-storage"],
 
-    "@repo/storage": ["@repo/storage@workspace:packages/storage"],
+    "@repo/redis": ["@repo/redis@workspace:packages/redis"],
 
     "@repo/typescript-config": ["@repo/typescript-config@workspace:packages/typescript-config"],
 

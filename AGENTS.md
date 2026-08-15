@@ -25,7 +25,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
 - **Validation:** Zod (`packages/contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
-- **Media:** Cloudflare R2 (`packages/storage`)
+- **Media:** Cloudflare R2 (`packages/media-storage`)
 - **Jobs:** `pg-boss` + `apps/worker`
 - **Notifications:** messengers primary (Telegram first); cabinet deep links in messages
 - **Observability:** PostHog, Sentry

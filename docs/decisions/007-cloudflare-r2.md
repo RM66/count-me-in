@@ -19,7 +19,7 @@ Organizers upload an avatar and service photos. Candidates: **Cloudflare R2** vs
 
 Store media in **Cloudflare R2**.
 
-- Expose helpers in `packages/storage` (create signed PUT URL, public URL / CDN mapping, key layout e.g. `organizers/{id}/avatar`, `services/{id}/photo`).
+- Expose helpers in `packages/media-storage` (create signed PUT URL, public URL / CDN mapping, key layout e.g. `organizers/{id}/avatar`, `services/{id}/photo`).
 - API in `apps/web` issues short-lived upload credentials only to authenticated organizers; clients upload **directly to R2**.
 - Persist only the resulting URL on `Organizer.photoUrl` / `Service.photoUrl`.
 - **Downscale in the browser before upload** (see amendment below).
