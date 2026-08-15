@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 import { SITE_DOMAIN } from '@/constants/site'
-import { loadFigtreeFonts, loadLogoDataUri } from '@/lib/og/assets'
+import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
 import { getPublicService } from '@/server/db/service'
 
@@ -29,6 +29,14 @@ export default async function ServiceOgImage({
     loadLogoDataUri(),
   ])
   const service = organizer ? await getPublicService(organizer.id, serviceId) : null
+
+  // Satori cannot fetch remote URLs, so R2-hosted photos are inlined as data
+  // URIs (same approach as the logo). Each falls back to `null` on failure so
+  // the gradient / initials placeholders below still render.
+  const [servicePhotoDataUri, organizerPhotoDataUri] = await Promise.all([
+    service?.photoUrl ? loadRemoteImageDataUri(service.photoUrl) : Promise.resolve(null),
+    organizer?.photoUrl ? loadRemoteImageDataUri(organizer.photoUrl) : Promise.resolve(null),
+  ])
 
   if (!organizer || !service) {
     return new ImageResponse(
@@ -64,9 +72,9 @@ export default async function ServiceOgImage({
     >
       {/* Left: the photo carries the visual weight of the card. */}
       <div style={{ display: 'flex', width: 520, height: '100%', position: 'relative' }}>
-        {service.photoUrl ? (
+        {servicePhotoDataUri ? (
           <img
-            src={service.photoUrl}
+            src={servicePhotoDataUri}
             width={520}
             height={630}
             alt=""
@@ -113,9 +121,9 @@ export default async function ServiceOgImage({
             {service.title}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 28 }}>
-            {organizer.photoUrl ? (
+            {organizerPhotoDataUri ? (
               <img
-                src={organizer.photoUrl}
+                src={organizerPhotoDataUri}
                 width={64}
                 height={64}
                 alt=""

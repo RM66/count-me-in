@@ -68,7 +68,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                   control={control}
                   name="location"
                   label="Location"
-                  placeholder="e.g. Kralja Petra 12, Belgrade"
+                  placeholder="e.g. Kralja Petra 123, Belgrade"
                   description="Overrides your profile location when set."
                   disabled={isReadOnly}
                 />

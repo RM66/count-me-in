@@ -60,3 +60,26 @@ export async function loadLogoDataUri(): Promise<string> {
   logoCache = `data:image/svg+xml;base64,${svg.toString('base64')}`
   return logoCache
 }
+
+/**
+ * Fetch a remote image (e.g. an R2-hosted avatar or service photo) and inline
+ * it as a data URI so Satori can render it. Satori cannot fetch remote URLs
+ * itself, so the landing card works only because the logo is inlined — this
+ * brings the per-organizer / per-service cards to the same behaviour.
+ *
+ * Returns `null` when the fetch fails or the response is not an image, so the
+ * caller can fall back to its initials / gradient placeholder instead of
+ * throwing and breaking the whole OG route.
+ */
+export async function loadRemoteImageDataUri(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type')
+    if (!contentType || !contentType.startsWith('image/')) return null
+    const buffer = Buffer.from(await res.arrayBuffer())
+    return `data:${contentType};base64,${buffer.toString('base64')}`
+  } catch {
+    return null
+  }
+}
