@@ -7,7 +7,7 @@
 ## Context
 
 The landing page advertises a live example (`See a live example`, `Browse an example page`,
-and the `Examples` nav item). Until now those links pointed at `/studio-lumen`, a page rendered
+and the `Examples` nav item). Until now those links pointed at `/studio-demo`, a page rendered
 entirely from `apps/web/lib/mock-data.ts` — a static module with a hardcoded organizer, three
 services, ten slots and five bookings. (That module was deleted on 2026-08-02, once the guest
 section moved to Postgres; it is described here in the past tense because it is the context this

@@ -116,7 +116,7 @@ function SignupPageInner() {
               <FieldLabel htmlFor="name">Display name</FieldLabel>
               <Input
                 id="name"
-                placeholder="Studio Lumen"
+                placeholder="Studio Demo"
                 value={form.name}
                 onChange={(e) => form.setName(e.target.value)}
                 required
@@ -130,7 +130,7 @@ function SignupPageInner() {
                 </InputGroupAddon>
                 <InputGroupInput
                   id="slug"
-                  placeholder="studio-lumen"
+                  placeholder="studio-demo"
                   value={form.slug}
                   onChange={(e) => form.setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                   required

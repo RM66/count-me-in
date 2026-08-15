@@ -42,7 +42,7 @@ hyphens, but does **not** reserve any specific values.
 
 **Why keep `/{orgSlug}` without a prefix?**
 
-- The organizer public page (`countmein.group/studio-lumen`) is the **primary shareable link**.
+- The organizer public page (`countmein.group/studio-demo`) is the **primary shareable link**.
 - It appears in social media posts, messenger messages, printed materials, and QR codes.
 - Shorter URLs are easier to remember, type, and share.
 - SEO benefits from clean, keyword-rich URLs.
@@ -65,7 +65,7 @@ hyphens, but does **not** reserve any specific values.
 ### Positive
 
 - **No route conflicts:** System routes are protected; organizers cannot shadow them.
-- **Clean public URLs:** `countmein.group/studio-lumen` is short and memorable.
+- **Clean public URLs:** `countmein.group/studio-demo` is short and memorable.
 - **Self-documenting system routes:** `/cabinet/services`, `/booking/abc123` are clear.
 - **SEO-friendly:** Descriptive URLs improve search engine understanding and user trust.
 - **Future-proof:** Reserved list can be extended as new system routes are added.

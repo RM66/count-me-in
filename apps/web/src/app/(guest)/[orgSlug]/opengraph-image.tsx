@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 import { SITE_DOMAIN } from '@/constants/site'
-import { loadFigtreeFonts, loadLogoDataUri } from '@/lib/og/assets'
+import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
 
 // Route segment config for the generated image. The size doubles as the
@@ -28,6 +28,11 @@ export default async function OrganizerOgImage({
     loadFigtreeFonts(),
     loadLogoDataUri(),
   ])
+
+  // Satori cannot fetch remote URLs, so the R2-hosted photo is inlined as a
+  // data URI (same approach as the logo). Falls back to `null` on failure so
+  // the initials placeholder below still renders.
+  const photoDataUri = organizer?.photoUrl ? await loadRemoteImageDataUri(organizer.photoUrl) : null
 
   // Brand gradient lifted from logo.svg (#2726CF → #6F23F7).
   const gradient = 'linear-gradient(135deg, #2726CF 0%, #6F23F7 100%)'
@@ -75,9 +80,9 @@ export default async function OrganizerOgImage({
       />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
-        {organizer.photoUrl ? (
+        {photoDataUri ? (
           <img
-            src={organizer.photoUrl}
+            src={photoDataUri}
             width={220}
             height={220}
             alt=""

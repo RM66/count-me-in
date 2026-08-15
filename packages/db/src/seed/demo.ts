@@ -94,7 +94,7 @@ export const DEMO_TIMEZONE = 'Europe/Belgrade'
 export const demoOrganizer = {
   id: DEMO_ORGANIZER_ID,
   slug: DEMO_ORGANIZER_SLUG,
-  name: 'Studio Lumen',
+  name: 'Studio Demo',
   messenger: 'telegram' as const,
   /**
    * Sentinel messenger id — deliberately not a real Telegram account, so the
@@ -115,8 +115,8 @@ What we offer:
 
 _This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._`,
   photoUrl: '/organizer-avatar.png',
-  location: 'Kralja Petra 12, Belgrade',
-  contact: 'studio@studiolumen.rs',
+  location: 'Kralja Petra 123, Belgrade',
+  contact: 'studio@studiodemo.rs',
 }
 
 export const demoServices = [
