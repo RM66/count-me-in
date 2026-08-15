@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SessionProvider, useSession } from 'next-auth/react'
 import { type ReactNode, useEffect, useState } from 'react'
 
@@ -57,6 +58,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <PostHogIdentity />
+      <SpeedInsights />
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         <CookieConsentBanner />
