@@ -26,7 +26,7 @@ export function readEnv(): WorkerEnv {
   required('REDIS_URL')
 
   return {
-    databaseUrl: required('DATABASE_URL'),
+    databaseUrl: required('POSTGRES_URL'),
     telegramBotToken: required('TELEGRAM_BOT_TOKEN'),
     appUrl: required('APP_URL').replace(/\/+$/, ''),
   }

@@ -57,9 +57,9 @@ const NOTIFICATION_QUEUE_OPTIONS = {
  */
 function getBoss(): Promise<PgBoss> {
   if (!globalForQueue.boss) {
-    const connectionString = process.env.DATABASE_URL
+    const connectionString = process.env.POSTGRES_URL
     if (!connectionString) {
-      throw new Error('DATABASE_URL is not set')
+      throw new Error('POSTGRES_URL is not set')
     }
 
     globalForQueue.boss = (async () => {

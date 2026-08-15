@@ -2,7 +2,7 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "globalEnv": [
-    "DATABASE_URL",
+    "POSTGRES_URL",
     "REDIS_URL",
     "AUTH_SECRET",
     "APP_URL",

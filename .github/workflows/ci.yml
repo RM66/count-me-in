@@ -44,3 +44,50 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - run: bun run ${{ matrix.task }}
+
+  # Apply DB migrations only on the production deploy trigger (push to main),
+  # after all checks pass. Running them in the Vercel build command would be
+  # wrong: builds are cached (migrations could be skipped) and preview deploys
+  # would run them against the production database. drizzle-kit migrate is
+  # idempotent — it tracks applied migrations in the DB, so re-runs are no-ops.
+  migrate:
+    name: Apply DB migrations
+    runs-on: ubuntu-latest
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+    steps:
+      # fetch-depth: 2 so HEAD^ (the parent commit) is available for the
+      # migration-change check below. The default depth-1 clone has no parent,
+      # which would silently skip migrations on every push.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Keep in sync with "packageManager" in package.json.
+          bun-version: 1.3.14
+
+      - run: bun install --frozen-lockfile
+
+      # Skip the migrate step when this push didn't touch any migration files.
+      # On the very first push (no parent commit) treat everything as changed so
+      # migrations still run.
+      - name: Check for migration changes
+        id: changes
+        run: |
+          if ! git rev-parse --verify -q HEAD^ >/dev/null; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only HEAD^ HEAD -- packages/db/drizzle/ | grep -q .; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply migrations
+        if: steps.changes.outputs.migrations == 'true'
+        working-directory: packages/db
+        run: bun run db:migrate
