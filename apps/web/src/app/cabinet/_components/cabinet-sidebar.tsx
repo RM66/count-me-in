@@ -6,6 +6,7 @@ import {
   CalendarDaysIcon,
   ChevronsUpDownIcon,
   ExternalLinkIcon,
+  GlobeIcon,
   LayoutDashboardIcon,
   LogInIcon,
   LogOutIcon,
@@ -22,6 +23,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 
 import { useCurrentOrganizer } from '@/api-client'
+import { LanguageSwitcher } from '@/components/language-switcher'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -137,6 +139,24 @@ export function CabinetSidebar() {
                     <span>Contact</span>
                   </a>
                 </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Language</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <LanguageSwitcher
+                  trigger={(active) => (
+                    <SidebarMenuButton tooltip="Language">
+                      <GlobeIcon />
+                      <span>{active.label}</span>
+                    </SidebarMenuButton>
+                  )}
+                />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
