@@ -16,13 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import {
-  addDays,
-  assignColumns,
-  MINUTES_PER_DAY,
-  startOfWeek,
-  timeToMinutes,
-} from './week-layout'
+import { addDays, assignColumns, MINUTES_PER_DAY, startOfWeek, timeToMinutes } from './week-layout'
 
 /** Pixels per hour row. The grid is a fixed 24 h tall and scrolls. */
 const HOUR_HEIGHT = 48
@@ -136,10 +130,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
 
   // Days anywhere in the schedule that hold a session — marked in the mini
   // calendar so empty weeks are obvious before you navigate to them.
-  const slotDates = useMemo(
-    () => [...eventsByDay.keys()].map(dayKeyToDate),
-    [eventsByDay],
-  )
+  const slotDates = useMemo(() => [...eventsByDay.keys()].map(dayKeyToDate), [eventsByDay])
 
   // Scroll the grid to the first session of the week (or the working morning)
   // whenever the week changes, so the interesting rows are in view without a
@@ -190,7 +181,11 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => goToDate(dayKeyToDate(todayKey))}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => jumpToDate(dayKeyToDate(todayKey))}
+              >
                 Today
               </Button>
               <div className="flex items-center">
@@ -233,12 +228,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
               {/* Month picker behind a button, mirroring the "Any day" filter. */}
               <Popover open={isPickerOpen} onOpenChange={setPickerOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-label="Jump to a week"
-                  >
+                  <Button type="button" variant="outline" size="sm" aria-label="Jump to a week">
                     <CalendarIcon data-icon="inline-start" />
                     Jump to date
                   </Button>
