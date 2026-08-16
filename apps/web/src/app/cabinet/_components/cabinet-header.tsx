@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 
+import { LanguageSwitcher } from '@/components/language-switcher'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -37,7 +38,10 @@ export function CabinetHeader({ crumbs, action }: { crumbs: Crumb[]; action?: Re
           })}
         </BreadcrumbList>
       </Breadcrumb>
-      {action && <div className="ml-auto flex items-center gap-2">{action}</div>}
+      <div className="ml-auto flex items-center gap-2">
+        {action}
+        <LanguageSwitcher />
+      </div>
     </header>
   )
 }

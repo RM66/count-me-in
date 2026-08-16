@@ -2,6 +2,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { LanguageSwitcher } from '@/components/language-switcher'
+
 export default function GuestLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-muted/20">
@@ -11,9 +13,12 @@ export default function GuestLayout({ children }: { children: ReactNode }) {
             <Image src="/logo.svg" alt="" width={22} height={22} className="size-5" />
             <span className="text-sm font-semibold">CountMeIn</span>
           </Link>
-          <Link href="/booking" className="text-sm text-muted-foreground hover:text-foreground">
-            My bookings
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/booking" className="text-sm text-muted-foreground hover:text-foreground">
+              My bookings
+            </Link>
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">{children}</main>
