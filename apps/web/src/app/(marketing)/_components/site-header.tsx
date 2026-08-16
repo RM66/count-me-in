@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 
+import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
@@ -74,33 +75,37 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 md:flex">
           <AuthActions />
+          <LanguageSwitcher />
         </div>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="md:hidden">
-              <Menu />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72">
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <div className="flex flex-col gap-1 p-4">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <div className="mt-4 flex flex-col gap-2">
-                <AuthActions className="w-full" />
+        <div className="flex items-center gap-2 md:hidden">
+          <LanguageSwitcher />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <div className="flex flex-col gap-1 p-4">
+                {nav.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <div className="mt-4 flex flex-col gap-2">
+                  <AuthActions className="w-full" />
+                </div>
               </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   )

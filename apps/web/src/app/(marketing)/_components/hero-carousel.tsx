@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 type Slide = {
@@ -22,12 +23,6 @@ const slides: Slide[] = [
     meta: 'Tomorrow · 07:00 · 3 seats left',
   },
   {
-    src: '/service-fitness.png',
-    alt: 'A group fitness class training with light dumbbells',
-    title: 'HIIT Bootcamp',
-    meta: 'Thu · 18:30 · 5 seats left',
-  },
-  {
     src: '/service-hiking.png',
     alt: 'A small group hiking on a mountain trail',
     title: 'Sunrise Ridge Hike',
@@ -45,17 +40,28 @@ const slides: Slide[] = [
     title: 'Old Town Walking Tour',
     meta: 'Fri · 11:00 · 12 seats left',
   },
+  {
+    src: '/service-breathwork.png',
+    alt: 'A guided breathwork session with people seated in a calm circle',
+    title: 'Breathwork Circle',
+    meta: 'Wed · 19:00 · 6 seats left',
+  },
 ]
 
-const INTERVAL_MS = 4500
+const INTERVAL_MS = 3000
 
 export function HeroCarousel() {
+  // `active` starts at 0 so the server and the first client render agree; the
+  // random slide is picked only after mount, when the images are rendered.
   const [active, setActive] = useState(0)
+  const [mounted, setMounted] = useState(false)
   const [paused, setPaused] = useState(false)
   const reducedMotion = useRef(false)
 
   useEffect(() => {
     reducedMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setMounted(true)
+    setActive(Math.floor(slides.length * Math.random()))
   }, [])
 
   const goTo = useCallback((index: number) => {
@@ -85,21 +91,25 @@ export function HeroCarousel() {
         aria-roledescription="carousel"
         aria-label="Examples of group services you can publish"
       >
-        {slides.map((slide, index) => (
-          <Image
-            key={slide.src}
-            src={slide.src || '/placeholder.svg'}
-            alt={slide.alt}
-            fill
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className={cn(
-              'object-cover transition-opacity duration-700 ease-in-out motion-reduce:transition-none',
-              index === active ? 'opacity-100' : 'opacity-0',
-            )}
-            priority={index === 0}
-            aria-hidden={index === active ? undefined : true}
-          />
-        ))}
+        {mounted ? (
+          slides.map((slide, index) => (
+            <Image
+              key={slide.src}
+              src={slide.src || '/placeholder.svg'}
+              alt={slide.alt}
+              fill
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className={cn(
+                'object-cover transition-opacity duration-700 ease-in-out motion-reduce:transition-none',
+                index === active ? 'opacity-100' : 'opacity-0',
+              )}
+              priority={index === 0}
+              aria-hidden={index === active ? undefined : true}
+            />
+          ))
+        ) : (
+          <div className="absolute inset-0 animate-pulse bg-muted" aria-hidden />
+        )}
       </div>
 
       {/* Caption card, in sync with the active slide. */}
@@ -107,8 +117,17 @@ export function HeroCarousel() {
         className="absolute -bottom-5 -left-5 hidden rounded-xl border bg-card p-4 shadow-md sm:block"
         aria-live="polite"
       >
-        <p className="text-sm font-medium">{current?.title}</p>
-        <p className="text-sm text-muted-foreground">{current?.meta}</p>
+        {mounted ? (
+          <>
+            <p className="text-sm font-medium">{current?.title}</p>
+            <p className="text-sm text-muted-foreground">{current?.meta}</p>
+          </>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        )}
       </div>
 
       {/* Dot controls. */}
