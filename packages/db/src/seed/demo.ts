@@ -142,7 +142,7 @@ export const demoServices = [
     title: 'Hand-Building Pottery Workshop',
     description:
       'Shape your own mug or bowl from scratch. All clay, tools, and firing included. Great for a creative afternoon with friends.',
-    photoUrl: '/service-pottery.png',
+    photoUrl: '/service-workshop.png',
     location: 'Ceramics Loft, Cetinjska 15, Belgrade',
     contact: '+381 64 999 1234',
     defaultPrice: 'from 2500 RSD',
