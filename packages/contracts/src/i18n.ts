@@ -11,10 +11,11 @@ import { z } from 'zod'
  * locale string is.
  *
  * Add a language in one place here; the dictionaries live in
- * `packages/translations`.
+ * `packages/translations`. Array order is what the language switcher renders:
+ * the default locale first, then endonyms alphabetically.
  */
 
-export const LOCALES = ['en', 'ru', 'es', 'de', 'ja', 'fr', 'pt', 'ar'] as const
+export const LOCALES = ['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja'] as const
 
 export const appLocaleEnum = z.enum(LOCALES)
 export type AppLocale = z.infer<typeof appLocaleEnum>
