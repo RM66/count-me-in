@@ -17,6 +17,7 @@ const LANGUAGE_LABELS: Record<AppLocale, string> = {
   ru: 'Русский',
   es: 'Español',
   de: 'Deutsch',
+  ja: '日本語',
 }
 
 export const LANGUAGES: LanguageOption[] = LOCALES.map((code) => ({

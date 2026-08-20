@@ -8,6 +8,7 @@ describe('matchLocale', () => {
     expect(matchLocale('en')).toBe('en')
     expect(matchLocale('es')).toBe('es')
     expect(matchLocale('de')).toBe('de')
+    expect(matchLocale('ja')).toBe('ja')
   })
 
   it('returns the locale for a regional tag', () => {
@@ -15,6 +16,7 @@ describe('matchLocale', () => {
     expect(matchLocale('en-US')).toBe('en')
     expect(matchLocale('es-ES')).toBe('es')
     expect(matchLocale('de-DE')).toBe('de')
+    expect(matchLocale('ja-JP')).toBe('ja')
   })
 
   it('skips unsupported tags and falls through in quality order', () => {
@@ -60,6 +62,7 @@ describe('isAppLocale', () => {
     expect(isAppLocale('ru')).toBe(true)
     expect(isAppLocale('es')).toBe(true)
     expect(isAppLocale('de')).toBe(true)
+    expect(isAppLocale('ja')).toBe(true)
     expect(isAppLocale('en-US')).toBe(false)
     expect(isAppLocale('fr')).toBe(false)
     expect(isAppLocale('')).toBe(false)

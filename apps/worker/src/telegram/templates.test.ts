@@ -223,6 +223,18 @@ describe('bookingCreatedForOrganizer', () => {
     expect(many.text).toContain('2 Plätze')
     expect(many.button?.text).toBe('Im Veranstalterbereich öffnen')
   })
+
+  it('renders the Japanese copy with localized counters', () => {
+    const jaView = { ...view, organizer: { ...organizer, language: 'ja' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...jaView, booking: { ...booking, seats: 1 } }, 'u', 'ja')
+    expect(one.text).toContain('新しい予約')
+    expect(one.text).toContain('1名')
+
+    const many = bookingCreatedForOrganizer({ ...jaView, booking: { ...booking, seats: 2 } }, 'u', 'ja')
+    expect(many.text).toContain('2名')
+    expect(many.button?.text).toBe('管理画面で開く')
+  })
 })
 
 // ── bookingCreatedForGuest ────────────────────────────────────────────────────
@@ -285,6 +297,18 @@ describe('bookingCreatedForGuest', () => {
     expect(msg.text).toContain('Studio Lotus')
     expect(msg.button?.text).toBe('Meine Buchung verwalten')
   })
+
+  it('renders Japanese with the guest locale', () => {
+    const jaView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'ja' } as Booking,
+      organizer: { ...organizer, name: 'ロータススタジオ' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(jaView, 'https://app/booking/token', 'ja')
+    expect(msg.text).toContain('予約が確定しました')
+    expect(msg.text).toContain('ロータススタジオ')
+    expect(msg.button?.text).toBe('予約を管理')
+  })
 })
 
 // ── bookingCancelledForOrganizer ─────────────────────────────────────────────
@@ -327,6 +351,14 @@ describe('bookingCancelledForOrganizer', () => {
     expect(msg.text).toContain('8 Plätze')
     expect(msg.button?.text).toBe('Im Veranstalterbereich öffnen')
   })
+
+  it('renders Japanese', () => {
+    const jaView = { ...view, organizer: { ...organizer, language: 'ja' } as Organizer }
+    const msg = bookingCancelledForOrganizer(jaView, 'https://app/cabinet', 'ja')
+    expect(msg.text).toContain('予約がキャンセルされました')
+    expect(msg.text).toContain('8枠')
+    expect(msg.button?.text).toBe('管理画面で開く')
+  })
 })
 
 // ── bookingCancelledForGuest ──────────────────────────────────────────────────
@@ -360,6 +392,13 @@ describe('bookingCancelledForGuest', () => {
     expect(msg.text).toContain('Deine Buchung wurde storniert')
     expect(msg.text).toContain('von Yoga Studio')
     expect(msg.button?.text).toBe('Andere Termine ansehen')
+  })
+
+  it('renders Japanese', () => {
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'ja')
+    expect(msg.text).toContain('予約がキャンセルされました')
+    expect(msg.text).toContain('Yoga Studioによるキャンセル')
+    expect(msg.button?.text).toBe('別の回を見る')
   })
 })
 

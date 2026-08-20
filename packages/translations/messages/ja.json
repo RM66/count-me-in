@@ -1,0 +1,804 @@
+{
+  "LocaleSwitcher": {
+    "ariaLabel": "言語を変更"
+  },
+  "GuestLayout": {
+    "myBookings": "予約履歴",
+    "poweredBy": "提供"
+  },
+  "OrgPage": {
+    "metaTitle": "{name} — オンライン予約",
+    "bookOnline": "オンライン予約",
+    "pageNotFound": "ページが見つかりません",
+    "services": "サービス",
+    "available": "予約可能：{count}件",
+    "nothingToBook": "現在予約できるものはありません。しばらくしてからもう一度ご確認ください。"
+  },
+  "ServiceCard": {
+    "next": "次回：",
+    "noOpenSlots": "予約可能な開催枠はありません"
+  },
+  "ServicePage": {
+    "serviceNotFound": "サービスが見つかりません",
+    "chooseOne": "1つ選択：",
+    "addOns": "追加オプション：",
+    "upcomingSlots": "今後の開催枠",
+    "noSlotsYet": "開催予定はまだありません",
+    "checkBackSoon": "新しい日時は随時追加されます。しばらくしてからもう一度ご確認ください。",
+    "full": "満席",
+    "book": "予約",
+    "bookNow": "今すぐ予約",
+    "fullyBooked": "満席"
+  },
+  "ServiceMetaBadges": {
+    "minutes": "{minutes}分",
+    "upToCapacity": "定員{capacity}名"
+  },
+  "SeatsBadge": {
+    "fullyBooked": "満席",
+    "seatsLeft": "{count, plural, =1 {残り#枠} other {残り#枠}}"
+  },
+  "Booking": {
+    "pickTime": "日時を選択",
+    "chooseOptions": "オプションを選択",
+    "yourDetails": "お客様情報",
+    "confirmTelegram": "Telegramで確認",
+    "booked": "予約が完了しました！",
+    "continue": "次へ",
+    "back": "戻る",
+    "fullName": "氏名",
+    "namePlaceholder": "Mila Petrović",
+    "nameHint": "主催者の参加者リストに表示される名前です。",
+    "seats": "予約人数",
+    "removeSeat": "1人減らす",
+    "addSeat": "1人追加",
+    "seatsHint": "ご本人を含みます。この回では最大{maxSeats, plural, =1 {#名} other {#名}}まで予約できます。",
+    "optionsLegend": "オプション",
+    "demoIntro": "これは閲覧専用のデモページのため、予約は保存されません。",
+    "createOwn": "自分のページを作成",
+    "demoOutro": "して、実際の予約を受け付けましょう。",
+    "errorFallback": "予約を完了できませんでした",
+    "findMyBookings": "予約を確認する →",
+    "confirmHint": "Telegramで本人確認します。アカウント登録は不要で、ご本人であることの確認にのみ使用されます。",
+    "reserving": "予約を確保しています…",
+    "notConfigured": "Telegramログインが設定されていないため、予約できません。",
+    "errSoldOut": "この回は満席です",
+    "errSeatsLeft": "この回の空きは{count, plural, =1 {残り#枠} other {残り#枠}}です",
+    "errPartyTooLarge": "1回の予約で申し込めるのは最大{maxSeats, plural, =1 {#名} other {#名}}です",
+    "errDuplicate": "この回はすでに予約済みです",
+    "errGone": "この回は現在予約できません",
+    "errInvalidOptions": "選択したオプションはこのサービスでは利用できません",
+    "errAlreadyCancelled": "この予約はすでにキャンセルされています"
+  },
+  "SuccessStep": {
+    "confirmedNote": "予約を受け付けました。確認メッセージがボットからメッセンジャーに届きます。",
+    "service": "サービス",
+    "when": "日時",
+    "name": "氏名",
+    "options": "オプション",
+    "confirmed": "予約確定",
+    "manageThisBooking": "この予約を管理"
+  },
+  "MyBookings": {
+    "title": "予約を確認",
+    "subtitle": "予約リンクを紛失した場合は、予約時に使用したTelegramアカウントで確認すると、予約一覧を表示できます。",
+    "lookingUp": "予約を検索しています…",
+    "lookupFailed": "予約を検索できませんでした",
+    "onlyThisAccount": "このアカウントで行った予約のみ表示されます。",
+    "bookingsFound": "{count, plural, =1 {予約が#件見つかりました} other {予約が#件見つかりました}}",
+    "seats": "{count, plural, =1 {#名} other {#名}}",
+    "cancelled": "キャンセル済み",
+    "noBookingsFound": "予約が見つかりません",
+    "noBookingsDescription": "このTelegramアカウントでの予約はまだありません。別のアカウントで予約した場合は、そちらのアカウントで確認してください。",
+    "nothingYet": "表示する予約はまだありません",
+    "nothingYetDescription": "上のボタンからTelegramで確認すると、予約を検索できます。",
+    "notConfigured": "Telegramログインが設定されていないため、予約を検索できません。"
+  },
+  "ManageBooking": {
+    "backTo": "{name}に戻る",
+    "bookingWith": "{name}の予約・{date}",
+    "date": "日付",
+    "time": "時刻",
+    "minutes": "{minutes}分",
+    "name": "氏名",
+    "price": "料金",
+    "where": "場所",
+    "contact": "連絡先",
+    "options": "オプション：",
+    "confirmed": "予約確定",
+    "cancelled": "キャンセル済み",
+    "cancelledNote": "この予約はキャンセルされ、予約枠は解放されました。",
+    "bookAnotherTime": "別の日時を予約",
+    "cancelBooking": "予約をキャンセル",
+    "cancelling": "キャンセルしています…",
+    "cancelConfirmTitle": "この予約をキャンセルしますか？",
+    "cancelConfirmDescription": "{date} {time}の「{title}」の予約枠が解放されます。この操作は取り消せません。",
+    "keepBooking": "予約を維持",
+    "yesCancel": "キャンセルする",
+    "bookingCancelled": "予約をキャンセルしました",
+    "cancelFailed": "予約をキャンセルできませんでした"
+  },
+  "AddToCalendar": {
+    "addToCalendar": "カレンダーに追加",
+    "googleCalendar": "Google Calendar",
+    "downloadIcs": ".icsをダウンロード"
+  },
+  "Marketing": {
+    "hero": {
+      "badge": "グループイベント向けオンライン予約",
+      "title": "クラスもイベントもツアーも、やり取りなしで満席に",
+      "subtitle": "サービスごとに開催日時と定員を公開し、リンクを1つ共有するだけ。参加者はアカウントもアプリも不要で、サイトから数秒で予約できます。確認はいつものメッセンジャーに届きます。",
+      "startFree": "無料で始める",
+      "noCreditCard": "クレジットカード不要。数分で最初の予約ページを公開できます。",
+      "lookAround": "まずは試してみますか？",
+      "guestPage": "参加者向け予約ページを見る",
+      "cabinet": "主催者の管理画面を見る"
+    },
+    "carousel": {
+      "ariaLabel": "公開できるグループサービスの例",
+      "showSlide": "{title}を表示",
+      "slides": [
+        {
+          "alt": "明るいスタジオで行う朝のヨガクラス",
+          "title": "朝のヴィンヤサフロー",
+          "meta": "明日・07:00・残り3枠"
+        },
+        {
+          "alt": "山道を歩く少人数のハイキンググループ",
+          "title": "朝日に染まる尾根を歩くハイキング",
+          "meta": "土・06:00・残り8枠"
+        },
+        {
+          "alt": "大きなテーブルを囲んで手を動かす創作ワークショップ",
+          "title": "陶芸ワークショップ",
+          "meta": "日・14:00・残り2枠"
+        },
+        {
+          "alt": "旧市街を巡るガイド付きウォーキングツアー",
+          "title": "旧市街ウォーキングツアー",
+          "meta": "金・11:00・残り12枠"
+        },
+        {
+          "alt": "穏やかな輪になって座る人々と行うガイド付き呼吸法セッション",
+          "title": "呼吸法サークル",
+          "meta": "水・19:00・残り6枠"
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "設定から最初の予約まで、わずか数分",
+      "subtitle": "CountMeInが定員管理、確認、リマインダーを担うため、主催者はイベントの運営に集中できます。",
+      "step": "ステップ{n}",
+      "items": [
+        {
+          "title": "アカウントを作成",
+          "body": "メッセンジャーで登録し、公開用ID、表示名、タイムゾーンを設定します。"
+        },
+        {
+          "title": "サービスと開催枠を追加",
+          "body": "サービス内容、定員、所要時間を設定し、予約を受け付ける日時を公開します。"
+        },
+        {
+          "title": "リンクを共有",
+          "body": "参加者に予約ページのリンクを送ります。参加者は日時を選び、数秒で予約できます。"
+        },
+        {
+          "title": "通知を受け取る",
+          "body": "予約が入るたびに、管理画面へ直接移動できるリンク付きの通知がメッセンジャーに届きます。"
+        }
+      ]
+    },
+    "audiences": {
+      "title": "グループイベントを主催するすべての方へ",
+      "subtitle": "決まった時間に人が集まり、定員があるなら、どんなイベントでもCountMeInが予約をすっきり管理します。",
+      "items": [
+        {
+          "title": "スポーツ・アクティビティ",
+          "examples": "グループトレーニング、ダンス、武道、ランニング・クライミングクラブ、SUP、スキー。"
+        },
+        {
+          "title": "ウェルネス・実践",
+          "examples": "瞑想、呼吸法、サウンドヒーリング、入浴セレモニー、リトリート、サポートグループ。"
+        },
+        {
+          "title": "学び・クリエイティブ",
+          "examples": "マスタークラス、講座、アート、陶芸、写真、料理、音楽、語学クラブ。"
+        },
+        {
+          "title": "エンタメ・コミュニティ",
+          "examples": "クイズ、人狼ゲーム、ボードゲーム、TRPG、読書会、交流会、子ども向けイベント、ミートアップ。"
+        },
+        {
+          "title": "ツアー・お出かけ",
+          "examples": "街歩き、食べ歩きツアー、ハイキング、キャンプ、ダイビング、釣り、ヨット、グルメツアー。"
+        },
+        {
+          "title": "動物",
+          "examples": "ドッグトレーナーとのグループセッション、犬の社会化・トレーニング、乗馬、ペット同伴イベント。"
+        },
+        {
+          "title": "美容・ビジネスサービス",
+          "examples": "グループ美容施術、メイクレッスン、相談会、コワーキング、マスターマインド。"
+        }
+      ]
+    },
+    "features": {
+      "title": "グループ予約の運営に必要な機能をひとつに",
+      "subtitle": "少人数クラス、イベント、ツアーのために設計されています。",
+      "items": [
+        {
+          "title": "定員を超えない予約管理",
+          "body": "開催枠ごとに定員を設定できます。予約枠は確実に確保されるため、満席のクラスで重複予約が起こることはありません。"
+        },
+        {
+          "title": "参加者のアカウント登録は不要",
+          "body": "参加者は名前の入力とメッセンジャーのログインボタンだけで予約できます。共有リンク1つですべて完結します。"
+        },
+        {
+          "title": "メッセンジャーで完結",
+          "body": "本人確認、予約確認、キャンセル用リンクは、参加者が普段使っているメッセンジャーに届きます。"
+        },
+        {
+          "title": "柔軟なオプション",
+          "body": "集合場所、追加メニュー、種類などをサービスごとに設定できます。単一選択にも複数選択にも対応します。"
+        },
+        {
+          "title": "カレンダーに追加",
+          "body": "参加者はワンタップで予約をGoogle Calendarに保存したり、.icsファイルをダウンロードしたりできます。"
+        },
+        {
+          "title": "かんたんキャンセル",
+          "body": "参加者は安全なリンクから予約を管理できます。キャンセルすると、その場で予約枠が解放されます。"
+        }
+      ]
+    },
+    "trust": {
+      "title": "煩雑な管理を、リンク1つに",
+      "subtitle": "CountMeInなら、グループを満席にするために主催者が寄せ集めていた複数のツールを1つにまとめられます。",
+      "pillars": [
+        {
+          "title": "DMでの往復連絡はもう不要",
+          "body": "「まだ空いていますか？」という問い合わせへの対応は不要です。リンクを開けば、空き状況がリアルタイムで分かります。"
+        },
+        {
+          "title": "表計算ソフトでの調整はもう不要",
+          "body": "定員、予約枠、キャンセルは自動で同期されるため、手作業で更新する必要はありません。"
+        },
+        {
+          "title": "うっかり定員超過もなし",
+          "body": "予約枠は確実に確保されるため、満席のクラスに定員を超えて予約が入ることはありません。"
+        }
+      ]
+    },
+    "faq": {
+      "title": "よくある質問",
+      "subtitle": "最初のサービスを公開する前に知っておきたいことをまとめました。",
+      "items": [
+        {
+          "q": "CountMeInは本当に無料ですか？",
+          "a": "はい。サービス開始間もない現在は完全無料です。アカウント作成、サービス公開、予約受付を費用なしで利用できます。将来的に少額の有料プランを導入する可能性はありますが、今なら無料で始められます。"
+        },
+        {
+          "q": "参加者はアプリのインストールやアカウント作成が必要ですか？",
+          "a": "いいえ。参加者はリンクを開き、日時を選び、名前とメッセンジャーログインで確認するだけです。別途アプリをダウンロードしたり、パスワードを覚えたりする必要はありません。"
+        },
+        {
+          "q": "CountMeInで決済もできますか？",
+          "a": "現時点では対応していません。参加者が料金を確認できるよう、サービスには価格をテキストで表示できますが、支払いはこれまでと同じ方法で受け取ってください。CountMeInは予約枠の確保に特化しています。"
+        },
+        {
+          "q": "主催者と参加者にはどのように通知されますか？",
+          "a": "予約確認、キャンセル用リンク、新規予約のお知らせは、主催者と参加者が普段使っているメッセンジャーに届きます。新しい予約が入るたびに、管理画面へのリンク付き通知が主催者に送られます。"
+        },
+        {
+          "q": "定員を超えて予約が入ることはありますか？",
+          "a": "ありません。各開催枠には定員が設定され、予約枠は確実に確保されます。満席になると、それ以上の予約は受け付けないため、重複予約は起こりません。"
+        },
+        {
+          "q": "参加者がキャンセルする場合はどうなりますか？",
+          "a": "参加者は安全なリンクから予約を管理できます。キャンセルすると、その場で予約枠が解放され、ほかの方が予約できるようになります。"
+        }
+      ]
+    },
+    "cta": {
+      "title": "次のイベントを満席にしませんか？",
+      "subtitle": "最初の予約ページを今日から公開しましょう。設定は数分で完了します。",
+      "getStarted": "無料で始める",
+      "exploreDemo": "登録不要のデモもお試しいただけます：",
+      "guestPage": "参加者向け予約ページ",
+      "cabinet": "主催者の管理画面"
+    },
+    "header": {
+      "howItWorks": "使い方",
+      "features": "機能",
+      "examples": "活用例",
+      "goToCabinet": "管理画面へ",
+      "logIn": "ログイン",
+      "getStarted": "始める",
+      "openMenu": "メニューを開く",
+      "navigation": "ナビゲーション"
+    },
+    "footer": {
+      "tagline": "— グループイベント向けオンライン予約",
+      "features": "機能",
+      "logIn": "ログイン",
+      "terms": "利用規約",
+      "privacy": "プライバシー",
+      "contact": "お問い合わせ",
+      "copyright": "© 2026 CountMeIn"
+    },
+    "ogDescription": "グループクラス、イベント、ツアー向けのシンプルなオンライン予約。"
+  },
+  "Legal": {
+    "lastUpdated": "最終更新日：{date}",
+    "terms": {
+      "metaTitle": "利用規約 — CountMeIn",
+      "metaDescription": "CountMeInの利用に適用される規約です。",
+      "title": "利用規約",
+      "updated": "2026年8月1日",
+      "intro": "本規約はCountMeInの利用に適用されます。プラットフォーム上で予約可能なサービスを公開する主催者およびそのサービスを予約する参加者とCountMeInとの間の合意内容を定めるものです。",
+      "usingHeading": "1. CountMeInの利用",
+      "usingBody": "CountMeInでは、主催者が開催日時と定員を設定したサービスを公開し、参加者はアカウントを作成せずに予約できます。公開するサービス、料金、空き状況の正確性については、主催者が責任を負います。",
+      "bookingsHeading": "2. 予約と定員",
+      "bookingsBody": "表示される料金は案内目的のテキストにすぎず、現バージョンのCountMeInでは決済を処理しません。定員は開催枠ごとに適用され、満席になった開催枠では、それ以上の予約を受け付けません。",
+      "guestDataHeading": "3. 参加者のデータ",
+      "guestDataBody": "参加者は表示名を入力し、メッセンジャーアカウントで認証して予約します。主催者は、参加者情報を責任を持って取り扱い、予約されたサービスの提供目的にのみ使用することに同意するものとします。",
+      "cancellationsHeading": "4. キャンセル",
+      "cancellationsBody": "参加者は安全な予約管理リンクからキャンセルできます。キャンセルすると、確保されていた枠は直ちにその開催枠へ戻されます。",
+      "changesHeading": "5. 変更",
+      "changesBody": "当社は、製品の進化に伴い本規約を更新する場合があります。変更の発効後も利用を継続した場合、改定後の規約に同意したものとみなされます。"
+    },
+    "privacy": {
+      "metaTitle": "プライバシーポリシー — CountMeIn",
+      "metaDescription": "CountMeInにおける主催者および参加者のデータの取り扱いについて。",
+      "title": "プライバシーポリシー",
+      "updated": "2026年8月7日",
+      "intro": "本プライバシーポリシーでは、CountMeInが収集するデータとその利用方法について説明します。",
+      "collectHeading": "収集するデータ",
+      "collectBody": "主催者については、氏名、メッセンジャーアカウント、タイムゾーン、公開したサービスと開催枠を収集します。参加者については、予約の確認と管理に使用する表示名とメッセンジャーアカウントを収集します。",
+      "useHeading": "データの利用方法",
+      "useBody": "メッセンジャーアカウントは予約時にMessenger Login Widgetを通じて確認され、ワンタイムコードやパスワードは収集しません。メッセンジャーアカウントは、予約確認やキャンセル用リンクの送信に使用します。当社は個人データを販売しません。",
+      "analyticsHeading": "アクセス解析とエラー監視",
+      "analyticsBody": "製品の利用状況分析（ページ閲覧、機能の利用状況）にはPostHogを、エラー監視（クラッシュレポート、パフォーマンストレース）にはSentryを使用します。PostHogのセッション録画ではすべての入力欄がマスクされるため、入力した個人データが録画に表示されることはありません。ログイン中の主催者は、操作をまとめて分析できるよう内部IDで識別されますが、参加者はアクセス解析上で識別されません。いずれのサービスにもメッセンジャーの認証情報は送信されません。",
+      "analyticsCookies": "アクセス解析Cookieは初期状態では無効で、Cookieバナーで同意した場合にのみ読み込まれます。拒否した場合や選択しなかった場合、PostHogは初期化されず、アクセス解析Cookieも設定されません。ログインと予約に必要なCookieは常に有効で、同意を必要としません。Sentryによるエラー監視はCookieを使用せずに動作します。ブラウザでこのサイトのデータを削除すれば、いつでも選択を変更できます。",
+      "retentionHeading": "保存期間",
+      "retentionBody": "主催者が履歴を確認できるよう、予約記録を保存します。参加者は予約管理リンクからいつでも予約をキャンセルできます。",
+      "contactHeading": "お問い合わせ",
+      "contactBody": "プライバシーに関するご質問は、予約先の主催者またはCountMeInチームまでお問い合わせください。"
+    }
+  },
+  "Auth": {
+    "login": {
+      "welcomeBack": "おかえりなさい",
+      "description": "Telegramアカウントでログインしてください。",
+      "newHere": "CountMeInは初めてですか？",
+      "createAccount": "アカウントを作成",
+      "noAccountFound": "アカウントが見つかりません。先にアカウントを作成してください。",
+      "sameAccount": "登録時と同じTelegramアカウントを使用してください。",
+      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。"
+    },
+    "signup": {
+      "title": "アカウントを作成",
+      "description": "2つの簡単なステップで主催者プロフィールを設定します。",
+      "alreadyHave": "すでにアカウントをお持ちですか？",
+      "logIn": "ログイン",
+      "stepTelegram": "Telegram",
+      "stepProfile": "プロフィール",
+      "accountExists": "アカウントはすでに存在します。ログインしています…",
+      "authenticate": "続行するにはTelegramで認証してください。",
+      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。",
+      "displayName": "表示名",
+      "namePlaceholder": "Studio Demo",
+      "publicHandle": "公開用ID",
+      "slugPlaceholder": "studio-demo",
+      "slugHint": "参加者に共有するリンクです。",
+      "timezone": "タイムゾーン",
+      "selectTimezone": "タイムゾーンを選択",
+      "timezoneHint": "すべての開催日時がこのタイムゾーンで表示されます。",
+      "creating": "アカウントを作成しています…",
+      "continue": "次へ",
+      "signInFailed": "ログインできませんでした。もう一度Telegramで認証してください",
+      "createFailed": "アカウントを作成できませんでした"
+    },
+    "loginLink": {
+      "opening": "管理画面を開いています。少々お待ちください。",
+      "continue": "管理画面へ進む"
+    }
+  },
+  "NotFound": {
+    "title": "ページが見つかりません",
+    "description": "お探しのページが見つかりませんでした。移動されたか、リンクが無効になっている可能性があります。",
+    "backHome": "ホームに戻る",
+    "findMyBooking": "予約を確認"
+  },
+  "GlobalError": {
+    "title": "問題が発生しました",
+    "description": "予期しないエラーが発生しました。しばらくしてからもう一度お試しください。",
+    "tryAgain": "もう一度試す",
+    "backHome": "ホームに戻る"
+  },
+  "CookieConsent": {
+    "ariaLabel": "Cookieの同意",
+    "text": "CountMeInの利用状況を把握し改善するため、アクセス解析Cookieを使用します。",
+    "essential": "ログインと予約に必要なCookieは常に有効です。",
+    "privacyPolicy": "プライバシーポリシー",
+    "reject": "拒否",
+    "accept": "同意"
+  },
+  "Ui": {
+    "close": "閉じる",
+    "navigation": "ナビゲーション",
+    "loading": "読み込み中",
+    "more": "その他",
+    "sidebar": "サイドバー",
+    "sidebarDescription": "モバイル用サイドバーを表示します。",
+    "toggleSidebar": "サイドバーを切り替え",
+    "wrongImageType": "JPEG、PNG、WebP形式の画像を使用してください",
+    "imageTooLarge": "画像サイズは{size}未満にしてください",
+    "breadcrumb": "パンくずリスト",
+    "compressFailed": "画像を十分に圧縮できませんでした。別の画像をお試しください",
+    "uploadFailed": "アップロードに失敗しました。もう一度お試しください"
+  },
+  "Cabinet": {
+    "crumbs": {
+      "cabinet": "管理画面",
+      "overview": "概要",
+      "services": "サービス",
+      "slots": "開催枠",
+      "calendar": "カレンダー",
+      "bookings": "予約",
+      "analytics": "分析",
+      "settings": "設定",
+      "new": "新規"
+    },
+    "common": {
+      "deletedService": "削除済みのサービス",
+      "session": "開催回",
+      "seats": "{count, plural, =1 {#名} other {#名}}",
+      "min": "{minutes}分",
+      "left": "残り{count}枠",
+      "confirmed": "予約確定",
+      "cancelled": "キャンセル済み",
+      "viewAll": "すべて表示",
+      "open": "受付中",
+      "preview": "プレビュー",
+      "edit": "編集",
+      "view": "表示",
+      "cancel": "キャンセル",
+      "saving": "保存しています...",
+      "close": "閉じる",
+      "full": "満席"
+    },
+    "sidebar": {
+      "subtitle": "主催者",
+      "manage": "管理",
+      "public": "公開ページ",
+      "viewPublicPage": "公開ページを表示",
+      "support": "サポート",
+      "contact": "お問い合わせ",
+      "language": "言語",
+      "demoNote": "デモ管理画面を表示しています。",
+      "signUp": "アカウント作成",
+      "logIn": "ログイン",
+      "myAccount": "マイアカウント",
+      "profile": "プロフィール",
+      "logOut": "ログアウト",
+      "nav": {
+        "overview": "概要",
+        "services": "サービス",
+        "slots": "開催枠",
+        "calendar": "カレンダー",
+        "bookings": "予約",
+        "analytics": "分析",
+        "settings": "設定"
+      }
+    },
+    "overview": {
+      "welcomeBack": "おかえりなさい、{name}さん",
+      "welcomeFallback": "おかえりなさい",
+      "subtitle": "予約全体の最新状況を確認できます。",
+      "newService": "新しいサービス",
+      "statConfirmed": "確定予約数",
+      "statSeats": "予約人数",
+      "statSlots": "今後の開催枠",
+      "statFillRate": "予約率",
+      "last7Days": "過去7日間で{count}件",
+      "next7Days": "今後7日間で{count}件",
+      "acrossUpcoming": "今後の開催枠全体",
+      "noUpcomingCapacity": "今後の定員はまだ設定されていません",
+      "seatsTaken": "定員{offered}名中{booked}名が予約済み",
+      "upcomingSlots": "今後の開催枠",
+      "nextSessions": "次回以降の開催予定です。",
+      "createServiceFirst": "サービスを作成してから、最初の開催日時を設定してください。",
+      "nothingScheduled": "予定はまだありません。開催枠を追加して予約受付を開始しましょう。",
+      "recentBookings": "最近の予約",
+      "slotBookings": "開催枠の予約",
+      "latestActivity": "最新の予約状況です。",
+      "sessionReservations": "選択した回の予約一覧です。",
+      "noBookingsForSession": "この回にはまだ予約がありません。",
+      "bookingsAppear": "参加者が予約すると、すぐにここへ表示されます。",
+      "yourPublicPage": "公開ページ",
+      "shareLink": "このリンクを共有すると、参加者がサービスを見て予約できます。"
+    },
+    "dayFilter": {
+      "anyDay": "すべての日",
+      "showEveryDay": "すべての日を表示",
+      "changeDay": "{day}で絞り込み中。日付を変更",
+      "filterByDay": "{entity}を日付で絞り込む",
+      "showEveryBooking": "すべての予約を表示",
+      "showEveryService": "すべてのサービスを表示",
+      "showEverySlot": "すべての開催枠を表示"
+    },
+    "demoBanner": {
+      "readOnly": "閲覧専用デモです。",
+      "text": "これはサンプルデータです。編集は無効で、変更は保存されません。",
+      "createOwn": "自分のページを作成"
+    },
+    "booking": {
+      "details": "予約詳細",
+      "service": "サービス",
+      "when": "日時",
+      "seats": "予約人数",
+      "options": "オプション",
+      "cancelBooking": "予約をキャンセル",
+      "cancelling": "キャンセルしています…",
+      "cancelTitle": "この予約をキャンセルしますか？",
+      "cancelDescriptionBoth": "{name}さんが{when}の「{service}」で予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionService": "{name}さんが「{service}」で予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionWhen": "{name}さんが{when}に予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionPlain": "{name}さんが予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "keepBooking": "予約を維持",
+      "yesCancel": "キャンセルする",
+      "cancelledToast": "予約をキャンセルしました",
+      "releasedToast": "{name}さんの予約枠を解放しました。",
+      "cancelFailed": "予約をキャンセルできませんでした"
+    },
+    "slots": {
+      "title": "開催枠",
+      "subtitle": "各回の日程と定員を管理できます。",
+      "sessionsFor": "{service}の開催回。",
+      "noServicesYet": "サービスはまだありません",
+      "noServicesDescription": "開催枠はサービスに紐づきます。先にサービスを作成してから、開催日時を設定してください。",
+      "upcoming": "今後（{count}）",
+      "past": "過去（{count}）",
+      "addSlot": "開催枠を追加",
+      "pastSessions": "過去の開催回",
+      "upcomingSchedule": "今後の予定",
+      "nothingRun": "終了した回はまだありません。",
+      "noUpcomingSessions": "今後の開催予定はありません。",
+      "upcomingCount": "今後の開催枠：{count, plural, =1 {#件} other {#件}}",
+      "pastCount": "過去の開催枠：{count, plural, =1 {#件} other {#件}}",
+      "forServiceSuffix": "（{service}）",
+      "nothingOnDay": "この日の予定はありません",
+      "noPastSessions": "過去の開催回はありません",
+      "nothingScheduled": "予定はありません",
+      "noUpcomingOnDay": "{day}に今後の開催予定はありません",
+      "noPastOnDay": "{day}に過去の開催回はありません",
+      "sessionsMove": "開始時刻を過ぎた回はこちらに移動します。",
+      "noUpcomingFor": "{service}には今後の開催予定がまだありません。",
+      "addHint": "開催日時を追加すると、参加者が予約できるようになります。",
+      "colService": "サービス",
+      "colDateTime": "日時",
+      "colCapacity": "定員",
+      "colPrice": "料金",
+      "colStatus": "ステータス",
+      "open": "受付中",
+      "fillingUp": "残りわずか",
+      "full": "満席",
+      "left": "残り{count}枠",
+      "slotActions": "開催枠の操作",
+      "editSlot": "開催枠を編集",
+      "viewBookings": "予約を表示",
+      "duplicate": "複製",
+      "cancelSlot": "開催枠をキャンセル",
+      "cancelTitle": "この開催枠をキャンセルしますか？",
+      "cancelDescriptionWithBookings": "この回には{count, plural, =1 {#名分} other {#名分}}の予約があります。キャンセルすると、開催枠と紐づくすべての予約が削除されます。この操作は取り消せません。",
+      "cancelDescriptionPlain": "開催枠が削除され、参加者には表示されなくなります。この操作は取り消せません。",
+      "keepSlot": "開催枠を維持",
+      "cancellingDialog": "キャンセルしています...",
+      "cancelledToast": "開催枠をキャンセルしました",
+      "cancelFailed": "開催枠をキャンセルできませんでした",
+      "dialogCreateTitle": "開催枠を追加",
+      "dialogCreateDescription": "新しい開催日時を設定します。初期値にはサービスの設定が使用されます。",
+      "dialogEditTitle": "開催枠を編集",
+      "dialogEditDescription": "開催日時と定員を変更します。",
+      "dialogDuplicateTitle": "開催枠を複製",
+      "dialogDuplicateDescription": "同じ内容で別の日付に複製します。保存前に必要な項目を調整してください。",
+      "saveChanges": "変更を保存",
+      "fieldService": "サービス",
+      "selectService": "サービスを選択",
+      "fieldDate": "日付",
+      "fieldTime": "開始時刻",
+      "fieldDuration": "所要時間",
+      "fieldCapacity": "定員",
+      "fieldPrice": "料金",
+      "pricePlaceholder": "$12",
+      "priceDescription": "空欄の場合はサービスの初期値を使用します。",
+      "addedToast": "開催枠を追加しました",
+      "updatedToast": "開催枠を更新しました",
+      "addFailed": "開催枠を追加できませんでした",
+      "updateFailed": "開催枠を更新できませんでした"
+    },
+    "services": {
+      "title": "サービス",
+      "subtitle": "参加者が予約できるプログラムを管理します。",
+      "newService": "新しいサービス",
+      "newTitle": "新しいサービス",
+      "newSubtitle": "参加者が予約できるプログラムを作成します。",
+      "noServicesYet": "サービスはまだありません",
+      "noServicesDescription": "最初のサービスを作成して、参加者が予約できるようにしましょう。",
+      "countBookings": "{count, plural, =1 {予約#件} other {予約#件}}",
+      "details": "詳細",
+      "detailsDescription": "参加者に表示される基本情報です。",
+      "fieldTitle": "タイトル",
+      "titlePlaceholder": "例：朝のヴィンヤサフロー",
+      "fieldDescription": "説明",
+      "descriptionPlaceholder": "参加者向けに内容を説明してください...",
+      "descriptionHint": "サービスページに表示されます。Markdownには対応していません。",
+      "fieldLocation": "場所",
+      "locationPlaceholder": "例：東京都渋谷区神南1-2-3",
+      "locationHint": "設定すると、プロフィールの場所より優先されます。",
+      "fieldContact": "連絡先",
+      "contactPlaceholder": "例：電話番号、メールアドレス、SNSリンク",
+      "contactHint": "設定すると、プロフィールの連絡先より優先されます。",
+      "defaults": "初期値",
+      "defaultsDescription": "新しい開催枠に適用されます。開催枠ごとに変更できます。",
+      "fieldPrice": "料金",
+      "fieldCapacity": "定員",
+      "fieldDuration": "所要時間（分）",
+      "groupBookings": "複数名での予約",
+      "groupBookingsDescription": "1人の参加者が1回の予約で申し込める人数です。",
+      "fieldMaxSeats": "1回の予約の上限人数",
+      "maxSeatsHint": "1名ずつの予約のみ受け付ける場合は1に設定します。大きい数にすると参加者が同伴者の分も予約できますが、一度に申し込めるのはこの人数までです。1人が開催枠をすべて押さえるのを防げます。",
+      "optionsTitle": "予約オプション",
+      "optionsDescription": "予約時に参加者が選べる追加メニューや選択肢です。",
+      "addOption": "オプションを追加",
+      "optionPlaceholder": "例：川沿いのスタジオ",
+      "add": "追加",
+      "removeOption": "{option}を削除",
+      "selectionMode": "選択方式",
+      "singleChoice": "単一選択（1つ選択）",
+      "multipleChoice": "複数選択（いくつでも選択可）",
+      "publish": "公開",
+      "publishDescription": "このサービスへの変更を保存します。",
+      "saveChanges": "変更を保存",
+      "createService": "サービスを作成",
+      "deleteService": "サービスを削除",
+      "deleting": "削除しています...",
+      "deleteTitle": "このサービスを削除しますか？",
+      "deleteDescription": "「{title}」と、そのすべての開催枠および予約が削除されます。この操作は取り消せません。",
+      "keepService": "サービスを維持",
+      "delete": "削除",
+      "coverPhoto": "カバー画像",
+      "coverHint": "公開ページに表示されます。",
+      "uploading": "アップロードしています...",
+      "replaceImage": "画像を変更",
+      "uploadImage": "画像をアップロード",
+      "removeImage": "画像を削除",
+      "photoReady": "画像の準備ができました。保存すると反映されます",
+      "serviceCover": "サービスのカバー画像",
+      "createdToast": "サービスを作成しました",
+      "updatedToast": "サービスを更新しました",
+      "deletedToast": "サービスを削除しました",
+      "createFailed": "サービスを作成できませんでした",
+      "updateFailed": "サービスを更新できませんでした",
+      "deleteFailed": "サービスを削除できませんでした",
+      "notFound": "サービスが見つかりません",
+      "backToList": "サービス一覧に戻る",
+      "pricePlaceholder": "$12",
+      "editSubtitle": "サービスの詳細とオプションを編集します。"
+    },
+    "settings": {
+      "title": "設定",
+      "profile": "プロフィール",
+      "profileDescription": "参加者に表示される情報です。",
+      "uploading": "アップロードしています...",
+      "changePhoto": "写真を変更",
+      "photoUpdated": "写真を更新しました",
+      "displayName": "表示名",
+      "publicPageUrl": "公開ページのURL",
+      "edit": "編集",
+      "copy": "コピー",
+      "linkCopied": "リンクをコピーしました",
+      "slugFixed": "デモページのURLは変更できません。",
+      "slugEditable": "公開予約ページのURLです。変更するには「編集」を押してください（古いリンクは無効になります）。",
+      "slugWarning": "注意：変更すると、参加者に共有済みのリンクが無効になります。",
+      "bio": "紹介文",
+      "bioHint": "公開ページの上部に表示されます。Markdownを使用できます。",
+      "contact": "連絡先",
+      "contactPlaceholder": "例：090-1234-5678、studio@example.com",
+      "contactHint": "公開ページで参加者に表示されます。電話番号、メールアドレス、SNSリンクなど。",
+      "timezone": "タイムゾーン",
+      "location": "場所",
+      "locationPlaceholder": "例：東京都渋谷区",
+      "locationHint": "任意。公開ページに表示され、サービスごとに上書きできます。",
+      "saveChanges": "変更を保存",
+      "noChanges": "保存する変更はありません",
+      "updatedToast": "プロフィールを更新しました",
+      "updateFailed": "プロフィールを更新できませんでした",
+      "loadFailed": "プロフィールを読み込めませんでした。ページを再読み込みして、もう一度お試しください。"
+    },
+    "bookings": {
+      "title": "予約",
+      "subtitle": "すべてのサービスの予約をまとめて確認できます。",
+      "reservationsFor": "{label}の予約一覧。",
+      "all": "すべて",
+      "confirmed": "予約確定",
+      "cancelled": "キャンセル済み",
+      "colGuest": "参加者",
+      "colService": "サービス",
+      "colWhen": "日時",
+      "colSeats": "予約人数",
+      "colStatus": "ステータス",
+      "searchPlaceholder": "参加者またはサービスを検索",
+      "noBookingsFound": "予約が見つかりません",
+      "noBookingsForSlot": "{label}にはまだ予約がありません。",
+      "noBookingsForService": "{service}にはまだ予約がありません。",
+      "bookingsAppear": "参加者が予約すると、すぐにここへ表示されます。",
+      "noBookingsOnDay": "{day}に予約はありません",
+      "forServiceSuffix": "（{service}）",
+      "tryFilters": "絞り込み条件または検索語を変更してみてください。"
+    },
+    "analytics": {
+      "title": "分析",
+      "subtitle": "予約の推移を確認できます。",
+      "totalBookings": "予約総数",
+      "seatsSold": "予約人数",
+      "avgFillRate": "平均予約率",
+      "cancellations": "キャンセル数",
+      "confirmedLast30": "過去30日間に確定",
+      "bookingsInWindow": "期間内の予約：{count, plural, =1 {#件} other {#件}}",
+      "bookingsThisWeek": "今週の予約",
+      "bookingsThisWeekHint": "日ごとの確定予約数と予約人数です。",
+      "noBookingsYet": "予約はまだありません。参加者が予約すると、すぐにここへ表示されます。",
+      "byService": "サービス別",
+      "byServiceHint": "過去30日間の確定予約です。",
+      "noBookings30": "過去30日間に予約はありません。",
+      "trendAria": "過去7日間の日ごとの確定予約数と予約人数",
+      "serviceAria": "過去30日間のサービスごとの確定予約数",
+      "upcomingSlotsCount": "{count, plural, =1 {今後の開催枠#件} other {今後の開催枠#件}}",
+      "bookingsLabel": "予約",
+      "seatsLabel": "予約人数"
+    },
+    "calendar": {
+      "title": "カレンダー",
+      "subtitle": "今週の予定を一覧で確認できます。各回は開始時刻と所要時間に合わせて表示されます。",
+      "today": "今日",
+      "previousWeek": "前の週",
+      "nextWeek": "次の週",
+      "jumpToDate": "日付を選択",
+      "jumpToWeek": "週を選択",
+      "open": "受付中",
+      "fillingUp": "残りわずか",
+      "full": "満席",
+      "left": "残り{count}枠"
+    }
+  },
+  "ApiErrors": {
+    "invalidInput": "入力内容が正しくありません",
+    "invalidOptions": "選択したオプションはこのサービスでは利用できません",
+    "ticketExpired": "Telegramでの確認が期限切れです。もう一度認証してください",
+    "telegramNotConfigured": "Telegramボットが設定されていません",
+    "telegramInvalid": "Telegramの認証データが無効です",
+    "telegramValidationFailed": "Telegramの認証データを検証できませんでした",
+    "authSessionExpired": "認証セッションが期限切れです。もう一度Telegramで認証してください",
+    "organizerNotFound": "主催者が見つかりません",
+    "demoNotSeeded": "デモ主催者のデータが登録されていません",
+    "serviceNotFound": "サービスが見つかりません",
+    "slotNotFound": "開催枠が見つかりません",
+    "bookingNotFound": "予約が見つかりません",
+    "photoPrefix": "photoUrlが無効です。ご自身のメディア領域にある画像を指定してください",
+    "cannotCreateService": "サービスを作成できませんでした",
+    "slugTaken": "この公開用IDはすでに使用されています。別のものを選んでください",
+    "accountExists": "このTelegramアカウントではすでに登録されています。ログインしてください",
+    "nothingToUpdate": "更新する項目がありません",
+    "capacityBelowBooked": "定員を予約済みの{count, plural, =1 {#名} other {#名}}より少なくすることはできません",
+    "demoReadOnly": "これは閲覧専用のデモアカウントです。アカウントを作成すると、ご自身の予約可能なサービスを公開できます。",
+    "soldOut": "この回は満席です",
+    "seatsLeftOnSession": "この回の空きは{count, plural, =1 {残り#枠} other {残り#枠}}です",
+    "partyTooLarge": "1回の予約で申し込めるのは最大{maxSeats, plural, =1 {#名} other {#名}}です",
+    "duplicateBooking": "この回はすでに予約済みです",
+    "alreadyCancelled": "この予約はすでにキャンセルされています",
+    "slotGone": "この回は現在予約できません"
+  }
+}
