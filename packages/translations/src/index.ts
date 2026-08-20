@@ -4,11 +4,13 @@ import { DEFAULT_LOCALE } from '@repo/contracts'
 import messagesDe from '../messages/de.json'
 import messagesEn from '../messages/en.json'
 import messagesEs from '../messages/es.json'
+import messagesFr from '../messages/fr.json'
 import messagesJa from '../messages/ja.json'
 import messagesRu from '../messages/ru.json'
 import notificationsDe from '../notifications/de.json'
 import notificationsEn from '../notifications/en.json'
 import notificationsEs from '../notifications/es.json'
+import notificationsFr from '../notifications/fr.json'
 import notificationsJa from '../notifications/ja.json'
 import notificationsRu from '../notifications/ru.json'
 
@@ -43,6 +45,7 @@ export const WEB_MESSAGES = {
   es: messagesEs,
   de: messagesDe,
   ja: messagesJa,
+  fr: messagesFr,
 } as const satisfies Record<AppLocale, unknown>
 
 export const NOTIFICATION_MESSAGES = {
@@ -51,6 +54,7 @@ export const NOTIFICATION_MESSAGES = {
   es: notificationsEs,
   de: notificationsDe,
   ja: notificationsJa,
+  fr: notificationsFr,
 } as const satisfies Record<AppLocale, unknown>
 
 /** The web UI message shape shared by every locale; English keys are the source of truth. */

@@ -130,7 +130,7 @@ describe('notificationLocale', () => {
   it('falls back to English for unknown stored values', () => {
     const badView = {
       ...view,
-      organizer: { ...organizer, language: 'fr' } as Organizer,
+      organizer: { ...organizer, language: 'pt' } as Organizer,
       booking: { ...booking, guestLocale: 'it' } as Booking,
     }
     expect(notificationLocale('organizer', badView)).toBe(DEFAULT_LOCALE)
@@ -235,6 +235,18 @@ describe('bookingCreatedForOrganizer', () => {
     expect(many.text).toContain('2名')
     expect(many.button?.text).toBe('管理画面で開く')
   })
+
+  it('renders the French copy with correct plural forms', () => {
+    const frView = { ...view, organizer: { ...organizer, language: 'fr' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...frView, booking: { ...booking, seats: 1 } }, 'u', 'fr')
+    expect(one.text).toContain('Nouvelle réservation')
+    expect(one.text).toContain('1 place')
+
+    const many = bookingCreatedForOrganizer({ ...frView, booking: { ...booking, seats: 2 } }, 'u', 'fr')
+    expect(many.text).toContain('2 places')
+    expect(many.button?.text).toBe('Ouvrir dans mon espace')
+  })
 })
 
 // ── bookingCreatedForGuest ────────────────────────────────────────────────────
@@ -309,6 +321,18 @@ describe('bookingCreatedForGuest', () => {
     expect(msg.text).toContain('ロータススタジオ')
     expect(msg.button?.text).toBe('予約を管理')
   })
+
+  it('renders French with the guest locale', () => {
+    const frView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'fr' } as Booking,
+      organizer: { ...organizer, name: 'Studio Lotus' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(frView, 'https://app/booking/token', 'fr')
+    expect(msg.text).toContain('Réservation confirmée')
+    expect(msg.text).toContain('Studio Lotus')
+    expect(msg.button?.text).toBe('Gérer ma réservation')
+  })
 })
 
 // ── bookingCancelledForOrganizer ─────────────────────────────────────────────
@@ -359,6 +383,14 @@ describe('bookingCancelledForOrganizer', () => {
     expect(msg.text).toContain('8枠')
     expect(msg.button?.text).toBe('管理画面で開く')
   })
+
+  it('renders French', () => {
+    const frView = { ...view, organizer: { ...organizer, language: 'fr' } as Organizer }
+    const msg = bookingCancelledForOrganizer(frView, 'https://app/cabinet', 'fr')
+    expect(msg.text).toContain('Réservation annulée')
+    expect(msg.text).toContain('8 places')
+    expect(msg.button?.text).toBe('Ouvrir dans mon espace')
+  })
 })
 
 // ── bookingCancelledForGuest ──────────────────────────────────────────────────
@@ -399,6 +431,13 @@ describe('bookingCancelledForGuest', () => {
     expect(msg.text).toContain('予約がキャンセルされました')
     expect(msg.text).toContain('Yoga Studioによるキャンセル')
     expect(msg.button?.text).toBe('別の回を見る')
+  })
+
+  it('renders French', () => {
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'fr')
+    expect(msg.text).toContain('Ta réservation a été annulée')
+    expect(msg.text).toContain('par Yoga Studio')
+    expect(msg.button?.text).toBe('Voir les autres séances')
   })
 })
 
