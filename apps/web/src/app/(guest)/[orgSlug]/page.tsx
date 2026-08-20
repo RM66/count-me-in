@@ -2,6 +2,7 @@ import { seatsLeft } from '@repo/contracts'
 import { MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { ContactLink } from '@/components/contact-link'
@@ -25,21 +26,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { orgSlug } = await params
   const organizer = await getPublicOrganizerBySlug(orgSlug)
+  const t = await getTranslations('OrgPage')
 
   if (!organizer) {
     // The page itself answers `404`; the metadata only has to avoid claiming a
     // name it does not have.
-    return { title: 'Page not found' }
+    return { title: t('pageNotFound') }
   }
 
   return {
-    title: `${organizer.name} — book online`,
+    title: t('metaTitle', { name: organizer.name }),
     description: organizer.description ?? undefined,
   }
 }
 
 export default async function OrganizerPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params
+  const t = await getTranslations('OrgPage')
+  const locale = await getLocale()
 
   // The slug is the only identifier a guest has, so it is resolved first — every
   // read below is scoped to the organizer it returns.
@@ -112,13 +116,13 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
 
       <div className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-medium">Services</h2>
-          <span className="text-sm text-muted-foreground">{bookableCount} available</span>
+          <h2 className="text-lg font-medium">{t('services')}</h2>
+          <span className="text-sm text-muted-foreground">
+            {t('available', { count: bookableCount })}
+          </span>
         </div>
         {services.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nothing to book just yet — check back soon.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('nothingToBook')}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {services.map((service) => (
@@ -128,6 +132,7 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
                 service={service}
                 slots={slotsByService.get(service.id) ?? []}
                 timezone={organizer.timezone}
+                locale={locale}
               />
             ))}
           </div>

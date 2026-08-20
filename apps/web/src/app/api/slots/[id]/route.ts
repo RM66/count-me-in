@@ -1,5 +1,6 @@
 import { updateTimeSlotInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import {
   deleteOwnedSlot,
@@ -21,12 +22,13 @@ type RouteContext = { params: Promise<{ id: string }> }
  * foreign id exists.
  */
 export async function GET(_request: Request, { params }: RouteContext) {
+  const t = await getTranslations('ApiErrors')
   const { id } = await params
   const { organizerId } = await resolveCabinetOrganizerId()
 
   const slot = await getOwnedSlot(organizerId, id)
   if (!slot) {
-    return NextResponse.json({ error: 'Slot not found' }, { status: 404 })
+    return NextResponse.json({ error: t('slotNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({ slot })
@@ -40,6 +42,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
  * `capacity` below the seats already sold answers `409`.
  */
 export async function PUT(request: Request, { params }: RouteContext) {
+  const t = await getTranslations('ApiErrors')
   const { id } = await params
 
   const guard = await requireWritableOrganizer()
@@ -53,17 +56,17 @@ export async function PUT(request: Request, { params }: RouteContext) {
     const slot = await updateOwnedSlot(organizerId, id, parsed.value)
 
     if (!slot) {
-      return NextResponse.json({ error: 'Slot not found' }, { status: 404 })
+      return NextResponse.json({ error: t('slotNotFound') }, { status: 404 })
     }
 
     return NextResponse.json({ slot })
   } catch (error) {
     if (error instanceof NoSlotUpdatesError) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: t('nothingToUpdate') }, { status: 400 })
     }
     // `409` — the payload is well-formed, it conflicts with current state.
     if (error instanceof SlotCapacityBelowBookedError) {
-      return NextResponse.json({ error: error.message }, { status: 409 })
+      return NextResponse.json({ error: t('capacityBelowBooked', { count: error.bookedCount }) }, { status: 409 })
     }
     throw error
   }
@@ -76,6 +79,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
  * reservations guests hold on the slot.
  */
 export async function DELETE(_request: Request, { params }: RouteContext) {
+  const t = await getTranslations('ApiErrors')
   const { id } = await params
 
   const guard = await requireWritableOrganizer()
@@ -85,7 +89,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   const deletedId = await deleteOwnedSlot(organizerId, id)
 
   if (!deletedId) {
-    return NextResponse.json({ error: 'Slot not found' }, { status: 404 })
+    return NextResponse.json({ error: t('slotNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({ id: deletedId })

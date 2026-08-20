@@ -3,6 +3,7 @@
 import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { XIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 
 import { useCancelBookingByOrganizer } from '@/api-client'
@@ -76,12 +77,15 @@ export function BookingDetailsSheet({
 }: BookingDetailsSheetProps) {
   const router = useRouter()
   const cancelBooking = useCancelBookingByOrganizer()
+  const t = useTranslations('Cabinet.booking')
+  const tc = useTranslations('Cabinet.common')
+  const locale = useLocale()
 
   async function handleCancel(target: BookingRecord) {
     try {
       await cancelBooking.mutateAsync(target.id)
-      toast.success('Booking cancelled', {
-        description: `${target.guestName}'s seats have been released.`,
+      toast.success(t('cancelledToast'), {
+        description: t('releasedToast', { name: target.guestName }),
       })
       // The panel closes before the refresh lands: the callers hold the selected
       // booking in state, so the copy behind this sheet still says `confirmed`
@@ -91,15 +95,27 @@ export function BookingDetailsSheet({
       // repaints the released seat in the lists and slot counts.
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not cancel the booking')
+      toast.error(error instanceof Error ? error.message : t('cancelFailed'))
     }
   }
+
+  const when = slot ? formatDateTime(slot.startsAt, timezone, locale) : undefined
+
+  const cancelDescription = booking
+    ? service && when
+      ? t('cancelDescriptionBoth', { name: booking.guestName, seats: booking.seats, service: service.title, when })
+      : service
+        ? t('cancelDescriptionService', { name: booking.guestName, seats: booking.seats, service: service.title })
+        : when
+          ? t('cancelDescriptionWhen', { name: booking.guestName, seats: booking.seats, when })
+          : t('cancelDescriptionPlain', { name: booking.guestName, seats: booking.seats })
+    : undefined
 
   return (
     <Sheet open={Boolean(booking)} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col">
         <SheetHeader>
-          <SheetTitle>Booking details</SheetTitle>
+          <SheetTitle>{t('details')}</SheetTitle>
         </SheetHeader>
         {booking && (
           <div className="flex flex-1 flex-col gap-5 overflow-auto px-4">
@@ -114,7 +130,7 @@ export function BookingDetailsSheet({
                 className="ml-auto"
                 variant={booking.status === 'confirmed' ? 'default' : 'secondary'}
               >
-                {booking.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
+                {booking.status === 'confirmed' ? tc('confirmed') : tc('cancelled')}
               </Badge>
             </div>
 
@@ -122,17 +138,15 @@ export function BookingDetailsSheet({
 
             <dl className="grid grid-cols-1 gap-3 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Service</dt>
+                <dt className="text-muted-foreground">{t('service')}</dt>
                 <dd className="text-right font-medium">{service?.title}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">When</dt>
-                <dd className="text-right font-medium">
-                  {slot ? formatDateTime(slot.startsAt, timezone) : '—'}
-                </dd>
+                <dt className="text-muted-foreground">{t('when')}</dt>
+                <dd className="text-right font-medium">{when ?? '—'}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Seats</dt>
+                <dt className="text-muted-foreground">{t('seats')}</dt>
                 <dd className="text-right font-medium">{booking.seats}</dd>
               </div>
               {booking.guestMessengerLogin && (
@@ -155,7 +169,7 @@ export function BookingDetailsSheet({
               )}
               {booking.selectedOptions && booking.selectedOptions.length > 0 && (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Options</dt>
+                  <dt className="text-muted-foreground">{t('options')}</dt>
                   <dd className="flex flex-wrap justify-end gap-1">
                     {booking.selectedOptions.map((o) => (
                       <Badge key={o} variant="outline">
@@ -180,31 +194,25 @@ export function BookingDetailsSheet({
                   disabled={isReadOnly || cancelBooking.isPending}
                 >
                   <XIcon data-icon="inline-start" />
-                  {cancelBooking.isPending ? 'Cancelling…' : 'Cancel booking'}
+                  {cancelBooking.isPending ? t('cancelling') : t('cancelBooking')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {booking.guestName}&apos;s {booking.seats}{' '}
-                    {booking.seats > 1 ? 'seats ' : 'seat '}
-                    {service ? `for ${service.title} ` : ''}
-                    {slot ? `on ${formatDateTime(slot.startsAt, timezone)} ` : ''}
-                    will be released and offered to other guests. This can&apos;t be undone.
-                  </AlertDialogDescription>
+                  <AlertDialogTitle>{t('cancelTitle')}</AlertDialogTitle>
+                  <AlertDialogDescription>{cancelDescription}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep booking</AlertDialogCancel>
+                  <AlertDialogCancel>{t('keepBooking')}</AlertDialogCancel>
                   <AlertDialogAction onClick={() => handleCancel(booking)}>
-                    Yes, cancel
+                    {t('yesCancel')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           )}
           <SheetClose asChild>
-            <Button variant="ghost">Close</Button>
+            <Button variant="ghost">{tc('close')}</Button>
           </SheetClose>
         </SheetFooter>
       </SheetContent>

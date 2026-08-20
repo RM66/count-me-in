@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges'
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
@@ -41,8 +42,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { orgSlug, serviceId } = await params
   const resolved = await resolveService(orgSlug, serviceId)
+  const t = await getTranslations('ServicePage')
 
-  if (!resolved) return { title: 'Service not found' }
+  if (!resolved) return { title: t('serviceNotFound') }
 
   return {
     title: `${resolved.service.title} — ${resolved.organizer.name}`,
@@ -56,6 +58,8 @@ export default async function ServicePage({
   params: Promise<{ orgSlug: string; serviceId: string }>
 }) {
   const { orgSlug, serviceId } = await params
+  const t = await getTranslations('ServicePage')
+  const locale = await getLocale()
 
   const resolved = await resolveService(orgSlug, serviceId)
   if (!resolved) notFound()
@@ -116,7 +120,7 @@ export default async function ServicePage({
           {service.options?.length ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                {service.optionsSelectMode === 'single' ? 'Choose one:' : 'Add-ons:'}
+                {service.optionsSelectMode === 'single' ? t('chooseOne') : t('addOns')}
               </span>
               {service.options.map((opt) => (
                 <Badge key={opt} variant="outline" className="font-normal">
@@ -130,16 +134,14 @@ export default async function ServicePage({
         <Separator />
 
         <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium">Upcoming slots</h2>
+          <h2 className="text-lg font-medium">{t('upcomingSlots')}</h2>
 
           {slots.length === 0 ? (
             <Empty>
               <EmptyHeader>
                 <CalendarX className="size-6 text-muted-foreground" />
-                <EmptyTitle>No slots yet</EmptyTitle>
-                <EmptyDescription>
-                  Check back soon — new times are added regularly.
-                </EmptyDescription>
+                <EmptyTitle>{t('noSlotsYet')}</EmptyTitle>
+                <EmptyDescription>{t('checkBackSoon')}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
@@ -153,8 +155,8 @@ export default async function ServicePage({
                   >
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">
-                        {formatDate(slot.startsAt, organizer.timezone)} ·{' '}
-                        {formatTime(slot.startsAt, organizer.timezone)}
+                        {formatDate(slot.startsAt, organizer.timezone, locale)} ·{' '}
+                        {formatTime(slot.startsAt, organizer.timezone, locale)}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {slotPrice(slot, service)}
@@ -169,7 +171,7 @@ export default async function ServicePage({
                         preselectedSlotId={slot.id}
                         triggerSize="sm"
                         triggerDisabled={full}
-                        triggerLabel={full ? 'Full' : 'Book'}
+                        triggerLabel={full ? t('full') : t('book')}
                       />
                     </div>
                   </div>
@@ -189,7 +191,7 @@ export default async function ServicePage({
             triggerClassName="w-full"
             triggerSize="lg"
             triggerDisabled={!hasOpen}
-            triggerLabel={hasOpen ? 'Book now' : 'Fully booked'}
+            triggerLabel={hasOpen ? t('bookNow') : t('fullyBooked')}
           />
         </div>
       </div>

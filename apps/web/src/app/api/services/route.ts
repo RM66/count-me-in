@@ -1,5 +1,6 @@
 import { createServiceInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { createService, listServices } from '@/server/db/service'
 import { resolveCabinetOrganizerId } from '@/server/demo'
@@ -27,6 +28,7 @@ export async function GET() {
  * organizer cannot create a service under someone else's account.
  */
 export async function POST(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const guard = await requireWritableOrganizer()
   if (!guard.ok) return guard.response
   const { organizerId } = guard.value
@@ -38,16 +40,13 @@ export async function POST(request: Request) {
   // A cover URL must live under this organizer's media prefix — otherwise the
   // row could point at an arbitrary host or another organizer's object.
   if (input.photoUrl !== undefined && !isOwnMediaUrl(organizerId, input.photoUrl)) {
-    return NextResponse.json(
-      { error: 'Invalid photoUrl: must belong to your media prefix' },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: t('photoPrefix') }, { status: 400 })
   }
 
   const service = await createService(organizerId, input)
 
   if (!service) {
-    return NextResponse.json({ error: 'Could not create the service' }, { status: 500 })
+    return NextResponse.json({ error: t('cannotCreateService') }, { status: 500 })
   }
 
   return NextResponse.json({ service }, { status: 201 })

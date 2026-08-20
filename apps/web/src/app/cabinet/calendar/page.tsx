@@ -1,3 +1,5 @@
+import { getTranslations } from 'next-intl/server'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { WeekCalendar } from '@/app/cabinet/calendar/_components/week-calendar'
 import { getOrganizerProfile } from '@/server/db/organizer'
@@ -19,6 +21,8 @@ export default async function CalendarPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
 
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+
   const [organizer, services, slots] = await Promise.all([
     getOrganizerProfile(organizerId, isReadOnly),
     listServices(organizerId),
@@ -31,7 +35,9 @@ export default async function CalendarPage() {
 
   return (
     <>
-      <CabinetHeader crumbs={[{ label: 'Cabinet', href: '/cabinet' }, { label: 'Calendar' }]} />
+      <CabinetHeader
+        crumbs={[{ label: tcrumbs('cabinet'), href: '/cabinet' }, { label: tcrumbs('calendar') }]}
+      />
       <WeekCalendar
         slots={slots}
         services={services}

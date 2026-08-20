@@ -11,6 +11,7 @@
 import { telegramWidgetPayload } from '@repo/contracts'
 import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import type { Guarded } from '../http'
 import type { AuthTicketPayload } from './ticket'
@@ -35,11 +36,13 @@ export type ValidatedTelegramIdentity = Required<Pick<AuthTicketPayload, 'messen
 export async function validateTelegramWidget(
   body: unknown,
 ): Promise<Guarded<ValidatedTelegramIdentity>> {
+  const t = await getTranslations('ApiErrors')
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN
   if (!botToken) {
     return {
       ok: false,
-      response: NextResponse.json({ error: 'Telegram bot not configured' }, { status: 500 }),
+      response: NextResponse.json({ error: t('telegramNotConfigured') }, { status: 500 }),
     }
   }
 
@@ -47,7 +50,7 @@ export async function validateTelegramWidget(
   if (!parsed.success) {
     return {
       ok: false,
-      response: NextResponse.json({ error: 'Invalid Telegram auth data' }, { status: 400 }),
+      response: NextResponse.json({ error: t('telegramInvalid') }, { status: 400 }),
     }
   }
 
@@ -57,7 +60,7 @@ export async function validateTelegramWidget(
   } catch {
     return {
       ok: false,
-      response: NextResponse.json({ error: 'Telegram auth validation failed' }, { status: 400 }),
+      response: NextResponse.json({ error: t('telegramValidationFailed') }, { status: 400 }),
     }
   }
 

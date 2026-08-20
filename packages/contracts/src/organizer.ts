@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { messengerEnum } from './enums'
+import { appLocaleEnum, DEFAULT_LOCALE } from './i18n'
 import {
   authTicket,
   contact,
@@ -15,6 +16,10 @@ import {
 /**
  * Public registration (ADR-008): messenger identity comes from the auth `ticket`
  * (validated server-side) — never trusted from the client.
+ *
+ * `language` is the organizer's notification language (ADR-011). Optional in
+ * the request (older clients, English fallback); the signup form fills it from
+ * the browser locale.
  */
 export const registerOrganizerInput = z.object({
   ticket: authTicket,
@@ -22,6 +27,7 @@ export const registerOrganizerInput = z.object({
   name: displayName,
   timezone,
   contact: contact.optional(),
+  language: appLocaleEnum.optional().default(DEFAULT_LOCALE),
 })
 export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
 
@@ -37,6 +43,8 @@ export const organizerProfile = z.object({
   photoUrl: z.string().nullable(),
   location: z.string().nullable(),
   contact: z.string().nullable(),
+  /** Notification language: the locale the worker renders this organizer's messages in. */
+  language: appLocaleEnum,
   createdAt: z.string(),
   /**
    * Read-only demo account (ADR-010). **Derived** server-side from
@@ -72,7 +80,11 @@ export const publicOrganizer = z.object({
 })
 export type PublicOrganizer = z.infer<typeof publicOrganizer>
 
-/** Profile edits from the cabinet. Messenger identity is not editable. */
+/**
+ * Profile edits from the cabinet. Messenger identity is not editable.
+ * `language` is not here on purpose: the language switcher owns it (ADR-011) —
+ * switching while signed in persists `organizers.language` directly.
+ */
 export const updateOrganizerProfileInput = z.object({
   name: displayName.optional(),
   slug: slug.optional(),

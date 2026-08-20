@@ -1,6 +1,7 @@
 'use client'
 
 import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 import { BookingDetailsSheet } from '@/app/cabinet/_components/booking-details-sheet'
@@ -41,6 +42,7 @@ export function BookingPreviewList({
   isReadOnly,
 }: BookingPreviewListProps) {
   const [selected, setSelected] = useState<BookingRecord | null>(null)
+  const t = useTranslations('Cabinet.common')
 
   const slotsById = new Map(slots.map((slot) => [slot.id, slot]))
   const servicesById = new Map(services.map((service) => [service.id, service]))
@@ -74,13 +76,12 @@ export function BookingPreviewList({
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="truncate font-medium">{booking.guestName}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {svc?.title ?? 'Deleted service'} · {booking.seats}{' '}
-                  {booking.seats > 1 ? 'seats' : 'seat'}
+                  {svc?.title ?? t('deletedService')} · {t('seats', { count: booking.seats })}
                 </span>
               </div>
               {booking.status === 'cancelled' && (
                 <Badge variant="outline" className="ml-auto">
-                  Cancelled
+                  {t('cancelled')}
                 </Badge>
               )}
             </button>

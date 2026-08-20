@@ -2,6 +2,7 @@
 
 import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -37,6 +38,7 @@ export function useSlotsTable({
   activeServiceId,
 }: UseSlotsTableOptions) {
   const router = useRouter()
+  const t = useTranslations('Cabinet.slots')
   const [dialog, setDialog] = useState<DialogState>(null)
   const [pendingDelete, setPendingDelete] = useState<TimeSlotRecord | null>(null)
   const [showPast, setShowPast] = useState(false)
@@ -117,11 +119,11 @@ export function useSlotsTable({
   const confirmDelete = () => {
     deleteSlot.mutate(undefined, {
       onSuccess: () => {
-        toast.success('Slot cancelled')
+        toast.success(t('cancelledToast'))
         setPendingDelete(null)
         router.refresh()
       },
-      onError: (error) => toast.error(error.message || 'Failed to cancel the slot'),
+      onError: (error) => toast.error(error.message || t('cancelFailed')),
     })
   }
 

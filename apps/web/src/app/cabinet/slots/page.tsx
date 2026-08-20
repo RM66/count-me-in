@@ -1,3 +1,5 @@
+import { getTranslations } from 'next-intl/server'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { SlotsTable } from '@/app/cabinet/slots/_components/slots-table'
 import { getOrganizerProfile } from '@/server/db/organizer'
@@ -13,6 +15,9 @@ export default async function SlotsPage({
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
   const { service: serviceParam } = await searchParams
+
+  const t = await getTranslations('Cabinet.slots')
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
 
   // The profile supplies the timezone every slot instant is rendered in, and
   // the services back both the table's titles and the dialog's picker.
@@ -43,20 +48,21 @@ export default async function SlotsPage({
     <>
       <CabinetHeader
         crumbs={[
-          { label: 'Cabinet', href: '/cabinet' },
+          { label: tcrumbs('cabinet'), href: '/cabinet' },
           // Filtered by a service? Then "Slots" is a step back to the full list.
           ...(activeService
-            ? [{ label: 'Slots', href: '/cabinet/slots' }, { label: activeService.title }]
-            : [{ label: 'Slots' }]),
+            ? [
+                { label: tcrumbs('slots'), href: '/cabinet/slots' },
+                { label: activeService.title },
+              ]
+            : [{ label: tcrumbs('slots') }]),
         ]}
       />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Slots</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            {activeService
-              ? `Sessions for ${activeService.title}.`
-              : 'Schedule and track capacity for every session.'}
+            {activeService ? t('sessionsFor', { service: activeService.title }) : t('subtitle')}
           </p>
         </div>
 

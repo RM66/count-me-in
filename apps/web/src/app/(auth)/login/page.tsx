@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 
 import { AuthShell } from '@/app/(auth)/_components/auth-shell'
@@ -9,17 +10,18 @@ import { TelegramLoginButton } from '@/components/telegram-login-button'
 
 export default function LoginPage() {
   const router = useRouter()
+  const t = useTranslations('Auth.login')
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
   return (
     <AuthShell
-      title="Welcome back"
-      description="Log in with your Telegram account."
+      title={t('welcomeBack')}
+      description={t('description')}
       footer={
         <>
-          New to CountMeIn?{' '}
+          {t('newHere')}{' '}
           <Link href="/signup" className="font-medium text-foreground hover:underline">
-            Create an account
+            {t('createAccount')}
           </Link>
         </>
       }
@@ -31,18 +33,14 @@ export default function LoginPage() {
             buttonSize="large"
             redirectTo="/cabinet"
             onSignupRequired={(ticket) => {
-              toast.error('No account found. Please create an account first.')
+              toast.error(t('noAccountFound'))
               router.push(`/signup?ticket=${ticket}`)
             }}
           />
-          <p className="text-center text-sm text-muted-foreground">
-            Use the same Telegram account you signed up with.
-          </p>
+          <p className="text-center text-sm text-muted-foreground">{t('sameAccount')}</p>
         </div>
       ) : (
-        <p className="text-center text-sm text-destructive">
-          Telegram login is not configured. Please contact support.
-        </p>
+        <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
       )}
     </AuthShell>
   )

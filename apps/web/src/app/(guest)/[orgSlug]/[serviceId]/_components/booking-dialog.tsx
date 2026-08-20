@@ -2,6 +2,7 @@
 
 import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { seatsLeft } from '@repo/contracts'
+import { useTranslations } from 'next-intl'
 import { type ComponentProps, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -59,6 +60,7 @@ export function BookingDialog({
 }) {
   const [open, setOpen] = useState(false)
   const booking = useBookingDialog({ service, preselectedSlotId })
+  const t = useTranslations('Booking')
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
@@ -74,11 +76,11 @@ export function BookingDialog({
   )
 
   const stepTitles: Record<BookingStep, string> = {
-    slot: 'Pick a time',
-    options: 'Choose options',
-    details: 'Your details',
-    verify: 'Confirm with Telegram',
-    success: 'You’re booked!',
+    slot: t('pickTime'),
+    options: t('chooseOptions'),
+    details: t('yourDetails'),
+    verify: t('confirmTelegram'),
+    success: t('booked'),
   }
 
   return (

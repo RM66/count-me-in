@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { getTranslations } from 'next-intl/server'
 
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
@@ -20,6 +21,7 @@ export default async function ServiceOgImage({
   params: Promise<{ orgSlug: string; serviceId: string }>
 }) {
   const { orgSlug, serviceId } = await params
+  const t = await getTranslations('OrgPage')
   const gradient = 'linear-gradient(135deg, #2726CF 0%, #6F23F7 100%)'
 
   const [organizer, fonts, logo] = await Promise.all([
@@ -135,7 +137,7 @@ export default async function ServiceOgImage({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 28 }}>
           <img src={logo} width={40} height={40} alt="" style={{ borderRadius: 11 }} />
-          <span style={{ color: '#52525B' }}>Book online</span>
+          <span style={{ color: '#52525B' }}>{t('bookOnline')}</span>
         </div>
       </div>
     </div>,

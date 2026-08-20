@@ -4,6 +4,7 @@ import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import type { ServiceFormOutput, ServiceFormValues, ServiceRecord } from '@repo/contracts'
 import { serviceFormSchema, toCreateServiceInput, toServiceFormValues } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import type { Control } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -34,6 +35,7 @@ export type ServiceTextFieldName = Exclude<
  * output (parsed numbers, `''` collapsed to `null`) rather than the raw input.
  */
 export function useServiceForm(service?: ServiceRecord) {
+  const t = useTranslations('Cabinet.services')
   const router = useRouter()
   const isEdit = Boolean(service)
 
@@ -58,8 +60,8 @@ export function useServiceForm(service?: ServiceRecord) {
   const submit = form.handleSubmit((values) => {
     if (!isEdit) {
       createService.mutate(toCreateServiceInput(values), {
-        onSuccess: () => leaveToList('Service created'),
-        onError: (error) => toast.error(error.message || 'Failed to create the service'),
+        onSuccess: () => leaveToList(t('createdToast')),
+        onError: (error) => toast.error(error.message || t('createFailed')),
       })
       return
     }
@@ -68,15 +70,15 @@ export function useServiceForm(service?: ServiceRecord) {
     // output is a valid payload as-is — Save is disabled unless something is
     // dirty, which is what used to require hand-rolled field diffing.
     updateService.mutate(values, {
-      onSuccess: () => leaveToList('Service updated'),
-      onError: (error) => toast.error(error.message || 'Failed to update the service'),
+      onSuccess: () => leaveToList(t('updatedToast')),
+      onError: (error) => toast.error(error.message || t('updateFailed')),
     })
   })
 
   const remove = () => {
     deleteService.mutate(undefined, {
-      onSuccess: () => leaveToList('Service deleted'),
-      onError: (error) => toast.error(error.message || 'Failed to delete the service'),
+      onSuccess: () => leaveToList(t('deletedToast')),
+      onError: (error) => toast.error(error.message || t('deleteFailed')),
     })
   }
 

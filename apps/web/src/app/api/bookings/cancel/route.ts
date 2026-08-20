@@ -1,5 +1,6 @@
 import { cancelBookingByTokenInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { cancelGuestBookingByToken } from '@/server/db/booking'
 import { parseJsonBody } from '@/server/http'
@@ -20,6 +21,7 @@ import { bookingErrorResponse } from '../_error-response'
  * the updated booking the page re-renders from.
  */
 export async function POST(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const parsed = await parseJsonBody(request, cancelBookingByTokenInput)
   if (!parsed.ok) return parsed.response
 
@@ -29,12 +31,12 @@ export async function POST(request: Request) {
     // Unknown token — answered exactly like a wrong one, so the endpoint cannot
     // be used to test whether a token exists.
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+      return NextResponse.json({ error: t('bookingNotFound') }, { status: 404 })
     }
 
     return NextResponse.json({ booking })
   } catch (error) {
-    const response = bookingErrorResponse(error)
+    const response = bookingErrorResponse(error, t)
     if (response) return response
     throw error
   }

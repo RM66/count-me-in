@@ -1,6 +1,7 @@
 'use client'
 
 import { XIcon } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Dialog as SheetPrimitive } from 'radix-ui'
 import { ComponentProps } from 'react'
 
@@ -63,7 +64,7 @@ function SheetContent({
           <SheetPrimitive.Close data-slot="sheet-close" asChild>
             <Button variant="ghost" className="absolute top-4 right-4 bg-secondary" size="icon-sm">
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only"><UiCloseLabel /></span>
             </Button>
           </SheetPrimitive.Close>
         )}
@@ -124,4 +125,10 @@ export {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+}
+
+
+function UiCloseLabel() {
+  const t = useTranslations('Ui')
+  return t('close')
 }

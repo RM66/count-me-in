@@ -1,0 +1,804 @@
+{
+  "LocaleSwitcher": {
+    "ariaLabel": "Change language"
+  },
+  "GuestLayout": {
+    "myBookings": "My bookings",
+    "poweredBy": "Powered by"
+  },
+  "OrgPage": {
+    "metaTitle": "{name} — book online",
+    "bookOnline": "Book online",
+    "pageNotFound": "Page not found",
+    "services": "Services",
+    "available": "{count} available",
+    "nothingToBook": "Nothing to book just yet — check back soon."
+  },
+  "ServiceCard": {
+    "next": "Next:",
+    "noOpenSlots": "No open slots"
+  },
+  "ServicePage": {
+    "serviceNotFound": "Service not found",
+    "chooseOne": "Choose one:",
+    "addOns": "Add-ons:",
+    "upcomingSlots": "Upcoming slots",
+    "noSlotsYet": "No slots yet",
+    "checkBackSoon": "Check back soon — new times are added regularly.",
+    "full": "Full",
+    "book": "Book",
+    "bookNow": "Book now",
+    "fullyBooked": "Fully booked"
+  },
+  "ServiceMetaBadges": {
+    "minutes": "{minutes} min",
+    "upToCapacity": "up to {capacity}"
+  },
+  "SeatsBadge": {
+    "fullyBooked": "Fully booked",
+    "seatsLeft": "{count, plural, =1 {# seat left} other {# seats left}}"
+  },
+  "Booking": {
+    "pickTime": "Pick a time",
+    "chooseOptions": "Choose options",
+    "yourDetails": "Your details",
+    "confirmTelegram": "Confirm with Telegram",
+    "booked": "You’re booked!",
+    "continue": "Continue",
+    "back": "Back",
+    "fullName": "Full name",
+    "namePlaceholder": "Mila Petrović",
+    "nameHint": "The name the organizer will see on their list.",
+    "seats": "Seats",
+    "removeSeat": "Remove a seat",
+    "addSeat": "Add a seat",
+    "seatsHint": "Including you. Up to {maxSeats, plural, =1 {# seat} other {# seats}} on this session.",
+    "optionsLegend": "Options",
+    "demoIntro": "This is a read-only demo page, so bookings are not saved.",
+    "createOwn": "Create your own",
+    "demoOutro": "to take real bookings.",
+    "errorFallback": "Could not complete the booking",
+    "findMyBookings": "Find my bookings →",
+    "confirmHint": "Confirm with Telegram — no account needed, and it only proves who you are.",
+    "reserving": "Reserving your seat…",
+    "notConfigured": "Telegram login is not configured, so booking is unavailable.",
+    "errSoldOut": "This session is fully booked",
+    "errSeatsLeft": "Only {count, plural, =1 {# seat} other {# seats}} left on this session",
+    "errPartyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
+    "errDuplicate": "You already have a booking for this session",
+    "errGone": "This session is no longer available",
+    "errInvalidOptions": "Selected options are not valid for this service",
+    "errAlreadyCancelled": "This booking has already been cancelled"
+  },
+  "SuccessStep": {
+    "confirmedNote": "Your seat is booked. A confirmation will arrive in your messenger from our bot.",
+    "service": "Service",
+    "when": "When",
+    "name": "Name",
+    "options": "Options",
+    "confirmed": "Confirmed",
+    "manageThisBooking": "Manage this booking"
+  },
+  "MyBookings": {
+    "title": "Find your booking",
+    "subtitle": "Lost your link? Confirm with the Telegram account you booked with and we'll show your bookings.",
+    "lookingUp": "Looking up your bookings…",
+    "lookupFailed": "Could not look up your bookings",
+    "onlyThisAccount": "We'll only show bookings made with this account.",
+    "bookingsFound": "{count, plural, =1 {# booking found} other {# bookings found}}",
+    "seats": "{count, plural, =1 {# seat} other {# seats}}",
+    "cancelled": "Cancelled",
+    "noBookingsFound": "No bookings found",
+    "noBookingsDescription": "This Telegram account has no bookings yet. If you booked with a different account, confirm with that one instead.",
+    "nothingYet": "Nothing to show yet",
+    "nothingYetDescription": "Confirm with Telegram above to look up your bookings.",
+    "notConfigured": "Telegram login is not configured, so lookup is unavailable."
+  },
+  "ManageBooking": {
+    "backTo": "Back to {name}",
+    "bookingWith": "Booking with {name} · {date}",
+    "date": "Date",
+    "time": "Time",
+    "minutes": "{minutes} min",
+    "name": "Name",
+    "price": "Price",
+    "where": "Where",
+    "contact": "Contact",
+    "options": "Options:",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "cancelledNote": "This booking was cancelled and the seat has been released.",
+    "bookAnotherTime": "Book another time",
+    "cancelBooking": "Cancel booking",
+    "cancelling": "Cancelling…",
+    "cancelConfirmTitle": "Cancel this booking?",
+    "cancelConfirmDescription": "Your seat for {title} on {date} at {time} will be released. This can’t be undone.",
+    "keepBooking": "Keep booking",
+    "yesCancel": "Yes, cancel",
+    "bookingCancelled": "Booking cancelled",
+    "cancelFailed": "Could not cancel the booking"
+  },
+  "AddToCalendar": {
+    "addToCalendar": "Add to calendar",
+    "googleCalendar": "Google Calendar",
+    "downloadIcs": "Download .ics"
+  },
+  "Marketing": {
+    "hero": {
+      "badge": "Online booking for group events",
+      "title": "Fill your classes, events, and outings without the back-and-forth",
+      "subtitle": "Publish your services with time slots and capacity. Share one link. Guests book on the site in seconds — no account, no app. Confirmation arrives in their messenger.",
+      "startFree": "Start for free",
+      "noCreditCard": "No credit card. Set up your first bookable service in minutes.",
+      "lookAround": "Prefer to look around first?",
+      "guestPage": "See a guest booking page",
+      "cabinet": "See the organizer cabinet"
+    },
+    "carousel": {
+      "ariaLabel": "Examples of group services you can publish",
+      "showSlide": "Show {title}",
+      "slides": [
+        {
+          "alt": "A morning yoga class in a bright studio",
+          "title": "Morning Vinyasa Flow",
+          "meta": "Tomorrow · 07:00 · 3 seats left"
+        },
+        {
+          "alt": "A small group hiking on a mountain trail",
+          "title": "Sunrise Ridge Hike",
+          "meta": "Sat · 06:00 · 8 seats left"
+        },
+        {
+          "alt": "A hands-on creative workshop around a shared table",
+          "title": "Pottery Workshop",
+          "meta": "Sun · 14:00 · 2 seats left"
+        },
+        {
+          "alt": "A guided walking tour through an old-town street",
+          "title": "Old Town Walking Tour",
+          "meta": "Fri · 11:00 · 12 seats left"
+        },
+        {
+          "alt": "A guided breathwork session with people seated in a calm circle",
+          "title": "Breathwork Circle",
+          "meta": "Wed · 19:00 · 6 seats left"
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "From setup to first booking in minutes",
+      "subtitle": "CountMeIn handles capacity, confirmations, and reminders so you can focus on running your events.",
+      "step": "Step {n}",
+      "items": [
+        {
+          "title": "Create your account",
+          "body": "Sign up with your messenger. Set your public handle, name, and timezone."
+        },
+        {
+          "title": "Add services & slots",
+          "body": "Describe each service, set capacity and duration, then open the time slots you offer."
+        },
+        {
+          "title": "Share your link",
+          "body": "Send guests your page link. They pick a slot and book in seconds."
+        },
+        {
+          "title": "Get notified",
+          "body": "Every booking pings you in your messenger with a deep link straight to your cabinet."
+        }
+      ]
+    },
+    "audiences": {
+      "title": "Made for anyone who runs group events",
+      "subtitle": "If people gather at a set time and space is limited, CountMeIn keeps your bookings in order — whatever you organize.",
+      "items": [
+        {
+          "title": "Sport & active recreation",
+          "examples": "Group training, dance, martial arts, running & climbing clubs, SUP and ski."
+        },
+        {
+          "title": "Wellness & practices",
+          "examples": "Meditation, breathwork, sound healing, bath ceremonies, retreats, support groups."
+        },
+        {
+          "title": "Learning & creativity",
+          "examples": "Masterclasses, courses, art & ceramics, photography, cooking, music, language clubs."
+        },
+        {
+          "title": "Entertainment & communities",
+          "examples": "Quizzes, mafia, board & RPG games, book clubs, networking, kids’ events, meetups."
+        },
+        {
+          "title": "Excursions & outings",
+          "examples": "City walks, food tours, hiking, camping, diving, fishing, yachting, gastro tours."
+        },
+        {
+          "title": "Animals",
+          "examples": "Cynologist sessions, dog socialization & training, horseback, pet-friendly events."
+        },
+        {
+          "title": "Beauty & professional services",
+          "examples": "Group beauty procedures, makeup lessons, consultations, coworking, masterminds."
+        }
+      ]
+    },
+    "features": {
+      "title": "Everything you need to run group bookings",
+      "subtitle": "Purpose-built for small-group classes, events, and outings.",
+      "items": [
+        {
+          "title": "Capacity that never overbooks",
+          "body": "Every slot has a seat count. Bookings are claimed atomically, so you never double-book a full class."
+        },
+        {
+          "title": "No account for guests",
+          "body": "Guests book with just a name and a messenger login button. One shareable link does all the work."
+        },
+        {
+          "title": "Messenger-native",
+          "body": "Verification, confirmations, and cancel links all arrive in the messenger your guests already use."
+        },
+        {
+          "title": "Flexible options",
+          "body": "Offer pickup points, add-ons, or variants per service — pick-one or pick-many."
+        },
+        {
+          "title": "Add to calendar",
+          "body": "Guests save their booking to Google Calendar or download an .ics in a single tap."
+        },
+        {
+          "title": "Easy cancellations",
+          "body": "Guests manage bookings from a secure link. Seats are released the moment they cancel."
+        }
+      ]
+    },
+    "trust": {
+      "title": "Trade the chaos for one link",
+      "subtitle": "CountMeIn replaces the tools organizers usually cobble together to fill a group.",
+      "pillars": [
+        {
+          "title": "No more DM back-and-forth",
+          "body": "Stop chasing “is there a spot?” messages. Your link shows what’s open, in real time."
+        },
+        {
+          "title": "No more spreadsheet juggling",
+          "body": "Capacity, seats, and cancellations stay in sync automatically — nothing to update by hand."
+        },
+        {
+          "title": "No more accidental overbooking",
+          "body": "Seats are claimed atomically, so a full class can never take one booking too many."
+        }
+      ]
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "subtitle": "Everything you might want to know before you publish your first service.",
+      "items": [
+        {
+          "q": "Is CountMeIn really free?",
+          "a": "Yes — while the service is new, it’s completely free: create your account, publish services, and take bookings at no cost. Down the road we may introduce a paid subscription at a symbolic price, but you can get started for free today."
+        },
+        {
+          "q": "Do my guests need to install an app or create an account?",
+          "a": "No. Guests open your link, pick a slot, and confirm with their messenger login and a name. There’s no separate app to download and no password to remember."
+        },
+        {
+          "q": "Does CountMeIn handle payments?",
+          "a": "Not yet. Prices are shown as text on your services so guests know the cost, but payment happens the way you already collect it. Booking is about reserving the seat."
+        },
+        {
+          "q": "How do guests and I get notified?",
+          "a": "Confirmations, cancel links, and new-booking alerts arrive in the messenger you and your guests already use — each new booking pings you with a deep link to your cabinet."
+        },
+        {
+          "q": "Can a slot ever be overbooked?",
+          "a": "No. Every slot has a seat count and bookings are claimed atomically, so once a class is full it stops accepting bookings — no double-booking."
+        },
+        {
+          "q": "What if a guest needs to cancel?",
+          "a": "Guests manage their booking from a secure link. The moment they cancel, the seat is released and becomes available to someone else."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Ready to fill your next event?",
+      "subtitle": "Set up your first bookable service today. It only takes a few minutes.",
+      "getStarted": "Get started free",
+      "exploreDemo": "Or explore the demo — no signup needed:",
+      "guestPage": "Guest booking page",
+      "cabinet": "Organizer cabinet"
+    },
+    "header": {
+      "howItWorks": "How it works",
+      "features": "Features",
+      "examples": "Examples",
+      "goToCabinet": "Go to cabinet",
+      "logIn": "Log in",
+      "getStarted": "Get started",
+      "openMenu": "Open menu",
+      "navigation": "Navigation"
+    },
+    "footer": {
+      "tagline": "— online booking for group events",
+      "features": "Features",
+      "logIn": "Log in",
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "contact": "Contact",
+      "copyright": "© 2026 CountMeIn"
+    },
+    "ogDescription": "Simple online booking for group classes, events, and outings."
+  },
+  "Legal": {
+    "lastUpdated": "Last updated {date}",
+    "terms": {
+      "metaTitle": "Terms of Service — CountMeIn",
+      "metaDescription": "The terms that govern your use of CountMeIn.",
+      "title": "Terms of Service",
+      "updated": "August 1, 2026",
+      "intro": "These terms govern your use of CountMeIn. They outline the agreement between CountMeIn and the organizers who publish bookable services on the platform, as well as the guests who book them.",
+      "usingHeading": "1. Using CountMeIn",
+      "usingBody": "CountMeIn lets organizers publish services with time slots and capacity, and lets guests book those slots without creating an account. You are responsible for the accuracy of the services, prices, and availability you publish.",
+      "bookingsHeading": "2. Bookings and capacity",
+      "bookingsBody": "Prices shown are informational labels only — CountMeIn does not process payments in this release. Capacity is enforced per slot; once a slot is full, no further bookings are accepted for it.",
+      "guestDataHeading": "3. Guest data",
+      "guestDataBody": "Guests provide a display name and authenticate with their messenger account to book. You agree to handle guest details responsibly and only for the purpose of delivering the booked service.",
+      "cancellationsHeading": "4. Cancellations",
+      "cancellationsBody": "Guests may cancel from their secure management link. Cancelling releases the reserved seats back to the slot immediately.",
+      "changesHeading": "5. Changes",
+      "changesBody": "We may update these terms as the product evolves. Continued use after changes take effect constitutes acceptance of the revised terms."
+    },
+    "privacy": {
+      "metaTitle": "Privacy Policy — CountMeIn",
+      "metaDescription": "How CountMeIn handles organizer and guest data.",
+      "title": "Privacy Policy",
+      "updated": "August 7, 2026",
+      "intro": "This privacy policy describes the data CountMeIn collects and how it is used.",
+      "collectHeading": "Data we collect",
+      "collectBody": "For organizers: name, messenger account, timezone, and the services and slots you publish. For guests: display name and messenger account, used to confirm and manage a booking.",
+      "useHeading": "How we use it",
+      "useBody": "Messenger accounts are verified through the Messenger Login Widget at booking time — no one-time codes or passwords are collected. We use your messenger account to deliver booking confirmations and cancellation links. We do not sell personal data.",
+      "analyticsHeading": "Analytics and error monitoring",
+      "analyticsBody": "We use PostHog for product analytics (page views, feature usage) and Sentry for error monitoring (crash reports and performance traces). PostHog session recordings are enabled with all input fields masked, so no typed personal data appears in recordings. Signed-in organizers are identified by an internal id so their activity can be grouped; guests are not identified in analytics. Neither service receives your messenger credentials.",
+      "analyticsCookies": "Analytics cookies are off by default and load only after you accept them in the cookie banner; if you reject or ignore it, PostHog is never initialized and no analytics cookies are set. Essential cookies required for sign-in and booking are always active and do not require consent. Sentry error monitoring runs without cookies. You can change your choice at any time by clearing this site's data in your browser.",
+      "retentionHeading": "Retention",
+      "retentionBody": "Booking records are retained so organizers can view their history. Guests can cancel a booking at any time from their management link.",
+      "contactHeading": "Contact",
+      "contactBody": "Questions about privacy can be directed to the organizer you booked with, or to the CountMeIn team."
+    }
+  },
+  "Auth": {
+    "login": {
+      "welcomeBack": "Welcome back",
+      "description": "Log in with your Telegram account.",
+      "newHere": "New to CountMeIn?",
+      "createAccount": "Create an account",
+      "noAccountFound": "No account found. Please create an account first.",
+      "sameAccount": "Use the same Telegram account you signed up with.",
+      "notConfigured": "Telegram login is not configured. Please contact support."
+    },
+    "signup": {
+      "title": "Create your account",
+      "description": "Set up your organizer profile in two quick steps.",
+      "alreadyHave": "Already have an account?",
+      "logIn": "Log in",
+      "stepTelegram": "Telegram",
+      "stepProfile": "Profile",
+      "accountExists": "Account already exists. Signing you in…",
+      "authenticate": "Authenticate with Telegram to continue.",
+      "notConfigured": "Telegram login is not configured. Please contact support.",
+      "displayName": "Display name",
+      "namePlaceholder": "Studio Demo",
+      "publicHandle": "Public handle",
+      "slugPlaceholder": "studio-demo",
+      "slugHint": "This is the link you’ll share with guests.",
+      "timezone": "Timezone",
+      "selectTimezone": "Select timezone",
+      "timezoneHint": "All your time slots are shown in this zone.",
+      "creating": "Creating account…",
+      "continue": "Continue",
+      "signInFailed": "Could not sign you in — authenticate with Telegram again",
+      "createFailed": "Could not create the account"
+    },
+    "loginLink": {
+      "opening": "One moment while we open your cabinet.",
+      "continue": "Continue to your cabinet"
+    }
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "description": "We could not find the page you were looking for. It may have been moved or the link is no longer valid.",
+    "backHome": "Back home",
+    "findMyBooking": "Find my booking"
+  },
+  "GlobalError": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred on our end. Please try again in a moment.",
+    "tryAgain": "Try again",
+    "backHome": "Back home"
+  },
+  "CookieConsent": {
+    "ariaLabel": "Cookie consent",
+    "text": "We use analytics cookies to understand how CountMeIn is used and improve it. ",
+    "essential": "Essential cookies for sign-in and booking are always on. ",
+    "privacyPolicy": "Privacy Policy",
+    "reject": "Reject",
+    "accept": "Accept"
+  },
+  "Ui": {
+    "close": "Close",
+    "navigation": "Navigation",
+    "loading": "Loading",
+    "more": "More",
+    "sidebar": "Sidebar",
+    "sidebarDescription": "Displays the mobile sidebar.",
+    "toggleSidebar": "Toggle Sidebar",
+    "wrongImageType": "Use a JPEG, PNG or WebP image",
+    "imageTooLarge": "Image must be under {size}",
+    "breadcrumb": "Breadcrumb",
+    "compressFailed": "Could not compress that image enough — try another one",
+    "uploadFailed": "Upload failed — try again"
+  },
+  "Cabinet": {
+    "crumbs": {
+      "cabinet": "Cabinet",
+      "overview": "Overview",
+      "services": "Services",
+      "slots": "Slots",
+      "calendar": "Calendar",
+      "bookings": "Bookings",
+      "analytics": "Analytics",
+      "settings": "Settings",
+      "new": "New"
+    },
+    "common": {
+      "deletedService": "Deleted service",
+      "session": "Session",
+      "seats": "{count, plural, =1 {# seat} other {# seats}}",
+      "min": "{minutes} min",
+      "left": "{count} left",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "viewAll": "View all",
+      "open": "Open",
+      "preview": "Preview",
+      "edit": "Edit",
+      "view": "View",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "close": "Close",
+      "full": "Full"
+    },
+    "sidebar": {
+      "subtitle": "Organizer",
+      "manage": "Manage",
+      "public": "Public",
+      "viewPublicPage": "View public page",
+      "support": "Support",
+      "contact": "Contact",
+      "language": "Language",
+      "demoNote": "You’re viewing a demo cabinet.",
+      "signUp": "Sign up",
+      "logIn": "Log in",
+      "myAccount": "My account",
+      "profile": "Profile",
+      "logOut": "Log out",
+      "nav": {
+        "overview": "Overview",
+        "services": "Services",
+        "slots": "Slots",
+        "calendar": "Calendar",
+        "bookings": "Bookings",
+        "analytics": "Analytics",
+        "settings": "Settings"
+      }
+    },
+    "overview": {
+      "welcomeBack": "Welcome back, {name}",
+      "welcomeFallback": "Welcome back",
+      "subtitle": "Here is what is happening across your bookings.",
+      "newService": "New service",
+      "statConfirmed": "Confirmed bookings",
+      "statSeats": "Seats booked",
+      "statSlots": "Upcoming slots",
+      "statFillRate": "Fill rate",
+      "last7Days": "{count} in the last 7 days",
+      "next7Days": "{count} in the next 7 days",
+      "acrossUpcoming": "across upcoming slots",
+      "noUpcomingCapacity": "no upcoming capacity yet",
+      "seatsTaken": "{booked} of {offered} seats taken",
+      "upcomingSlots": "Upcoming slots",
+      "nextSessions": "Your next scheduled sessions.",
+      "createServiceFirst": "Create a service, then schedule its first session.",
+      "nothingScheduled": "Nothing scheduled yet — add a slot to open bookings.",
+      "recentBookings": "Recent bookings",
+      "slotBookings": "Slot bookings",
+      "latestActivity": "Latest activity.",
+      "sessionReservations": "Reservations for the selected session.",
+      "noBookingsForSession": "No bookings for this session yet.",
+      "bookingsAppear": "Bookings appear here as soon as a guest reserves a seat.",
+      "yourPublicPage": "Your public page",
+      "shareLink": "Share this link so guests can browse and book."
+    },
+    "dayFilter": {
+      "anyDay": "Any day",
+      "showEveryDay": "Show every day",
+      "changeDay": "Filtering by {day}. Change day",
+      "filterByDay": "Filter {entity} by day",
+      "showEveryBooking": "Show every booking",
+      "showEveryService": "Show every service",
+      "showEverySlot": "Show every slot"
+    },
+    "demoBanner": {
+      "readOnly": "Read-only demo.",
+      "text": "This is example data — editing is disabled and nothing here is saved.",
+      "createOwn": "Create your own"
+    },
+    "booking": {
+      "details": "Booking details",
+      "service": "Service",
+      "when": "When",
+      "seats": "Seats",
+      "options": "Options",
+      "cancelBooking": "Cancel booking",
+      "cancelling": "Cancelling…",
+      "cancelTitle": "Cancel this booking?",
+      "cancelDescriptionBoth": "{name}’s {seats, plural, =1 {seat} other {seats}} for {service} on {when} will be released and offered to other guests. This can’t be undone.",
+      "cancelDescriptionService": "{name}’s {seats, plural, =1 {seat} other {seats}} for {service} will be released and offered to other guests. This can’t be undone.",
+      "cancelDescriptionWhen": "{name}’s {seats, plural, =1 {seat} other {seats}} on {when} will be released and offered to other guests. This can’t be undone.",
+      "cancelDescriptionPlain": "{name}’s {seats, plural, =1 {seat} other {seats}} will be released and offered to other guests. This can’t be undone.",
+      "keepBooking": "Keep booking",
+      "yesCancel": "Yes, cancel",
+      "cancelledToast": "Booking cancelled",
+      "releasedToast": "{name}’s seats have been released.",
+      "cancelFailed": "Could not cancel the booking"
+    },
+    "slots": {
+      "title": "Slots",
+      "subtitle": "Schedule and track capacity for every session.",
+      "sessionsFor": "Sessions for {service}.",
+      "noServicesYet": "No services yet",
+      "noServicesDescription": "Slots belong to a service — create one first, then schedule sessions for it.",
+      "upcoming": "Upcoming ({count})",
+      "past": "Past ({count})",
+      "addSlot": "Add slot",
+      "pastSessions": "Past sessions",
+      "upcomingSchedule": "Upcoming schedule",
+      "nothingRun": "Nothing has run yet.",
+      "noUpcomingSessions": "No upcoming sessions.",
+      "upcomingCount": "{count} upcoming {count, plural, =1 {slot} other {slots}}",
+      "pastCount": "{count} past {count, plural, =1 {slot} other {slots}}",
+      "forServiceSuffix": " for {service}",
+      "nothingOnDay": "Nothing on this day",
+      "noPastSessions": "No past sessions",
+      "nothingScheduled": "Nothing scheduled",
+      "noUpcomingOnDay": "No upcoming sessions on {day}",
+      "noPastOnDay": "No past sessions on {day}",
+      "sessionsMove": "Sessions move here once their start time passes.",
+      "noUpcomingFor": "{service} has no upcoming sessions yet.",
+      "addHint": "Add a time slot and guests will be able to book it.",
+      "colService": "Service",
+      "colDateTime": "Date & time",
+      "colCapacity": "Capacity",
+      "colPrice": "Price",
+      "colStatus": "Status",
+      "open": "Open",
+      "fillingUp": "Filling up",
+      "full": "Full",
+      "left": "{count} left",
+      "slotActions": "Slot actions",
+      "editSlot": "Edit slot",
+      "viewBookings": "View bookings",
+      "duplicate": "Duplicate",
+      "cancelSlot": "Cancel slot",
+      "cancelTitle": "Cancel this slot?",
+      "cancelDescriptionWithBookings": "This session has {count} booked {count, plural, =1 {seat} other {seats}}. Cancelling removes the slot and every booking on it. This cannot be undone.",
+      "cancelDescriptionPlain": "The slot will be removed and guests will no longer see it. This cannot be undone.",
+      "keepSlot": "Keep slot",
+      "cancellingDialog": "Cancelling...",
+      "cancelledToast": "Slot cancelled",
+      "cancelFailed": "Failed to cancel the slot",
+      "dialogCreateTitle": "Add time slot",
+      "dialogCreateDescription": "Schedule a new session. Defaults come from the service.",
+      "dialogEditTitle": "Edit time slot",
+      "dialogEditDescription": "Change when this session runs and how many seats it holds.",
+      "dialogDuplicateTitle": "Duplicate time slot",
+      "dialogDuplicateDescription": "Same session, new date. Adjust anything before saving.",
+      "saveChanges": "Save changes",
+      "fieldService": "Service",
+      "selectService": "Select a service",
+      "fieldDate": "Date",
+      "fieldTime": "Start time",
+      "fieldDuration": "Duration",
+      "fieldCapacity": "Capacity",
+      "fieldPrice": "Price",
+      "pricePlaceholder": "$12",
+      "priceDescription": "Leave empty to use the service default.",
+      "addedToast": "Slot added",
+      "updatedToast": "Slot updated",
+      "addFailed": "Failed to add the slot",
+      "updateFailed": "Failed to update the slot"
+    },
+    "services": {
+      "title": "Services",
+      "subtitle": "Manage the experiences guests can book.",
+      "newService": "New service",
+      "newTitle": "New service",
+      "newSubtitle": "Create an experience guests can book.",
+      "noServicesYet": "No services yet",
+      "noServicesDescription": "Create your first service to give guests something to book.",
+      "countBookings": "{count, plural, =1 {# booking} other {# bookings}}",
+      "details": "Details",
+      "detailsDescription": "Basic information guests will see.",
+      "fieldTitle": "Title",
+      "titlePlaceholder": "e.g. Morning Vinyasa Flow",
+      "fieldDescription": "Description",
+      "descriptionPlaceholder": "Describe what guests can expect...",
+      "descriptionHint": "Shown on the service page. Markdown is not supported.",
+      "fieldLocation": "Location",
+      "locationPlaceholder": "e.g. Kralja Petra 123, Belgrade",
+      "locationHint": "Overrides your profile location when set.",
+      "fieldContact": "Contact",
+      "contactPlaceholder": "e.g. phone, email or social link",
+      "contactHint": "Overrides your profile contact when set.",
+      "defaults": "Defaults",
+      "defaultsDescription": "Applied to new slots. You can override them per slot.",
+      "fieldPrice": "Price",
+      "fieldCapacity": "Capacity",
+      "fieldDuration": "Duration (min)",
+      "groupBookings": "Group bookings",
+      "groupBookingsDescription": "How many seats one guest may reserve in a single booking.",
+      "fieldMaxSeats": "Max seats per booking",
+      "maxSeatsHint": "Set to 1 for solo bookings only. A higher number lets a guest bring others, but never more than this many at once — so one person cannot claim every seat in a slot.",
+      "optionsTitle": "Booking options",
+      "optionsDescription": "Optional add-ons or choices guests pick when booking.",
+      "addOption": "Add an option",
+      "optionPlaceholder": "e.g. Riverside studio",
+      "add": "Add",
+      "removeOption": "Remove {option}",
+      "selectionMode": "Selection mode",
+      "singleChoice": "Single choice (guest picks one)",
+      "multipleChoice": "Multiple choice (guest picks any)",
+      "publish": "Publish",
+      "publishDescription": "Save changes to this service.",
+      "saveChanges": "Save changes",
+      "createService": "Create service",
+      "deleteService": "Delete service",
+      "deleting": "Deleting...",
+      "deleteTitle": "Delete this service?",
+      "deleteDescription": "{title} and all of its time slots and bookings will be removed. This cannot be undone.",
+      "keepService": "Keep service",
+      "delete": "Delete",
+      "coverPhoto": "Cover photo",
+      "coverHint": "Shown on your public page.",
+      "uploading": "Uploading...",
+      "replaceImage": "Replace image",
+      "uploadImage": "Upload image",
+      "removeImage": "Remove image",
+      "photoReady": "Photo ready — save to apply",
+      "serviceCover": "Service cover",
+      "createdToast": "Service created",
+      "updatedToast": "Service updated",
+      "deletedToast": "Service deleted",
+      "createFailed": "Failed to create the service",
+      "updateFailed": "Failed to update the service",
+      "deleteFailed": "Failed to delete the service",
+      "notFound": "Service not found",
+      "backToList": "Back to services",
+      "pricePlaceholder": "$12",
+      "editSubtitle": "Edit service details and options."
+    },
+    "settings": {
+      "title": "Settings",
+      "profile": "Profile",
+      "profileDescription": "How you appear to guests.",
+      "uploading": "Uploading...",
+      "changePhoto": "Change photo",
+      "photoUpdated": "Photo updated",
+      "displayName": "Display name",
+      "publicPageUrl": "Public page URL",
+      "edit": "Edit",
+      "copy": "Copy",
+      "linkCopied": "Link copied",
+      "slugFixed": "The demo page URL is fixed.",
+      "slugEditable": "Your public booking page. Click Edit to change (old links will break).",
+      "slugWarning": "Warning: Changing this will break existing links shared with guests.",
+      "bio": "Bio",
+      "bioHint": "Shown at the top of your public page. Markdown is supported.",
+      "contact": "Contact",
+      "contactPlaceholder": "e.g. +381 64 123 4567 or studio@example.com",
+      "contactHint": "Shown to guests on your public page. Phone, email, social link, etc.",
+      "timezone": "Timezone",
+      "location": "Location",
+      "locationPlaceholder": "e.g. Belgrade, Serbia",
+      "locationHint": "Optional. Shown on your public page and can be overridden per service.",
+      "saveChanges": "Save changes",
+      "noChanges": "No changes to save",
+      "updatedToast": "Profile updated",
+      "updateFailed": "Failed to update profile",
+      "loadFailed": "Could not load your profile — refresh the page to try again."
+    },
+    "bookings": {
+      "title": "Bookings",
+      "subtitle": "Every reservation across your services.",
+      "reservationsFor": "Reservations for {label}.",
+      "all": "All",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "colGuest": "Guest",
+      "colService": "Service",
+      "colWhen": "When",
+      "colSeats": "Seats",
+      "colStatus": "Status",
+      "searchPlaceholder": "Search guest or service",
+      "noBookingsFound": "No bookings found",
+      "noBookingsForSlot": "{label} has no bookings yet.",
+      "noBookingsForService": "{service} has no bookings yet.",
+      "bookingsAppear": "Bookings appear here as soon as a guest reserves a seat.",
+      "noBookingsOnDay": "No bookings on {day}",
+      "forServiceSuffix": " for {service}",
+      "tryFilters": "Try adjusting your filters or search."
+    },
+    "analytics": {
+      "title": "Analytics",
+      "subtitle": "Track how your bookings are trending.",
+      "totalBookings": "Total bookings",
+      "seatsSold": "Seats sold",
+      "avgFillRate": "Avg. fill rate",
+      "cancellations": "Cancellations",
+      "confirmedLast30": "confirmed in last 30 days",
+      "bookingsInWindow": "{count, plural, =1 {# booking} other {# bookings}} in window",
+      "bookingsThisWeek": "Bookings this week",
+      "bookingsThisWeekHint": "Confirmed bookings and seats sold per day.",
+      "noBookingsYet": "No bookings yet — they appear here as soon as a guest reserves a seat.",
+      "byService": "By service",
+      "byServiceHint": "Confirmed bookings in the last 30 days.",
+      "noBookings30": "No bookings in the last 30 days.",
+      "trendAria": "Confirmed bookings and seats sold per day for the last 7 days",
+      "serviceAria": "Confirmed bookings per service in the last 30 days",
+      "upcomingSlotsCount": "{count, plural, =1 {# upcoming slot} other {# upcoming slots}}",
+      "bookingsLabel": "Bookings",
+      "seatsLabel": "Seats"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "subtitle": "Your week at a glance — every session on its start time and length.",
+      "today": "Today",
+      "previousWeek": "Previous week",
+      "nextWeek": "Next week",
+      "jumpToDate": "Jump to date",
+      "jumpToWeek": "Jump to a week",
+      "open": "Open",
+      "fillingUp": "Filling up",
+      "full": "Full",
+      "left": "{count} left"
+    }
+  },
+  "ApiErrors": {
+    "invalidInput": "Invalid input",
+    "invalidOptions": "Selected options are not valid for this service",
+    "ticketExpired": "Your Telegram confirmation expired — authenticate again",
+    "telegramNotConfigured": "Telegram bot not configured",
+    "telegramInvalid": "Invalid Telegram auth data",
+    "telegramValidationFailed": "Telegram auth validation failed",
+    "authSessionExpired": "Auth session expired — authenticate with Telegram again",
+    "organizerNotFound": "Organizer not found",
+    "demoNotSeeded": "Demo organizer is not seeded",
+    "serviceNotFound": "Service not found",
+    "slotNotFound": "Slot not found",
+    "bookingNotFound": "Booking not found",
+    "photoPrefix": "Invalid photoUrl: must belong to your media prefix",
+    "cannotCreateService": "Could not create the service",
+    "slugTaken": "This handle is already taken — pick another one",
+    "accountExists": "An account with this Telegram identity already exists — log in instead",
+    "nothingToUpdate": "No fields to update",
+    "capacityBelowBooked": "Capacity cannot be lower than the {count, plural, =1 {# seat} other {# seats}} already booked",
+    "demoReadOnly": "This is a read-only demo account — sign up to create your own bookable services.",
+    "soldOut": "This session is fully booked",
+    "seatsLeftOnSession": "Only {count, plural, =1 {# seat} other {# seats}} left on this session",
+    "partyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
+    "duplicateBooking": "You already have a booking for this session",
+    "alreadyCancelled": "This booking has already been cancelled",
+    "slotGone": "This session is no longer available"
+  }
+}

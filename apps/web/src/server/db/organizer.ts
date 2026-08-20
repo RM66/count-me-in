@@ -12,11 +12,12 @@
  */
 
 import type {
+  AppLocale,
   OrganizerProfile,
   PublicOrganizer,
   UpdateOrganizerProfileInput,
 } from '@repo/contracts'
-import { isDemoOrganizerId } from '@repo/contracts'
+import { DEFAULT_LOCALE, isAppLocale, isDemoOrganizerId } from '@repo/contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
 import { eq } from 'drizzle-orm'
@@ -53,6 +54,7 @@ export function toOrganizerProfile(row: Organizer, isDemo: boolean): OrganizerPr
     photoUrl: row.photoUrl,
     location: row.location,
     contact: row.contact,
+    language: isAppLocale(row.language) ? row.language : DEFAULT_LOCALE,
     createdAt: row.createdAt.toISOString(),
     isDemo,
   }
@@ -129,4 +131,17 @@ export async function updateOrganizerProfile(
   if (!updated) return null
 
   return toOrganizerProfile(updated, false)
+}
+
+/**
+ * Set the organizer's notification language (ADR-011). Called by the language
+ * switcher's server action — the switcher is the single language setting, so
+ * switching while signed in keeps `organizers.language` in sync with the UI
+ * locale. Silent no-op for an unknown id (e.g. a stale session).
+ */
+export async function updateOrganizerLanguage(
+  organizerId: string,
+  language: AppLocale,
+): Promise<void> {
+  await db.update(organizers).set({ language }).where(eq(organizers.id, organizerId))
 }

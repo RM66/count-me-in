@@ -4,6 +4,7 @@ import type { GuestTicketResponse, PublicOrganizer } from '@repo/contracts'
 import { AlertCircle } from 'lucide-react'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 import { TelegramLoginButton } from '@/components/telegram-login-button'
 import { Button } from '@/components/ui/button'
@@ -36,17 +37,19 @@ export function VerifyStep({
   onTicket: (ticket: GuestTicketResponse) => void
   onBack: () => void
 }) {
+  const t = useTranslations('Booking')
+
   return (
     <div className="flex flex-col gap-4">
       {organizer.isDemo ? (
         <div className="flex items-start gap-3 rounded-lg border border-dashed bg-muted/50 p-3 text-sm text-muted-foreground">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <p className="text-pretty">
-            This is a read-only demo page, so bookings are not saved.{' '}
+            {t('demoIntro')}{' '}
             <Link href="/signup" className="font-medium text-foreground underline">
-              Create your own
+              {t('createOwn')}
             </Link>{' '}
-            to take real bookings.
+            {t('demoOutro')}
           </p>
         </div>
       ) : (
@@ -65,14 +68,14 @@ export function VerifyStep({
                   href="/booking"
                   className="self-start rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive underline-offset-2 hover:underline"
                 >
-                  Find my bookings →
+                  {t('findMyBookings')}
                 </Link>
               )}
             </div>
           )}
           {!attempted && (
             <p className="text-center text-sm text-muted-foreground text-pretty">
-              Confirm with Telegram — no account needed, and it only proves who you are.
+              {t('confirmHint')}
             </p>
           )}
           {botUsername ? (
@@ -80,7 +83,7 @@ export function VerifyStep({
               {isCreating ? (
                 <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
                   <Spinner />
-                  Reserving your seat…
+                  {t('reserving')}
                 </div>
               ) : attempted ? null : (
                 <TelegramLoginButton
@@ -92,15 +95,13 @@ export function VerifyStep({
               )}
             </div>
           ) : (
-            <p className="text-center text-sm text-destructive">
-              Telegram login is not configured, so booking is unavailable.
-            </p>
+            <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
           )}
         </>
       )}
       <Button variant="ghost" disabled={isCreating} onClick={onBack}>
         <ArrowLeft data-icon="inline-start" />
-        Back
+        {t('back')}
       </Button>
     </div>
   )

@@ -1,7 +1,9 @@
 'use client'
 
 import { GlobeIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import { useTransition } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -10,25 +12,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { DEFAULT_LANGUAGE, LANGUAGES } from '@/constants/languages'
+import { setLocale } from '@/i18n/actions'
 import { cn } from '@/lib/utils'
 
 /**
  * Language picker shown on the right of every section header.
  *
- * MVP: markup only, English is the sole option — no i18n wiring yet. Kept as a
- * single shared component so each section layout renders the exact same control.
- *
- * Pass `trigger` to render a custom control (e.g. a `SidebarMenuButton`) instead
- * of the default outline button; the dropdown with the language list is handled
- * for you. When omitted, a compact outline button showing the active language
- * code is rendered.
+ * Switching persists the choice in the `NEXT_LOCALE` cookie (via the
+ * `setLocale` server action) and re-renders the server tree with
+ * `router.refresh()` — the request config then resolves the new locale for
+ * both server and client components (ADR-011).
  */
-
-export type Language = { code: string; label: string }
-
-export const ACTIVE_LANGUAGE: Language = { code: 'en', label: 'English' }
-
-export const LANGUAGES: Language[] = [ACTIVE_LANGUAGE]
 
 export function LanguageSwitcher({
   className,
@@ -40,9 +35,22 @@ export function LanguageSwitcher({
    * default outline button; receives the active language so the caller can show
    * its label. The dropdown with the language list is handled for you.
    */
-  trigger?: (active: Language) => ReactNode
+  trigger?: (active: { code: string; label: string }) => React.ReactNode
 }) {
-  const active = ACTIVE_LANGUAGE
+  const locale = useLocale()
+  const t = useTranslations('LocaleSwitcher')
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  const active = LANGUAGES.find((language) => language.code === locale) ?? DEFAULT_LANGUAGE
+
+  function onChange(code: string) {
+    if (code === locale) return
+    startTransition(async () => {
+      await setLocale(code)
+      router.refresh()
+    })
+  }
 
   return (
     <DropdownMenu>
@@ -54,7 +62,8 @@ export function LanguageSwitcher({
             variant="outline"
             size="sm"
             className={cn('gap-2', className)}
-            aria-label="Change language"
+            aria-label={t('ariaLabel')}
+            disabled={isPending}
           >
             <GlobeIcon className="size-4" />
             <span>{active.code.toUpperCase()}</span>
@@ -63,7 +72,13 @@ export function LanguageSwitcher({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
         {LANGUAGES.map((language) => (
-          <DropdownMenuItem key={language.code}>{language.label}</DropdownMenuItem>
+          <DropdownMenuItem
+            key={language.code}
+            disabled={language.code === locale}
+            onSelect={() => onChange(language.code)}
+          >
+            {language.label}
+          </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,6 +1,7 @@
 import { ClockIcon, ImageIcon, PencilIcon, PlusIcon, UsersIcon } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,11 @@ export default async function ServicesPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
 
+  const t = await getTranslations('Cabinet.services')
+  const tc = await getTranslations('Cabinet.common')
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+  const tslots = await getTranslations('Cabinet.slots')
+
   const services = await listServices(organizerId)
   const serviceIds = services.map((service) => service.id)
   const [slotCounts, bookingCounts] = await Promise.all([
@@ -31,18 +37,18 @@ export default async function ServicesPage() {
   return (
     <>
       <CabinetHeader
-        crumbs={[{ label: 'Cabinet', href: '/cabinet' }, { label: 'Services' }]}
+        crumbs={[{ label: tcrumbs('cabinet'), href: '/cabinet' }, { label: tcrumbs('services') }]}
         action={
           isReadOnly ? (
             <Button size="sm" disabled>
               <PlusIcon data-icon="inline-start" />
-              New service
+              {t('newService')}
             </Button>
           ) : (
             <Button size="sm" asChild>
               <Link href="/cabinet/services/new">
                 <PlusIcon data-icon="inline-start" />
-                New service
+                {t('newService')}
               </Link>
             </Button>
           )
@@ -50,24 +56,22 @@ export default async function ServicesPage() {
       />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Services</h1>
-          <p className="text-sm text-muted-foreground">Manage the experiences guests can book.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         {services.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>No services yet</CardTitle>
-              <CardDescription>
-                Create your first service to give guests something to book.
-              </CardDescription>
+              <CardTitle>{t('noServicesYet')}</CardTitle>
+              <CardDescription>{t('noServicesDescription')}</CardDescription>
             </CardHeader>
             {!isReadOnly && (
               <CardContent>
                 <Button asChild>
                   <Link href="/cabinet/services/new">
                     <PlusIcon data-icon="inline-start" />
-                    New service
+                    {t('newService')}
                   </Link>
                 </Button>
               </CardContent>
@@ -103,11 +107,11 @@ export default async function ServicesPage() {
                     <Badge variant="secondary">{svc.defaultPrice}</Badge>
                     <Badge variant="outline">
                       <ClockIcon data-icon="inline-start" />
-                      {svc.defaultDurationMinutes} min
+                      {tc('min', { minutes: svc.defaultDurationMinutes })}
                     </Badge>
                     <Badge variant="outline">
                       <UsersIcon data-icon="inline-start" />
-                      {svc.defaultCapacity} seats
+                      {tc('seats', { count: svc.defaultCapacity })}
                     </Badge>
                   </CardContent>
                   <CardFooter className="justify-between">
@@ -122,19 +126,19 @@ export default async function ServicesPage() {
                         href={`/cabinet/slots?service=${svc.id}`}
                         className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                       >
-                        {slotCount} upcoming {slotCount === 1 ? 'slot' : 'slots'}
+                        {tslots('upcomingCount', { count: slotCount })}
                       </Link>
                       <Link
                         href={`/cabinet/bookings?service=${svc.id}`}
                         className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                       >
-                        {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'}
+                        {t('countBookings', { count: bookingCount })}
                       </Link>
                     </div>
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/cabinet/services/${svc.id}`}>
                         <PencilIcon data-icon="inline-start" />
-                        {isReadOnly ? 'View' : 'Edit'}
+                        {isReadOnly ? tc('view') : tc('edit')}
                       </Link>
                     </Button>
                   </CardFooter>

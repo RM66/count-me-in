@@ -1,5 +1,6 @@
 import { updateServiceInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import {
   deleteOwnedService,
@@ -20,12 +21,13 @@ type RouteContext = { params: Promise<{ id: string }> }
  * `404`, not `403`, so the endpoint never confirms that a foreign id exists.
  */
 export async function GET(_request: Request, { params }: RouteContext) {
+  const t = await getTranslations('ApiErrors')
   const { id } = await params
   const { organizerId } = await resolveCabinetOrganizerId()
 
   const service = await getOwnedService(organizerId, id)
   if (!service) {
-    return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+    return NextResponse.json({ error: t('serviceNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({ service })
@@ -38,6 +40,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
  * is left untouched, an explicit `null` clears the column.
  */
 export async function PUT(request: Request, { params }: RouteContext) {
+  const t = await getTranslations('ApiErrors')
   const { id } = await params
 
   const guard = await requireWritableOrganizer()
@@ -49,23 +52,20 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const input = parsed.value
 
   if (input.photoUrl != null && !isOwnMediaUrl(organizerId, input.photoUrl)) {
-    return NextResponse.json(
-      { error: 'Invalid photoUrl: must belong to your media prefix' },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: t('photoPrefix') }, { status: 400 })
   }
 
   try {
     const service = await updateOwnedService(organizerId, id, input)
 
     if (!service) {
-      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+      return NextResponse.json({ error: t('serviceNotFound') }, { status: 404 })
     }
 
     return NextResponse.json({ service })
   } catch (error) {
     if (error instanceof NoServiceUpdatesError) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: t('nothingToUpdate') }, { status: 400 })
     }
     throw error
   }
@@ -78,6 +78,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
  * removes any scheduled sessions.
  */
 export async function DELETE(_request: Request, { params }: RouteContext) {
+  const t = await getTranslations('ApiErrors')
   const { id } = await params
 
   const guard = await requireWritableOrganizer()
@@ -87,7 +88,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   const deletedId = await deleteOwnedService(organizerId, id)
 
   if (!deletedId) {
-    return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+    return NextResponse.json({ error: t('serviceNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({ id: deletedId })

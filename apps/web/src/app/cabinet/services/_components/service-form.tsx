@@ -3,6 +3,7 @@
 import type { ServiceRecord } from '@repo/contracts'
 import { Trash2Icon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { useIsDemo } from '@/api-client'
 import {
@@ -28,6 +29,8 @@ import { useServiceForm } from './use-service-form'
 export function ServiceForm({ service }: { service?: ServiceRecord }) {
   const router = useRouter()
   const { form, isEdit, submit, remove, isSaving, isDeleting } = useServiceForm(service)
+  const t = useTranslations('Cabinet.services')
+  const tc = useTranslations('Cabinet.common')
 
   // Read-only demo account (ADR-010). Disabling here is UX only — every write
   // endpoint rejects the demo id server-side regardless.
@@ -42,42 +45,42 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
       <div className="flex flex-col gap-6 lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Details</CardTitle>
-            <CardDescription>Basic information guests will see.</CardDescription>
+            <CardTitle>{t('details')}</CardTitle>
+            <CardDescription>{t('detailsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
               <ServiceTextField
                 control={control}
                 name="title"
-                label="Title"
-                placeholder="e.g. Morning Vinyasa Flow"
+                label={t('fieldTitle')}
+                placeholder={t('titlePlaceholder')}
                 disabled={isReadOnly}
               />
               <ServiceTextareaField
                 control={control}
                 name="description"
-                label="Description"
+                label={t('fieldDescription')}
                 rows={4}
-                placeholder="Describe what guests can expect..."
-                description="Shown on the service page. Markdown is not supported."
+                placeholder={t('descriptionPlaceholder')}
+                description={t('descriptionHint')}
                 disabled={isReadOnly}
               />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <ServiceTextField
                   control={control}
                   name="location"
-                  label="Location"
-                  placeholder="e.g. Kralja Petra 123, Belgrade"
-                  description="Overrides your profile location when set."
+                  label={t('fieldLocation')}
+                  placeholder={t('locationPlaceholder')}
+                  description={t('locationHint')}
                   disabled={isReadOnly}
                 />
                 <ServiceTextField
                   control={control}
                   name="contact"
-                  label="Contact"
-                  placeholder="e.g. phone, email or social link"
-                  description="Overrides your profile contact when set."
+                  label={t('fieldContact')}
+                  placeholder={t('contactPlaceholder')}
+                  description={t('contactHint')}
                   disabled={isReadOnly}
                 />
               </div>
@@ -87,8 +90,8 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Defaults</CardTitle>
-            <CardDescription>Applied to new slots. You can override them per slot.</CardDescription>
+            <CardTitle>{t('defaults')}</CardTitle>
+            <CardDescription>{t('defaultsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -96,14 +99,14 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                 <ServiceTextField
                   control={control}
                   name="defaultPrice"
-                  label="Price"
-                  placeholder="1200 RSD"
+                  label={t('fieldPrice')}
+                  placeholder={t('pricePlaceholder')}
                   disabled={isReadOnly}
                 />
                 <ServiceTextField
                   control={control}
                   name="defaultCapacity"
-                  label="Capacity"
+                  label={t('fieldCapacity')}
                   type="number"
                   min={1}
                   inputMode="numeric"
@@ -112,7 +115,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                 <ServiceTextField
                   control={control}
                   name="defaultDurationMinutes"
-                  label="Duration (min)"
+                  label={t('fieldDuration')}
                   type="number"
                   min={1}
                   inputMode="numeric"
@@ -125,21 +128,19 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Group bookings</CardTitle>
-            <CardDescription>
-              How many seats one guest may reserve in a single booking.
-            </CardDescription>
+            <CardTitle>{t('groupBookings')}</CardTitle>
+            <CardDescription>{t('groupBookingsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
               <ServiceTextField
                 control={control}
                 name="maxSeatsPerBooking"
-                label="Max seats per booking"
+                label={t('fieldMaxSeats')}
                 type="number"
                 min={1}
                 inputMode="numeric"
-                description="Set to 1 for solo bookings only. A higher number lets a guest bring others, but never more than this many at once — so one person cannot claim every seat in a slot."
+                description={t('maxSeatsHint')}
                 disabled={isReadOnly}
               />
             </FieldGroup>
@@ -154,8 +155,8 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Publish</CardTitle>
-            <CardDescription>Save changes to this service.</CardDescription>
+            <CardTitle>{t('publish')}</CardTitle>
+            <CardDescription>{t('publishDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {/*
@@ -163,7 +164,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
               "No changes to save" toast and the manual field-by-field diff.
             */}
             <Button type="submit" disabled={isBusy || isReadOnly || !isDirty}>
-              {isSaving ? 'Saving...' : isEdit ? 'Save changes' : 'Create service'}
+              {isSaving ? tc('saving') : isEdit ? t('saveChanges') : t('createService')}
             </Button>
             <Button
               type="button"
@@ -171,7 +172,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
               onClick={() => router.push('/cabinet/services')}
               disabled={isBusy}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             {isEdit && (
               <>
@@ -185,24 +186,23 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                       disabled={isBusy || isReadOnly}
                     >
                       <Trash2Icon data-icon="inline-start" />
-                      {isDeleting ? 'Deleting...' : 'Delete service'}
+                      {isDeleting ? t('deleting') : t('deleteService')}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this service?</AlertDialogTitle>
+                      <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        {service?.title} and all of its time slots and bookings will be removed.
-                        This cannot be undone.
+                        {t('deleteDescription', { title: service?.title ?? '' })}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Keep service</AlertDialogCancel>
+                      <AlertDialogCancel>{t('keepService')}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={remove}
                         className="bg-destructive text-white hover:bg-destructive/90"
                       >
-                        Delete
+                        {t('delete')}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

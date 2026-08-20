@@ -17,8 +17,10 @@
     "@repo/redis": "workspace:*",
     "@sentry/bun": "^10.69.0",
     "drizzle-orm": "^0.45.2",
+    "next-intl": "^4.13.7",
     "pg-boss": "^12.27.0",
-    "posthog-node": "^5.48.1"
+    "posthog-node": "^5.48.1",
+    "@repo/translations": "workspace:*"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

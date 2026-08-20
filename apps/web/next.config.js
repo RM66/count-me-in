@@ -1,7 +1,11 @@
 import process from 'node:process'
 import { withSentryConfig } from '@sentry/nextjs'
+import createNextIntlPlugin from 'next-intl/plugin'
 
 /** @type {import('next').NextConfig} */
+
+// i18n request config (ADR-011): locale is cookie/header-driven, not routed.
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 // Allow next/image to optimise images served from the R2 public bucket.
 // R2_PUBLIC_BASE_URL can be either the default *.r2.dev domain or a custom domain
@@ -25,7 +29,7 @@ function buildRemotePatterns() {
 }
 
 const nextConfig = {
-  transpilePackages: ['@repo/contracts', '@repo/db'],
+  transpilePackages: ['@repo/contracts', '@repo/db', '@repo/translations'],
   images: {
     remotePatterns: [
       ...buildRemotePatterns(),
@@ -36,9 +40,11 @@ const nextConfig = {
 }
 
 // Source-map upload only runs in CI with SENTRY_AUTH_TOKEN; no-op otherwise.
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: !process.env.CI,
-  disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
-})
+export default withNextIntl(
+  withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.CI,
+    disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
+  }),
+)

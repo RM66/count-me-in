@@ -1,5 +1,6 @@
 import { createTimeSlotInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { createSlot, listSlots } from '@/server/db/time-slot'
 import { resolveCabinetOrganizerId } from '@/server/demo'
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
  * service exists.
  */
 export async function POST(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const guard = await requireWritableOrganizer()
   if (!guard.ok) return guard.response
   const { organizerId } = guard.value
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
   const slot = await createSlot(organizerId, parsed.value)
 
   if (!slot) {
-    return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+    return NextResponse.json({ error: t('serviceNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({ slot }, { status: 201 })

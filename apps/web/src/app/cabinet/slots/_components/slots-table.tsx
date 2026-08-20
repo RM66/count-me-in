@@ -4,6 +4,7 @@ import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/contracts'
 import { fillLabel, seatsLeft, slotPrice } from '@repo/contracts'
 import { CalendarPlusIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { DayFilterChip, DayFilterPicker } from '@/app/cabinet/_components/day-filter'
 import { FilterChip } from '@/app/cabinet/_components/filter-chip'
@@ -42,15 +43,6 @@ import { formatDate, formatTime } from '@/helpers/date'
 import { SlotDialog } from './slot-dialog'
 import { DAY_MARK, useSlotsTable } from './use-slots-table'
 
-const FILL_BADGE: Record<
-  SlotFill,
-  { label: string; variant: 'secondary' | 'outline' | 'default' }
-> = {
-  open: { label: 'Open', variant: 'outline' },
-  filling: { label: 'Filling up', variant: 'default' },
-  full: { label: 'Full', variant: 'secondary' },
-}
-
 type SlotsTableProps = {
   slots: TimeSlotRecord[]
   services: ServiceRecord[]
@@ -83,7 +75,12 @@ export function SlotsTable({
   activeServiceId,
   isReadOnly,
 }: SlotsTableProps) {
-  const t = useSlotsTable({ slots, services, timezone, nowIso, activeServiceId })
+  const state = useSlotsTable({ slots, services, timezone, nowIso, activeServiceId })
+  const t = useTranslations('Cabinet.slots')
+  const td = useTranslations('Cabinet.dayFilter')
+  const tc = useTranslations('Cabinet.common')
+  const tsv = useTranslations('Cabinet.services')
+  const locale = useLocale()
 
   // Nothing to hang a slot on yet — point at the service editor rather than
   // opening a dialog whose service picker would be empty.
@@ -91,17 +88,15 @@ export function SlotsTable({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>No services yet</CardTitle>
-          <CardDescription>
-            Slots belong to a service — create one first, then schedule sessions for it.
-          </CardDescription>
+          <CardTitle>{t('noServicesYet')}</CardTitle>
+          <CardDescription>{t('noServicesDescription')}</CardDescription>
         </CardHeader>
         {!isReadOnly && (
           <CardContent>
             <Button asChild>
               <Link href="/cabinet/services/new">
                 <PlusIcon data-icon="inline-start" />
-                New service
+                {tsv('newService')}
               </Link>
             </Button>
           </CardContent>
@@ -110,101 +105,119 @@ export function SlotsTable({
     )
   }
 
+  const FILL_BADGE: Record<SlotFill, { label: string; variant: 'secondary' | 'outline' | 'default' }> = {
+    open: { label: t('open'), variant: 'outline' },
+    filling: { label: t('fillingUp'), variant: 'default' },
+    full: { label: t('full'), variant: 'secondary' },
+  }
+
+  const visibleCountLabel = state.showPast
+    ? t('pastCount', { count: state.visible.length })
+    : t('upcomingCount', { count: state.visible.length })
+
+  const suffix =
+    (state.activeService ? t('forServiceSuffix', { service: state.activeService.title }) : '') +
+    (state.day ? ` · ${state.dayLabel}` : '')
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <ToggleGroup
             type="single"
-            value={t.showPast ? 'past' : 'upcoming'}
-            onValueChange={(value) => value && t.setShowPast(value === 'past')}
+            value={state.showPast ? 'past' : 'upcoming'}
+            onValueChange={(value) => value && state.setShowPast(value === 'past')}
             variant="outline"
           >
-            <ToggleGroupItem value="upcoming">Upcoming ({t.upcoming.length})</ToggleGroupItem>
-            <ToggleGroupItem value="past">Past ({t.past.length})</ToggleGroupItem>
+            <ToggleGroupItem value="upcoming">
+              {t('upcoming', { count: state.upcoming.length })}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="past">{t('past', { count: state.past.length })}</ToggleGroupItem>
           </ToggleGroup>
 
           {/*
             The filter is in the URL, so clearing it is a link back to the
             unfiltered page rather than local state — back/forward keep working.
           */}
-          {t.activeService && (
+          {state.activeService && (
             <FilterChip
-              label={t.activeService.title}
+              label={state.activeService.title}
               clearHref="/cabinet/slots"
-              ariaLabel="Show every service"
+              ariaLabel={td('showEveryService')}
             />
           )}
 
-          {t.day && <DayFilterChip dayLabel={t.dayLabel} onClear={() => t.selectDay('')} />}
+          {state.day && <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.selectDay('')} />}
         </div>
 
         <div className="flex items-center gap-2">
           <DayFilterPicker
-            day={t.day}
-            dayLabel={t.dayLabel}
-            onSelect={t.selectDay}
-            defaultMonth={t.defaultMonth}
+            day={state.day}
+            dayLabel={state.dayLabel}
+            onSelect={state.selectDay}
+            defaultMonth={state.defaultMonth}
             entityLabel="slots"
             // The whole point: days that have sessions are marked, and the
             // marking distinguishes "still to come" from "already ran".
-            modifiers={{ hasUpcoming: t.upcomingDates, hasPast: t.pastDates }}
+            modifiers={{ hasUpcoming: state.upcomingDates, hasPast: state.pastDates }}
             modifiersClassNames={{
               hasUpcoming: DAY_MARK.strong.calendarCell,
               hasPast: DAY_MARK.muted.calendarCell,
             }}
           />
 
-          <Button size="sm" disabled={isReadOnly} onClick={() => t.setDialog({ mode: 'create' })}>
+          <Button
+            size="sm"
+            disabled={isReadOnly}
+            onClick={() => state.setDialog({ mode: 'create' })}
+          >
             <PlusIcon data-icon="inline-start" />
-            Add slot
+            {t('addSlot')}
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{t.showPast ? 'Past sessions' : 'Upcoming schedule'}</CardTitle>
+          <CardTitle>{state.showPast ? t('pastSessions') : t('upcomingSchedule')}</CardTitle>
           <CardDescription>
-            {t.visible.length === 0
-              ? t.showPast
-                ? 'Nothing has run yet.'
-                : 'No upcoming sessions.'
-              : `${t.visible.length} ${t.showPast ? 'past' : 'upcoming'} ${
-                  t.visible.length === 1 ? 'slot' : 'slots'
-                }${t.activeService ? ` for ${t.activeService.title}` : ''}${
-                  t.day ? ` on ${t.dayLabel}` : ''
-                }.`}
+            {state.visible.length === 0
+              ? state.showPast
+                ? t('nothingRun')
+                : t('noUpcomingSessions')
+              : `${visibleCountLabel}${suffix}.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {t.visible.length === 0 ? (
+          {state.visible.length === 0 ? (
             <Empty className="border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <CalendarPlusIcon />
                 </EmptyMedia>
                 <EmptyTitle>
-                  {t.day
-                    ? 'Nothing on this day'
-                    : t.showPast
-                      ? 'No past sessions'
-                      : 'Nothing scheduled'}
+                  {state.day
+                    ? t('nothingOnDay')
+                    : state.showPast
+                      ? t('noPastSessions')
+                      : t('nothingScheduled')}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {t.day
-                    ? `No ${t.showPast ? 'past' : 'upcoming'} sessions on ${t.dayLabel}${
-                        t.activeService ? ` for ${t.activeService.title}` : ''
+                  {state.day
+                    ? `${state.showPast ? t('noPastOnDay', { day: state.dayLabel }) : t('noUpcomingOnDay', { day: state.dayLabel })}${
+                        state.activeService
+                          ? t('forServiceSuffix', { service: state.activeService.title })
+                          : ''
                       }.`
-                    : t.showPast
-                      ? 'Sessions move here once their start time passes.'
-                      : t.activeService
-                        ? `${t.activeService.title} has no upcoming sessions yet.`
-                        : 'Add a time slot and guests will be able to book it.'}
+                    : state.showPast
+                      ? t('sessionsMove')
+                      : state.activeService
+                        ? t('noUpcomingFor', { service: state.activeService.title })
+                        : t('addHint')}
                 </EmptyDescription>
-                {t.day && (
-                  <Button variant="outline" size="sm" onClick={() => t.selectDay('')}>
-                    Show every day
+                {state.day && (
+                  <Button variant="outline" size="sm" onClick={() => state.selectDay('')}>
+                    {td('showEveryDay')}
                   </Button>
                 )}
               </EmptyHeader>
@@ -213,17 +226,17 @@ export function SlotsTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Date & time</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('colService')}</TableHead>
+                  <TableHead>{t('colDateTime')}</TableHead>
+                  <TableHead>{t('colCapacity')}</TableHead>
+                  <TableHead>{t('colPrice')}</TableHead>
+                  <TableHead>{t('colStatus')}</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {t.visible.map((slot) => {
-                  const service = t.servicesById.get(slot.serviceId)
+                {state.visible.map((slot) => {
+                  const service = state.servicesById.get(slot.serviceId)
                   const left = seatsLeft(slot)
                   const pct = Math.round((slot.bookedCount / slot.capacity) * 100)
                   const fill = FILL_BADGE[fillLabel(slot)]
@@ -233,16 +246,17 @@ export function SlotsTable({
                       <TableCell className="font-medium">{service?.title}</TableCell>
                       <TableCell className="text-muted-foreground">
                         <div className="flex flex-col">
-                          <span>{formatDate(slot.startsAt, timezone)}</span>
+                          <span>{formatDate(slot.startsAt, timezone, locale)}</span>
                           <span className="text-xs">
-                            {formatTime(slot.startsAt, timezone)} · {slot.durationMinutes} min
+                            {formatTime(slot.startsAt, timezone, locale)} ·{' '}
+                            {tc('min', { minutes: slot.durationMinutes })}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex w-32 flex-col gap-1">
                           <span className="text-xs text-muted-foreground">
-                            {slot.bookedCount}/{slot.capacity} · {left} left
+                            {slot.bookedCount}/{slot.capacity} · {t('left', { count: left })}
                           </span>
                           <Progress value={pct} />
                         </div>
@@ -256,35 +270,35 @@ export function SlotsTable({
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="size-8">
                               <MoreHorizontalIcon />
-                              <span className="sr-only">Slot actions</span>
+                              <span className="sr-only">{t('slotActions')}</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
                               <DropdownMenuItem
                                 disabled={isReadOnly}
-                                onSelect={() => t.setDialog({ mode: 'edit', slot })}
+                                onSelect={() => state.setDialog({ mode: 'edit', slot })}
                               >
-                                Edit slot
+                                {t('editSlot')}
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
                                 {/* Deep link into the bookings page filtered to this session. */}
                                 <Link href={`/cabinet/bookings?slot=${slot.id}`}>
-                                  View bookings
+                                  {t('viewBookings')}
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={isReadOnly}
-                                onSelect={() => t.setDialog({ mode: 'duplicate', slot })}
+                                onSelect={() => state.setDialog({ mode: 'duplicate', slot })}
                               >
-                                Duplicate
+                                {t('duplicate')}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 disabled={isReadOnly}
-                                onSelect={() => t.setPendingDelete(slot)}
+                                onSelect={() => state.setPendingDelete(slot)}
                               >
-                                Cancel slot
+                                {t('cancelSlot')}
                               </DropdownMenuItem>
                             </DropdownMenuGroup>
                           </DropdownMenuContent>
@@ -304,46 +318,48 @@ export function SlotsTable({
         `defaultValues` are read once per mount, so a reused instance would show
         the previously edited slot's values.
       */}
-      {t.dialog && (
+      {state.dialog && (
         <SlotDialog
-          key={`${t.dialog.mode}-${t.dialog.slot?.id ?? 'new'}`}
+          key={`${state.dialog.mode}-${state.dialog.slot?.id ?? 'new'}`}
           open
-          onOpenChange={(open) => !open && t.setDialog(null)}
+          onOpenChange={(open) => !open && state.setDialog(null)}
           services={services}
           defaultServiceId={activeServiceId}
           timezone={timezone}
-          mode={t.dialog.mode}
-          slot={t.dialog.slot}
+          mode={state.dialog.mode}
+          slot={state.dialog.slot}
         />
       )}
 
       <AlertDialog
-        open={Boolean(t.pendingDelete)}
-        onOpenChange={(open) => !open && t.setPendingDelete(null)}
+        open={Boolean(state.pendingDelete)}
+        onOpenChange={(open) => !open && state.setPendingDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel this slot?</AlertDialogTitle>
+            <AlertDialogTitle>{t('cancelTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t.pendingDelete?.bookedCount
-                ? `This session has ${t.pendingDelete.bookedCount} booked ${
-                    t.pendingDelete.bookedCount === 1 ? 'seat' : 'seats'
-                  }. Cancelling removes the slot and every booking on it. This cannot be undone.`
-                : 'The slot will be removed and guests will no longer see it. This cannot be undone.'}
+              {state.pendingDelete?.bookedCount
+                ? t('cancelDescriptionWithBookings', {
+                    count: state.pendingDelete.bookedCount,
+                  })
+                : t('cancelDescriptionPlain')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={t.deleteSlot.isPending}>Keep slot</AlertDialogCancel>
+            <AlertDialogCancel disabled={state.deleteSlot.isPending}>
+              {t('keepSlot')}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 // Keep the dialog up while the request is in flight; it closes
                 // in `onSuccess`, so a failure leaves the confirm recoverable.
                 event.preventDefault()
-                t.confirmDelete()
+                state.confirmDelete()
               }}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {t.deleteSlot.isPending ? 'Cancelling...' : 'Cancel slot'}
+              {state.deleteSlot.isPending ? t('cancellingDialog') : t('cancelSlot')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

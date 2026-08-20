@@ -1,10 +1,13 @@
 'use client'
 
 import type { UseMutationResult } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import type { ChangeEvent, RefObject } from 'react'
 import { useRef } from 'react'
 import { toast } from 'sonner'
 import type { z } from 'zod'
+
+import { ApiError } from '@/api-client/error'
 
 type ImageUploadOptions<TResult> = {
   contentType: z.ZodType<string>
@@ -35,6 +38,7 @@ export function useImageUpload<TResult>({
   onUploaded,
 }: ImageUploadOptions<TResult>): ImageUpload {
   const inputRef = useRef<HTMLInputElement>(null)
+  const t = useTranslations('Ui')
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target
@@ -46,13 +50,13 @@ export function useImageUpload<TResult>({
     }
 
     if (!contentType.safeParse(file.type).success) {
-      toast.error('Use a JPEG, PNG or WebP image')
+      toast.error(t('wrongImageType'))
       reset()
       return
     }
 
     if (file.size > maxBytes) {
-      toast.error(`Image must be under ${maxBytesLabel}`)
+      toast.error(t('imageTooLarge', { size: maxBytesLabel }))
       reset()
       return
     }
@@ -63,7 +67,11 @@ export function useImageUpload<TResult>({
         reset()
       },
       onError: (error) => {
-        toast.error(error.message)
+        toast.error(
+          error instanceof ApiError && error.status === 413
+            ? t('compressFailed')
+            : error.message || t('uploadFailed'),
+        )
         reset()
       },
     })

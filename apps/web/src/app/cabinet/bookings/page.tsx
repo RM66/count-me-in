@@ -1,3 +1,5 @@
+import { getLocale, getTranslations } from 'next-intl/server'
+
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { BookingsTable } from '@/app/cabinet/bookings/_components/bookings-table'
 import { formatDateTime } from '@/helpers/date'
@@ -15,6 +17,10 @@ export default async function BookingsPage({
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
   const { service: serviceParam, slot: slotParam } = await searchParams
+
+  const t = await getTranslations('Cabinet.bookings')
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+  const locale = await getLocale()
 
   // A booking reaches its service transitively (Booking → TimeSlot → Service),
   // so the table needs all three lists to render a row; the profile supplies
@@ -47,31 +53,37 @@ export default async function BookingsPage({
   // The slot filter is the narrower one: a slot pins one session of one
   // service. Named by service + start time — the id would mean nothing.
   const activeSlotLabel = activeSlot
-    ? `${slotService ? `${slotService.title} · ` : ''}${formatDateTime(activeSlot.startsAt, timezone)}`
+    ? `${slotService ? `${slotService.title} · ` : ''}${formatDateTime(activeSlot.startsAt, timezone, locale)}`
     : undefined
 
   return (
     <>
       <CabinetHeader
         crumbs={[
-          { label: 'Cabinet', href: '/cabinet' },
+          { label: tcrumbs('cabinet'), href: '/cabinet' },
           // Filtered? Then "Bookings" is a step back to the full list.
           ...(activeSlotLabel
-            ? [{ label: 'Bookings', href: '/cabinet/bookings' }, { label: activeSlotLabel }]
+            ? [
+                { label: tcrumbs('bookings'), href: '/cabinet/bookings' },
+                { label: activeSlotLabel },
+              ]
             : activeService
-              ? [{ label: 'Bookings', href: '/cabinet/bookings' }, { label: activeService.title }]
-              : [{ label: 'Bookings' }]),
+              ? [
+                  { label: tcrumbs('bookings'), href: '/cabinet/bookings' },
+                  { label: activeService.title },
+                ]
+              : [{ label: tcrumbs('bookings') }]),
         ]}
       />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
             {activeSlotLabel
-              ? `Reservations for ${activeSlotLabel}.`
+              ? t('reservationsFor', { label: activeSlotLabel })
               : activeService
-                ? `Reservations for ${activeService.title}.`
-                : 'Every reservation across your services.'}
+                ? t('reservationsFor', { label: activeService.title })
+                : t('subtitle')}
           </p>
         </div>
         <BookingsTable

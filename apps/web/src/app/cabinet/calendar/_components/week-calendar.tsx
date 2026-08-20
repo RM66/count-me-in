@@ -4,6 +4,7 @@ import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/contracts'
 import { fillLabel, instantToWallClockInputs, seatsLeft, slotEnd } from '@repo/contracts'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
@@ -33,12 +34,6 @@ const FILL_STYLES: Record<SlotFill, string> = {
   full: 'border-l-muted-foreground/40 bg-muted text-muted-foreground hover:bg-muted/70',
 }
 
-const FILL_LEGEND: { fill: SlotFill; label: string }[] = [
-  { fill: 'open', label: 'Open' },
-  { fill: 'filling', label: 'Filling up' },
-  { fill: 'full', label: 'Full' },
-]
-
 type WeekCalendarProps = {
   slots: TimeSlotRecord[]
   services: ServiceRecord[]
@@ -59,10 +54,20 @@ type WeekCalendarProps = {
  * viewer in another zone.
  */
 export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendarProps) {
+  const t = useTranslations('Cabinet.calendar')
+  const tc = useTranslations('Cabinet.common')
+  const locale = useLocale()
+
   const servicesById = useMemo(
     () => new Map(services.map((service) => [service.id, service])),
     [services],
   )
+
+  const FILL_LEGEND: { fill: SlotFill; label: string }[] = [
+    { fill: 'open', label: t('open') },
+    { fill: 'filling', label: t('fillingUp') },
+    { fill: 'full', label: t('full') },
+  ]
 
   // Where "today" and "now" fall on the organizer's wall clock — the anchors
   // for the initial week, the highlighted column and the time line.
@@ -164,15 +169,13 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
     setPendingScrollDay(null)
   }, [pendingScrollDay])
 
-  const rangeLabel = formatRange(weekStart, addDays(weekStart, 6))
+  const rangeLabel = formatRange(weekStart, addDays(weekStart, 6), locale)
 
   return (
     <div className="flex h-[calc(100svh-4rem)] flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-        <p className="text-sm text-muted-foreground">
-          Your week at a glance — every session on its start time and length.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -186,7 +189,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                 size="sm"
                 onClick={() => jumpToDate(dayKeyToDate(todayKey))}
               >
-                Today
+                {t('today')}
               </Button>
               <div className="flex items-center">
                 <Button
@@ -194,7 +197,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                   size="icon"
                   className="size-8"
                   onClick={() => goToDate(addDays(weekStart, -7))}
-                  aria-label="Previous week"
+                  aria-label={t('previousWeek')}
                 >
                   <ChevronLeftIcon />
                 </Button>
@@ -203,7 +206,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                   size="icon"
                   className="size-8"
                   onClick={() => goToDate(addDays(weekStart, 7))}
-                  aria-label="Next week"
+                  aria-label={t('nextWeek')}
                 >
                   <ChevronRightIcon />
                 </Button>
@@ -228,9 +231,9 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
               {/* Month picker behind a button, mirroring the "Any day" filter. */}
               <Popover open={isPickerOpen} onOpenChange={setPickerOpen}>
                 <PopoverTrigger asChild>
-                  <Button type="button" variant="outline" size="sm" aria-label="Jump to a week">
+                  <Button type="button" variant="outline" size="sm" aria-label={t('jumpToWeek')}>
                     <CalendarIcon data-icon="inline-start" />
-                    Jump to date
+                    {t('jumpToDate')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
@@ -260,7 +263,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
           {/* One horizontal scroll owner so day headers and the time grid stay
               aligned when the week is wider than the panel on small screens. */}
           <div className="min-h-0 flex-1 overflow-auto" ref={scrollRef}>
-            <div className="min-w-[1224px] md:min-w-[640px]">
+            <div className="min-w-306 md:min-w-160">
               {/* Day headers, sticky so they survive the vertical scroll. */}
               <div className="sticky top-0 z-20 flex border-b bg-background">
                 <div className="w-14 shrink-0" />
@@ -275,7 +278,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                       className="flex flex-1 flex-col items-center gap-0.5 py-2 text-center hover:bg-muted/50"
                     >
                       <span className="text-xs text-muted-foreground uppercase">
-                        {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                        {day.toLocaleDateString(locale, { weekday: 'short' })}
                       </span>
                       <span
                         className={cn(
@@ -362,13 +365,13 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                             }}
                           >
                             <span className="block font-medium truncate">
-                              {service?.title ?? 'Session'}
+                              {service?.title ?? tc('session')}
                             </span>
                             {height > 30 && (
                               <span className="block truncate text-[0.7rem] opacity-80">
                                 {instantToWallClockInputs(slot.startsAt, timezone).time}–
                                 {instantToWallClockInputs(slotEnd(slot), timezone).time} ·{' '}
-                                {seatsLeft(slot)} left
+                                {t('left', { count: seatsLeft(slot) })}
                               </span>
                             )}
                           </Link>
@@ -387,11 +390,11 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
 }
 
 /** Week range label, e.g. "Jul 21 – 27, 2026" or "Jul 28 – Aug 3, 2026". */
-function formatRange(start: Date, end: Date): string {
+function formatRange(start: Date, end: Date, locale: string): string {
   const sameMonth = start.getMonth() === end.getMonth()
-  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const startLabel = start.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
   const endLabel = end.toLocaleDateString(
-    'en-US',
+    locale,
     sameMonth
       ? { day: 'numeric', year: 'numeric' }
       : { month: 'short', day: 'numeric', year: 'numeric' },

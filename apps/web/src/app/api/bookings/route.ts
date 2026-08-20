@@ -1,5 +1,6 @@
 import { createBookingInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { createGuestBooking } from '@/server/db/booking'
 import { parseJsonBody, requireGuestIdentity } from '@/server/http'
@@ -20,6 +21,7 @@ import { bookingErrorResponse } from './_error-response'
  * status code and nothing more.
  */
 export async function POST(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const parsed = await parseJsonBody(request, createBookingInput)
   if (!parsed.ok) return parsed.response
   const { guestTicket, ...booking } = parsed.value
@@ -34,13 +36,14 @@ export async function POST(request: Request) {
       seats: booking.seats,
       guestName: booking.guestName,
       selectedOptions: booking.selectedOptions,
+      guestLocale: booking.guestLocale,
       guest: identity.value,
     })
 
     return NextResponse.json({ booking: created }, { status: 201 })
   } catch (error) {
     // Sold out, gone, demo, bad options — all already have a status code.
-    const response = bookingErrorResponse(error)
+    const response = bookingErrorResponse(error, t)
     if (response) return response
     throw error
   }

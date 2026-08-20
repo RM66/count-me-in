@@ -12,7 +12,11 @@ import type { WorkerEnv } from '../env'
 import { cabinetSlotPath, loginLinkUrl, manageBookingUrl } from '../links'
 import { getPostHog } from '../posthog'
 import { sendMessage } from '../telegram/client'
-import { bookingCreatedForGuest, bookingCreatedForOrganizer } from '../telegram/templates'
+import {
+  bookingCreatedForGuest,
+  bookingCreatedForOrganizer,
+  notificationLocale,
+} from '../telegram/templates'
 
 export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promise<void> {
   const parsed = bookingCreatedJob.safeParse(data)
@@ -38,7 +42,11 @@ export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promi
   if (recipient === 'organizer') {
     const token = await issueLoginLink(context.organizer.id, cabinetSlotPath(context.slot.id))
 
-    const message = bookingCreatedForOrganizer(context, loginLinkUrl(env.appUrl, token))
+    const message = bookingCreatedForOrganizer(
+      context,
+      loginLinkUrl(env.appUrl, token),
+      notificationLocale(recipient, context),
+    )
 
     await sendMessage(env.telegramBotToken, {
       chatId: context.organizer.messengerId,
@@ -56,6 +64,7 @@ export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promi
   const message = bookingCreatedForGuest(
     context,
     manageBookingUrl(env.appUrl, context.booking.manageToken),
+    notificationLocale(recipient, context),
   )
 
   await sendMessage(env.telegramBotToken, {

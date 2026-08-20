@@ -6,6 +6,7 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginReact from "eslint-plugin-react";
 import globals from "globals";
 import pluginNext from "@next/eslint-plugin-next";
+import countmein from "./plugin.js";
 import { config as baseConfig } from "./base.js";
 
 /**
@@ -52,6 +53,17 @@ export const nextJsConfig = [
       ...pluginReactHooks.configs.recommended.rules,
       // React scope no longer necessary with new JSX transform.
       "react/react-in-jsx-scope": "off",
+    },
+  },
+  {
+    // CountMeIn house rules. `off` here — apps enable them per directory
+    // (`apps/web/eslint.config.js`) so localized surfaces are enforced
+    // without punishing the not-yet-migrated ones (ADR-011, Phase 2).
+    plugins: {
+      countmein,
+    },
+    rules: {
+      "countmein/no-untranslated-strings": "off",
     },
   },
 ];

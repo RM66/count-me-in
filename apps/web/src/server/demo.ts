@@ -26,6 +26,7 @@ import {
   isDemoOrganizerId,
 } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { auth } from './auth'
 
@@ -62,26 +63,20 @@ export async function isDemoSession(): Promise<boolean> {
   return isDemo
 }
 
-/** JSON body returned to clients when a demo write is rejected. */
-export const demoReadOnlyBody = {
-  error: DEMO_READ_ONLY_MESSAGE,
-  code: DEMO_READ_ONLY_CODE,
-} as const
-
 /**
- * `403` response for a rejected demo write. `403` (not `401`) — the caller is
- * correctly authenticated, the action itself is forbidden.
+ * Returns a localized `403 DEMO_READ_ONLY` response when `organizerId` is the
+ * demo account or absent — anonymous callers are demo-cabinet visitors and get
+ * the same refusal (ADR-010) — otherwise `null`. Intended for early-return use
+ * in route handlers. Error *classes* keep English messages for logs; the copy
+ * in the response body follows the viewer's locale (ADR-011).
  */
-export function demoReadOnlyResponse(): NextResponse {
-  return NextResponse.json(demoReadOnlyBody, { status: 403 })
-}
+export async function rejectDemoWrite(
+  organizerId: string | null | undefined,
+): Promise<NextResponse | null> {
+  if (organizerId && !isDemoOrganizerId(organizerId)) return null
 
-/**
- * Returns a ready-to-return `403` when `organizerId` is the demo account,
- * otherwise `null`. Intended for early-return use in route handlers.
- */
-export function rejectDemoWrite(organizerId: string | null | undefined): NextResponse | null {
-  return !organizerId || isDemoOrganizerId(organizerId) ? demoReadOnlyResponse() : null
+  const t = await getTranslations('ApiErrors')
+  return NextResponse.json({ error: t('demoReadOnly'), code: DEMO_READ_ONLY_CODE }, { status: 403 })
 }
 
 /**

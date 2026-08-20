@@ -16,6 +16,7 @@
 
 import type { NextResponse } from 'next/server'
 import { NextResponse as Response } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { z } from 'zod'
 
 import { auth } from './auth'
@@ -34,27 +35,29 @@ export type Guarded<T> = { ok: true; value: T } | { ok: false; response: NextRes
  * The organizer allowed to **write** in this request.
  * Anonymous callers are demo-cabinet visitors (`/cabinet` needs no session,
  * ADR-010), so they get the same `DEMO_READ_ONLY` refusal as the demo id
- * itself rather than a bare `401`.
+ * itself rather than a bare `401` — the policy and its localized copy live in
+ * `rejectDemoWrite` (`./demo`), the single home of the demo guard.
  */
 export async function requireWritableOrganizer(): Promise<Guarded<{ organizerId: string }>> {
   const session = await auth()
   const organizerId = session?.user?.id
 
-  const denied = rejectDemoWrite(organizerId)
-  if (denied || !organizerId) {
-    return {
-      ok: false,
-      response: denied ?? Response.json({ error: 'Unauthorized' }, { status: 401 }),
-    }
+  const denied = await rejectDemoWrite(organizerId)
+  if (denied) {
+    return { ok: false, response: denied }
   }
 
-  return { ok: true, value: { organizerId } }
+  return { ok: true, value: { organizerId: organizerId! } }
 }
 
 /**
  * Parse a JSON body against `schema`, answering `400` on malformed JSON or a
  * schema violation. `request.json()` is caught rather than left to throw: a
  * body that is not JSON at all is a client error, not a `500`.
+ *
+ * The top-level `error` is a localized generic (ADR-011): Zod issue messages
+ * are English-only, so they travel in `details` for logs and devtools instead
+ * of being rendered to the viewer verbatim.
  */
 export async function parseJsonBody<S extends z.ZodType>(
   request: Request,
@@ -64,13 +67,13 @@ export async function parseJsonBody<S extends z.ZodType>(
   const parsed = schema.safeParse(body)
 
   if (!parsed.success) {
-    const [first] = parsed.error.issues
+    const t = await getTranslations('ApiErrors')
 
     return {
       ok: false,
       response: Response.json(
         {
-          error: first?.message ?? 'Invalid input',
+          error: t('invalidInput'),
           details: z.flattenError(parsed.error),
         },
         { status: 400 },
@@ -96,12 +99,11 @@ export async function requireGuestIdentity(ticket: string): Promise<Guarded<Auth
   const payload = await consumeTicket(ticket)
 
   if (!payload) {
+    const t = await getTranslations('ApiErrors')
+
     return {
       ok: false,
-      response: Response.json(
-        { error: 'Your Telegram confirmation expired — authenticate again' },
-        { status: 401 },
-      ),
+      response: Response.json({ error: t('ticketExpired') }, { status: 401 }),
     }
   }
 

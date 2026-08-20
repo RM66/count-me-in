@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 import type {
@@ -14,15 +15,6 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 
-const trendConfig = {
-  bookings: { label: 'Bookings', color: 'var(--chart-1)' },
-  seats: { label: 'Seats', color: 'var(--chart-2)' },
-} satisfies ChartConfig
-
-const serviceConfig = {
-  bookings: { label: 'Bookings', color: 'var(--chart-1)' },
-} satisfies ChartConfig
-
 export function AnalyticsCharts({
   trend,
   byService,
@@ -30,6 +22,19 @@ export function AnalyticsCharts({
   trend: AnalyticsTrendPoint[]
   byService: AnalyticsServicePoint[]
 }) {
+  const t = useTranslations('Cabinet.analytics')
+
+  // Chart legend/tooltip labels are user-visible copy too — built inside the
+  // component so they follow the locale like the rest of the cards.
+  const trendConfig: ChartConfig = {
+    bookings: { label: t('bookingsLabel'), color: 'var(--chart-1)' },
+    seats: { label: t('seatsLabel'), color: 'var(--chart-2)' },
+  }
+
+  const serviceConfig: ChartConfig = {
+    bookings: { label: t('bookingsLabel'), color: 'var(--chart-1)' },
+  }
+
   const hasTrend = trend.some((point) => point.bookings > 0 || point.seats > 0)
   const hasServices = byService.length > 0
 
@@ -38,24 +43,20 @@ export function AnalyticsCharts({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Bookings this week</CardTitle>
-            <CardDescription>Confirmed bookings and seats sold per day.</CardDescription>
+            <CardTitle>{t('bookingsThisWeek')}</CardTitle>
+            <CardDescription>{t('bookingsThisWeekHint')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              No bookings yet — they appear here as soon as a guest reserves a seat.
-            </p>
+            <p className="py-10 text-center text-sm text-muted-foreground">{t('noBookingsYet')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>By service</CardTitle>
-            <CardDescription>Confirmed bookings in the last 30 days.</CardDescription>
+            <CardTitle>{t('byService')}</CardTitle>
+            <CardDescription>{t('byServiceHint')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              No bookings in the last 30 days.
-            </p>
+            <p className="py-10 text-center text-sm text-muted-foreground">{t('noBookings30')}</p>
           </CardContent>
         </Card>
       </div>
@@ -66,15 +67,15 @@ export function AnalyticsCharts({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Bookings this week</CardTitle>
-          <CardDescription>Confirmed bookings and seats sold per day.</CardDescription>
+          <CardTitle>{t('bookingsThisWeek')}</CardTitle>
+          <CardDescription>{t('bookingsThisWeekHint')}</CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer
             config={trendConfig}
             className="h-80 w-full"
             role="img"
-            aria-label="Confirmed bookings and seats sold per day for the last 7 days"
+            aria-label={t('trendAria')}
           >
             <AreaChart data={trend} margin={{ left: 4, right: 12, top: 8 }}>
               <defs>
@@ -112,15 +113,15 @@ export function AnalyticsCharts({
 
       <Card>
         <CardHeader>
-          <CardTitle>By service</CardTitle>
-          <CardDescription>Confirmed bookings in the last 30 days.</CardDescription>
+          <CardTitle>{t('byService')}</CardTitle>
+          <CardDescription>{t('byServiceHint')}</CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer
             config={serviceConfig}
             className="h-80 w-full"
             role="img"
-            aria-label="Confirmed bookings per service in the last 30 days"
+            aria-label={t('serviceAria')}
           >
             <BarChart data={byService} layout="vertical" margin={{ left: 4, right: 12 }}>
               <CartesianGrid horizontal={false} />

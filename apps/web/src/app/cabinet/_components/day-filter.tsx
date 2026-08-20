@@ -2,6 +2,7 @@
 
 import { instantToWallClockInputs, wallClockToInstant } from '@repo/contracts'
 import { CalendarIcon, XIcon } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -150,6 +151,8 @@ type DayFilterChipProps = {
 
 /** The active-day chip shown next to the other filters; ✕ clears the day. */
 export function DayFilterChip({ dayLabel, onClear }: DayFilterChipProps) {
+  const t = useTranslations('Cabinet.dayFilter')
+
   return (
     <Badge variant="secondary" className="gap-1 py-1 pr-1 pl-2.5 h-6 text-sm text-primary">
       {dayLabel}
@@ -158,7 +161,7 @@ export function DayFilterChip({ dayLabel, onClear }: DayFilterChipProps) {
         size="icon"
         className="size-5 hover:bg-transparent"
         onClick={onClear}
-        aria-label="Show every day"
+        aria-label={t('showEveryDay')}
       >
         <XIcon className="size-3.5" />
       </Button>
@@ -202,6 +205,7 @@ export function DayFilterPicker({
 }: DayFilterPickerProps) {
   const [isOpen, setOpen] = useState(false)
   const weekStartsOn = useWeekStartsOn()
+  const t = useTranslations('Cabinet.dayFilter')
 
   const selectedDate = day ? dayKeyToDate(day) : undefined
 
@@ -212,10 +216,10 @@ export function DayFilterPicker({
           type="button"
           variant="outline"
           size="sm"
-          aria-label={day ? `Filtering by ${dayLabel}. Change day` : `Filter ${entityLabel} by day`}
+          aria-label={day ? t('changeDay', { day: dayLabel }) : t('filterByDay', { entity: entityLabel })}
         >
           <CalendarIcon data-icon="inline-start" />
-          {day ? dayLabel : 'Any day'}
+          {day ? dayLabel : t('anyDay')}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="end">
@@ -243,7 +247,7 @@ export function DayFilterPicker({
                 setOpen(false)
               }}
             >
-              Show every day
+              {t('showEveryDay')}
             </Button>
           </div>
         )}

@@ -9,9 +9,13 @@ vi.mock('./auth/ticket', () => ({
   consumeTicket: vi.fn(),
 }))
 vi.mock('./demo', () => ({
-  rejectDemoWrite: vi.fn(() => null),
-  demoReadOnlyResponse: vi.fn(),
-  DemoReadOnlyError: class DemoReadOnlyError extends Error {},
+  rejectDemoWrite: vi.fn(async () => null),
+}))
+// getTranslations reads the request-scoped intl config, which does not exist
+// in the test env — a key-passthrough keeps the plumbing under test without
+// asserting on dictionary copy.
+vi.mock('next-intl/server', () => ({
+  getTranslations: async () => (key: string) => key,
 }))
 
 import { parseJsonBody } from './http'

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { ExternalLinkIcon } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { ServiceForm } from '@/app/cabinet/services/_components/service-form'
@@ -12,6 +13,10 @@ import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+  const tc = await getTranslations('Cabinet.common')
+  const t = await getTranslations('Cabinet.services')
 
   // `/cabinet` is open to anonymous visitors, who see the demo (ADR-010).
   const { organizerId } = await resolveCabinetOrganizerId()
@@ -30,8 +35,8 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
     <>
       <CabinetHeader
         crumbs={[
-          { label: 'Cabinet', href: '/cabinet' },
-          { label: 'Services', href: '/cabinet/services' },
+          { label: tcrumbs('cabinet'), href: '/cabinet' },
+          { label: tcrumbs('services'), href: '/cabinet/services' },
           { label: service.title },
         ]}
         action={
@@ -39,7 +44,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
             <Button variant="outline" size="sm" asChild>
               <Link href={`/${organizer.slug}/${service.id}`} target="_blank">
                 <ExternalLinkIcon data-icon="inline-start" />
-                Preview
+                {tc('preview')}
               </Link>
             </Button>
           )
@@ -48,7 +53,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-balance">{service.title}</h1>
-          <p className="text-sm text-muted-foreground">Edit service details and options.</p>
+          <p className="text-sm text-muted-foreground">{t('editSubtitle')}</p>
         </div>
         <ServiceForm service={service} />
       </div>

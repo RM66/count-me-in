@@ -16,7 +16,11 @@ import type { WorkerEnv } from '../env'
 import { cabinetSlotPath, loginLinkUrl, organizerPageUrl } from '../links'
 import { getPostHog } from '../posthog'
 import { sendMessage } from '../telegram/client'
-import { bookingCancelledForGuest, bookingCancelledForOrganizer } from '../telegram/templates'
+import {
+  bookingCancelledForGuest,
+  bookingCancelledForOrganizer,
+  notificationLocale,
+} from '../telegram/templates'
 
 export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Promise<void> {
   const parsed = bookingCancelledJob.safeParse(data)
@@ -43,7 +47,11 @@ export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Pro
   if (recipient === 'organizer') {
     const token = await issueLoginLink(context.organizer.id, cabinetSlotPath(context.slot.id))
 
-    const message = bookingCancelledForOrganizer(context, loginLinkUrl(env.appUrl, token))
+    const message = bookingCancelledForOrganizer(
+      context,
+      loginLinkUrl(env.appUrl, token),
+      notificationLocale(recipient, context),
+    )
 
     await sendMessage(env.telegramBotToken, {
       chatId: context.organizer.messengerId,
@@ -61,6 +69,7 @@ export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Pro
   const message = bookingCancelledForGuest(
     context,
     organizerPageUrl(env.appUrl, context.organizer.slug),
+    notificationLocale(recipient, context),
   )
 
   await sendMessage(env.telegramBotToken, {

@@ -1,6 +1,8 @@
 'use client'
 
+import { type AppLocale,DEFAULT_LOCALE, isAppLocale } from '@repo/contracts'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -21,6 +23,16 @@ export function detectTimezone(timezones: { value: string }[]): string {
 }
 
 /**
+ * The organizer's notification language from the active UI locale (ADR-011):
+ * the language the visitor chose on the site (cookie → Accept-Language → en),
+ * not the raw browser preference — the switcher is the single language
+ * setting, and signup must not contradict what the visitor is reading.
+ */
+export function detectLanguage(locale: string): AppLocale {
+  return isAppLocale(locale) ? locale : DEFAULT_LOCALE
+}
+
+/**
  * The two-step signup state machine: Telegram auth → profile creation.
  *
  * Extracted from the signup page so the component is left with rendering only.
@@ -29,6 +41,8 @@ export function detectTimezone(timezones: { value: string }[]): string {
  */
 export function useSignupForm() {
   const router = useRouter()
+  const t = useTranslations('Auth.signup')
+  const locale = useLocale()
   const searchParams = useSearchParams()
 
   const [step, setStep] = useState(0)
@@ -41,9 +55,9 @@ export function useSignupForm() {
 
   // If redirected from login with a ticket already (SIGNUP_REQUIRED flow), skip step 0.
   useEffect(() => {
-    const t = searchParams.get('ticket')
-    if (t) {
-      setTicket(t)
+    const ticketParam = searchParams.get('ticket')
+    if (ticketParam) {
+      setTicket(ticketParam)
       setStep(1)
     }
   }, [searchParams])
@@ -58,6 +72,7 @@ export function useSignupForm() {
         slug,
         name,
         timezone,
+        language: detectLanguage(locale),
       })
       await signIn.mutateAsync(ticket)
       router.push('/cabinet/settings')
@@ -65,11 +80,11 @@ export function useSignupForm() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         // Ticket expired mid-registration — restart Telegram auth.
-        toast.error(error.message)
+        toast.error(error.message || t('signInFailed'))
         setStep(0)
         setTicket('')
       } else {
-        toast.error(error instanceof Error ? error.message : 'Could not create the account')
+        toast.error(error instanceof Error ? error.message || t('createFailed') : t('createFailed'))
       }
     }
   }

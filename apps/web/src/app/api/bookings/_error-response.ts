@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { useTranslations } from 'next-intl'
 
 import {
   BookingAlreadyCancelledError,
@@ -31,6 +32,12 @@ import 'server-only'
  * Returns `null` for anything else, so an unexpected error keeps propagating and
  * surfaces as a `500` instead of being flattened into a misleading `4xx`.
  *
+ * The `error` copy is localized (ADR-011): the error *classes* still carry
+ * English `message`s for logs, but the response body is built from the caller's
+ * `ApiErrors` translator — the request scope provides the locale, and the
+ * machine-readable `code`/`seatsLeft`/`maxSeats` fields keep travelling for
+ * clients that prefer their own copy.
+ *
  * The status codes carry meaning:
  * - `403` demo account — correctly identified, action forbidden (ADR-010)
  * - `404` slot/service gone — nothing to book
@@ -40,29 +47,53 @@ import 'server-only'
  *   payload itself is wrong
  *
  */
-export function bookingErrorResponse(error: unknown): NextResponse | null {
+export function bookingErrorResponse(
+  error: unknown,
+  t: ReturnType<typeof useTranslations<'ApiErrors'>>,
+): NextResponse | null {
   if (error instanceof DemoReadOnlyError) {
-    return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    return NextResponse.json(
+      { error: t('demoReadOnly'), code: error.code },
+      { status: error.status },
+    )
   }
   if (error instanceof SlotNotBookableError) {
-    return NextResponse.json({ error: error.message }, { status: 404 })
+    return NextResponse.json({ error: t('slotGone') }, { status: 404 })
   }
   if (error instanceof SlotSoldOutError) {
     // `seatsLeft` travels with it so the dialog can say how many are actually
     // left rather than only that the attempt failed.
-    return NextResponse.json({ error: error.message, seatsLeft: error.seatsLeft }, { status: 409 })
+    return NextResponse.json(
+      {
+        error:
+          error.seatsLeft === 0
+            ? t('soldOut')
+            : t('seatsLeftOnSession', { count: error.seatsLeft }),
+        seatsLeft: error.seatsLeft,
+      },
+      { status: 409 },
+    )
   }
   if (error instanceof DuplicateBookingError) {
-    return NextResponse.json({ error: error.message, code: 'duplicate_booking' }, { status: 409 })
+    return NextResponse.json({ error: t('duplicateBooking'), code: 'duplicate_booking' }, { status: 409 })
   }
   if (error instanceof BookingAlreadyCancelledError) {
-    return NextResponse.json({ error: error.message }, { status: 409 })
+    return NextResponse.json({ error: t('alreadyCancelled') }, { status: 409 })
   }
   if (error instanceof InvalidOptionSelectionError) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    // The class message carries the English validation detail for logs; the
+    // body gets the machine-readable `code` plus localized copy, and the
+    // booking dialog re-renders it from the code (ADR-011).
+    return NextResponse.json(
+      { error: t('invalidOptions'), code: 'invalid_option' },
+      { status: 400 },
+    )
   }
   if (error instanceof PartyTooLargeError) {
-    return NextResponse.json({ error: error.message, maxSeats: error.maxSeats }, { status: 400 })
+    return NextResponse.json(
+      { error: t('partyTooLarge', { maxSeats: error.maxSeats }), maxSeats: error.maxSeats },
+      { status: 400 },
+    )
   }
   return null
 }

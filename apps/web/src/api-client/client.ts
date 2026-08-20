@@ -2,6 +2,23 @@
 
 import { ApiError } from './error'
 
+/** The error-carrier envelope every `4xx` body may have. */
+type ErrorBody = { error?: string; code?: string } & Record<string, unknown>
+
+/**
+ * Last-resort English fallbacks for responses that carry no server message
+ * (non-JSON body, proxy error page, …). api-client has no locale to translate
+ * with, so the *display site* supplies localized copy via
+ * `error.message || t(...)` — these exist so logs, devtools and any missed
+ * call site stay readable instead of showing an empty toast. Named constants
+ * rather than inline literals: the no-untranslated-strings rule treats them as
+ * an intentional, documented fallback.
+ */
+const POST_ERROR_FALLBACK = 'Something went wrong — try again'
+const GET_ERROR_FALLBACK = 'Failed to fetch data'
+const PUT_ERROR_FALLBACK = 'Update failed — try again'
+const DELETE_ERROR_FALLBACK = 'Delete failed — try again'
+
 /** Generic POST helper with error handling. */
 export async function post<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -9,9 +26,9 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string } & T
+  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? 'Something went wrong — try again', res.status, data.code)
+    throw new ApiError(data.error ?? POST_ERROR_FALLBACK, res.status, data.code, data)
   }
   return data
 }
@@ -19,9 +36,9 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
 /** Generic GET helper with error handling. */
 export async function get<T>(url: string): Promise<T> {
   const res = await fetch(url)
-  const data = (await res.json().catch(() => ({}))) as { error?: string } & T
+  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? 'Failed to fetch data', res.status)
+    throw new ApiError(data.error ?? GET_ERROR_FALLBACK, res.status, data.code, data)
   }
   return data
 }
@@ -33,9 +50,9 @@ export async function put<T>(url: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = (await res.json().catch(() => ({}))) as { error?: string } & T
+  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? 'Update failed — try again', res.status)
+    throw new ApiError(data.error ?? PUT_ERROR_FALLBACK, res.status, data.code, data)
   }
   return data
 }
@@ -43,9 +60,9 @@ export async function put<T>(url: string, body: unknown): Promise<T> {
 /** Generic DELETE helper with error handling. */
 export async function del<T>(url: string): Promise<T> {
   const res = await fetch(url, { method: 'DELETE' })
-  const data = (await res.json().catch(() => ({}))) as { error?: string } & T
+  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? 'Delete failed — try again', res.status)
+    throw new ApiError(data.error ?? DELETE_ERROR_FALLBACK, res.status, data.code, data)
   }
   return data
 }

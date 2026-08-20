@@ -1,6 +1,7 @@
 import { registerOrganizerInput } from '@repo/contracts'
 import { db, organizers } from '@repo/db'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { flattenError } from 'zod'
 
 import { peekTicket } from '@/server/auth/ticket'
@@ -16,23 +17,21 @@ const UNIQUE_VIOLATION = '23505'
  * (`signIn('telegram', { ticket })` consumes it).
  */
 export async function POST(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const body = await request.json().catch(() => null)
   const parsed = registerOrganizerInput.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid input', issues: flattenError(parsed.error).fieldErrors },
+      { error: t('invalidInput'), issues: flattenError(parsed.error).fieldErrors },
       { status: 400 },
     )
   }
 
-  const { ticket, slug, name, timezone, contact } = parsed.data
+  const { ticket, slug, name, timezone, contact, language } = parsed.data
 
   const payload = await peekTicket(ticket)
   if (!payload) {
-    return NextResponse.json(
-      { error: 'Auth session expired — authenticate with Telegram again' },
-      { status: 401 },
-    )
+    return NextResponse.json({ error: t('authSessionExpired') }, { status: 401 })
   }
 
   try {
@@ -43,6 +42,8 @@ export async function POST(request: Request) {
         name,
         timezone,
         contact: contact ?? null,
+        // Notification language (ADR-011) — the signup form sends the browser locale.
+        language,
         messenger: payload.messenger,
         messengerId: payload.messengerId,
         photoUrl: payload.photoUrl ?? null,
@@ -52,9 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ organizer }, { status: 201 })
   } catch (error) {
     if (isUniqueViolation(error)) {
-      const message = error.constraint_name?.includes('slug')
-        ? 'This handle is already taken — pick another one'
-        : 'An account with this Telegram identity already exists — log in instead'
+      const message = error.constraint_name?.includes('slug') ? t('slugTaken') : t('accountExists')
       return NextResponse.json({ error: message }, { status: 409 })
     }
     throw error

@@ -1,5 +1,6 @@
 import type { ServiceRecord } from '@repo/contracts'
 import { Clock, Users } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * The duration / capacity / price meta row shown under a service title.
@@ -8,13 +9,15 @@ import { Clock, Users } from 'lucide-react'
  * card (compact) and the service detail page (with gap-1.5). The `className`
  * lets each caller keep its own spacing without re-implementing the badges.
  */
-export function ServiceMetaBadges({
+export async function ServiceMetaBadges({
   service,
   className,
 }: {
   service: ServiceRecord
   className?: string
 }) {
+  const t = await getTranslations('ServiceMetaBadges')
+
   return (
     <div
       className={
@@ -23,11 +26,11 @@ export function ServiceMetaBadges({
     >
       <span className="flex items-center gap-1">
         <Clock className="size-3.5" />
-        {service.defaultDurationMinutes} min
+        {t('minutes', { minutes: service.defaultDurationMinutes })}
       </span>
       <span className="flex items-center gap-1">
         <Users className="size-3.5" />
-        up to {service.defaultCapacity}
+        {t('upToCapacity', { capacity: service.defaultCapacity })}
       </span>
       <span className="font-medium text-foreground">{service.defaultPrice}</span>
     </div>

@@ -2,6 +2,7 @@
 
 import type { ServiceRecord } from '@repo/contracts'
 import { ArrowLeft } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -29,6 +30,8 @@ export function OptionsStep({
   onBack: () => void
   onContinue: () => void
 }) {
+  const t = useTranslations('Booking')
+
   return (
     <div className="flex flex-col gap-4">
       {service.optionsSelectMode === 'single' ? (
@@ -53,7 +56,7 @@ export function OptionsStep({
         </RadioGroup>
       ) : (
         <FieldSet>
-          <FieldLegend className="sr-only">Options</FieldLegend>
+          <FieldLegend className="sr-only">{t('optionsLegend')}</FieldLegend>
           <div className="flex flex-col gap-2">
             {service.options?.map((opt) => (
               <label
@@ -78,14 +81,14 @@ export function OptionsStep({
       <div className="flex gap-2">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft data-icon="inline-start" />
-          Back
+          {t('back')}
         </Button>
         <Button
           className="flex-1"
           disabled={service.optionsSelectMode === 'single' && !selectedOptions.length}
           onClick={onContinue}
         >
-          Continue
+          {t('continue')}
         </Button>
       </div>
     </div>

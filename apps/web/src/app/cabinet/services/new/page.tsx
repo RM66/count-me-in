@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { ServiceForm } from '@/app/cabinet/services/_components/service-form'
@@ -11,19 +12,22 @@ export default async function NewServicePage() {
     redirect('/cabinet/services')
   }
 
+  const t = await getTranslations('Cabinet.services')
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+
   return (
     <>
       <CabinetHeader
         crumbs={[
-          { label: 'Cabinet', href: '/cabinet' },
-          { label: 'Services', href: '/cabinet/services' },
-          { label: 'New' },
+          { label: tcrumbs('cabinet'), href: '/cabinet' },
+          { label: tcrumbs('services'), href: '/cabinet/services' },
+          { label: tcrumbs('new') },
         ]}
       />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New service</h1>
-          <p className="text-sm text-muted-foreground">Create an experience guests can book.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('newTitle')}</h1>
+          <p className="text-sm text-muted-foreground">{t('newSubtitle')}</p>
         </div>
         <ServiceForm />
       </div>

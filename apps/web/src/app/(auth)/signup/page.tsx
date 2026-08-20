@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { Suspense, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -28,24 +29,25 @@ import { SITE_DOMAIN } from '@/constants/site'
 import { TIMEZONES } from '@/constants/timezones'
 import { cn } from '@/lib/utils'
 
-const steps = ['Telegram', 'Profile'] as const
-
 function SignupPageInner() {
+  const t = useTranslations('Auth.signup')
   const form = useSignupForm()
   // Lazy initialiser: `Intl` is read once on mount, not on every render.
   const [timezone, setTimezone] = useState(() => detectTimezone(TIMEZONES))
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
+  const steps = [t('stepTelegram'), t('stepProfile')]
+
   return (
     <AuthShell
-      title="Create your account"
-      description="Set up your organizer profile in two quick steps."
+      title={t('title')}
+      description={t('description')}
       footer={
         <>
-          Already have an account?{' '}
+          {t('alreadyHave')}{' '}
           <Link href="/login" className="font-medium text-foreground hover:underline">
-            Log in
+            {t('logIn')}
           </Link>
         </>
       }
@@ -84,27 +86,23 @@ function SignupPageInner() {
                 botUsername={botUsername}
                 buttonSize="large"
                 mode="signup"
-                onTicketIssued={(t, organizerExists) => {
+                onTicketIssued={(ticketValue, organizerExists) => {
                   if (organizerExists) {
-                    toast.info('Account already exists. Signing you in…')
-                    form.signIn.mutateAsync(t).then(() => {
+                    toast.info(t('accountExists'))
+                    form.signIn.mutateAsync(ticketValue).then(() => {
                       form.router.push('/cabinet')
                       form.router.refresh()
                     })
                     return
                   }
-                  form.setTicket(t)
+                  form.setTicket(ticketValue)
                   form.setStep(1)
                 }}
               />
-              <p className="text-center text-sm text-muted-foreground">
-                Authenticate with Telegram to continue.
-              </p>
+              <p className="text-center text-sm text-muted-foreground">{t('authenticate')}</p>
             </>
           ) : (
-            <p className="text-center text-sm text-destructive">
-              Telegram login is not configured. Please contact support.
-            </p>
+            <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
           )}
         </div>
       )}
@@ -113,36 +111,36 @@ function SignupPageInner() {
         <form onSubmit={(e) => form.handleCreateAccount(e, timezone)}>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="name">Display name</FieldLabel>
+              <FieldLabel htmlFor="name">{t('displayName')}</FieldLabel>
               <Input
                 id="name"
-                placeholder="Studio Demo"
+                placeholder={t('namePlaceholder')}
                 value={form.name}
                 onChange={(e) => form.setName(e.target.value)}
                 required
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="slug">Public handle</FieldLabel>
+              <FieldLabel htmlFor="slug">{t('publicHandle')}</FieldLabel>
               <InputGroup>
                 <InputGroupAddon>
                   <InputGroupText>{SITE_DOMAIN}/</InputGroupText>
                 </InputGroupAddon>
                 <InputGroupInput
                   id="slug"
-                  placeholder="studio-demo"
+                  placeholder={t('slugPlaceholder')}
                   value={form.slug}
                   onChange={(e) => form.setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                   required
                 />
               </InputGroup>
-              <FieldDescription>This is the link you&rsquo;ll share with guests.</FieldDescription>
+              <FieldDescription>{t('slugHint')}</FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="timezone">Timezone</FieldLabel>
+              <FieldLabel htmlFor="timezone">{t('timezone')}</FieldLabel>
               <Select value={timezone} onValueChange={setTimezone}>
                 <SelectTrigger id="timezone" className="w-full">
-                  <SelectValue placeholder="Select timezone" />
+                  <SelectValue placeholder={t('selectTimezone')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -154,10 +152,10 @@ function SignupPageInner() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <FieldDescription>All your time slots are shown in this zone.</FieldDescription>
+              <FieldDescription>{t('timezoneHint')}</FieldDescription>
             </Field>
             <Button type="submit" className="w-full" disabled={form.pending}>
-              {form.pending ? 'Creating account…' : 'Continue'}
+              {form.pending ? t('creating') : t('continue')}
             </Button>
           </FieldGroup>
         </form>

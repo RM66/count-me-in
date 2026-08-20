@@ -2,6 +2,7 @@
 
 import type { OrganizerProfile } from '@repo/contracts'
 import { CopyIcon, ImageIcon, PencilIcon } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -38,8 +39,10 @@ import { SITE_DOMAIN, SITE_URL } from '@/constants/site'
 import { TIMEZONES } from '@/constants/timezones'
 import { initials } from '@/helpers/name'
 import { useProfileForm } from './use-profile-form'
+
 export function SettingsForm() {
   const { data: organizer, isPending, isError } = useCurrentOrganizer()
+  const t = useTranslations('Cabinet.settings')
 
   if (isPending) {
     return (
@@ -51,11 +54,7 @@ export function SettingsForm() {
   }
 
   if (isError || !organizer) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Could not load your profile — refresh the page to try again.
-      </p>
-    )
+    return <p className="text-sm text-muted-foreground">{t('loadFailed')}</p>
   }
 
   return <SettingsFormInner organizer={organizer} />
@@ -64,6 +63,8 @@ export function SettingsForm() {
 function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
   const [isSlugEditable, setIsSlugEditable] = useState(false)
   const form = useProfileForm(organizer, () => setIsSlugEditable(false))
+  const t = useTranslations('Cabinet.settings')
+  const tc = useTranslations('Cabinet.common')
 
   // Read-only demo account (ADR-010). Copy / navigation stay enabled — only
   // controls that would write are locked. The API rejects demo writes anyway.
@@ -73,8 +74,8 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>How you appear to guests.</CardDescription>
+          <CardTitle>{t('profile')}</CardTitle>
+          <CardDescription>{t('profileDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <div className="flex items-center gap-4">
@@ -99,12 +100,12 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               disabled={form.isUploadingAvatar || isReadOnly}
             >
               <ImageIcon data-icon="inline-start" />
-              {form.isUploadingAvatar ? 'Uploading...' : 'Change photo'}
+              {form.isUploadingAvatar ? t('uploading') : t('changePhoto')}
             </Button>
           </div>
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="name">Display name</FieldLabel>
+              <FieldLabel htmlFor="name">{t('displayName')}</FieldLabel>
               <Input
                 id="name"
                 value={form.state.name}
@@ -113,7 +114,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="slug">Public page URL</FieldLabel>
+              <FieldLabel htmlFor="slug">{t('publicPageUrl')}</FieldLabel>
               <InputGroup>
                 <InputGroupAddon>
                   <InputGroupText>{SITE_DOMAIN}/</InputGroupText>
@@ -128,7 +129,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                   {!isSlugEditable && !isReadOnly && (
                     <Button size="sm" variant="ghost" onClick={() => setIsSlugEditable(true)}>
                       <PencilIcon data-icon="inline-start" />
-                      <span className="max-sm:hidden">Edit</span>
+                      <span className="max-sm:hidden">{t('edit')}</span>
                     </Button>
                   )}
                   <Button
@@ -136,50 +137,46 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                     variant="ghost"
                     onClick={() => {
                       navigator.clipboard.writeText(`${SITE_URL}/${form.state.slug}`)
-                      toast.success('Link copied')
+                      toast.success(t('linkCopied'))
                     }}
                   >
                     <CopyIcon data-icon="inline-start" />
-                    <span className="max-sm:hidden">Copy</span>
+                    <span className="max-sm:hidden">{t('copy')}</span>
                   </Button>
                 </InputGroupAddon>
               </InputGroup>
               <FieldDescription>
                 {isReadOnly
-                  ? 'The demo page URL is fixed.'
+                  ? t('slugFixed')
                   : !isSlugEditable
-                    ? 'Your public booking page. Click Edit to change (old links will break).'
-                    : 'Warning: Changing this will break existing links shared with guests.'}
+                    ? t('slugEditable')
+                    : t('slugWarning')}
               </FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="bio">Bio</FieldLabel>
+              <FieldLabel htmlFor="bio">{t('bio')}</FieldLabel>
               <MarkdownEditor
                 value={form.state.bio}
                 onChange={form.updateField('bio')}
                 height="220px"
                 readOnly={isReadOnly}
               />
-              <FieldDescription>
-                Shown at the top of your public page. Markdown is supported.
-              </FieldDescription>
+              <FieldDescription>{t('bioHint')}</FieldDescription>
             </Field>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="contact">Contact</FieldLabel>
+                <FieldLabel htmlFor="contact">{t('contact')}</FieldLabel>
                 <Input
                   id="contact"
                   value={form.state.contact}
                   onChange={(e) => form.updateField('contact')(e.target.value)}
-                  placeholder="e.g. +381 64 123 4567 or studio@example.com"
+                  placeholder={t('contactPlaceholder')}
                   disabled={isReadOnly}
                 />
-                <FieldDescription>
-                  Shown to guests on your public page. Phone, email, social link, etc.
-                </FieldDescription>
+                <FieldDescription>{t('contactHint')}</FieldDescription>
               </Field>
               <Field>
-                <FieldLabel htmlFor="tz">Timezone</FieldLabel>
+                <FieldLabel htmlFor="tz">{t('timezone')}</FieldLabel>
                 <Select
                   value={form.state.timezone}
                   onValueChange={form.updateField('timezone')}
@@ -201,23 +198,21 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               </Field>
             </div>
             <Field>
-              <FieldLabel htmlFor="location">Location</FieldLabel>
+              <FieldLabel htmlFor="location">{t('location')}</FieldLabel>
               <Input
                 id="location"
                 value={form.state.location}
                 onChange={(e) => form.updateField('location')(e.target.value)}
-                placeholder="e.g. Belgrade, Serbia"
+                placeholder={t('locationPlaceholder')}
                 disabled={isReadOnly}
               />
-              <FieldDescription>
-                Optional. Shown on your public page and can be overridden per service.
-              </FieldDescription>
+              <FieldDescription>{t('locationHint')}</FieldDescription>
             </Field>
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end">
           <Button onClick={form.save} disabled={form.isSaving || isReadOnly}>
-            {form.isSaving ? 'Saving...' : 'Save changes'}
+            {form.isSaving ? tc('saving') : t('saveChanges')}
           </Button>
         </CardFooter>
       </Card>

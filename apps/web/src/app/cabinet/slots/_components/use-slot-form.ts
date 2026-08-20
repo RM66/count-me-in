@@ -14,6 +14,7 @@ import {
   toUpdateTimeSlotInput,
 } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useMemo } from 'react'
 import type { Control } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
@@ -70,6 +71,7 @@ export function useSlotForm({
 }: SlotFormOptions) {
   const router = useRouter()
   const isEdit = mode === 'edit'
+  const t = useTranslations('Cabinet.slots')
 
   // The schema closes over the timezone and the slot's own `startsAt`, so it
   // must not be rebuilt per render. Passing the original instant is what lets
@@ -111,15 +113,15 @@ export function useSlotForm({
   const submit = form.handleSubmit((values) => {
     if (!isEdit) {
       createSlot.mutate(toCreateTimeSlotInput(values), {
-        onSuccess: () => finish('Slot added'),
-        onError: (error) => toast.error(error.message || 'Failed to add the slot'),
+        onSuccess: () => finish(t('addedToast')),
+        onError: (error) => toast.error(error.message || t('addFailed')),
       })
       return
     }
 
     updateSlot.mutate(toUpdateTimeSlotInput(values), {
-      onSuccess: () => finish('Slot updated'),
-      onError: (error) => toast.error(error.message || 'Failed to update the slot'),
+      onSuccess: () => finish(t('updatedToast')),
+      onError: (error) => toast.error(error.message || t('updateFailed')),
     })
   })
 

@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from '@repo/contracts'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { describe, expect, it } from 'vitest'
 
@@ -8,6 +9,7 @@ import {
   bookingCreatedForOrganizer,
   describeActor,
   escapeHtml,
+  notificationLocale,
 } from './templates'
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -19,6 +21,7 @@ const organizer = {
   timezone: 'Europe/Belgrade',
   messenger: 'telegram',
   messengerId: '12345',
+  language: DEFAULT_LOCALE,
   description: null,
   photoUrl: null,
   location: 'Studio A, Main Street',
@@ -63,6 +66,7 @@ const booking = {
   guestMessenger: 'telegram',
   guestMessengerId: '67890',
   guestMessengerLogin: 'janedoe',
+  guestLocale: DEFAULT_LOCALE,
   manageToken: 'manage-token-123',
   selectedOptions: ['Beginner'],
   createdAt: new Date('2026-07-20T10:00:00.000Z'),
@@ -104,21 +108,51 @@ describe('escapeHtml', () => {
   })
 })
 
+// ── notificationLocale ────────────────────────────────────────────────────────
+
+describe('notificationLocale', () => {
+  it('uses the organizer language for the organizer', () => {
+    const ruView = {
+      ...view,
+      organizer: { ...organizer, language: 'ru' } as Organizer,
+    }
+    expect(notificationLocale('organizer', ruView)).toBe('ru')
+  })
+
+  it('uses the guest locale for the guest', () => {
+    const ruView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'ru' } as Booking,
+    }
+    expect(notificationLocale('guest', ruView)).toBe('ru')
+  })
+
+  it('falls back to English for unknown stored values', () => {
+    const badView = {
+      ...view,
+      organizer: { ...organizer, language: 'fr' } as Organizer,
+      booking: { ...booking, guestLocale: 'de' } as Booking,
+    }
+    expect(notificationLocale('organizer', badView)).toBe(DEFAULT_LOCALE)
+    expect(notificationLocale('guest', badView)).toBe(DEFAULT_LOCALE)
+  })
+})
+
 // ── bookingCreatedForOrganizer ────────────────────────────────────────────────
 
 describe('bookingCreatedForOrganizer', () => {
   it('contains the guest name', () => {
-    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('Jane Doe')
   })
 
   it('contains the service title', () => {
-    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('Morning Yoga')
   })
 
   it('contains the seats label', () => {
-    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('1 seat')
   })
 
@@ -127,17 +161,17 @@ describe('bookingCreatedForOrganizer', () => {
       ...view,
       slot: { ...slot, bookedCount: 10, capacity: 10 } as TimeSlot,
     }
-    const msg = bookingCreatedForOrganizer(fullView, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(fullView, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('now full')
   })
 
   it('shows seats still free when not full', () => {
-    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('still free')
   })
 
   it('has the cabinet URL as button', () => {
-    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.button?.url).toBe('https://app/cabinet')
     expect(msg.button?.text).toBe('Open in cabinet')
   })
@@ -147,9 +181,23 @@ describe('bookingCreatedForOrganizer', () => {
       ...view,
       booking: { ...booking, guestName: '<script>alert(1)</script>' } as Booking,
     }
-    const msg = bookingCreatedForOrganizer(xssView, 'https://app/cabinet')
+    const msg = bookingCreatedForOrganizer(xssView, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).not.toContain('<script>')
     expect(msg.text).toContain('&lt;script&gt;')
+  })
+
+  it('renders the Russian copy with correct plural forms', () => {
+    const ruView = { ...view, organizer: { ...organizer, language: 'ru' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 1 } }, 'u', 'ru')
+    expect(one.text).toContain('Новое бронирование')
+    expect(one.text).toContain('1 место')
+
+    const few = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 2 } }, 'u', 'ru')
+    expect(few.text).toContain('2 места')
+
+    const many = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 5 } }, 'u', 'ru')
+    expect(many.text).toContain('5 мест')
   })
 })
 
@@ -157,25 +205,37 @@ describe('bookingCreatedForOrganizer', () => {
 
 describe('bookingCreatedForGuest', () => {
   it('contains the organizer name', () => {
-    const msg = bookingCreatedForGuest(view, 'https://app/booking/token')
+    const msg = bookingCreatedForGuest(view, 'https://app/booking/token', DEFAULT_LOCALE)
     expect(msg.text).toContain('Yoga Studio')
   })
 
   it('contains the booking lines (service, date, seats)', () => {
-    const msg = bookingCreatedForGuest(view, 'https://app/booking/token')
+    const msg = bookingCreatedForGuest(view, 'https://app/booking/token', DEFAULT_LOCALE)
     expect(msg.text).toContain('Morning Yoga')
     expect(msg.text).toContain('1 seat')
   })
 
   it('contains the location when set', () => {
-    const msg = bookingCreatedForGuest(view, 'https://app/booking/token')
+    const msg = bookingCreatedForGuest(view, 'https://app/booking/token', DEFAULT_LOCALE)
     expect(msg.text).toContain('Studio A, Main Street')
   })
 
   it('has the manage URL as button', () => {
-    const msg = bookingCreatedForGuest(view, 'https://app/booking/token')
+    const msg = bookingCreatedForGuest(view, 'https://app/booking/token', DEFAULT_LOCALE)
     expect(msg.button?.url).toBe('https://app/booking/token')
     expect(msg.button?.text).toBe('Manage my booking')
+  })
+
+  it('renders Russian with the guest locale', () => {
+    const ruView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'ru' } as Booking,
+      organizer: { ...organizer, name: 'Студия «Лотос»' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(ruView, 'https://app/booking/token', 'ru')
+    expect(msg.text).toContain('Бронирование подтверждено')
+    expect(msg.text).toContain('Студия «Лотос»')
+    expect(msg.button?.text).toBe('Управлять бронью')
   })
 })
 
@@ -183,18 +243,25 @@ describe('bookingCreatedForGuest', () => {
 
 describe('bookingCancelledForOrganizer', () => {
   it('contains "Booking cancelled"', () => {
-    const msg = bookingCancelledForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCancelledForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('Booking cancelled')
   })
 
   it('contains the seats-now-free line', () => {
-    const msg = bookingCancelledForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCancelledForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.text).toContain('now free')
   })
 
   it('has the cabinet URL as button', () => {
-    const msg = bookingCancelledForOrganizer(view, 'https://app/cabinet')
+    const msg = bookingCancelledForOrganizer(view, 'https://app/cabinet', DEFAULT_LOCALE)
     expect(msg.button?.url).toBe('https://app/cabinet')
+  })
+
+  it('renders Russian', () => {
+    const ruView = { ...view, organizer: { ...organizer, language: 'ru' } as Organizer }
+    const msg = bookingCancelledForOrganizer(ruView, 'https://app/cabinet', 'ru')
+    expect(msg.text).toContain('Бронирование отменено')
+    expect(msg.text).toContain('освободилось')
   })
 })
 
@@ -202,18 +269,18 @@ describe('bookingCancelledForOrganizer', () => {
 
 describe('bookingCancelledForGuest', () => {
   it('contains the organizer name', () => {
-    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio')
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', DEFAULT_LOCALE)
     expect(msg.text).toContain('Yoga Studio')
   })
 
   it('has "See other sessions" button with organizer URL', () => {
-    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio')
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', DEFAULT_LOCALE)
     expect(msg.button?.text).toBe('See other sessions')
     expect(msg.button?.url).toBe('https://app/yoga-studio')
   })
 
   it('does not include a manage link (booking is already cancelled)', () => {
-    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio')
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', DEFAULT_LOCALE)
     expect(msg.button?.text).not.toBe('Manage my booking')
   })
 })
