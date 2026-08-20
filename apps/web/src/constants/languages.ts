@@ -14,13 +14,13 @@ export interface LanguageOption {
 
 const LANGUAGE_LABELS: Record<AppLocale, string> = {
   en: 'English',
-  ru: 'Русский',
-  es: 'Español',
   de: 'Deutsch',
-  ja: '日本語',
+  es: 'Español',
   fr: 'Français',
   pt: 'Português',
+  ru: 'Русский',
   ar: 'العربية',
+  ja: '日本語',
 }
 
 export const LANGUAGES: LanguageOption[] = LOCALES.map((code) => ({
