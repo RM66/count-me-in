@@ -1,5 +1,6 @@
 import { TicketIcon, TrendingUpIcon, UsersIcon, XCircleIcon } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
@@ -43,6 +44,9 @@ export default async function AnalyticsPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId } = await resolveCabinetOrganizerId()
 
+  const t = await getTranslations('Cabinet.analytics')
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+
   // Analytics reads the same three lists as the overview and bookings pages —
   // the cabinet's data wire is one shape, and `computeAnalytics` is a pure
   // function over those records (ADR-001). Slots are fetched in full rather
@@ -58,38 +62,40 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      <CabinetHeader crumbs={[{ label: 'Cabinet', href: '/cabinet' }, { label: 'Analytics' }]} />
+      <CabinetHeader
+        crumbs={[{ label: tcrumbs('cabinet'), href: '/cabinet' }, { label: tcrumbs('analytics') }]}
+      />
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Track how your bookings are trending.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Total bookings"
+            title={t('totalBookings')}
             value={String(summary.totalBookings)}
             delta={formatDelta(summary.totalBookingsDelta)}
-            hint="confirmed in last 30 days"
+            hint={t('confirmedLast30')}
             icon={TicketIcon}
           />
           <StatCard
-            title="Seats sold"
+            title={t('seatsSold')}
             value={String(summary.seatsSold)}
             delta={formatDelta(summary.seatsSoldDelta)}
-            hint="confirmed in last 30 days"
+            hint={t('confirmedLast30')}
             icon={UsersIcon}
           />
           <StatCard
-            title="Avg. fill rate"
+            title={t('avgFillRate')}
             value={summary.fillRate === null ? '—' : `${summary.fillRate}%`}
-            hint={`${summary.upcomingSlots} upcoming slot${summary.upcomingSlots === 1 ? '' : 's'}`}
+            hint={t('upcomingSlotsCount', { count: summary.upcomingSlots })}
             icon={TrendingUpIcon}
           />
           <StatCard
-            title="Cancellations"
+            title={t('cancellations')}
             value={summary.cancellationRate === null ? '—' : `${summary.cancellationRate}%`}
-            hint={`${summary.windowBookings} booking${summary.windowBookings === 1 ? '' : 's'} in window`}
+            hint={t('bookingsInWindow', { count: summary.windowBookings })}
             icon={XCircleIcon}
           />
         </div>

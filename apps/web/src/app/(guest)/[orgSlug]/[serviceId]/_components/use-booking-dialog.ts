@@ -1,7 +1,9 @@
 'use client'
 
 import type { GuestBooking, GuestTicketResponse, ServiceRecord } from '@repo/contracts'
+import { DEFAULT_LOCALE, isAppLocale } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 
 import { useCreateBooking } from '@/api-client'
@@ -25,9 +27,39 @@ type UseBookingDialogOptions = {
  * ticket holds no seat (docs/domain.md), so the sold-out case surfaces at the
  * moment of booking.
  */
+
+/**
+ * The server's error copy is English and fixed; the dialog re-renders the
+ * failure modes it can recognize from status/code/details into the guest's
+ * language, with the real numbers (`seatsLeft`, `maxSeats`) kept.
+ */
+function localizedError(t: ReturnType<typeof useTranslations<'Booking'>>, err: unknown): string {
+  if (!(err instanceof ApiError)) {
+    return err instanceof Error ? err.message : t('errorFallback')
+  }
+
+  if (err.code === 'duplicate_booking') return t('errDuplicate')
+  if (err.code === 'invalid_option') return t('errInvalidOptions')
+
+  const seatsLeft = typeof err.details?.seatsLeft === 'number' ? err.details.seatsLeft : undefined
+  const maxSeats = typeof err.details?.maxSeats === 'number' ? err.details.maxSeats : undefined
+
+  if (err.status === 409 && seatsLeft !== undefined) {
+    return seatsLeft === 0 ? t('errSoldOut') : t('errSeatsLeft', { count: seatsLeft })
+  }
+  if (err.status === 400 && maxSeats !== undefined) {
+    return t('errPartyTooLarge', { maxSeats })
+  }
+  if (err.status === 404) return t('errGone')
+
+  return err.message || t('errorFallback')
+}
+
 export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialogOptions) {
   const router = useRouter()
   const createBooking = useCreateBooking()
+  const t = useTranslations('Booking')
+  const locale = useLocale()
 
   const hasOptions = !!service.options?.length
   const [step, setStep] = useState<BookingStep>('slot')
@@ -104,6 +136,9 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
         guestName: name.trim() || ticket.displayName,
         guestTicket: ticket.ticket,
         selectedOptions: selectedOptions.length > 0 ? selectedOptions : undefined,
+        // The confirmation message is rendered in the language the guest is
+        // reading right now (ADR-011).
+        guestLocale: isAppLocale(locale) ? locale : DEFAULT_LOCALE,
       })
 
       setBooking(result.booking)
@@ -115,7 +150,7 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
       if (err instanceof ApiError && err.status === 401 && inFlightCount.current > 1) {
         return
       }
-      setError(err instanceof Error ? err.message : 'Could not complete the booking')
+      setError(localizedError(t, err))
       setIsDuplicate(err instanceof ApiError && err.code === 'duplicate_booking')
     } finally {
       inFlightCount.current--

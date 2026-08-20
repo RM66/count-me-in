@@ -1,6 +1,7 @@
 'use client'
 
 import { PlusIcon, XIcon } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useController } from 'react-hook-form'
 
@@ -35,6 +36,7 @@ export function ServiceOptionsField({
   disabled?: boolean
 }) {
   const [draft, setDraft] = useState('')
+  const t = useTranslations('Cabinet.services')
 
   const { field: options, fieldState } = useController({ control, name: 'options' })
   const { field: selectMode } = useController({ control, name: 'optionsSelectMode' })
@@ -58,13 +60,13 @@ export function ServiceOptionsField({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Booking options</CardTitle>
-        <CardDescription>Optional add-ons or choices guests pick when booking.</CardDescription>
+        <CardTitle>{t('optionsTitle')}</CardTitle>
+        <CardDescription>{t('optionsDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <FieldGroup>
           <Field data-invalid={fieldState.invalid || undefined}>
-            <FieldLabel htmlFor="option-draft">Add an option</FieldLabel>
+            <FieldLabel htmlFor="option-draft">{t('addOption')}</FieldLabel>
             <div className="flex gap-2">
               <Input
                 id="option-draft"
@@ -77,13 +79,13 @@ export function ServiceOptionsField({
                     addOption()
                   }
                 }}
-                placeholder="e.g. Riverside studio"
+                placeholder={t('optionPlaceholder')}
                 disabled={disabled}
                 aria-invalid={fieldState.invalid || undefined}
               />
               <Button type="button" variant="outline" onClick={addOption} disabled={disabled}>
                 <PlusIcon data-icon="inline-start" />
-                Add
+                {t('add')}
               </Button>
             </div>
             <FieldError errors={fieldState.error ? [fieldState.error] : undefined} />
@@ -92,14 +94,14 @@ export function ServiceOptionsField({
           {hasOptions && (
             <div className="flex flex-wrap gap-2">
               {options.value.map((option, index) => (
-                <Badge key={option} variant="secondary" className="gap-1 pr-1">
+                <Badge key={option} variant="secondary" className="gap-1 pe-1">
                   {option}
                   {!disabled && (
                     <button
                       type="button"
                       onClick={() => removeOption(index)}
                       className="rounded-sm opacity-70 hover:opacity-100"
-                      aria-label={`Remove ${option}`}
+                      aria-label={t('removeOption', { option })}
                     >
                       <XIcon className="size-3" />
                     </button>
@@ -113,7 +115,7 @@ export function ServiceOptionsField({
             <>
               <Separator />
               <FieldSet>
-                <FieldLegend>Selection mode</FieldLegend>
+                <FieldLegend>{t('selectionMode')}</FieldLegend>
                 <RadioGroup
                   value={selectMode.value}
                   onValueChange={selectMode.onChange}
@@ -122,13 +124,13 @@ export function ServiceOptionsField({
                   <Field orientation="horizontal">
                     <RadioGroupItem value="single" id="mode-single" />
                     <FieldLabel htmlFor="mode-single" className="font-normal">
-                      Single choice (guest picks one)
+                      {t('singleChoice')}
                     </FieldLabel>
                   </Field>
                   <Field orientation="horizontal">
                     <RadioGroupItem value="multi" id="mode-multi" />
                     <FieldLabel htmlFor="mode-multi" className="font-normal">
-                      Multiple choice (guest picks any)
+                      {t('multipleChoice')}
                     </FieldLabel>
                   </Field>
                 </RadioGroup>

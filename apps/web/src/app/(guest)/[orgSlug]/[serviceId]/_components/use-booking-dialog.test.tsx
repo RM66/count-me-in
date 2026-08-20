@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api-client/error'
+import { IntlTestProvider } from '@/i18n/test-provider'
 import { useBookingDialog } from './use-booking-dialog'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -115,7 +116,11 @@ function createWrapper() {
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
   function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    return (
+      <QueryClientProvider client={queryClient}>
+        <IntlTestProvider>{children}</IntlTestProvider>
+      </QueryClientProvider>
+    )
   }
   return Wrapper
 }
@@ -287,6 +292,7 @@ describe('useBookingDialog — handleTicket', () => {
       guestName: 'Jane Doe',
       guestTicket: 'guest-ticket-123',
       selectedOptions: undefined,
+      guestLocale: 'en',
     })
     expect(result.current.step).toBe('success')
     expect(result.current.booking).toEqual(guestBooking)

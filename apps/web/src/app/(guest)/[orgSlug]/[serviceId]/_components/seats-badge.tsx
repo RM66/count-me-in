@@ -1,5 +1,8 @@
+'use client'
+
 import type { SlotOccupancy } from '@repo/contracts'
 import { fillLabel, seatsLeft } from '@repo/contracts'
+import { useTranslations } from 'next-intl'
 
 import { Badge } from '@/components/ui/badge'
 
@@ -11,15 +14,17 @@ import { Badge } from '@/components/ui/badge'
  * row straight from Postgres.
  */
 export function SeatsBadge({ slot }: { slot: SlotOccupancy }) {
+  const t = useTranslations('SeatsBadge')
+
   const left = seatsLeft(slot)
   const status = fillLabel(slot)
 
   if (status === 'full') {
-    return <Badge variant="secondary">Fully booked</Badge>
+    return <Badge variant="secondary">{t('fullyBooked')}</Badge>
   }
   return (
     <Badge variant={status === 'filling' ? 'destructive' : 'default'}>
-      {left} {left === 1 ? 'seat' : 'seats'} left
+      {t('seatsLeft', { count: left })}
     </Badge>
   )
 }

@@ -3,6 +3,7 @@
 import type { GuestBooking } from '@repo/contracts'
 import { ArrowRightIcon, CalendarIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -26,6 +27,8 @@ import { formatDateTime } from '@/helpers/date'
  */
 export default function FindBookingPage() {
   const lookupBookings = useLookupBookings()
+  const t = useTranslations('MyBookings')
+  const locale = useLocale()
 
   /**
    * `null` before the first lookup, an array after — the distinction is what
@@ -40,12 +43,9 @@ export default function FindBookingPage() {
     <div className="mx-auto w-full max-w-xl px-4 py-12 md:py-20">
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">
-          Find your booking
+          {t('title')}
         </h1>
-        <p className="mt-2 text-muted-foreground text-pretty">
-          Lost your link? Confirm with the Telegram account you booked with and we&apos;ll show your
-          bookings.
-        </p>
+        <p className="mt-2 text-muted-foreground text-pretty">{t('subtitle')}</p>
       </div>
 
       {found === null && (
@@ -54,7 +54,7 @@ export default function FindBookingPage() {
             {lookupBookings.isPending ? (
               <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
                 <Spinner />
-                Looking up your bookings…
+                {t('lookingUp')}
               </div>
             ) : botUsername ? (
               <TelegramLoginButton
@@ -72,19 +72,17 @@ export default function FindBookingPage() {
                     )
                   } catch (error) {
                     toast.error(
-                      error instanceof Error ? error.message : 'Could not look up your bookings',
+                      error instanceof Error
+                        ? error.message || t('lookupFailed')
+                        : t('lookupFailed'),
                     )
                   }
                 }}
               />
             ) : (
-              <p className="text-center text-sm text-destructive">
-                Telegram login is not configured, so lookup is unavailable.
-              </p>
+              <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
             )}
-            <p className="text-center text-sm text-muted-foreground">
-              We&apos;ll only show bookings made with this account.
-            </p>
+            <p className="text-center text-sm text-muted-foreground">{t('onlyThisAccount')}</p>
           </CardContent>
         </Card>
       )}
@@ -92,7 +90,7 @@ export default function FindBookingPage() {
       {found !== null && found.length > 0 && (
         <div className="mt-8 flex flex-col gap-3">
           <p className="text-sm font-medium text-muted-foreground">
-            {found.length} booking{found.length === 1 ? '' : 's'} found
+            {t('bookingsFound', { count: found.length })}
           </p>
           {found.map((booking) => (
             <Link key={booking.id} href={`/booking/${booking.manageToken}`} className="group block">
@@ -105,7 +103,7 @@ export default function FindBookingPage() {
                     <p className="truncate font-medium">{booking.service.title}</p>
                     <p className="truncate text-sm text-muted-foreground">
                       {/* The organizer's zone — the guest booked a wall-clock time. */}
-                      {formatDateTime(booking.slot.startsAt, booking.organizer.timezone)}
+                      {formatDateTime(booking.slot.startsAt, booking.organizer.timezone, locale)}
                     </p>
                   </div>
                   {/*
@@ -114,8 +112,8 @@ export default function FindBookingPage() {
                   */}
                   <Badge variant={booking.status === 'confirmed' ? 'secondary' : 'outline'}>
                     {booking.status === 'confirmed'
-                      ? `${booking.seats} seat${booking.seats === 1 ? '' : 's'}`
-                      : 'Cancelled'}
+                      ? t('seats', { count: booking.seats })
+                      : t('cancelled')}
                   </Badge>
                   <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </CardContent>
@@ -132,11 +130,8 @@ export default function FindBookingPage() {
               <EmptyMedia variant="icon">
                 <SearchIcon />
               </EmptyMedia>
-              <EmptyTitle>No bookings found</EmptyTitle>
-              <EmptyDescription>
-                This Telegram account has no bookings yet. If you booked with a different account,
-                confirm with that one instead.
-              </EmptyDescription>
+              <EmptyTitle>{t('noBookingsFound')}</EmptyTitle>
+              <EmptyDescription>{t('noBookingsDescription')}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         </div>
@@ -149,10 +144,8 @@ export default function FindBookingPage() {
               <EmptyMedia variant="icon">
                 <SearchIcon />
               </EmptyMedia>
-              <EmptyTitle>Nothing to show yet</EmptyTitle>
-              <EmptyDescription>
-                Confirm with Telegram above to look up your bookings.
-              </EmptyDescription>
+              <EmptyTitle>{t('nothingYet')}</EmptyTitle>
+              <EmptyDescription>{t('nothingYetDescription')}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         </div>

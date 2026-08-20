@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, Minus, Plus } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,8 @@ export function DetailsStep({
   onBack: () => void
   onContinue: () => void
 }) {
+  const t = useTranslations('Booking')
+
   const showStepper = maxSeats > 1
   // Guard against a stale value if the selected slot lost seats between steps.
   const clamped = Math.min(Math.max(1, seats), maxSeats)
@@ -59,20 +62,20 @@ export function DetailsStep({
     >
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="guest-name">Full name</FieldLabel>
+          <FieldLabel htmlFor="guest-name">{t('fullName')}</FieldLabel>
           <Input
             id="guest-name"
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
-            placeholder="Mila Petrović"
+            placeholder={t('namePlaceholder')}
             required
           />
-          <FieldDescription>The name the organizer will see on their list.</FieldDescription>
+          <FieldDescription>{t('nameHint')}</FieldDescription>
         </Field>
 
         {showStepper && (
           <Field>
-            <FieldLabel htmlFor="party-size">Seats</FieldLabel>
+            <FieldLabel htmlFor="party-size">{t('seats')}</FieldLabel>
             <div className="flex items-center gap-3">
               <Button
                 type="button"
@@ -80,7 +83,7 @@ export function DetailsStep({
                 size="icon"
                 onClick={() => onSeatsChange(clamped - 1)}
                 disabled={!canDecrement}
-                aria-label="Remove a seat"
+                aria-label={t('removeSeat')}
               >
                 <Minus />
               </Button>
@@ -97,24 +100,22 @@ export function DetailsStep({
                 size="icon"
                 onClick={() => onSeatsChange(clamped + 1)}
                 disabled={!canIncrement}
-                aria-label="Add a seat"
+                aria-label={t('addSeat')}
               >
                 <Plus />
               </Button>
             </div>
-            <FieldDescription>
-              Including you. Up to {maxSeats} {maxSeats === 1 ? 'seat' : 'seats'} on this session.
-            </FieldDescription>
+            <FieldDescription>{t('seatsHint', { maxSeats })}</FieldDescription>
           </Field>
         )}
 
         <div className="flex gap-2">
           <Button type="button" variant="ghost" onClick={() => onBack()}>
             <ArrowLeft data-icon="inline-start" />
-            Back
+            {t('back')}
           </Button>
           <Button type="submit" className="flex-1">
-            Continue
+            {t('continue')}
           </Button>
         </div>
       </FieldGroup>

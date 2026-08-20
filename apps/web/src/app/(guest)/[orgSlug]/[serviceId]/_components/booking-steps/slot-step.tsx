@@ -2,6 +2,7 @@
 
 import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { seatsLeft, slotPrice } from '@repo/contracts'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,9 @@ export function SlotStep({
   onSlotChange: (id: string) => void
   onContinue: () => void
 }) {
+  const t = useTranslations('Booking')
+  const locale = useLocale()
+
   return (
     <div className="flex flex-col gap-4">
       <RadioGroup value={slotId} onValueChange={onSlotChange} className="gap-2">
@@ -50,8 +54,8 @@ export function SlotStep({
                 <RadioGroupItem id={`slot-${s.id}`} value={s.id} disabled={full} />
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">
-                    {formatDate(s.startsAt, organizer.timezone)} ·{' '}
-                    {formatTime(s.startsAt, organizer.timezone)}
+                    {formatDate(s.startsAt, organizer.timezone, locale)} ·{' '}
+                    {formatTime(s.startsAt, organizer.timezone, locale)}
                   </span>
                   <span className="text-xs text-muted-foreground">{slotPrice(s, service)}</span>
                 </div>
@@ -62,7 +66,7 @@ export function SlotStep({
         })}
       </RadioGroup>
       <Button disabled={!slotId} onClick={onContinue}>
-        Continue
+        {t('continue')}
       </Button>
     </div>
   )

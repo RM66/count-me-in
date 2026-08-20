@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from '@repo/contracts'
 import { relations, sql } from 'drizzle-orm'
 import {
   check,
@@ -29,6 +30,8 @@ export const organizers = pgTable(
     messenger: messengerKind('messenger').notNull(),
     messengerId: text('messenger_id').notNull(),
     timezone: text('timezone').notNull(),
+    /** Notification language (ADR-011): the locale the worker renders this organizer's messages in. */
+    language: text('language').notNull().default(DEFAULT_LOCALE),
     description: text('description'),
     photoUrl: text('photo_url'),
     location: text('location'),
@@ -123,6 +126,8 @@ export const bookings = pgTable(
     guestMessenger: messengerKind('guest_messenger').notNull(),
     guestMessengerId: text('guest_messenger_id').notNull(),
     guestMessengerLogin: text('guest_messenger_login'),
+    /** The locale the guest's confirmation/cancellation messages are rendered in (ADR-011). */
+    guestLocale: text('guest_locale').notNull().default(DEFAULT_LOCALE),
     manageToken: text('manage_token').notNull(),
     selectedOptions: text('selected_options').array(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

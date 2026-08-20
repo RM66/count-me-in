@@ -1,5 +1,8 @@
+import { localeDirection } from '@repo/contracts'
 import type { Metadata } from 'next'
 import { Figtree } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 
 import { SITE_DESCRIPTION, SITE_URL } from '@/constants/site'
 import { cn } from '@/lib/utils'
@@ -49,15 +52,26 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Locale from the request config (cookie → Accept-Language → en, ADR-011).
+  const locale = await getLocale()
+  const messages = await getMessages()
+
   return (
-    <html lang="en" suppressHydrationWarning className="bg-background">
+    <html
+      lang={locale}
+      dir={localeDirection(locale)}
+      suppressHydrationWarning
+      className="bg-background"
+    >
       <body className={cn('font-sans', 'antialiased', 'text-foreground', figtree.variable)}>
-        <Providers>{children}</Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Providers>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

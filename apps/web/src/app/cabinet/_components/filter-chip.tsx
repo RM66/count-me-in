@@ -28,7 +28,7 @@ export function FilterChip({
   ariaLabel?: string
 }) {
   return (
-    <Badge variant="secondary" className="gap-1 py-1 pr-1 pl-2.5 h-6 text-sm text-primary">
+    <Badge variant="secondary" className="h-6 gap-1 py-1 pe-1 ps-2.5 text-sm text-primary">
       <span className="truncate">{label}</span>
       <Button variant="ghost" size="icon" className="size-5 shrink-0 hover:bg-transparent" asChild>
         <Link href={clearHref} aria-label={ariaLabel}>

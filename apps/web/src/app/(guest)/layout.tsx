@@ -1,10 +1,13 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import type { ReactNode } from 'react'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
 
-export default function GuestLayout({ children }: { children: ReactNode }) {
+export default async function GuestLayout({ children }: { children: ReactNode }) {
+  const t = await getTranslations('GuestLayout')
+
   return (
     <div className="flex min-h-screen flex-col bg-muted/20">
       <header className="border-b bg-background">
@@ -15,7 +18,7 @@ export default function GuestLayout({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/booking" className="text-sm text-muted-foreground hover:text-foreground">
-              My bookings
+              {t('myBookings')}
             </Link>
             <LanguageSwitcher />
           </div>
@@ -24,7 +27,7 @@ export default function GuestLayout({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">{children}</main>
       <footer className="border-t bg-background">
         <div className="mx-auto flex max-w-3xl items-center justify-center gap-1 px-4 py-4 text-xs text-muted-foreground">
-          Powered by
+          {t('poweredBy')}
           <Link href="/" className="font-medium text-foreground hover:underline">
             CountMeIn
           </Link>

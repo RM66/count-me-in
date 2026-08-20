@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,44 +14,25 @@ type Slide = {
   meta: string
 }
 
-// Each slide pairs a themed photo with a caption that matches it, so the
-// floating card never claims a yoga class while showing a hiking group.
-const slides: Slide[] = [
-  {
-    src: '/service-yoga.png',
-    alt: 'A morning yoga class in a bright studio',
-    title: 'Morning Vinyasa Flow',
-    meta: 'Tomorrow · 07:00 · 3 seats left',
-  },
-  {
-    src: '/service-hiking.png',
-    alt: 'A small group hiking on a mountain trail',
-    title: 'Sunrise Ridge Hike',
-    meta: 'Sat · 06:00 · 8 seats left',
-  },
-  {
-    src: '/service-workshop.png',
-    alt: 'A hands-on creative workshop around a shared table',
-    title: 'Pottery Workshop',
-    meta: 'Sun · 14:00 · 2 seats left',
-  },
-  {
-    src: '/service-tour.png',
-    alt: 'A guided walking tour through an old-town street',
-    title: 'Old Town Walking Tour',
-    meta: 'Fri · 11:00 · 12 seats left',
-  },
-  {
-    src: '/service-breathwork.png',
-    alt: 'A guided breathwork session with people seated in a calm circle',
-    title: 'Breathwork Circle',
-    meta: 'Wed · 19:00 · 6 seats left',
-  },
-]
-
 const INTERVAL_MS = 3000
 
 export function HeroCarousel() {
+  const t = useTranslations('Marketing.carousel')
+
+  // The slide copy lives in the dictionaries; only the image path is fixed.
+  const slides: Slide[] = (
+    t.raw('slides') as Array<{ alt: string; title: string; meta: string }>
+  ).map((slide, index) => ({
+    ...slide,
+    src: [
+      '/service-yoga.png',
+      '/service-hiking.png',
+      '/service-workshop.png',
+      '/service-tour.png',
+      '/service-breathwork.png',
+    ][index] as string,
+  }))
+
   // `active` starts at 0 so the server and the first client render agree; the
   // random slide is picked only after mount, when the images are rendered.
   const [active, setActive] = useState(0)
@@ -62,11 +44,15 @@ export function HeroCarousel() {
     reducedMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     setMounted(true)
     setActive(Math.floor(slides.length * Math.random()))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const goTo = useCallback((index: number) => {
-    setActive((index + slides.length) % slides.length)
-  }, [])
+  const goTo = useCallback(
+    (index: number) => {
+      setActive((index + slides.length) % slides.length)
+    },
+    [slides.length],
+  )
 
   useEffect(() => {
     if (paused || reducedMotion.current) return
@@ -74,7 +60,7 @@ export function HeroCarousel() {
       setActive((current) => (current + 1) % slides.length)
     }, INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [paused])
+  }, [paused, slides.length])
 
   const current = slides[active]
 
@@ -89,7 +75,7 @@ export function HeroCarousel() {
       <div
         className="relative aspect-4/3 overflow-hidden rounded-2xl border shadow-sm"
         aria-roledescription="carousel"
-        aria-label="Examples of group services you can publish"
+        aria-label={t('ariaLabel')}
       >
         {mounted ? (
           slides.map((slide, index) => (
@@ -131,13 +117,13 @@ export function HeroCarousel() {
       </div>
 
       {/* Dot controls. */}
-      <div className="absolute right-4 bottom-4 flex items-center gap-2">
+      <div className="absolute end-4 bottom-4 flex items-center gap-2">
         {slides.map((slide, index) => (
           <button
             key={slide.src}
             type="button"
             onClick={() => goTo(index)}
-            aria-label={`Show ${slide.title}`}
+            aria-label={t('showSlide', { title: slide.title })}
             aria-current={index === active}
             className={cn(
               'size-2.5 rounded-full border border-black/10 transition-all',

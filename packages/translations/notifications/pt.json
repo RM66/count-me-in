@@ -1,0 +1,26 @@
+{
+  "seats": "{count, plural, =1 {# vaga} other {# vagas}}",
+  "createdOrganizer": {
+    "title": "Nova reserva",
+    "stillFree": "🎟 {count, plural, =1 {# vaga ainda disponível} other {# vagas ainda disponíveis}}.",
+    "full": "✅ Esta sessão agora está lotada.",
+    "button": "Abrir no painel"
+  },
+  "createdGuest": {
+    "title": "Reserva confirmada",
+    "withName": "com {name}",
+    "footer": "Precisa mudar seus planos? Use o botão abaixo.",
+    "button": "Gerenciar minha reserva"
+  },
+  "cancelledOrganizer": {
+    "title": "Reserva cancelada",
+    "freed": "🎟 {count, plural, =1 {# vaga disponível agora} other {# vagas disponíveis agora}} nesta sessão.",
+    "button": "Abrir no painel"
+  },
+  "cancelledGuest": {
+    "title": "Sua reserva foi cancelada",
+    "byName": "por {name}",
+    "footer": "Sentimos muito — você pode escolher outra sessão abaixo.",
+    "button": "Ver outras sessões"
+  }
+}

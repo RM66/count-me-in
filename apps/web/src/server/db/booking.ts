@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import type { BookingRecord, GuestBooking, Messenger } from '@repo/contracts'
+import type { AppLocale, BookingRecord, GuestBooking, Messenger } from '@repo/contracts'
 import { buildSelectedOptionsSchema } from '@repo/contracts'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { bookings, db, organizers, services, timeSlots } from '@repo/db'
@@ -328,6 +328,8 @@ export async function createGuestBooking(input: {
   seats: number
   guestName: string
   selectedOptions?: string[]
+  /** The locale the guest's confirmation message is rendered in (ADR-011). */
+  guestLocale: AppLocale
   guest: { messenger: Messenger; messengerId: string; messengerLogin?: string }
 }): Promise<GuestBooking> {
   return db.transaction(async (tx) => {
@@ -386,6 +388,7 @@ export async function createGuestBooking(input: {
           guestMessenger: input.guest.messenger,
           guestMessengerId: input.guest.messengerId,
           guestMessengerLogin: input.guest.messengerLogin ?? null,
+          guestLocale: input.guestLocale,
           manageToken: newManageToken(),
           selectedOptions: options.data,
         })

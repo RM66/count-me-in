@@ -2,6 +2,7 @@
 
 import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { instantToWallClockInputs } from '@repo/contracts'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -31,31 +32,6 @@ type SlotDialogProps = {
   slot?: TimeSlotRecord
 }
 
-/** The wording that distinguishes one mode from another. */
-type SlotDialogWording = { title: string; description: string; submit: string }
-
-/**
- * Per-mode wording, kept out of the JSX so the three variants can be read as a
- * set — a reviewer changing one label sees the other two beside it.
- */
-const WORDING: Record<SlotDialogMode, SlotDialogWording> = {
-  create: {
-    title: 'Add time slot',
-    description: 'Schedule a new session. Defaults come from the service.',
-    submit: 'Add slot',
-  },
-  edit: {
-    title: 'Edit time slot',
-    description: 'Change when this session runs and how many seats it holds.',
-    submit: 'Save changes',
-  },
-  duplicate: {
-    title: 'Duplicate time slot',
-    description: 'Same session, new date. Adjust anything before saving.',
-    submit: 'Add slot',
-  },
-}
-
 /**
  * Create / edit / duplicate a slot.
  *
@@ -77,6 +53,29 @@ export function SlotDialog({
   mode,
   slot,
 }: SlotDialogProps) {
+  const t = useTranslations('Cabinet.slots')
+  const tc = useTranslations('Cabinet.common')
+
+  // The wording that distinguishes one mode from another, kept as a set so the
+  // three variants read beside each other.
+  const WORDING: Record<SlotDialogMode, { title: string; description: string; submit: string }> = {
+    create: {
+      title: t('dialogCreateTitle'),
+      description: t('dialogCreateDescription'),
+      submit: t('addSlot'),
+    },
+    edit: {
+      title: t('dialogEditTitle'),
+      description: t('dialogEditDescription'),
+      submit: t('saveChanges'),
+    },
+    duplicate: {
+      title: t('dialogDuplicateTitle'),
+      description: t('dialogDuplicateDescription'),
+      submit: t('addSlot'),
+    },
+  }
+
   const wording = WORDING[mode]
   const today = instantToWallClockInputs(new Date().toISOString(), timezone).date
   const { form, submit, selectService, isSaving } = useSlotForm({
@@ -114,19 +113,19 @@ export function SlotDialog({
               <SlotTextField
                 control={control}
                 name="date"
-                label="Date"
+                label={t('fieldDate')}
                 type="date"
                 // Native hint only — the schema is what actually rejects a past
                 // start, since `min` says nothing about the time of day.
                 min={today}
               />
-              <SlotTextField control={control} name="time" label="Start time" type="time" />
+              <SlotTextField control={control} name="time" label={t('fieldTime')} type="time" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <SlotTextField
                 control={control}
                 name="durationMinutes"
-                label="Duration"
+                label={t('fieldDuration')}
                 type="number"
                 min={1}
                 inputMode="numeric"
@@ -134,7 +133,7 @@ export function SlotDialog({
               <SlotTextField
                 control={control}
                 name="capacity"
-                label="Capacity"
+                label={t('fieldCapacity')}
                 type="number"
                 min={1}
                 inputMode="numeric"
@@ -143,20 +142,20 @@ export function SlotDialog({
             <SlotTextField
               control={control}
               name="price"
-              label="Price"
-              placeholder="1200 RSD"
-              description="Leave empty to use the service default."
+              label={t('fieldPrice')}
+              placeholder={t('pricePlaceholder')}
+              description={t('priceDescription')}
             />
           </FieldGroup>
 
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isSaving}>
-                Cancel
+                {tc('cancel')}
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isSaving || (mode === 'edit' && !isDirty)}>
-              {isSaving ? 'Saving...' : wording.submit}
+              {isSaving ? tc('saving') : wording.submit}
             </Button>
           </DialogFooter>
         </form>

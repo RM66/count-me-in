@@ -2,6 +2,7 @@
 
 import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon, SearchIcon } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 import { BookingDetailsSheet } from '@/app/cabinet/_components/booking-details-sheet'
@@ -42,14 +43,6 @@ type BookingsTableProps = {
   isReadOnly: boolean
 }
 
-const HEADER_LABELS: Record<SortKey, string> = {
-  guest: 'Guest',
-  service: 'Service',
-  when: 'When',
-  seats: 'Seats',
-  status: 'Status',
-}
-
 /**
  * The cabinet bookings list: a filterable table plus a details sheet.
  *
@@ -69,8 +62,12 @@ export function BookingsTable({
   isReadOnly,
 }: BookingsTableProps) {
   const [selected, setSelected] = useState<BookingRecord | null>(null)
+  const t = useTranslations('Cabinet.bookings')
+  const td = useTranslations('Cabinet.dayFilter')
+  const tc = useTranslations('Cabinet.common')
+  const locale = useLocale()
 
-  const t = useBookingsTable({
+  const state = useBookingsTable({
     bookings,
     slots,
     services,
@@ -79,15 +76,28 @@ export function BookingsTable({
     activeSlotId,
   })
 
+  const HEADER_LABELS: Record<SortKey, string> = {
+    guest: t('colGuest'),
+    service: t('colService'),
+    when: t('colWhen'),
+    seats: t('colSeats'),
+    status: t('colStatus'),
+  }
+
   const sortableHead = (key: SortKey) => {
-    const sort = t.sort
+    const sort = state.sort
     const active = sort?.key === key
     return (
       <TableHead
         key={key}
         aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
       >
-        <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => t.toggleSort(key)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3 h-8"
+          onClick={() => state.toggleSort(key)}
+        >
           {HEADER_LABELS[key]}
           {active ? (
             sort.dir === 'asc' ? (
@@ -103,8 +113,8 @@ export function BookingsTable({
     )
   }
 
-  const selectedService = selected ? t.serviceOf(selected) : undefined
-  const selectedSlot = selected ? t.slotsById.get(selected.timeSlotId) : undefined
+  const selectedService = selected ? state.serviceOf(selected) : undefined
+  const selectedSlot = selected ? state.slotsById.get(selected.timeSlotId) : undefined
 
   return (
     <>
@@ -112,13 +122,13 @@ export function BookingsTable({
         <div className="flex flex-wrap items-center gap-3">
           <ToggleGroup
             type="single"
-            value={t.filter}
-            onValueChange={(v) => v && t.setFilter(v as typeof t.filter)}
+            value={state.filter}
+            onValueChange={(v) => v && state.setFilter(v as typeof state.filter)}
             variant="outline"
           >
-            <ToggleGroupItem value="all">All</ToggleGroupItem>
-            <ToggleGroupItem value="confirmed">Confirmed</ToggleGroupItem>
-            <ToggleGroupItem value="cancelled">Cancelled</ToggleGroupItem>
+            <ToggleGroupItem value="all">{t('all')}</ToggleGroupItem>
+            <ToggleGroupItem value="confirmed">{t('confirmed')}</ToggleGroupItem>
+            <ToggleGroupItem value="cancelled">{t('cancelled')}</ToggleGroupItem>
           </ToggleGroup>
 
           {/*
@@ -129,66 +139,72 @@ export function BookingsTable({
             <FilterChip
               label={activeSlotLabel}
               clearHref="/cabinet/bookings"
-              ariaLabel="Show every slot"
+              ariaLabel={td('showEveryBooking')}
             />
           ) : (
-            t.activeService && (
+            state.activeService && (
               <FilterChip
-                label={t.activeService.title}
+                label={state.activeService.title}
                 clearHref="/cabinet/bookings"
-                ariaLabel="Show every service"
+                ariaLabel={td('showEveryService')}
               />
             )
           )}
 
-          {t.day && <DayFilterChip dayLabel={t.dayLabel} onClear={() => t.setDay('')} />}
+          {state.day && (
+            <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.setDay('')} />
+          )}
         </div>
 
         <div className="flex items-center gap-2">
           <DayFilterPicker
-            day={t.day}
-            dayLabel={t.dayLabel}
-            onSelect={t.setDay}
-            defaultMonth={t.defaultMonth}
+            day={state.day}
+            dayLabel={state.dayLabel}
+            onSelect={state.setDay}
+            defaultMonth={state.defaultMonth}
             entityLabel="bookings"
             // The whole point: days whose sessions have bookings are marked.
-            modifiers={{ hasBookings: t.bookedDates }}
+            modifiers={{ hasBookings: state.bookedDates }}
             modifiersClassNames={{ hasBookings: DAY_MARK.strong.calendarCell }}
           />
 
           <div className="relative w-full sm:w-64">
-            <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <SearchIcon className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              value={t.query}
-              onChange={(e) => t.setQuery(e.target.value)}
-              placeholder="Search guest or service"
-              className="pl-9"
+              value={state.query}
+              onChange={(e) => state.setQuery(e.target.value)}
+              placeholder={t('searchPlaceholder')}
+              className="ps-9"
             />
           </div>
         </div>
       </div>
 
-      {t.filtered.length === 0 ? (
+      {state.filtered.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <SearchIcon />
             </EmptyMedia>
-            <EmptyTitle>No bookings found</EmptyTitle>
+            <EmptyTitle>{t('noBookingsFound')}</EmptyTitle>
             <EmptyDescription>
-              {t.scoped.length === 0
+              {state.scoped.length === 0
                 ? activeSlotLabel
-                  ? `${activeSlotLabel} has no bookings yet.`
-                  : t.activeService
-                    ? `${t.activeService.title} has no bookings yet.`
-                    : 'Bookings appear here as soon as a guest reserves a seat.'
-                : t.day
-                  ? `No bookings on ${t.dayLabel}${t.activeService ? ` for ${t.activeService.title}` : ''}.`
-                  : 'Try adjusting your filters or search.'}
+                  ? t('noBookingsForSlot', { label: activeSlotLabel })
+                  : state.activeService
+                    ? t('noBookingsForService', { service: state.activeService.title })
+                    : t('bookingsAppear')
+                : state.day
+                  ? `${t('noBookingsOnDay', { day: state.dayLabel })}${
+                      state.activeService
+                        ? t('forServiceSuffix', { service: state.activeService.title })
+                        : ''
+                    }.`
+                  : t('tryFilters')}
             </EmptyDescription>
-            {t.day && (
-              <Button variant="outline" size="sm" onClick={() => t.setDay('')}>
-                Show every day
+            {state.day && (
+              <Button variant="outline" size="sm" onClick={() => state.setDay('')}>
+                {td('showEveryDay')}
               </Button>
             )}
           </EmptyHeader>
@@ -200,9 +216,9 @@ export function BookingsTable({
               <TableRow>{SORT_KEYS.map(sortableHead)}</TableRow>
             </TableHeader>
             <TableBody>
-              {t.rows.map((b) => {
-                const svc = t.serviceOf(b)
-                const slot = t.slotsById.get(b.timeSlotId)
+              {state.rows.map((b) => {
+                const svc = state.serviceOf(b)
+                const slot = state.slotsById.get(b.timeSlotId)
                 return (
                   <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelected(b)}>
                     <TableCell>
@@ -220,12 +236,12 @@ export function BookingsTable({
                     </TableCell>
                     <TableCell>{svc?.title}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {slot ? formatDateTime(slot.startsAt, timezone) : '—'}
+                      {slot ? formatDateTime(slot.startsAt, timezone, locale) : '—'}
                     </TableCell>
                     <TableCell>{b.seats}</TableCell>
                     <TableCell>
                       <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>
-                        {b.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
+                        {b.status === 'confirmed' ? tc('confirmed') : tc('cancelled')}
                       </Badge>
                     </TableCell>
                   </TableRow>

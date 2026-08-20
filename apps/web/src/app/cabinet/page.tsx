@@ -9,6 +9,7 @@ import {
   UsersIcon,
 } from 'lucide-react'
 import Link from 'next/link'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { BookingPreviewList } from '@/app/cabinet/_components/booking-preview-list'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
@@ -40,6 +41,12 @@ export default async function CabinetOverviewPage({
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
   const { slot: slotParam } = await searchParams
+
+  const t = await getTranslations('Cabinet.overview')
+  const tc = await getTranslations('Cabinet.common')
+  const tcrumbs = await getTranslations('Cabinet.crumbs')
+  const td = await getTranslations('Cabinet.dayFilter')
+  const locale = await getLocale()
 
   // The overview summarises every surface of the cabinet, so it reads what the
   // other pages read: the profile for name / slug / timezone, and all three
@@ -100,7 +107,7 @@ export default async function CabinetOverviewPage({
   // Named by service + start time, as on the bookings page — the id would mean
   // nothing to the organizer.
   const activeSlotLabel = activeSlot
-    ? `${activeSlotService?.title ?? 'Deleted service'} · ${formatDateTime(activeSlot.startsAt, timezone)}`
+    ? `${activeSlotService?.title ?? tc('deletedService')} · ${formatDateTime(activeSlot.startsAt, timezone, locale)}`
     : undefined
 
   // `listBookings` orders newest first, which is exactly "recent activity";
@@ -114,18 +121,18 @@ export default async function CabinetOverviewPage({
   return (
     <>
       <CabinetHeader
-        crumbs={[{ label: 'Cabinet' }, { label: 'Overview' }]}
+        crumbs={[{ label: tcrumbs('cabinet') }, { label: tcrumbs('overview') }]}
         action={
           isReadOnly ? (
             <Button size="sm" disabled>
               <PlusIcon data-icon="inline-start" />
-              New service
+              {t('newService')}
             </Button>
           ) : (
             <Button size="sm" asChild>
               <Link href="/cabinet/services/new">
                 <PlusIcon data-icon="inline-start" />
-                New service
+                {t('newService')}
               </Link>
             </Button>
           )
@@ -134,39 +141,37 @@ export default async function CabinetOverviewPage({
       <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-balance">
-            {organizer ? `Welcome back, ${organizer.name}` : 'Welcome back'}
+            {organizer ? t('welcomeBack', { name: organizer.name }) : t('welcomeFallback')}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Here is what is happening across your bookings.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
-            title="Confirmed bookings"
+            title={t('statConfirmed')}
             value={String(confirmed.length)}
-            hint={`${confirmedThisWeek.length} in the last 7 days`}
+            hint={t('last7Days', { count: confirmedThisWeek.length })}
             icon={TicketIcon}
           />
           <StatCard
-            title="Seats booked"
+            title={t('statSeats')}
             value={String(seatsBooked)}
-            hint="across upcoming slots"
+            hint={t('acrossUpcoming')}
             icon={UsersIcon}
           />
           <StatCard
-            title="Upcoming slots"
+            title={t('statSlots')}
             value={String(upcoming.length)}
-            hint={`${upcomingThisWeek.length} in the next 7 days`}
+            hint={t('next7Days', { count: upcomingThisWeek.length })}
             icon={CalendarClockIcon}
           />
           <StatCard
-            title="Fill rate"
+            title={t('statFillRate')}
             value={fillRateValue === null ? '—' : `${fillRateValue}%`}
             hint={
               fillRateValue === null
-                ? 'no upcoming capacity yet'
-                : `${seatsBooked} of ${seatsOffered} seats taken`
+                ? t('noUpcomingCapacity')
+                : t('seatsTaken', { booked: seatsBooked, offered: seatsOffered })
             }
             icon={TrendingUpIcon}
           />
@@ -176,12 +181,12 @@ export default async function CabinetOverviewPage({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex flex-col gap-1">
-                <CardTitle>Upcoming slots</CardTitle>
-                <CardDescription>Your next scheduled sessions.</CardDescription>
+                <CardTitle>{t('upcomingSlots')}</CardTitle>
+                <CardDescription>{t('nextSessions')}</CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/cabinet/slots">
-                  View all
+                  {tc('viewAll')}
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               </Button>
@@ -189,9 +194,7 @@ export default async function CabinetOverviewPage({
             <CardContent className="flex flex-col gap-1">
               {nextSlots.length === 0 ? (
                 <p className="py-3 text-sm text-muted-foreground">
-                  {services.length === 0
-                    ? 'Create a service, then schedule its first session.'
-                    : 'Nothing scheduled yet — add a slot to open bookings.'}
+                  {services.length === 0 ? t('createServiceFirst') : t('nothingScheduled')}
                 </p>
               ) : (
                 nextSlots.map((slot, i) => {
@@ -218,13 +221,13 @@ export default async function CabinetOverviewPage({
                         )}
                       >
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{svc?.title ?? 'Deleted service'}</span>
+                          <span className="font-medium">{svc?.title ?? tc('deletedService')}</span>
                           <span className="text-sm text-muted-foreground">
-                            {formatDateTime(slot.startsAt, timezone)}
+                            {formatDateTime(slot.startsAt, timezone, locale)}
                           </span>
                         </div>
                         <Badge variant={left === 0 ? 'secondary' : 'outline'}>
-                          {left === 0 ? 'Full' : `${left} left`}
+                          {left === 0 ? tc('full') : tc('left', { count: left })}
                         </Badge>
                       </Link>
                     </div>
@@ -237,9 +240,9 @@ export default async function CabinetOverviewPage({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div className="flex min-w-0 flex-col gap-1">
-                <CardTitle>{activeSlot ? 'Slot bookings' : 'Recent bookings'}</CardTitle>
+                <CardTitle>{activeSlot ? t('slotBookings') : t('recentBookings')}</CardTitle>
                 <CardDescription>
-                  {activeSlot ? 'Reservations for the selected session.' : 'Latest activity.'}
+                  {activeSlot ? t('sessionReservations') : t('latestActivity')}
                 </CardDescription>
               </div>
               {/*
@@ -252,7 +255,7 @@ export default async function CabinetOverviewPage({
                     activeSlot ? `/cabinet/bookings?slot=${activeSlot.id}` : '/cabinet/bookings'
                   }
                 >
-                  View all
+                  {tc('viewAll')}
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               </Button>
@@ -268,15 +271,13 @@ export default async function CabinetOverviewPage({
                   <FilterChip
                     label={activeSlotLabel}
                     clearHref="/cabinet"
-                    ariaLabel="Show every booking"
+                    ariaLabel={td('showEveryBooking')}
                   />
                 </div>
               )}
               {previewBookings.length === 0 ? (
                 <p className="py-3 text-sm text-muted-foreground">
-                  {activeSlot
-                    ? 'No bookings for this session yet.'
-                    : 'Bookings appear here as soon as a guest reserves a seat.'}
+                  {activeSlot ? t('noBookingsForSession') : t('bookingsAppear')}
                 </p>
               ) : (
                 <BookingPreviewList
@@ -295,13 +296,13 @@ export default async function CabinetOverviewPage({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex flex-col gap-1">
-                <CardTitle>Your public page</CardTitle>
-                <CardDescription>Share this link so guests can browse and book.</CardDescription>
+                <CardTitle>{t('yourPublicPage')}</CardTitle>
+                <CardDescription>{t('shareLink')}</CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/${organizer.slug}`} target="_blank">
                   <ExternalLinkIcon data-icon="inline-start" />
-                  Open
+                  {tc('open')}
                 </Link>
               </Button>
             </CardHeader>

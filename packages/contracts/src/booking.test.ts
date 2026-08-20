@@ -35,6 +35,19 @@ describe('createBookingInput', () => {
     const result = createBookingInput.safeParse({ ...validPayload, timeSlotId: 'not-a-uuid' })
     expect(result.success).toBe(false)
   })
+
+  it('defaults guestLocale to en when omitted (ADR-011)', () => {
+    const result = createBookingInput.safeParse(validPayload)
+    expect(result.success && result.data.guestLocale).toBe('en')
+  })
+
+  it('accepts a supported guestLocale and rejects others', () => {
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'ru' }).success).toBe(true)
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'fr' }).success).toBe(true)
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'pt' }).success).toBe(true)
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'ar' }).success).toBe(true)
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'nl' }).success).toBe(false)
+  })
 })
 
 describe('cancelBookingByTokenInput', () => {

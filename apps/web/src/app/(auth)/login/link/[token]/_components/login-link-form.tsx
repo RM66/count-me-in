@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useRef } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ import { Spinner } from '@/components/ui/spinner'
  */
 export function LoginLinkForm({ action }: { action: () => Promise<void> }) {
   const formRef = useRef<HTMLFormElement>(null)
+  const t = useTranslations('Auth.loginLink')
 
   useEffect(() => {
     formRef.current?.requestSubmit()
@@ -26,11 +28,9 @@ export function LoginLinkForm({ action }: { action: () => Promise<void> }) {
   return (
     <form ref={formRef} action={action} className="flex flex-col items-center gap-4">
       <Spinner className="size-6 text-muted-foreground" aria-hidden />
-      <p className="text-center text-sm text-muted-foreground">
-        One moment while we open your cabinet.
-      </p>
+      <p className="text-center text-sm text-muted-foreground">{t('opening')}</p>
       <noscript>
-        <Button type="submit">Continue to your cabinet</Button>
+        <Button type="submit">{t('continue')}</Button>
       </noscript>
     </form>
   )

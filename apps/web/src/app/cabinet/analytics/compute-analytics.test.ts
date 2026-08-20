@@ -57,7 +57,7 @@ function service(id: string, title: string): ServiceRecord {
     photoUrl: null,
     location: null,
     contact: null,
-    defaultPrice: '1000 RSD',
+    defaultPrice: '$10',
     defaultCapacity: 10,
     defaultDurationMinutes: 60,
     maxSeatsPerBooking: 2,

@@ -1,0 +1,26 @@
+{
+  "seats": "{count, plural, =1 {# Platz} other {# Plätze}}",
+  "createdOrganizer": {
+    "title": "Neue Buchung",
+    "stillFree": "🎟 {count, plural, =1 {# Platz ist noch frei} other {# Plätze sind noch frei}}.",
+    "full": "✅ Dieser Termin ist jetzt ausgebucht.",
+    "button": "Im Veranstalterbereich öffnen"
+  },
+  "createdGuest": {
+    "title": "Buchung bestätigt",
+    "withName": "bei {name}",
+    "footer": "Du möchtest deine Pläne ändern? Nutze die Schaltfläche unten.",
+    "button": "Meine Buchung verwalten"
+  },
+  "cancelledOrganizer": {
+    "title": "Buchung storniert",
+    "freed": "🎟 {count, plural, =1 {# Platz ist bei diesem Termin jetzt frei} other {# Plätze sind bei diesem Termin jetzt frei}}.",
+    "button": "Im Veranstalterbereich öffnen"
+  },
+  "cancelledGuest": {
+    "title": "Deine Buchung wurde storniert",
+    "byName": "von {name}",
+    "footer": "Das tut uns leid — unten kannst du einen anderen Termin auswählen.",
+    "button": "Andere Termine ansehen"
+  }
+}

@@ -21,6 +21,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { useCurrentOrganizer } from '@/api-client'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -53,22 +54,24 @@ import { SUPPORT_EMAIL } from '@/constants/site'
 import { initials } from '@/helpers/name'
 import { cn } from '@/lib/utils'
 
-const nav = [
-  { title: 'Overview', href: '/cabinet', icon: LayoutDashboardIcon },
-  { title: 'Services', href: '/cabinet/services', icon: SparklesIcon },
-  { title: 'Slots', href: '/cabinet/slots', icon: CalendarClockIcon },
-  { title: 'Calendar', href: '/cabinet/calendar', icon: CalendarDaysIcon },
-  { title: 'Bookings', href: '/cabinet/bookings', icon: TicketIcon },
-  { title: 'Analytics', href: '/cabinet/analytics', icon: BarChart3Icon },
-  { title: 'Settings', href: '/cabinet/settings', icon: SettingsIcon },
-]
-
 export function CabinetSidebar() {
   const pathname = usePathname()
   const { data: organizer } = useCurrentOrganizer()
+  const locale = useLocale()
+  const t = useTranslations('Cabinet.sidebar')
+
+  const nav = [
+    { title: t('nav.overview'), href: '/cabinet', icon: LayoutDashboardIcon },
+    { title: t('nav.services'), href: '/cabinet/services', icon: SparklesIcon },
+    { title: t('nav.slots'), href: '/cabinet/slots', icon: CalendarClockIcon },
+    { title: t('nav.calendar'), href: '/cabinet/calendar', icon: CalendarDaysIcon },
+    { title: t('nav.bookings'), href: '/cabinet/bookings', icon: TicketIcon },
+    { title: t('nav.analytics'), href: '/cabinet/analytics', icon: BarChart3Icon },
+    { title: t('nav.settings'), href: '/cabinet/settings', icon: SettingsIcon },
+  ]
 
   return (
-    <Sidebar>
+    <Sidebar side={locale === 'ar' ? 'right' : 'left'}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -77,7 +80,7 @@ export function CabinetSidebar() {
                 <Image src="/logo.svg" alt="" width={32} height={32} className="size-8" />
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">CountMeIn</span>
-                  <span className="text-xs text-muted-foreground">Organizer</span>
+                  <span className="text-xs text-muted-foreground">{t('subtitle')}</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -87,7 +90,7 @@ export function CabinetSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Manage</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('manage')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {nav.map((item) => {
@@ -112,14 +115,14 @@ export function CabinetSidebar() {
 
         {organizer && (
           <SidebarGroup>
-            <SidebarGroupLabel>Public</SidebarGroupLabel>
+            <SidebarGroupLabel>{t('public')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="View public page">
+                  <SidebarMenuButton asChild tooltip={t('viewPublicPage')}>
                     <Link href={`/${organizer.slug}`} target="_blank">
                       <ExternalLinkIcon />
-                      <span>View public page</span>
+                      <span>{t('viewPublicPage')}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -129,14 +132,14 @@ export function CabinetSidebar() {
         )}
 
         <SidebarGroup>
-          <SidebarGroupLabel>Support</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('support')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Contact support">
+                <SidebarMenuButton asChild tooltip={t('contact')}>
                   <a href={`mailto:${SUPPORT_EMAIL}`}>
                     <MailIcon />
-                    <span>Contact</span>
+                    <span>{t('contact')}</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -145,13 +148,13 @@ export function CabinetSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Language</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('language')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <LanguageSwitcher
                   trigger={(active) => (
-                    <SidebarMenuButton tooltip="Language">
+                    <SidebarMenuButton tooltip={t('language')}>
                       <GlobeIcon />
                       <span>{active.label}</span>
                     </SidebarMenuButton>
@@ -170,19 +173,17 @@ export function CabinetSidebar() {
               // Read-only demo (ADR-010): the visitor has no account, so offer
               // both entry points instead of a meaningless "Log out".
               <div className="flex flex-col gap-2 p-1 group-data-[collapsible=icon]:hidden">
-                <p className="px-1 text-xs text-muted-foreground">
-                  You&apos;re viewing a demo cabinet.
-                </p>
+                <p className="px-1 text-xs text-muted-foreground">{t('demoNote')}</p>
                 <Button size="sm" asChild>
                   <Link href="/signup">
                     <UserPlusIcon data-icon="inline-start" />
-                    Sign up
+                    {t('signUp')}
                   </Link>
                 </Button>
                 <Button size="sm" variant="outline" asChild>
                   <Link href="/login">
                     <LogInIcon data-icon="inline-start" />
-                    Log in
+                    {t('logIn')}
                   </Link>
                 </Button>
               </div>
@@ -210,17 +211,17 @@ export function CabinetSidebar() {
                         TODO: Info about subscription
                       </span>
                     </div> */}
-                    <ChevronsUpDownIcon className="ml-auto size-4" />
+                    <ChevronsUpDownIcon className="ms-auto size-4" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" className="w-56">
-                  <DropdownMenuLabel>My account</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t('myAccount')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuItem asChild>
                       <Link href="/cabinet/settings">
                         <UserIcon />
-                        Profile
+                        {t('profile')}
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
@@ -233,7 +234,7 @@ export function CabinetSidebar() {
                     }}
                   >
                     <LogOutIcon />
-                    Log out
+                    {t('logOut')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

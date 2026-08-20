@@ -1,58 +1,56 @@
-import { DEMO_ORGANIZER_ID } from '@repo/contracts'
+import { DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE } from '@repo/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock the auth module to avoid pulling in next/server
 vi.mock('./auth', () => ({
   auth: vi.fn(),
 }))
+// getTranslations reads the request-scoped intl config, which does not exist
+// in the test env — a key-passthrough keeps the plumbing under test without
+// asserting on dictionary copy.
+vi.mock('next-intl/server', () => ({
+  getTranslations: async () => (key: string) => key,
+}))
 
-import { assertNotDemo, DemoReadOnlyError, demoReadOnlyResponse, rejectDemoWrite } from './demo'
+import { assertNotDemo, DemoReadOnlyError, rejectDemoWrite } from './demo'
 
 // ── rejectDemoWrite ──────────────────────────────────────────────────────────
 
 describe('rejectDemoWrite', () => {
-  it('returns a 403 response for the demo organizer id', () => {
-    const res = rejectDemoWrite(DEMO_ORGANIZER_ID)
+  it('returns a 403 response for the demo organizer id', async () => {
+    const res = await rejectDemoWrite(DEMO_ORGANIZER_ID)
     expect(res).not.toBeNull()
     expect(res!.status).toBe(403)
   })
 
-  it('returns a 403 response for null organizerId', () => {
-    const res = rejectDemoWrite(null)
+  it('returns a 403 response for null organizerId', async () => {
+    const res = await rejectDemoWrite(null)
     expect(res).not.toBeNull()
     expect(res!.status).toBe(403)
   })
 
-  it('returns a 403 response for undefined organizerId', () => {
-    const res = rejectDemoWrite(undefined)
+  it('returns a 403 response for undefined organizerId', async () => {
+    const res = await rejectDemoWrite(undefined)
     expect(res).not.toBeNull()
     expect(res!.status).toBe(403)
   })
 
-  it('returns null for a real organizer id', () => {
-    const res = rejectDemoWrite('org-123')
-    expect(res).toBeNull()
-  })
-
-  it('returns null for a non-demo id that looks similar', () => {
-    const res = rejectDemoWrite('demo-organizer')
-    expect(res).toBeNull()
-  })
-})
-
-// ── demoReadOnlyResponse ──────────────────────────────────────────────────────
-
-describe('demoReadOnlyResponse', () => {
-  it('returns a 403 response', () => {
-    const res = demoReadOnlyResponse()
-    expect(res.status).toBe(403)
-  })
-
-  it('includes the error message in the body', async () => {
-    const res = demoReadOnlyResponse()
-    const body = await res.json()
+  it('returns a localized body with the demo read-only code', async () => {
+    const res = await rejectDemoWrite(DEMO_ORGANIZER_ID)
+    const body = await res!.json()
     expect(body).toHaveProperty('error')
     expect(body).toHaveProperty('code')
+    expect(body.code).toBe(DEMO_READ_ONLY_CODE)
+  })
+
+  it('returns null for a real organizer id', async () => {
+    const res = await rejectDemoWrite('org-123')
+    expect(res).toBeNull()
+  })
+
+  it('returns null for a non-demo id that looks similar', async () => {
+    const res = await rejectDemoWrite('demo-organizer')
+    expect(res).toBeNull()
   })
 })
 

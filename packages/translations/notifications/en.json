@@ -1,0 +1,26 @@
+{
+  "seats": "{count, plural, =1 {# seat} other {# seats}}",
+  "createdOrganizer": {
+    "title": "New booking",
+    "stillFree": "🎟 {count, plural, =1 {# seat} other {# seats}} still free.",
+    "full": "✅ This session is now full.",
+    "button": "Open in cabinet"
+  },
+  "createdGuest": {
+    "title": "Booking confirmed",
+    "withName": "with {name}",
+    "footer": "Need to change your plans? Use the button below.",
+    "button": "Manage my booking"
+  },
+  "cancelledOrganizer": {
+    "title": "Booking cancelled",
+    "freed": "🎟 {count, plural, =1 {# seat} other {# seats}} now free on this session.",
+    "button": "Open in cabinet"
+  },
+  "cancelledGuest": {
+    "title": "Your booking was cancelled",
+    "byName": "by {name}",
+    "footer": "Sorry about that — you can pick another session below.",
+    "button": "See other sessions"
+  }
+}

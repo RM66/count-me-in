@@ -1,6 +1,7 @@
 'use client'
 
 import { CalendarPlus, Download, ExternalLink } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -32,6 +33,7 @@ export function AddToCalendar({
 }) {
   const start = toCalDate(startsAt)
   const end = toCalDate(endsAt)
+  const t = useTranslations('AddToCalendar')
 
   const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
     title,
@@ -67,7 +69,7 @@ export function AddToCalendar({
       <DropdownMenuTrigger asChild>
         <Button variant={variant} className={className}>
           <CalendarPlus data-icon="inline-start" />
-          Add to calendar
+          {t('addToCalendar')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
@@ -75,12 +77,12 @@ export function AddToCalendar({
           <DropdownMenuItem asChild>
             <a href={googleUrl} target="_blank" rel="noreferrer">
               <ExternalLink data-icon="inline-start" />
-              Google Calendar
+              {t('googleCalendar')}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={downloadIcs}>
             <Download data-icon="inline-start" />
-            Download .ics
+            {t('downloadIcs')}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

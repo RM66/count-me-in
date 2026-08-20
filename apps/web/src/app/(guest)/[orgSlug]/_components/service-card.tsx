@@ -3,6 +3,7 @@ import { seatsLeft } from '@repo/contracts'
 import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges'
 import { Badge } from '@/components/ui/badge'
@@ -17,18 +18,22 @@ import { formatDate, formatTime } from '@/helpers/date'
  * does everywhere else — an instant means nothing until it is rendered in their
  * zone (docs/domain.md).
  */
-export function ServiceCard({
+export async function ServiceCard({
   orgSlug,
   service,
   slots,
   timezone,
+  locale,
 }: {
   orgSlug: string
   service: ServiceRecord
   /** This service's upcoming slots, already ordered earliest first. */
   slots: TimeSlotRecord[]
   timezone: string
+  locale: string
 }) {
+  const t = await getTranslations('ServiceCard')
+
   // Already sorted by the query, so the first with a free seat is the soonest
   // one a guest can actually take.
   const nextOpen = slots.find((slot) => seatsLeft(slot) > 0)
@@ -60,12 +65,12 @@ export function ServiceCard({
         </div>
         {nextOpen ? (
           <Badge variant="secondary" className="mt-1 w-fit font-normal">
-            Next: {formatDate(nextOpen.startsAt, timezone)} ·{' '}
-            {formatTime(nextOpen.startsAt, timezone)}
+            {t('next')} {formatDate(nextOpen.startsAt, timezone, locale)} ·{' '}
+            {formatTime(nextOpen.startsAt, timezone, locale)}
           </Badge>
         ) : (
           <Badge variant="outline" className="mt-1 w-fit font-normal">
-            No open slots
+            {t('noOpenSlots')}
           </Badge>
         )}
       </div>

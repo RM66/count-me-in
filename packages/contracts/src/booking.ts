@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { bookingStatusEnum, messengerEnum } from './enums'
+import { appLocaleEnum, DEFAULT_LOCALE } from './i18n'
 import { selectedOptionsShape } from './options'
 import { publicOrganizer } from './organizer'
 import { authTicket, displayName, manageToken, seats, serviceId, uuid } from './primitives'
@@ -12,6 +13,10 @@ import { timeSlotRecord } from './time-slot'
  * `guestTicket` server-side — never trusted from the client.
  * `selectedOptions` is shape-validated here; validate against the concrete
  * service with `buildSelectedOptionsSchema` before inserting (invariant 6).
+ *
+ * `guestLocale` is the language the guest's confirmation message is rendered
+ * in (ADR-011): captured at booking time because the worker has no other way
+ * to know what the guest read the page in. Optional — defaults to English.
  */
 export const createBookingInput = z.object({
   serviceId,
@@ -20,6 +25,7 @@ export const createBookingInput = z.object({
   guestName: displayName,
   guestTicket: authTicket,
   selectedOptions: selectedOptionsShape.optional(),
+  guestLocale: appLocaleEnum.optional().default(DEFAULT_LOCALE),
 })
 export type CreateBookingInput = z.infer<typeof createBookingInput>
 

@@ -1,0 +1,26 @@
+{
+  "seats": "{count, plural, =1 {# place} other {# places}}",
+  "createdOrganizer": {
+    "title": "Nouvelle réservation",
+    "stillFree": "🎟 {count, plural, =1 {# place encore disponible} other {# places encore disponibles}}.",
+    "full": "✅ Cette séance est maintenant complète.",
+    "button": "Ouvrir dans mon espace"
+  },
+  "createdGuest": {
+    "title": "Réservation confirmée",
+    "withName": "chez {name}",
+    "footer": "Tu dois changer tes plans ? Utilise le bouton ci-dessous.",
+    "button": "Gérer ma réservation"
+  },
+  "cancelledOrganizer": {
+    "title": "Réservation annulée",
+    "freed": "🎟 {count, plural, =1 {# place maintenant disponible} other {# places maintenant disponibles}} pour cette séance.",
+    "button": "Ouvrir dans mon espace"
+  },
+  "cancelledGuest": {
+    "title": "Ta réservation a été annulée",
+    "byName": "par {name}",
+    "footer": "Désolé pour ce contretemps — tu peux choisir une autre séance ci-dessous.",
+    "button": "Voir les autres séances"
+  }
+}

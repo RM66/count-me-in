@@ -1,5 +1,6 @@
 import { ArrowLeftIcon, MapPinnedIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +12,9 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations('NotFound')
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center p-6">
       <Empty>
@@ -19,24 +22,21 @@ export default function NotFound() {
           <EmptyMedia variant="icon">
             <MapPinnedIcon />
           </EmptyMedia>
-          <EmptyTitle>Page not found</EmptyTitle>
-          <EmptyDescription>
-            We could not find the page you were looking for. It may have been moved or the link is
-            no longer valid.
-          </EmptyDescription>
+          <EmptyTitle>{t('title')}</EmptyTitle>
+          <EmptyDescription>{t('description')}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <div className="flex flex-wrap justify-center gap-2">
             <Button asChild>
               <Link href="/">
                 <ArrowLeftIcon data-icon="inline-start" />
-                Back home
+                {t('backHome')}
               </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/booking">
                 <SearchIcon data-icon="inline-start" />
-                Find my booking
+                {t('findMyBooking')}
               </Link>
             </Button>
           </div>

@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import OpengraphImage from './opengraph-image'
+
+// The OG route reads translated copy via next-intl's request config, which
+// only exists inside a request scope. The test renders the image out of one,
+// so the translator is stubbed with a key-passthrough — the assertions below
+// care about a valid PNG, not the copy.
+vi.mock('next-intl/server', () => ({
+  getTranslations: async () => (key: string) => key,
+}))
 
 // PNG file signature — every valid PNG starts with these 8 bytes.
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])

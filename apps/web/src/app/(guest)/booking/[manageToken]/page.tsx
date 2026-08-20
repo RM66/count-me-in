@@ -2,6 +2,7 @@ import { ArrowLeftIcon } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { BookingManage } from '@/app/(guest)/booking/[manageToken]/_components/booking-manage'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ export default async function BookingManagePage({
   params: Promise<{ manageToken: string }>
 }) {
   const { manageToken } = await params
+  const t = await getTranslations('ManageBooking')
 
   // The token is the whole authorization (ADR-002): it was delivered to the
   // guest's verified messenger account, so no session is checked. An unknown
@@ -33,7 +35,7 @@ export default async function BookingManagePage({
       <Button variant="ghost" size="sm" asChild className="mb-6 -ml-2">
         <Link href={`/${booking.organizer.slug}`}>
           <ArrowLeftIcon data-icon="inline-start" />
-          Back to {booking.organizer.name}
+          {t('backTo', { name: booking.organizer.name })}
         </Link>
       </Button>
       {/*

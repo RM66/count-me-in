@@ -5,6 +5,7 @@ import { effectiveContact, effectiveLocation, slotEnd, slotPrice } from '@repo/c
 import { Calendar, CheckCircle2, Clock, Tag, User, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -46,6 +47,8 @@ import { formatDate, formatTime } from '@/helpers/date'
 export function BookingManage({ booking }: { booking: GuestBooking }) {
   const router = useRouter()
   const cancelBooking = useCancelBooking()
+  const t = useTranslations('ManageBooking')
+  const locale = useLocale()
 
   /**
    * The booking as currently known: the server's copy until a cancellation
@@ -65,12 +68,12 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
     try {
       const result = await cancelBooking.mutateAsync(current.manageToken)
       setCurrent(result.booking)
-      toast.success('Booking cancelled')
+      toast.success(t('bookingCancelled'))
       // The seat is back in the pool, so the organizer's page and this route's
       // server render both have stale counts until a refresh.
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not cancel the booking')
+      toast.error(error instanceof Error ? error.message || t('cancelFailed') : t('cancelFailed'))
     }
   }
 
@@ -82,32 +85,36 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
           {cancelled ? (
             <Badge variant="secondary" className="gap-1">
               <XCircle className="size-3.5" />
-              Cancelled
+              {t('cancelled')}
             </Badge>
           ) : (
             <Badge className="gap-1">
               <CheckCircle2 className="size-3.5" />
-              Confirmed
+              {t('confirmed')}
             </Badge>
           )}
         </div>
         <CardDescription>
-          Booking with {organizer.name} · {formatDate(slot.startsAt, organizer.timezone)}
+          {t('bookingWith', {
+            name: organizer.name,
+            date: formatDate(slot.startsAt, organizer.timezone, locale),
+          })}
         </CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-3">
         <dl className="flex flex-col gap-3 text-sm">
-          <Row icon={Calendar} label="Date">
-            {formatDate(slot.startsAt, organizer.timezone)}
+          <Row icon={Calendar} label={t('date')}>
+            {formatDate(slot.startsAt, organizer.timezone, locale)}
           </Row>
-          <Row icon={Clock} label="Time">
-            {formatTime(slot.startsAt, organizer.timezone)} · {slot.durationMinutes} min
+          <Row icon={Clock} label={t('time')}>
+            {formatTime(slot.startsAt, organizer.timezone, locale)} ·{' '}
+            {t('minutes', { minutes: slot.durationMinutes })}
           </Row>
-          <Row icon={User} label="Name">
+          <Row icon={User} label={t('name')}>
             {current.guestName}
           </Row>
-          <Row icon={Tag} label="Price">
+          <Row icon={Tag} label={t('price')}>
             {slotPrice(slot, service)}
           </Row>
         </dl>
@@ -122,13 +129,13 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
             <dl className="flex flex-col gap-3 text-sm">
               {location ? (
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Where</dt>
+                  <dt className="text-muted-foreground">{t('where')}</dt>
                   <dd className="text-right font-medium">{location}</dd>
                 </div>
               ) : null}
               {contact ? (
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Contact</dt>
+                  <dt className="text-muted-foreground">{t('contact')}</dt>
                   <dd className="text-right font-medium">
                     <ContactLink contact={contact} />
                   </dd>
@@ -142,7 +149,7 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
           <>
             <Separator />
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-muted-foreground">Options:</span>
+              <span className="text-sm text-muted-foreground">{t('options')}</span>
               {current.selectedOptions.map((opt) => (
                 <Badge key={opt} variant="outline" className="font-normal">
                   {opt}
@@ -156,11 +163,9 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
       <CardFooter className="flex-col gap-2">
         {cancelled ? (
           <div className="flex w-full flex-col gap-2">
-            <p className="text-center text-sm text-muted-foreground">
-              This booking was cancelled and the seat has been released.
-            </p>
+            <p className="text-center text-sm text-muted-foreground">{t('cancelledNote')}</p>
             <Button variant="outline" className="w-full" asChild>
-              <Link href={`/${organizer.slug}`}>Book another time</Link>
+              <Link href={`/${organizer.slug}`}>{t('bookAnotherTime')}</Link>
             </Button>
           </div>
         ) : (
@@ -180,21 +185,23 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
                   className="w-full text-destructive hover:text-destructive sm:w-auto"
                   disabled={cancelBooking.isPending}
                 >
-                  {cancelBooking.isPending ? 'Cancelling…' : 'Cancel booking'}
+                  {cancelBooking.isPending ? t('cancelling') : t('cancelBooking')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
+                  <AlertDialogTitle>{t('cancelConfirmTitle')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Your seat for {service.title} on {formatDate(slot.startsAt, organizer.timezone)}{' '}
-                    at {formatTime(slot.startsAt, organizer.timezone)} will be released. This can’t
-                    be undone.
+                    {t('cancelConfirmDescription', {
+                      title: service.title,
+                      date: formatDate(slot.startsAt, organizer.timezone, locale),
+                      time: formatTime(slot.startsAt, organizer.timezone, locale),
+                    })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep booking</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleCancel}>Yes, cancel</AlertDialogAction>
+                  <AlertDialogCancel>{t('keepBooking')}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCancel}>{t('yesCancel')}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

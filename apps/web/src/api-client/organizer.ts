@@ -14,6 +14,14 @@ import { resizeAvatar } from './image'
 import { queryKeys } from './keys'
 
 /**
+ * Last-resort fallbacks for upload failures: api-client has no locale, so the
+ * display site (use-image-upload) translates by status. Named constants rather
+ * than inline literals — intentional, documented fallback, not stray copy.
+ */
+const COMPRESS_ERROR_FALLBACK = 'Could not compress that image enough — try another one'
+const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
+
+/**
  * Client-side API for the **Organizer** entity: reads, profile writes and the
  * avatar upload flow. Queries and the mutations that invalidate them live
  * together on purpose — they share `queryKeys.organizer.me`.
@@ -71,7 +79,7 @@ export function useUploadAvatar() {
       const image = await resizeAvatar(file)
 
       if (image.size > AVATAR_UPLOAD_MAX_BYTES) {
-        throw new ApiError('Could not compress that image enough — try another one', 413)
+        throw new ApiError(COMPRESS_ERROR_FALLBACK, 413)
       }
 
       const target = await post<AvatarUploadTarget>('/api/organizers/me/avatar', {
@@ -86,7 +94,7 @@ export function useUploadAvatar() {
       })
 
       if (!r2Response.ok) {
-        throw new ApiError('Upload failed — try again', r2Response.status)
+        throw new ApiError(UPLOAD_ERROR_FALLBACK, r2Response.status)
       }
 
       return put<{ organizer: OrganizerProfile }>('/api/organizers/me', {

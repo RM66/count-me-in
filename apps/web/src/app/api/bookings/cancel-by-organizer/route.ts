@@ -1,5 +1,6 @@
 import { cancelBookingByOrganizerInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { cancelOwnedBooking } from '@/server/db/booking'
 import { parseJsonBody, requireWritableOrganizer } from '@/server/http'
@@ -26,6 +27,7 @@ import { bookingErrorResponse } from '../_error-response'
  * updated record.
  */
 export async function POST(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const guard = await requireWritableOrganizer()
   if (!guard.ok) return guard.response
   const { organizerId } = guard.value
@@ -39,13 +41,13 @@ export async function POST(request: Request) {
     // Unknown id and a booking on someone else's service are answered
     // identically, so the endpoint cannot be used to probe for foreign ids.
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+      return NextResponse.json({ error: t('bookingNotFound') }, { status: 404 })
     }
 
     return NextResponse.json({ booking })
   } catch (error) {
     // Already cancelled → `409`, demo → `403`.
-    const response = bookingErrorResponse(error)
+    const response = bookingErrorResponse(error, t)
     if (response) return response
     throw error
   }

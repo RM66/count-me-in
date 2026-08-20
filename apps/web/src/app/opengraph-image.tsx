@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { getTranslations } from 'next-intl/server'
 
 import { loadFigtreeFonts, loadLogoDataUri } from '@/lib/og/assets'
 
@@ -14,7 +15,11 @@ export const alt = 'CountMeIn — online booking for group events'
  * link visually consistent with the product itself.
  */
 export default async function OpengraphImage() {
-  const [fonts, logo] = await Promise.all([loadFigtreeFonts(), loadLogoDataUri()])
+  const [fonts, logo, t] = await Promise.all([
+    loadFigtreeFonts(),
+    loadLogoDataUri(),
+    getTranslations('Marketing'),
+  ])
 
   return new ImageResponse(
     <div
@@ -45,7 +50,7 @@ export default async function OpengraphImage() {
           maxWidth: 900,
         }}
       >
-        Simple online booking for group classes, events, and outings.
+        {t('ogDescription')}
       </div>
     </div>,
     { ...size, fonts },

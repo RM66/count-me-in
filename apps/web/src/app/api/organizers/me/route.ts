@@ -1,5 +1,6 @@
 import { updateOrganizerProfileInput } from '@repo/contracts'
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 
 import { getOrganizerProfile, updateOrganizerProfile } from '@/server/db/organizer'
 import { resolveCabinetOrganizerId } from '@/server/demo'
@@ -19,6 +20,7 @@ import { isOwnMediaUrl } from '@/server/storage/media'
  * session independently.
  */
 export async function GET() {
+  const t = await getTranslations('ApiErrors')
   const { organizerId, isDemo } = await resolveCabinetOrganizerId()
 
   const organizer = await getOrganizerProfile(organizerId, isDemo)
@@ -26,7 +28,7 @@ export async function GET() {
   if (!organizer) {
     // For the demo id this means the seed has not been run.
     return NextResponse.json(
-      { error: isDemo ? 'Demo organizer is not seeded' : 'Organizer not found' },
+      { error: isDemo ? t('demoNotSeeded') : t('organizerNotFound') },
       { status: 404 },
     )
   }
@@ -40,6 +42,7 @@ export async function GET() {
  * Messenger identity is not editable.
  */
 export async function PUT(request: Request) {
+  const t = await getTranslations('ApiErrors')
   const guard = await requireWritableOrganizer()
   if (!guard.ok) return guard.response
   const { organizerId } = guard.value
@@ -51,16 +54,13 @@ export async function PUT(request: Request) {
   // A new avatar must live under this organizer's media prefix — otherwise the
   // row could point at an arbitrary host or another organizer's object.
   if (input.photoUrl != null && !isOwnMediaUrl(organizerId, input.photoUrl)) {
-    return NextResponse.json(
-      { error: 'Invalid photoUrl: must belong to your media prefix' },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: t('photoPrefix') }, { status: 400 })
   }
 
   const organizer = await updateOrganizerProfile(organizerId, input)
 
   if (!organizer) {
-    return NextResponse.json({ error: 'Organizer not found' }, { status: 404 })
+    return NextResponse.json({ error: t('organizerNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({ organizer })

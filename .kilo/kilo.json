@@ -1,0 +1,66 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "mcp": {
+    "cloudflare": {
+      "type": "local",
+      "command": [
+        "npx",
+        "mcp-remote",
+        "https://observability.mcp.cloudflare.com/sse"
+      ]
+    },
+    "figma-dev-mode": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3845/sse"
+    },
+    "filesystem": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/roman-yaml/count-me-in/"
+      ]
+    },
+    "memory": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "postgres": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgres://postgres.ufrirsmdiuetmkauyqqr:RkFyxuSWIN3qeDYa@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x"
+      ]
+    },
+    "sequentialthinking": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "time": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "mcp-server-time"
+      ]
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@0.0.38"
+      ]
+    }
+  }
+}

@@ -55,6 +55,7 @@ packages/
   db/                  # Drizzle schema, migrations
   redis/               # ioredis singleton (tickets, login links, rate limits)
   contracts/           # Zod schemas, shared types
+  translations/        # web + notification copy (ICU messages per locale, ADR-011)
   storage/             # Cloudflare R2 helpers
   eslint-config/       # shared ESLint
   typescript-config/   # shared tsconfig
@@ -137,4 +138,5 @@ Per-package: `cd <package> && bun run test`.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the job with a log instead of retrying — only `429`/`5xx`/network are retried.
 - `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `src/server/db/booking.ts`, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers.
 - Seats move only through atomic reserve — a single conditional `UPDATE … WHERE bookedCount + :seats <= capacity` inside the booking transaction. Never read `bookedCount`, check in JS, then write back.
+- **i18n (ADR-011):** locale = cookie `NEXT_LOCALE` → `Accept-Language` → `en`, never in URL. Supported set: `LOCALES` (`packages/contracts/src/i18n.ts`); copy in `packages/translations` (`messages/` web, `notifications/` worker; en defines the shape). Server `getTranslations`, client `useTranslations`; no hardcoded user-visible strings — ESLint rule `countmein/no-untranslated-strings` enforces it. API errors: `getTranslations('ApiErrors')` in route handlers (error classes keep EN messages for logs); api-client fallbacks are named English constants (documented as such), the display site translates server copy. Notifications: organizer `organizers.language`, guest `bookings.guest_locale`. Times always in the organizer's timezone.
 - Do not expand scope without ADR/roadmap update.

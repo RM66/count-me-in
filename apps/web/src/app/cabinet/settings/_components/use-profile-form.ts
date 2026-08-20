@@ -1,5 +1,6 @@
 import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/contracts'
 import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/contracts'
+import { useTranslations } from 'next-intl'
 import { useReducer } from 'react'
 import { toast } from 'sonner'
 
@@ -44,6 +45,7 @@ function toFormState(organizer: OrganizerProfile): ProfileFormState {
 
 export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () => void) {
   const updateProfile = useUpdateOrganizerProfile()
+  const t = useTranslations('Cabinet.settings')
 
   // Lazy initializer: `toFormState` runs on mount instead of every render.
   const [state, dispatch] = useReducer(profileFormReducer, organizer, toFormState)
@@ -54,7 +56,7 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     maxBytesLabel: '5 MB',
     mutation: useUploadAvatar(),
     // The avatar mutation persists the URL itself and updates the cache.
-    onUploaded: () => toast.success('Photo updated'),
+    onUploaded: () => toast.success(t('photoUpdated')),
   })
 
   const updateField = (field: keyof ProfileFormState) => (value: string) => {
@@ -84,17 +86,17 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     const changes = getChanges()
 
     if (!hasChanges()) {
-      toast.info('No changes to save')
+      toast.info(t('noChanges'))
       return
     }
 
     updateProfile.mutate(changes, {
       onSuccess: () => {
-        toast.success('Profile updated')
+        toast.success(t('updatedToast'))
         onSaveSuccess?.()
       },
       onError: (error) => {
-        toast.error(error.message || 'Failed to update profile')
+        toast.error(error.message || t('updateFailed'))
       },
     })
   }

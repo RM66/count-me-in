@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { getTranslations } from 'next-intl/server'
 
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
@@ -22,6 +23,7 @@ export default async function OrganizerOgImage({
   params: Promise<{ orgSlug: string }>
 }) {
   const { orgSlug } = await params
+  const t = await getTranslations('OrgPage')
   const [organizer, fonts, logo] = await Promise.all([
     getPublicOrganizerBySlug(orgSlug),
     loadFigtreeFonts(),
@@ -132,7 +134,7 @@ export default async function OrganizerOgImage({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 30 }}>
         <img src={logo} width={44} height={44} alt="" style={{ borderRadius: 12 }} />
-        <span style={{ color: '#52525B' }}>Book online</span>
+        <span style={{ color: '#52525B' }}>{t('bookOnline')}</span>
       </div>
     </div>,
     { ...size, fonts },

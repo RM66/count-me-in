@@ -3,6 +3,7 @@
 import { SERVICE_PHOTO_MAX_BYTES, servicePhotoContentType } from '@repo/contracts'
 import { ImageIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { useController } from 'react-hook-form'
 import { toast } from 'sonner'
 
@@ -27,6 +28,7 @@ export function ServicePhotoField({
 }) {
   const { field: photoUrl } = useController({ control, name: 'photoUrl' })
   const { field: title } = useController({ control, name: 'title' })
+  const t = useTranslations('Cabinet.services')
 
   const upload = useImageUpload({
     contentType: servicePhotoContentType,
@@ -37,22 +39,22 @@ export function ServicePhotoField({
       // `shouldDirty` is what enables Save — without it an upload alone would
       // leave the form pristine and the button disabled.
       photoUrl.onChange(url, { shouldDirty: true })
-      toast.success('Photo ready — save to apply')
+      toast.success(t('photoReady'))
     },
   })
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cover photo</CardTitle>
-        <CardDescription>Shown on your public page.</CardDescription>
+        <CardTitle>{t('coverPhoto')}</CardTitle>
+        <CardDescription>{t('coverHint')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {photoUrl.value ? (
           <div className="relative aspect-video w-full overflow-hidden rounded-md border">
             <Image
               src={photoUrl.value}
-              alt={title.value || 'Service cover'}
+              alt={title.value || t('serviceCover')}
               fill
               className="object-cover"
               sizes="33vw"
@@ -80,7 +82,11 @@ export function ServicePhotoField({
           disabled={upload.isUploading || disabled}
         >
           <ImageIcon data-icon="inline-start" />
-          {upload.isUploading ? 'Uploading...' : photoUrl.value ? 'Replace image' : 'Upload image'}
+          {upload.isUploading
+            ? t('uploading')
+            : photoUrl.value
+              ? t('replaceImage')
+              : t('uploadImage')}
         </Button>
 
         {photoUrl.value && !disabled && (
@@ -91,7 +97,7 @@ export function ServicePhotoField({
             onClick={() => photoUrl.onChange(null, { shouldDirty: true })}
           >
             <XIcon data-icon="inline-start" />
-            Remove image
+            {t('removeImage')}
           </Button>
         )}
       </CardContent>

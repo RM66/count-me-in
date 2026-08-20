@@ -1,6 +1,7 @@
 'use client'
 
 import type { ServiceRecord } from '@repo/contracts'
+import { useTranslations } from 'next-intl'
 import type { ComponentProps } from 'react'
 import { useController } from 'react-hook-form'
 
@@ -72,11 +73,12 @@ export function SlotServiceField({
   disabled?: boolean
 }) {
   const { field, fieldState } = useController({ control, name: 'serviceId' })
+  const t = useTranslations('Cabinet.slots')
 
   return (
     <FieldShell
       htmlFor="slot-serviceId"
-      label="Service"
+      label={t('fieldService')}
       invalid={fieldState.invalid}
       error={fieldState.error}
     >
@@ -86,7 +88,7 @@ export function SlotServiceField({
           className="w-full"
           aria-invalid={fieldState.invalid || undefined}
         >
-          <SelectValue placeholder="Select a service" />
+          <SelectValue placeholder={t('selectService')} />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
