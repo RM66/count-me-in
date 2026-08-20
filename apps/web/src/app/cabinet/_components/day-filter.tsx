@@ -154,7 +154,7 @@ export function DayFilterChip({ dayLabel, onClear }: DayFilterChipProps) {
   const t = useTranslations('Cabinet.dayFilter')
 
   return (
-    <Badge variant="secondary" className="gap-1 py-1 pr-1 pl-2.5 h-6 text-sm text-primary">
+    <Badge variant="secondary" className="h-6 gap-1 py-1 pe-1 ps-2.5 text-sm text-primary">
       {dayLabel}
       <Button
         variant="ghost"

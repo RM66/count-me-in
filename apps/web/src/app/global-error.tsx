@@ -1,7 +1,7 @@
 'use client'
 
 /** Global error boundary — catches root-layout errors that `error.tsx` cannot. Must render its own `<html>`/`<body>`. */
-import { type AppLocale,DEFAULT_LOCALE, matchLocale } from '@repo/contracts'
+import { type AppLocale, DEFAULT_LOCALE, localeDirection, matchLocale } from '@repo/contracts'
 import { WEB_MESSAGES } from '@repo/translations'
 import * as Sentry from '@sentry/nextjs'
 import { HomeIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react'
@@ -72,7 +72,7 @@ export default function GlobalError({
   )
 
   return (
-    <html lang={locale}>
+    <html lang={locale} dir={localeDirection(locale)}>
       <body className="font-sans antialiased text-foreground">
         <NextIntlClientProvider locale={locale} messages={WEB_MESSAGES[locale]}>
           <GlobalErrorContent reset={reset} />

@@ -167,12 +167,12 @@ export function BookingsTable({
           />
 
           <div className="relative w-full sm:w-64">
-            <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <SearchIcon className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={state.query}
               onChange={(e) => state.setQuery(e.target.value)}
               placeholder={t('searchPlaceholder')}
-              className="pl-9"
+              className="ps-9"
             />
           </div>
         </div>

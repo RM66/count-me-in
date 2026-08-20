@@ -114,7 +114,7 @@ export function HeroCarousel() {
       </div>
 
       {/* Dot controls. */}
-      <div className="absolute right-4 bottom-4 flex items-center gap-2">
+      <div className="absolute end-4 bottom-4 flex items-center gap-2">
         {slides.map((slide, index) => (
           <button
             key={slide.src}

@@ -1,3 +1,4 @@
+import { localeDirection } from '@repo/contracts'
 import type { Metadata } from 'next'
 import { Figtree } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
@@ -61,7 +62,12 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale} suppressHydrationWarning className="bg-background">
+    <html
+      lang={locale}
+      dir={localeDirection(locale)}
+      suppressHydrationWarning
+      className="bg-background"
+    >
       <body className={cn('font-sans', 'antialiased', 'text-foreground', figtree.variable)}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>

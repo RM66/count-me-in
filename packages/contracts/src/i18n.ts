@@ -14,12 +14,17 @@ import { z } from 'zod'
  * `packages/translations`.
  */
 
-export const LOCALES = ['en', 'ru', 'es', 'de', 'ja', 'fr', 'pt'] as const
+export const LOCALES = ['en', 'ru', 'es', 'de', 'ja', 'fr', 'pt', 'ar'] as const
 
 export const appLocaleEnum = z.enum(LOCALES)
 export type AppLocale = z.infer<typeof appLocaleEnum>
 
 export const DEFAULT_LOCALE: AppLocale = 'en'
+
+/** Writing direction for the document root. */
+export function localeDirection(locale: string): 'ltr' | 'rtl' {
+  return locale === 'ar' ? 'rtl' : 'ltr'
+}
 
 /** Type guard for strings read from cookies, headers or the database. */
 export function isAppLocale(value: string): value is AppLocale {

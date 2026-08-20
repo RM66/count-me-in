@@ -21,7 +21,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { useCurrentOrganizer } from '@/api-client'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils'
 export function CabinetSidebar() {
   const pathname = usePathname()
   const { data: organizer } = useCurrentOrganizer()
+  const locale = useLocale()
   const t = useTranslations('Cabinet.sidebar')
 
   const nav = [
@@ -70,7 +71,7 @@ export function CabinetSidebar() {
   ]
 
   return (
-    <Sidebar>
+    <Sidebar side={locale === 'ar' ? 'right' : 'left'}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -210,7 +211,7 @@ export function CabinetSidebar() {
                         TODO: Info about subscription
                       </span>
                     </div> */}
-                    <ChevronsUpDownIcon className="ml-auto size-4" />
+                    <ChevronsUpDownIcon className="ms-auto size-4" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="top" className="w-56">

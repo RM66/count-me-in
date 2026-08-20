@@ -80,7 +80,7 @@ export function BookingPreviewList({
                 </span>
               </div>
               {booking.status === 'cancelled' && (
-                <Badge variant="outline" className="ml-auto">
+                <Badge variant="outline" className="ms-auto">
                   {t('cancelled')}
                 </Badge>
               )}

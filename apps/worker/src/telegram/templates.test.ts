@@ -259,6 +259,24 @@ describe('bookingCreatedForOrganizer', () => {
     expect(many.text).toContain('2 vagas')
     expect(many.button?.text).toBe('Abrir no painel')
   })
+
+  it('renders the Arabic copy with locale-specific plural forms', () => {
+    const arView = { ...view, organizer: { ...organizer, language: 'ar' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 1 } }, 'u', 'ar')
+    expect(one.text).toContain('حجز جديد')
+    expect(one.text).toContain('مكان واحد')
+
+    const two = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 2 } }, 'u', 'ar')
+    expect(two.text).toContain('مكانان')
+
+    const few = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 3 } }, 'u', 'ar')
+    expect(few.text).toContain('3 أماكن')
+
+    const many = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 11 } }, 'u', 'ar')
+    expect(many.text).toContain('11 مكانًا')
+    expect(many.button?.text).toBe('فتح في لوحة التحكم')
+  })
 })
 
 // ── bookingCreatedForGuest ────────────────────────────────────────────────────
@@ -357,6 +375,18 @@ describe('bookingCreatedForGuest', () => {
     expect(msg.text).toContain('Estúdio Lótus')
     expect(msg.button?.text).toBe('Gerenciar minha reserva')
   })
+
+  it('renders Arabic with the guest locale', () => {
+    const arView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'ar' } as Booking,
+      organizer: { ...organizer, name: 'استوديو لوتس' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(arView, 'https://app/booking/token', 'ar')
+    expect(msg.text).toContain('تم تأكيد الحجز')
+    expect(msg.text).toContain('استوديو لوتس')
+    expect(msg.button?.text).toBe('إدارة حجزي')
+  })
 })
 
 // ── bookingCancelledForOrganizer ─────────────────────────────────────────────
@@ -423,6 +453,14 @@ describe('bookingCancelledForOrganizer', () => {
     expect(msg.text).toContain('8 vagas')
     expect(msg.button?.text).toBe('Abrir no painel')
   })
+
+  it('renders Arabic', () => {
+    const arView = { ...view, organizer: { ...organizer, language: 'ar' } as Organizer }
+    const msg = bookingCancelledForOrganizer(arView, 'https://app/cabinet', 'ar')
+    expect(msg.text).toContain('أُلغي الحجز')
+    expect(msg.text).toContain('8 أماكن')
+    expect(msg.button?.text).toBe('فتح في لوحة التحكم')
+  })
 })
 
 // ── bookingCancelledForGuest ──────────────────────────────────────────────────
@@ -477,6 +515,13 @@ describe('bookingCancelledForGuest', () => {
     expect(msg.text).toContain('Sua reserva foi cancelada')
     expect(msg.text).toContain('por Yoga Studio')
     expect(msg.button?.text).toBe('Ver outras sessões')
+  })
+
+  it('renders Arabic', () => {
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'ar')
+    expect(msg.text).toContain('أُلغي حجزك')
+    expect(msg.text).toContain('بواسطة Yoga Studio')
+    expect(msg.button?.text).toBe('عرض الجلسات الأخرى')
   })
 })
 

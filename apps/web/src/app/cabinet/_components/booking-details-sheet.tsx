@@ -127,7 +127,7 @@ export function BookingDetailsSheet({
                 <span className="font-medium">{booking.guestName}</span>
               </div>
               <Badge
-                className="ml-auto"
+                className="ms-auto"
                 variant={booking.status === 'confirmed' ? 'default' : 'secondary'}
               >
                 {booking.status === 'confirmed' ? tc('confirmed') : tc('cancelled')}

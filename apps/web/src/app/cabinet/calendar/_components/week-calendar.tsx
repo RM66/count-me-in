@@ -29,9 +29,9 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
  * left rule is the status marker (see day calendars generally), not decoration.
  */
 const FILL_STYLES: Record<SlotFill, string> = {
-  open: 'border-l-primary/50 bg-primary/10 text-foreground hover:bg-primary/15',
-  filling: 'border-l-primary bg-primary/20 text-foreground hover:bg-primary/30',
-  full: 'border-l-muted-foreground/40 bg-muted text-muted-foreground hover:bg-muted/70',
+  open: 'border-s-primary/50 bg-primary/10 text-foreground hover:bg-primary/15',
+  filling: 'border-s-primary bg-primary/20 text-foreground hover:bg-primary/30',
+  full: 'border-s-muted-foreground/40 bg-muted text-muted-foreground hover:bg-muted/70',
 }
 
 type WeekCalendarProps = {
@@ -220,7 +220,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                 {FILL_LEGEND.map(({ fill, label }) => (
                   <div key={fill} className="flex items-center gap-1.5">
                     <span
-                      className={cn('size-3 shrink-0 rounded-sm border-l-2', FILL_STYLES[fill])}
+                      className={cn('size-3 shrink-0 rounded-sm border-s-2', FILL_STYLES[fill])}
                       aria-hidden
                     />
                     <dt>{label}</dt>
@@ -299,7 +299,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                   {HOURS.map((hour) => (
                     <div key={hour} className="relative" style={{ height: HOUR_HEIGHT }}>
                       {hour > 0 && (
-                        <span className="absolute -top-2 right-2 text-xs text-muted-foreground tabular-nums">
+                        <span className="absolute -top-2 end-2 text-xs text-muted-foreground tabular-nums">
                           {String(hour).padStart(2, '0')}:00
                         </span>
                       )}
@@ -354,7 +354,7 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
                             key={slot.id}
                             href={`/cabinet/bookings?slot=${slot.id}`}
                             className={cn(
-                              'absolute z-10 overflow-hidden rounded-sm border-l-2 px-1.5 py-1 text-xs transition-colors',
+                              'absolute z-10 overflow-hidden rounded-sm border-s-2 px-1.5 py-1 text-xs transition-colors',
                               FILL_STYLES[fill],
                             )}
                             style={{

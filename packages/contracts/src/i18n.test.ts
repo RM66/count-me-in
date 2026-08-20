@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isAppLocale, matchLocale } from './i18n'
+import { isAppLocale, localeDirection, matchLocale } from './i18n'
 
 describe('matchLocale', () => {
   it('returns the exact locale for a bare tag', () => {
@@ -11,6 +11,7 @@ describe('matchLocale', () => {
     expect(matchLocale('ja')).toBe('ja')
     expect(matchLocale('fr')).toBe('fr')
     expect(matchLocale('pt')).toBe('pt')
+    expect(matchLocale('ar')).toBe('ar')
   })
 
   it('returns the locale for a regional tag', () => {
@@ -21,6 +22,7 @@ describe('matchLocale', () => {
     expect(matchLocale('ja-JP')).toBe('ja')
     expect(matchLocale('fr-FR')).toBe('fr')
     expect(matchLocale('pt-BR')).toBe('pt')
+    expect(matchLocale('ar-SA')).toBe('ar')
   })
 
   it('skips unsupported tags and falls through in quality order', () => {
@@ -69,8 +71,18 @@ describe('isAppLocale', () => {
     expect(isAppLocale('ja')).toBe(true)
     expect(isAppLocale('fr')).toBe(true)
     expect(isAppLocale('pt')).toBe(true)
+    expect(isAppLocale('ar')).toBe(true)
     expect(isAppLocale('en-US')).toBe(false)
     expect(isAppLocale('nl')).toBe(false)
     expect(isAppLocale('')).toBe(false)
+  })
+})
+
+describe('localeDirection', () => {
+  it('uses RTL only for Arabic', () => {
+    expect(localeDirection('ar')).toBe('rtl')
+    expect(localeDirection('en')).toBe('ltr')
+    expect(localeDirection('ru')).toBe('ltr')
+    expect(localeDirection('unknown')).toBe('ltr')
   })
 })

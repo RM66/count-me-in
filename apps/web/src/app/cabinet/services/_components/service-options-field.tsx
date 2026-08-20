@@ -94,7 +94,7 @@ export function ServiceOptionsField({
           {hasOptions && (
             <div className="flex flex-wrap gap-2">
               {options.value.map((option, index) => (
-                <Badge key={option} variant="secondary" className="gap-1 pr-1">
+                <Badge key={option} variant="secondary" className="gap-1 pe-1">
                   {option}
                   {!disabled && (
                     <button
