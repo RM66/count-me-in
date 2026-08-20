@@ -199,6 +199,18 @@ describe('bookingCreatedForOrganizer', () => {
     const many = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 5 } }, 'u', 'ru')
     expect(many.text).toContain('5 мест')
   })
+
+  it('renders the Spanish copy with correct plural forms', () => {
+    const esView = { ...view, organizer: { ...organizer, language: 'es' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...esView, booking: { ...booking, seats: 1 } }, 'u', 'es')
+    expect(one.text).toContain('Nueva reserva')
+    expect(one.text).toContain('1 plaza')
+
+    const many = bookingCreatedForOrganizer({ ...esView, booking: { ...booking, seats: 2 } }, 'u', 'es')
+    expect(many.text).toContain('2 plazas')
+    expect(many.button?.text).toBe('Abrir en el panel')
+  })
 })
 
 // ── bookingCreatedForGuest ────────────────────────────────────────────────────
@@ -237,6 +249,18 @@ describe('bookingCreatedForGuest', () => {
     expect(msg.text).toContain('Студия «Лотос»')
     expect(msg.button?.text).toBe('Управлять бронью')
   })
+
+  it('renders Spanish with the guest locale', () => {
+    const esView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'es' } as Booking,
+      organizer: { ...organizer, name: 'Estudio Loto' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(esView, 'https://app/booking/token', 'es')
+    expect(msg.text).toContain('Reserva confirmada')
+    expect(msg.text).toContain('Estudio Loto')
+    expect(msg.button?.text).toBe('Gestionar mi reserva')
+  })
 })
 
 // ── bookingCancelledForOrganizer ─────────────────────────────────────────────
@@ -263,6 +287,14 @@ describe('bookingCancelledForOrganizer', () => {
     expect(msg.text).toContain('Бронирование отменено')
     expect(msg.text).toContain('освободилось')
   })
+
+  it('renders Spanish', () => {
+    const esView = { ...view, organizer: { ...organizer, language: 'es' } as Organizer }
+    const msg = bookingCancelledForOrganizer(esView, 'https://app/cabinet', 'es')
+    expect(msg.text).toContain('Reserva cancelada')
+    expect(msg.text).toContain('8 plazas libres')
+    expect(msg.button?.text).toBe('Abrir en el panel')
+  })
 })
 
 // ── bookingCancelledForGuest ──────────────────────────────────────────────────
@@ -282,6 +314,13 @@ describe('bookingCancelledForGuest', () => {
   it('does not include a manage link (booking is already cancelled)', () => {
     const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', DEFAULT_LOCALE)
     expect(msg.button?.text).not.toBe('Manage my booking')
+  })
+
+  it('renders Spanish', () => {
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'es')
+    expect(msg.text).toContain('Tu reserva se ha cancelado')
+    expect(msg.text).toContain('por Yoga Studio')
+    expect(msg.button?.text).toBe('Ver otras sesiones')
   })
 })
 

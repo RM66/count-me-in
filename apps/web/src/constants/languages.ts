@@ -15,6 +15,7 @@ export interface LanguageOption {
 const LANGUAGE_LABELS: Record<AppLocale, string> = {
   en: 'English',
   ru: 'Русский',
+  es: 'Español',
 }
 
 export const LANGUAGES: LanguageOption[] = LOCALES.map((code) => ({

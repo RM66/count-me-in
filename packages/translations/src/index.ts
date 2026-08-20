@@ -2,8 +2,10 @@ import type { AppLocale } from '@repo/contracts'
 import { DEFAULT_LOCALE } from '@repo/contracts'
 
 import messagesEn from '../messages/en.json'
+import messagesEs from '../messages/es.json'
 import messagesRu from '../messages/ru.json'
 import notificationsEn from '../notifications/en.json'
+import notificationsEs from '../notifications/es.json'
 import notificationsRu from '../notifications/ru.json'
 
 /**
@@ -21,8 +23,8 @@ import notificationsRu from '../notifications/ru.json'
  * - {@link NOTIFICATION_MESSAGES} — the Telegram notifications (`apps/worker`),
  *   consumed through `createTranslator<NotificationMessages>`.
  *
- * English is the source of truth for the *shape* of both: every `ru` message
- * mirrors an `en` key, enforced by parity tests. TypeScript infers JSON module
+ * English is the source of truth for the *shape* of both: every translated
+ * message mirrors an `en` key, enforced by parity tests. TypeScript infers JSON module
  * types with literal keys, which is what makes `t('...')` calls and the
  * `IntlMessages` augmentation type-safe without a code generator.
  *
@@ -34,11 +36,13 @@ import notificationsRu from '../notifications/ru.json'
 export const WEB_MESSAGES = {
   en: messagesEn,
   ru: messagesRu,
+  es: messagesEs,
 } as const satisfies Record<AppLocale, unknown>
 
 export const NOTIFICATION_MESSAGES = {
   en: notificationsEn,
   ru: notificationsRu,
+  es: notificationsEs,
 } as const satisfies Record<AppLocale, unknown>
 
 /** The web UI message shape shared by every locale; English keys are the source of truth. */

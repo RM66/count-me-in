@@ -6,11 +6,13 @@ describe('matchLocale', () => {
   it('returns the exact locale for a bare tag', () => {
     expect(matchLocale('ru')).toBe('ru')
     expect(matchLocale('en')).toBe('en')
+    expect(matchLocale('es')).toBe('es')
   })
 
   it('returns the locale for a regional tag', () => {
     expect(matchLocale('ru-RU')).toBe('ru')
     expect(matchLocale('en-US')).toBe('en')
+    expect(matchLocale('es-ES')).toBe('es')
   })
 
   it('skips unsupported tags and falls through in quality order', () => {
@@ -54,6 +56,7 @@ describe('isAppLocale', () => {
   it('accepts supported locales only', () => {
     expect(isAppLocale('en')).toBe(true)
     expect(isAppLocale('ru')).toBe(true)
+    expect(isAppLocale('es')).toBe(true)
     expect(isAppLocale('en-US')).toBe(false)
     expect(isAppLocale('fr')).toBe(false)
     expect(isAppLocale('')).toBe(false)

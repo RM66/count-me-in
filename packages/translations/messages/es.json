@@ -1,0 +1,804 @@
+{
+  "LocaleSwitcher": {
+    "ariaLabel": "Cambiar idioma"
+  },
+  "GuestLayout": {
+    "myBookings": "Mis reservas",
+    "poweredBy": "Con la tecnología de"
+  },
+  "OrgPage": {
+    "metaTitle": "{name} — reserva en línea",
+    "bookOnline": "Reservar en línea",
+    "pageNotFound": "Página no encontrada",
+    "services": "Servicios",
+    "available": "{count} disponibles",
+    "nothingToBook": "Todavía no hay nada que reservar; vuelve pronto."
+  },
+  "ServiceCard": {
+    "next": "Próximo:",
+    "noOpenSlots": "No hay horarios disponibles"
+  },
+  "ServicePage": {
+    "serviceNotFound": "Servicio no encontrado",
+    "chooseOne": "Elige una opción:",
+    "addOns": "Extras:",
+    "upcomingSlots": "Próximos horarios",
+    "noSlotsYet": "Aún no hay horarios",
+    "checkBackSoon": "Vuelve pronto; se añaden nuevos horarios con regularidad.",
+    "full": "Completo",
+    "book": "Reservar",
+    "bookNow": "Reservar ahora",
+    "fullyBooked": "Completo"
+  },
+  "ServiceMetaBadges": {
+    "minutes": "{minutes} min",
+    "upToCapacity": "hasta {capacity}"
+  },
+  "SeatsBadge": {
+    "fullyBooked": "Completo",
+    "seatsLeft": "{count, plural, =1 {# plaza disponible} other {# plazas disponibles}}"
+  },
+  "Booking": {
+    "pickTime": "Elige un horario",
+    "chooseOptions": "Elige las opciones",
+    "yourDetails": "Tus datos",
+    "confirmTelegram": "Confirmar con Telegram",
+    "booked": "¡Reserva confirmada!",
+    "continue": "Continuar",
+    "back": "Atrás",
+    "fullName": "Nombre completo",
+    "namePlaceholder": "Mila Petrović",
+    "nameHint": "El nombre que verá el organizador en su lista.",
+    "seats": "Plazas",
+    "removeSeat": "Quitar una plaza",
+    "addSeat": "Añadir una plaza",
+    "seatsHint": "Incluyéndote. Hasta {maxSeats, plural, =1 {# plaza} other {# plazas}} en esta sesión.",
+    "optionsLegend": "Opciones",
+    "demoIntro": "Esta es una página de demostración de solo lectura, por lo que las reservas no se guardan.",
+    "createOwn": "Crea la tuya",
+    "demoOutro": "para recibir reservas reales.",
+    "errorFallback": "No se pudo completar la reserva",
+    "findMyBookings": "Buscar mis reservas →",
+    "confirmHint": "Confirma con Telegram: no necesitas una cuenta y solo sirve para verificar tu identidad.",
+    "reserving": "Reservando tu plaza…",
+    "notConfigured": "El inicio de sesión con Telegram no está configurado, por lo que no se puede reservar.",
+    "errSoldOut": "Esta sesión está completa",
+    "errSeatsLeft": "Solo quedan {count, plural, =1 {# plaza} other {# plazas}} en esta sesión",
+    "errPartyTooLarge": "Puedes reservar como máximo {maxSeats, plural, =1 {# plaza} other {# plazas}} en una sola reserva",
+    "errDuplicate": "Ya tienes una reserva para esta sesión",
+    "errGone": "Esta sesión ya no está disponible",
+    "errInvalidOptions": "Las opciones seleccionadas no son válidas para este servicio",
+    "errAlreadyCancelled": "Esta reserva ya se ha cancelado"
+  },
+  "SuccessStep": {
+    "confirmedNote": "Tu plaza está reservada. Recibirás una confirmación de nuestro bot en tu aplicación de mensajería.",
+    "service": "Servicio",
+    "when": "Cuándo",
+    "name": "Nombre",
+    "options": "Opciones",
+    "confirmed": "Confirmada",
+    "manageThisBooking": "Gestionar esta reserva"
+  },
+  "MyBookings": {
+    "title": "Busca tu reserva",
+    "subtitle": "¿Has perdido el enlace? Confirma con la cuenta de Telegram que usaste para reservar y te mostraremos tus reservas.",
+    "lookingUp": "Buscando tus reservas…",
+    "lookupFailed": "No se pudieron buscar tus reservas",
+    "onlyThisAccount": "Solo mostraremos las reservas hechas con esta cuenta.",
+    "bookingsFound": "{count, plural, =1 {# reserva encontrada} other {# reservas encontradas}}",
+    "seats": "{count, plural, =1 {# plaza} other {# plazas}}",
+    "cancelled": "Cancelada",
+    "noBookingsFound": "No se encontraron reservas",
+    "noBookingsDescription": "Esta cuenta de Telegram aún no tiene reservas. Si reservaste con otra cuenta, confirma con esa cuenta.",
+    "nothingYet": "Aún no hay nada que mostrar",
+    "nothingYetDescription": "Confirma con Telegram arriba para buscar tus reservas.",
+    "notConfigured": "El inicio de sesión con Telegram no está configurado, por lo que la búsqueda no está disponible."
+  },
+  "ManageBooking": {
+    "backTo": "Volver a {name}",
+    "bookingWith": "Reserva con {name} · {date}",
+    "date": "Fecha",
+    "time": "Hora",
+    "minutes": "{minutes} min",
+    "name": "Nombre",
+    "price": "Precio",
+    "where": "Lugar",
+    "contact": "Contacto",
+    "options": "Opciones:",
+    "confirmed": "Confirmada",
+    "cancelled": "Cancelada",
+    "cancelledNote": "Esta reserva se canceló y la plaza ha quedado libre.",
+    "bookAnotherTime": "Reservar otro horario",
+    "cancelBooking": "Cancelar reserva",
+    "cancelling": "Cancelando…",
+    "cancelConfirmTitle": "¿Cancelar esta reserva?",
+    "cancelConfirmDescription": "Tu plaza para {title} el {date} a las {time} quedará libre. Esta acción no se puede deshacer.",
+    "keepBooking": "Mantener reserva",
+    "yesCancel": "Sí, cancelar",
+    "bookingCancelled": "Reserva cancelada",
+    "cancelFailed": "No se pudo cancelar la reserva"
+  },
+  "AddToCalendar": {
+    "addToCalendar": "Añadir al calendario",
+    "googleCalendar": "Google Calendar",
+    "downloadIcs": "Descargar .ics"
+  },
+  "Marketing": {
+    "hero": {
+      "badge": "Reservas en línea para eventos grupales",
+      "title": "Llena tus clases, eventos y excursiones sin interminables mensajes",
+      "subtitle": "Publica tus servicios con horarios y aforo. Comparte un único enlace. Los participantes reservan en la web en segundos, sin cuenta ni aplicación. La confirmación llega a su aplicación de mensajería.",
+      "startFree": "Empezar gratis",
+      "noCreditCard": "Sin tarjeta de crédito. Configura tu primer servicio reservable en minutos.",
+      "lookAround": "¿Prefieres echar un vistazo primero?",
+      "guestPage": "Ver una página de reservas",
+      "cabinet": "Ver el panel del organizador"
+    },
+    "carousel": {
+      "ariaLabel": "Ejemplos de servicios grupales que puedes publicar",
+      "showSlide": "Mostrar {title}",
+      "slides": [
+        {
+          "alt": "Una clase de yoga matutina en un estudio luminoso",
+          "title": "Vinyasa Flow matutino",
+          "meta": "Mañana · 07:00 · 3 plazas disponibles"
+        },
+        {
+          "alt": "Un grupo pequeño haciendo senderismo por una ruta de montaña",
+          "title": "Ruta al amanecer por la sierra",
+          "meta": "Sáb · 06:00 · 8 plazas disponibles"
+        },
+        {
+          "alt": "Un taller creativo práctico alrededor de una mesa compartida",
+          "title": "Taller de cerámica",
+          "meta": "Dom · 14:00 · 2 plazas disponibles"
+        },
+        {
+          "alt": "Una visita guiada a pie por una calle del casco antiguo",
+          "title": "Ruta a pie por el casco antiguo",
+          "meta": "Vie · 11:00 · 12 plazas disponibles"
+        },
+        {
+          "alt": "Una sesión guiada de respiración con personas sentadas en un círculo tranquilo",
+          "title": "Círculo de respiración",
+          "meta": "Mié · 19:00 · 6 plazas disponibles"
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "De la configuración a la primera reserva en minutos",
+      "subtitle": "CountMeIn gestiona el aforo, las confirmaciones y los recordatorios para que puedas centrarte en organizar tus eventos.",
+      "step": "Paso {n}",
+      "items": [
+        {
+          "title": "Crea tu cuenta",
+          "body": "Regístrate con tu aplicación de mensajería. Configura tu identificador público, nombre y zona horaria."
+        },
+        {
+          "title": "Añade servicios y horarios",
+          "body": "Describe cada servicio, define el aforo y la duración y, después, abre los horarios que ofreces."
+        },
+        {
+          "title": "Comparte tu enlace",
+          "body": "Envía a los participantes el enlace de tu página. Eligen un horario y reservan en segundos."
+        },
+        {
+          "title": "Recibe notificaciones",
+          "body": "Cada reserva te avisa en tu aplicación de mensajería con un enlace directo a tu panel."
+        }
+      ]
+    },
+    "audiences": {
+      "title": "Pensado para cualquiera que organice eventos grupales",
+      "subtitle": "Si las personas se reúnen a una hora concreta y las plazas son limitadas, CountMeIn mantiene tus reservas en orden, organices lo que organices.",
+      "items": [
+        {
+          "title": "Deporte y ocio activo",
+          "examples": "Entrenamientos en grupo, danza, artes marciales, clubes de atletismo y escalada, SUP y esquí."
+        },
+        {
+          "title": "Bienestar y prácticas",
+          "examples": "Meditación, respiración, baños de sonido, ceremonias de baño, retiros y grupos de apoyo."
+        },
+        {
+          "title": "Aprendizaje y creatividad",
+          "examples": "Clases magistrales, cursos, arte y cerámica, fotografía, cocina, música y clubes de idiomas."
+        },
+        {
+          "title": "Entretenimiento y comunidades",
+          "examples": "Concursos, mafia, juegos de mesa y de rol, clubes de lectura, networking, eventos infantiles y encuentros."
+        },
+        {
+          "title": "Excursiones y salidas",
+          "examples": "Paseos urbanos, rutas gastronómicas, senderismo, acampada, buceo, pesca, navegación y tours gastronómicos."
+        },
+        {
+          "title": "Animales",
+          "examples": "Sesiones con educadores caninos, socialización y adiestramiento de perros, equitación y eventos que admiten mascotas."
+        },
+        {
+          "title": "Belleza y servicios profesionales",
+          "examples": "Tratamientos de belleza en grupo, clases de maquillaje, consultas, coworking y grupos de expertos."
+        }
+      ]
+    },
+    "features": {
+      "title": "Todo lo que necesitas para gestionar reservas grupales",
+      "subtitle": "Diseñado específicamente para clases, eventos y salidas en grupos pequeños.",
+      "items": [
+        {
+          "title": "Aforo sin exceso de reservas",
+          "body": "Cada horario tiene un número de plazas. Las reservas se asignan de forma atómica, así que nunca se acepta una reserva de más en una clase completa."
+        },
+        {
+          "title": "Los participantes no necesitan cuenta",
+          "body": "Los participantes reservan solo con un nombre y el botón de inicio de sesión de su aplicación de mensajería. Un único enlace compartible hace todo el trabajo."
+        },
+        {
+          "title": "Integrado con la mensajería",
+          "body": "La verificación, las confirmaciones y los enlaces de cancelación llegan a la aplicación de mensajería que tus participantes ya utilizan."
+        },
+        {
+          "title": "Opciones flexibles",
+          "body": "Ofrece puntos de recogida, extras o variantes para cada servicio, con selección única o múltiple."
+        },
+        {
+          "title": "Añadir al calendario",
+          "body": "Los participantes guardan su reserva en Google Calendar o descargan un .ics con un solo toque."
+        },
+        {
+          "title": "Cancelaciones sencillas",
+          "body": "Los participantes gestionan sus reservas desde un enlace seguro. Las plazas quedan libres en cuanto cancelan."
+        }
+      ]
+    },
+    "trust": {
+      "title": "Cambia el caos por un único enlace",
+      "subtitle": "CountMeIn sustituye las herramientas que los organizadores suelen combinar para llenar un grupo.",
+      "pillars": [
+        {
+          "title": "Se acabó el ir y venir de mensajes",
+          "body": "Deja de responder mensajes de «¿queda sitio?». Tu enlace muestra en tiempo real lo que está disponible."
+        },
+        {
+          "title": "Se acabó hacer malabares con hojas de cálculo",
+          "body": "El aforo, las plazas y las cancelaciones se sincronizan automáticamente, sin actualizar nada a mano."
+        },
+        {
+          "title": "Se acabaron los excesos de reservas accidentales",
+          "body": "Las plazas se asignan de forma atómica, así que una clase completa nunca puede aceptar una reserva de más."
+        }
+      ]
+    },
+    "faq": {
+      "title": "Preguntas frecuentes",
+      "subtitle": "Todo lo que quizá quieras saber antes de publicar tu primer servicio.",
+      "items": [
+        {
+          "q": "¿CountMeIn es realmente gratis?",
+          "a": "Sí. Mientras el servicio sea nuevo, es completamente gratuito: crea tu cuenta, publica servicios y recibe reservas sin coste. Más adelante quizá introduzcamos una suscripción de pago por un precio simbólico, pero hoy puedes empezar gratis."
+        },
+        {
+          "q": "¿Mis participantes tienen que instalar una aplicación o crear una cuenta?",
+          "a": "No. Abren tu enlace, eligen un horario y confirman con el inicio de sesión de su aplicación de mensajería y un nombre. No hay que descargar ninguna aplicación aparte ni recordar ninguna contraseña."
+        },
+        {
+          "q": "¿CountMeIn gestiona los pagos?",
+          "a": "Todavía no. Los precios se muestran como texto en tus servicios para que los participantes conozcan el coste, pero el pago se realiza como ya lo cobras habitualmente. La reserva solo sirve para guardar la plaza."
+        },
+        {
+          "q": "¿Cómo recibimos notificaciones mis participantes y yo?",
+          "a": "Las confirmaciones, los enlaces de cancelación y los avisos de nuevas reservas llegan a la aplicación de mensajería que tú y tus participantes ya usan. Cada nueva reserva te avisa con un enlace directo a tu panel."
+        },
+        {
+          "q": "¿Puede un horario recibir reservas por encima de su aforo?",
+          "a": "No. Cada horario tiene un número de plazas y las reservas se asignan de forma atómica. Cuando una clase se completa, deja de aceptar reservas; no puede haber exceso de reservas."
+        },
+        {
+          "q": "¿Qué ocurre si un participante necesita cancelar?",
+          "a": "Los participantes gestionan su reserva desde un enlace seguro. En cuanto cancelan, la plaza queda libre y disponible para otra persona."
+        }
+      ]
+    },
+    "cta": {
+      "title": "¿Listo para llenar tu próximo evento?",
+      "subtitle": "Configura hoy tu primer servicio reservable. Solo lleva unos minutos.",
+      "getStarted": "Empezar gratis",
+      "exploreDemo": "O explora la demostración sin registrarte:",
+      "guestPage": "Página de reservas",
+      "cabinet": "Panel del organizador"
+    },
+    "header": {
+      "howItWorks": "Cómo funciona",
+      "features": "Funciones",
+      "examples": "Ejemplos",
+      "goToCabinet": "Ir al panel",
+      "logIn": "Iniciar sesión",
+      "getStarted": "Empezar",
+      "openMenu": "Abrir menú",
+      "navigation": "Navegación"
+    },
+    "footer": {
+      "tagline": "— reservas en línea para eventos grupales",
+      "features": "Funciones",
+      "logIn": "Iniciar sesión",
+      "terms": "Términos",
+      "privacy": "Privacidad",
+      "contact": "Contacto",
+      "copyright": "© 2026 CountMeIn"
+    },
+    "ogDescription": "Reservas en línea sencillas para clases, eventos y salidas grupales."
+  },
+  "Legal": {
+    "lastUpdated": "Última actualización: {date}",
+    "terms": {
+      "metaTitle": "Términos del servicio — CountMeIn",
+      "metaDescription": "Los términos que rigen el uso de CountMeIn.",
+      "title": "Términos del servicio",
+      "updated": "1 de agosto de 2026",
+      "intro": "Estos términos rigen el uso de CountMeIn. Definen el acuerdo entre CountMeIn y los organizadores que publican servicios reservables en la plataforma, así como los participantes que los reservan.",
+      "usingHeading": "1. Uso de CountMeIn",
+      "usingBody": "CountMeIn permite a los organizadores publicar servicios con horarios y aforo, y a los participantes reservarlos sin crear una cuenta. Eres responsable de que los servicios, precios y disponibilidad que publiques sean correctos.",
+      "bookingsHeading": "2. Reservas y aforo",
+      "bookingsBody": "Los precios mostrados son meramente informativos; CountMeIn no procesa pagos en esta versión. El aforo se aplica a cada horario y, cuando se completa, no se aceptan más reservas.",
+      "guestDataHeading": "3. Datos de los participantes",
+      "guestDataBody": "Los participantes proporcionan un nombre visible y se autentican con su cuenta de mensajería para reservar. Te comprometes a tratar sus datos de forma responsable y únicamente para prestar el servicio reservado.",
+      "cancellationsHeading": "4. Cancelaciones",
+      "cancellationsBody": "Los participantes pueden cancelar desde su enlace seguro de gestión. Al cancelar, las plazas reservadas quedan libres de inmediato en ese horario.",
+      "changesHeading": "5. Cambios",
+      "changesBody": "Podemos actualizar estos términos a medida que evolucione el producto. Seguir utilizando el servicio una vez que los cambios entren en vigor supone aceptar los términos revisados."
+    },
+    "privacy": {
+      "metaTitle": "Política de privacidad — CountMeIn",
+      "metaDescription": "Cómo trata CountMeIn los datos de organizadores y participantes.",
+      "title": "Política de privacidad",
+      "updated": "7 de agosto de 2026",
+      "intro": "Esta política de privacidad describe los datos que recopila CountMeIn y cómo se utilizan.",
+      "collectHeading": "Datos que recopilamos",
+      "collectBody": "De los organizadores: nombre, cuenta de mensajería, zona horaria y los servicios y horarios que publican. De los participantes: nombre visible y cuenta de mensajería, que se utilizan para confirmar y gestionar una reserva.",
+      "useHeading": "Cómo los utilizamos",
+      "useBody": "Las cuentas de mensajería se verifican mediante el widget de inicio de sesión de Messenger al reservar; no se recopilan códigos de un solo uso ni contraseñas. Utilizamos tu cuenta de mensajería para enviar confirmaciones de reservas y enlaces de cancelación. No vendemos datos personales.",
+      "analyticsHeading": "Analítica y supervisión de errores",
+      "analyticsBody": "Utilizamos PostHog para la analítica del producto (visitas a páginas y uso de funciones) y Sentry para supervisar errores (informes de fallos y trazas de rendimiento). Las grabaciones de sesiones de PostHog están activadas con todos los campos de entrada ocultos, por lo que ningún dato personal escrito aparece en ellas. Los organizadores que han iniciado sesión se identifican mediante un id interno para poder agrupar su actividad; los participantes no se identifican en la analítica. Ninguno de los dos servicios recibe tus credenciales de mensajería.",
+      "analyticsCookies": "Las cookies de analítica están desactivadas de forma predeterminada y solo se cargan cuando las aceptas en el aviso de cookies. Si las rechazas o ignoras el aviso, PostHog no se inicia y no se instala ninguna cookie de analítica. Las cookies esenciales necesarias para iniciar sesión y reservar están siempre activas y no requieren consentimiento. La supervisión de errores de Sentry funciona sin cookies. Puedes cambiar tu elección en cualquier momento borrando los datos de este sitio en tu navegador.",
+      "retentionHeading": "Conservación",
+      "retentionBody": "Los registros de reservas se conservan para que los organizadores puedan consultar su historial. Los participantes pueden cancelar una reserva en cualquier momento desde su enlace de gestión.",
+      "contactHeading": "Contacto",
+      "contactBody": "Las preguntas sobre privacidad pueden dirigirse al organizador con quien reservaste o al equipo de CountMeIn."
+    }
+  },
+  "Auth": {
+    "login": {
+      "welcomeBack": "Te damos la bienvenida de nuevo",
+      "description": "Inicia sesión con tu cuenta de Telegram.",
+      "newHere": "¿Eres nuevo en CountMeIn?",
+      "createAccount": "Crear una cuenta",
+      "noAccountFound": "No se encontró ninguna cuenta. Crea primero una cuenta.",
+      "sameAccount": "Usa la misma cuenta de Telegram con la que te registraste.",
+      "notConfigured": "El inicio de sesión con Telegram no está configurado. Contacta con soporte."
+    },
+    "signup": {
+      "title": "Crea tu cuenta",
+      "description": "Configura tu perfil de organizador en dos pasos rápidos.",
+      "alreadyHave": "¿Ya tienes una cuenta?",
+      "logIn": "Iniciar sesión",
+      "stepTelegram": "Telegram",
+      "stepProfile": "Perfil",
+      "accountExists": "La cuenta ya existe. Iniciando sesión…",
+      "authenticate": "Autentícate con Telegram para continuar.",
+      "notConfigured": "El inicio de sesión con Telegram no está configurado. Contacta con soporte.",
+      "displayName": "Nombre visible",
+      "namePlaceholder": "Estudio Demo",
+      "publicHandle": "Identificador público",
+      "slugPlaceholder": "estudio-demo",
+      "slugHint": "Este es el enlace que compartirás con los participantes.",
+      "timezone": "Zona horaria",
+      "selectTimezone": "Seleccionar zona horaria",
+      "timezoneHint": "Todos tus horarios se muestran en esta zona.",
+      "creating": "Creando la cuenta…",
+      "continue": "Continuar",
+      "signInFailed": "No se pudo iniciar sesión; vuelve a autenticarte con Telegram",
+      "createFailed": "No se pudo crear la cuenta"
+    },
+    "loginLink": {
+      "opening": "Un momento mientras abrimos tu panel.",
+      "continue": "Continuar a tu panel"
+    }
+  },
+  "NotFound": {
+    "title": "Página no encontrada",
+    "description": "No pudimos encontrar la página que buscabas. Puede que se haya movido o que el enlace ya no sea válido.",
+    "backHome": "Volver al inicio",
+    "findMyBooking": "Buscar mi reserva"
+  },
+  "GlobalError": {
+    "title": "Algo ha salido mal",
+    "description": "Se ha producido un error inesperado. Vuelve a intentarlo en un momento.",
+    "tryAgain": "Volver a intentarlo",
+    "backHome": "Volver al inicio"
+  },
+  "CookieConsent": {
+    "ariaLabel": "Consentimiento de cookies",
+    "text": "Utilizamos cookies de analítica para entender cómo se usa CountMeIn y mejorarlo. ",
+    "essential": "Las cookies esenciales para iniciar sesión y reservar están siempre activas. ",
+    "privacyPolicy": "Política de privacidad",
+    "reject": "Rechazar",
+    "accept": "Aceptar"
+  },
+  "Ui": {
+    "close": "Cerrar",
+    "navigation": "Navegación",
+    "loading": "Cargando",
+    "more": "Más",
+    "sidebar": "Barra lateral",
+    "sidebarDescription": "Muestra la barra lateral en dispositivos móviles.",
+    "toggleSidebar": "Mostrar u ocultar la barra lateral",
+    "wrongImageType": "Usa una imagen JPEG, PNG o WebP",
+    "imageTooLarge": "La imagen debe ocupar menos de {size}",
+    "breadcrumb": "Ruta de navegación",
+    "compressFailed": "No se pudo comprimir suficientemente la imagen; prueba con otra",
+    "uploadFailed": "Error al subir el archivo; inténtalo de nuevo"
+  },
+  "Cabinet": {
+    "crumbs": {
+      "cabinet": "Panel",
+      "overview": "Resumen",
+      "services": "Servicios",
+      "slots": "Horarios",
+      "calendar": "Calendario",
+      "bookings": "Reservas",
+      "analytics": "Analítica",
+      "settings": "Ajustes",
+      "new": "Nuevo"
+    },
+    "common": {
+      "deletedService": "Servicio eliminado",
+      "session": "Sesión",
+      "seats": "{count, plural, =1 {# plaza} other {# plazas}}",
+      "min": "{minutes} min",
+      "left": "Quedan {count}",
+      "confirmed": "Confirmada",
+      "cancelled": "Cancelada",
+      "viewAll": "Ver todo",
+      "open": "Disponible",
+      "preview": "Vista previa",
+      "edit": "Editar",
+      "view": "Ver",
+      "cancel": "Cancelar",
+      "saving": "Guardando...",
+      "close": "Cerrar",
+      "full": "Completo"
+    },
+    "sidebar": {
+      "subtitle": "Organizador",
+      "manage": "Gestionar",
+      "public": "Público",
+      "viewPublicPage": "Ver página pública",
+      "support": "Soporte",
+      "contact": "Contacto",
+      "language": "Idioma",
+      "demoNote": "Estás viendo un panel de demostración.",
+      "signUp": "Registrarse",
+      "logIn": "Iniciar sesión",
+      "myAccount": "Mi cuenta",
+      "profile": "Perfil",
+      "logOut": "Cerrar sesión",
+      "nav": {
+        "overview": "Resumen",
+        "services": "Servicios",
+        "slots": "Horarios",
+        "calendar": "Calendario",
+        "bookings": "Reservas",
+        "analytics": "Analítica",
+        "settings": "Ajustes"
+      }
+    },
+    "overview": {
+      "welcomeBack": "Te damos la bienvenida de nuevo, {name}",
+      "welcomeFallback": "Te damos la bienvenida de nuevo",
+      "subtitle": "Esto es lo que está ocurriendo con tus reservas.",
+      "newService": "Nuevo servicio",
+      "statConfirmed": "Reservas confirmadas",
+      "statSeats": "Plazas reservadas",
+      "statSlots": "Próximos horarios",
+      "statFillRate": "Tasa de ocupación",
+      "last7Days": "{count} en los últimos 7 días",
+      "next7Days": "{count} en los próximos 7 días",
+      "acrossUpcoming": "en los próximos horarios",
+      "noUpcomingCapacity": "aún no hay aforo próximo",
+      "seatsTaken": "{booked} de {offered} plazas ocupadas",
+      "upcomingSlots": "Próximos horarios",
+      "nextSessions": "Tus próximas sesiones programadas.",
+      "createServiceFirst": "Crea un servicio y, después, programa su primera sesión.",
+      "nothingScheduled": "Aún no hay nada programado; añade un horario para abrir las reservas.",
+      "recentBookings": "Reservas recientes",
+      "slotBookings": "Reservas del horario",
+      "latestActivity": "Actividad más reciente.",
+      "sessionReservations": "Reservas de la sesión seleccionada.",
+      "noBookingsForSession": "Aún no hay reservas para esta sesión.",
+      "bookingsAppear": "Las reservas aparecen aquí en cuanto un participante reserva una plaza.",
+      "yourPublicPage": "Tu página pública",
+      "shareLink": "Comparte este enlace para que los participantes puedan consultar y reservar."
+    },
+    "dayFilter": {
+      "anyDay": "Cualquier día",
+      "showEveryDay": "Mostrar todos los días",
+      "changeDay": "Filtrando por {day}. Cambiar día",
+      "filterByDay": "Filtrar {entity} por día",
+      "showEveryBooking": "Mostrar todas las reservas",
+      "showEveryService": "Mostrar todos los servicios",
+      "showEverySlot": "Mostrar todos los horarios"
+    },
+    "demoBanner": {
+      "readOnly": "Demostración de solo lectura.",
+      "text": "Estos son datos de ejemplo; la edición está desactivada y no se guarda nada.",
+      "createOwn": "Crea la tuya"
+    },
+    "booking": {
+      "details": "Detalles de la reserva",
+      "service": "Servicio",
+      "when": "Cuándo",
+      "seats": "Plazas",
+      "options": "Opciones",
+      "cancelBooking": "Cancelar reserva",
+      "cancelling": "Cancelando…",
+      "cancelTitle": "¿Cancelar esta reserva?",
+      "cancelDescriptionBoth": "Se liberarán y ofrecerán a otros participantes {seats, plural, =1 {la plaza} other {las plazas}} de {name} para {service} el {when}. Esta acción no se puede deshacer.",
+      "cancelDescriptionService": "Se liberarán y ofrecerán a otros participantes {seats, plural, =1 {la plaza} other {las plazas}} de {name} para {service}. Esta acción no se puede deshacer.",
+      "cancelDescriptionWhen": "Se liberarán y ofrecerán a otros participantes {seats, plural, =1 {la plaza} other {las plazas}} de {name} el {when}. Esta acción no se puede deshacer.",
+      "cancelDescriptionPlain": "Se liberarán y ofrecerán a otros participantes {seats, plural, =1 {la plaza} other {las plazas}} de {name}. Esta acción no se puede deshacer.",
+      "keepBooking": "Mantener reserva",
+      "yesCancel": "Sí, cancelar",
+      "cancelledToast": "Reserva cancelada",
+      "releasedToast": "Las plazas de {name} han quedado libres.",
+      "cancelFailed": "No se pudo cancelar la reserva"
+    },
+    "slots": {
+      "title": "Horarios",
+      "subtitle": "Programa y controla el aforo de cada sesión.",
+      "sessionsFor": "Sesiones de {service}.",
+      "noServicesYet": "Aún no hay servicios",
+      "noServicesDescription": "Los horarios pertenecen a un servicio: crea uno primero y después programa sus sesiones.",
+      "upcoming": "Próximos ({count})",
+      "past": "Anteriores ({count})",
+      "addSlot": "Añadir horario",
+      "pastSessions": "Sesiones anteriores",
+      "upcomingSchedule": "Próxima programación",
+      "nothingRun": "Todavía no se ha celebrado nada.",
+      "noUpcomingSessions": "No hay próximas sesiones.",
+      "upcomingCount": "{count} {count, plural, =1 {horario próximo} other {horarios próximos}}",
+      "pastCount": "{count} {count, plural, =1 {horario anterior} other {horarios anteriores}}",
+      "forServiceSuffix": " de {service}",
+      "nothingOnDay": "No hay nada este día",
+      "noPastSessions": "No hay sesiones anteriores",
+      "nothingScheduled": "No hay nada programado",
+      "noUpcomingOnDay": "No hay próximas sesiones el {day}",
+      "noPastOnDay": "No hay sesiones anteriores el {day}",
+      "sessionsMove": "Las sesiones pasan aquí una vez que ha transcurrido su hora de inicio.",
+      "noUpcomingFor": "{service} aún no tiene próximas sesiones.",
+      "addHint": "Añade un horario para que los participantes puedan reservarlo.",
+      "colService": "Servicio",
+      "colDateTime": "Fecha y hora",
+      "colCapacity": "Aforo",
+      "colPrice": "Precio",
+      "colStatus": "Estado",
+      "open": "Disponible",
+      "fillingUp": "Casi completo",
+      "full": "Completo",
+      "left": "Quedan {count}",
+      "slotActions": "Acciones del horario",
+      "editSlot": "Editar horario",
+      "viewBookings": "Ver reservas",
+      "duplicate": "Duplicar",
+      "cancelSlot": "Cancelar horario",
+      "cancelTitle": "¿Cancelar este horario?",
+      "cancelDescriptionWithBookings": "Esta sesión tiene {count} {count, plural, =1 {plaza reservada} other {plazas reservadas}}. Al cancelarla, se eliminarán el horario y todas sus reservas. Esta acción no se puede deshacer.",
+      "cancelDescriptionPlain": "El horario se eliminará y los participantes dejarán de verlo. Esta acción no se puede deshacer.",
+      "keepSlot": "Mantener horario",
+      "cancellingDialog": "Cancelando...",
+      "cancelledToast": "Horario cancelado",
+      "cancelFailed": "No se pudo cancelar el horario",
+      "dialogCreateTitle": "Añadir horario",
+      "dialogCreateDescription": "Programa una nueva sesión. Se usarán los valores predeterminados del servicio.",
+      "dialogEditTitle": "Editar horario",
+      "dialogEditDescription": "Cambia cuándo se celebra esta sesión y cuántas plazas tiene.",
+      "dialogDuplicateTitle": "Duplicar horario",
+      "dialogDuplicateDescription": "La misma sesión en una fecha nueva. Ajusta lo que necesites antes de guardar.",
+      "saveChanges": "Guardar cambios",
+      "fieldService": "Servicio",
+      "selectService": "Seleccionar un servicio",
+      "fieldDate": "Fecha",
+      "fieldTime": "Hora de inicio",
+      "fieldDuration": "Duración",
+      "fieldCapacity": "Aforo",
+      "fieldPrice": "Precio",
+      "pricePlaceholder": "$12",
+      "priceDescription": "Déjalo vacío para usar el valor predeterminado del servicio.",
+      "addedToast": "Horario añadido",
+      "updatedToast": "Horario actualizado",
+      "addFailed": "No se pudo añadir el horario",
+      "updateFailed": "No se pudo actualizar el horario"
+    },
+    "services": {
+      "title": "Servicios",
+      "subtitle": "Gestiona las experiencias que pueden reservar los participantes.",
+      "newService": "Nuevo servicio",
+      "newTitle": "Nuevo servicio",
+      "newSubtitle": "Crea una experiencia que los participantes puedan reservar.",
+      "noServicesYet": "Aún no hay servicios",
+      "noServicesDescription": "Crea tu primer servicio para que los participantes puedan reservar algo.",
+      "countBookings": "{count, plural, =1 {# reserva} other {# reservas}}",
+      "details": "Detalles",
+      "detailsDescription": "Información básica que verán los participantes.",
+      "fieldTitle": "Título",
+      "titlePlaceholder": "p. ej., Vinyasa Flow matutino",
+      "fieldDescription": "Descripción",
+      "descriptionPlaceholder": "Describe qué pueden esperar los participantes...",
+      "descriptionHint": "Se muestra en la página del servicio. No se admite Markdown.",
+      "fieldLocation": "Ubicación",
+      "locationPlaceholder": "p. ej., Kralja Petra 123, Belgrado",
+      "locationHint": "Si se establece, sustituye la ubicación de tu perfil.",
+      "fieldContact": "Contacto",
+      "contactPlaceholder": "p. ej., teléfono, correo electrónico o enlace social",
+      "contactHint": "Si se establece, sustituye el contacto de tu perfil.",
+      "defaults": "Valores predeterminados",
+      "defaultsDescription": "Se aplican a los nuevos horarios. Puedes modificarlos en cada horario.",
+      "fieldPrice": "Precio",
+      "fieldCapacity": "Aforo",
+      "fieldDuration": "Duración (min)",
+      "groupBookings": "Reservas de grupo",
+      "groupBookingsDescription": "Cuántas plazas puede reservar un participante en una sola reserva.",
+      "fieldMaxSeats": "Máximo de plazas por reserva",
+      "maxSeatsHint": "Establécelo en 1 para permitir solo reservas individuales. Un número mayor permite que un participante traiga a otras personas, pero nunca más de esta cantidad a la vez; así nadie puede ocupar todas las plazas de un horario.",
+      "optionsTitle": "Opciones de reserva",
+      "optionsDescription": "Extras u opciones que los participantes pueden elegir al reservar.",
+      "addOption": "Añadir una opción",
+      "optionPlaceholder": "p. ej., Estudio junto al río",
+      "add": "Añadir",
+      "removeOption": "Quitar {option}",
+      "selectionMode": "Modo de selección",
+      "singleChoice": "Selección única (el participante elige una)",
+      "multipleChoice": "Selección múltiple (el participante elige las que quiera)",
+      "publish": "Publicar",
+      "publishDescription": "Guarda los cambios de este servicio.",
+      "saveChanges": "Guardar cambios",
+      "createService": "Crear servicio",
+      "deleteService": "Eliminar servicio",
+      "deleting": "Eliminando...",
+      "deleteTitle": "¿Eliminar este servicio?",
+      "deleteDescription": "Se eliminarán {title}, todos sus horarios y todas sus reservas. Esta acción no se puede deshacer.",
+      "keepService": "Mantener servicio",
+      "delete": "Eliminar",
+      "coverPhoto": "Foto de portada",
+      "coverHint": "Se muestra en tu página pública.",
+      "uploading": "Subiendo...",
+      "replaceImage": "Sustituir imagen",
+      "uploadImage": "Subir imagen",
+      "removeImage": "Eliminar imagen",
+      "photoReady": "La foto está lista; guarda para aplicarla",
+      "serviceCover": "Portada del servicio",
+      "createdToast": "Servicio creado",
+      "updatedToast": "Servicio actualizado",
+      "deletedToast": "Servicio eliminado",
+      "createFailed": "No se pudo crear el servicio",
+      "updateFailed": "No se pudo actualizar el servicio",
+      "deleteFailed": "No se pudo eliminar el servicio",
+      "notFound": "Servicio no encontrado",
+      "backToList": "Volver a los servicios",
+      "pricePlaceholder": "$12",
+      "editSubtitle": "Edita los detalles y las opciones del servicio."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "profile": "Perfil",
+      "profileDescription": "Cómo te ven los participantes.",
+      "uploading": "Subiendo...",
+      "changePhoto": "Cambiar foto",
+      "photoUpdated": "Foto actualizada",
+      "displayName": "Nombre visible",
+      "publicPageUrl": "URL de la página pública",
+      "edit": "Editar",
+      "copy": "Copiar",
+      "linkCopied": "Enlace copiado",
+      "slugFixed": "La URL de la página de demostración es fija.",
+      "slugEditable": "Tu página pública de reservas. Haz clic en Editar para cambiarla (los enlaces antiguos dejarán de funcionar).",
+      "slugWarning": "Advertencia: si cambias esto, los enlaces que ya hayas compartido con los participantes dejarán de funcionar.",
+      "bio": "Biografía",
+      "bioHint": "Se muestra en la parte superior de tu página pública. Se admite Markdown.",
+      "contact": "Contacto",
+      "contactPlaceholder": "p. ej., +381 64 123 4567 o estudio@example.com",
+      "contactHint": "Se muestra a los participantes en tu página pública: teléfono, correo electrónico, enlace social, etc.",
+      "timezone": "Zona horaria",
+      "location": "Ubicación",
+      "locationPlaceholder": "p. ej., Belgrado, Serbia",
+      "locationHint": "Opcional. Se muestra en tu página pública y puede sustituirse en cada servicio.",
+      "saveChanges": "Guardar cambios",
+      "noChanges": "No hay cambios que guardar",
+      "updatedToast": "Perfil actualizado",
+      "updateFailed": "No se pudo actualizar el perfil",
+      "loadFailed": "No se pudo cargar tu perfil; actualiza la página para volver a intentarlo."
+    },
+    "bookings": {
+      "title": "Reservas",
+      "subtitle": "Todas las reservas de tus servicios.",
+      "reservationsFor": "Reservas de {label}.",
+      "all": "Todas",
+      "confirmed": "Confirmadas",
+      "cancelled": "Canceladas",
+      "colGuest": "Participante",
+      "colService": "Servicio",
+      "colWhen": "Cuándo",
+      "colSeats": "Plazas",
+      "colStatus": "Estado",
+      "searchPlaceholder": "Buscar participante o servicio",
+      "noBookingsFound": "No se encontraron reservas",
+      "noBookingsForSlot": "{label} aún no tiene reservas.",
+      "noBookingsForService": "{service} aún no tiene reservas.",
+      "bookingsAppear": "Las reservas aparecen aquí en cuanto un participante reserva una plaza.",
+      "noBookingsOnDay": "No hay reservas el {day}",
+      "forServiceSuffix": " de {service}",
+      "tryFilters": "Prueba a ajustar los filtros o la búsqueda."
+    },
+    "analytics": {
+      "title": "Analítica",
+      "subtitle": "Sigue la evolución de tus reservas.",
+      "totalBookings": "Reservas totales",
+      "seatsSold": "Plazas vendidas",
+      "avgFillRate": "Ocupación media",
+      "cancellations": "Cancelaciones",
+      "confirmedLast30": "confirmadas en los últimos 30 días",
+      "bookingsInWindow": "{count, plural, =1 {# reserva} other {# reservas}} en el período",
+      "bookingsThisWeek": "Reservas esta semana",
+      "bookingsThisWeekHint": "Reservas confirmadas y plazas vendidas por día.",
+      "noBookingsYet": "Aún no hay reservas; aparecerán aquí en cuanto un participante reserve una plaza.",
+      "byService": "Por servicio",
+      "byServiceHint": "Reservas confirmadas en los últimos 30 días.",
+      "noBookings30": "No hay reservas en los últimos 30 días.",
+      "trendAria": "Reservas confirmadas y plazas vendidas por día durante los últimos 7 días",
+      "serviceAria": "Reservas confirmadas por servicio durante los últimos 30 días",
+      "upcomingSlotsCount": "{count, plural, =1 {# próximo horario} other {# próximos horarios}}",
+      "bookingsLabel": "Reservas",
+      "seatsLabel": "Plazas"
+    },
+    "calendar": {
+      "title": "Calendario",
+      "subtitle": "Tu semana de un vistazo: cada sesión según su hora de inicio y duración.",
+      "today": "Hoy",
+      "previousWeek": "Semana anterior",
+      "nextWeek": "Semana siguiente",
+      "jumpToDate": "Ir a una fecha",
+      "jumpToWeek": "Ir a una semana",
+      "open": "Disponible",
+      "fillingUp": "Casi completo",
+      "full": "Completo",
+      "left": "Quedan {count}"
+    }
+  },
+  "ApiErrors": {
+    "invalidInput": "Datos no válidos",
+    "invalidOptions": "Las opciones seleccionadas no son válidas para este servicio",
+    "ticketExpired": "Tu confirmación de Telegram ha caducado; vuelve a autenticarte",
+    "telegramNotConfigured": "El bot de Telegram no está configurado",
+    "telegramInvalid": "Datos de autenticación de Telegram no válidos",
+    "telegramValidationFailed": "No se pudo validar la autenticación de Telegram",
+    "authSessionExpired": "La sesión de autenticación ha caducado; vuelve a autenticarte con Telegram",
+    "organizerNotFound": "Organizador no encontrado",
+    "demoNotSeeded": "No se han cargado los datos del organizador de demostración",
+    "serviceNotFound": "Servicio no encontrado",
+    "slotNotFound": "Horario no encontrado",
+    "bookingNotFound": "Reserva no encontrada",
+    "photoPrefix": "photoUrl no válida: debe pertenecer a tu prefijo de archivos multimedia",
+    "cannotCreateService": "No se pudo crear el servicio",
+    "slugTaken": "Este identificador ya está en uso; elige otro",
+    "accountExists": "Ya existe una cuenta con esta identidad de Telegram; inicia sesión",
+    "nothingToUpdate": "No hay campos que actualizar",
+    "capacityBelowBooked": "El aforo no puede ser inferior a {count, plural, =1 {la # plaza ya reservada} other {las # plazas ya reservadas}}",
+    "demoReadOnly": "Esta es una cuenta de demostración de solo lectura; regístrate para crear tus propios servicios reservables.",
+    "soldOut": "Esta sesión está completa",
+    "seatsLeftOnSession": "Solo quedan {count, plural, =1 {# plaza} other {# plazas}} en esta sesión",
+    "partyTooLarge": "Puedes reservar como máximo {maxSeats, plural, =1 {# plaza} other {# plazas}} en una sola reserva",
+    "duplicateBooking": "Ya tienes una reserva para esta sesión",
+    "alreadyCancelled": "Esta reserva ya se ha cancelado",
+    "slotGone": "Esta sesión ya no está disponible"
+  }
+}

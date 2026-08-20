@@ -10,11 +10,11 @@ import { z } from 'zod'
  * copy, `apps/worker` renders notifications — and they must agree on what a
  * locale string is.
  *
- * Add a language in one place here; the dictionaries live app-side
- * (`apps/web/src/i18n/messages`, `apps/worker/src/telegram/messages.ts`).
+ * Add a language in one place here; the dictionaries live in
+ * `packages/translations`.
  */
 
-export const LOCALES = ['en', 'ru'] as const
+export const LOCALES = ['en', 'ru', 'es'] as const
 
 export const appLocaleEnum = z.enum(LOCALES)
 export type AppLocale = z.infer<typeof appLocaleEnum>

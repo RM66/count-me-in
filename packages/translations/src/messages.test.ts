@@ -4,7 +4,7 @@ import { NOTIFICATION_MESSAGES, WEB_MESSAGES } from './index'
 
 /**
  * The dictionaries must keep the same shape: a key added to English without a
- * Russian counterpart would crash `t()` with a missing-message error at
+ * translated counterpart would crash `t()` with a missing-message error at
  * runtime instead of failing any check. Recursively asserting key parity keeps
  * the source-of-truth discipline automatic.
  *
@@ -27,19 +27,23 @@ function leafPaths(node: TreeNode, prefix = ''): string[] {
 }
 
 describe('WEB_MESSAGES', () => {
-  it('ru has exactly the keys of en', () => {
-    expect(leafPaths(WEB_MESSAGES.ru as TreeNode).sort()).toEqual(
-      leafPaths(WEB_MESSAGES.en as TreeNode).sort(),
-    )
-  })
+  for (const locale of ['ru', 'es'] as const) {
+    it(`${locale} has exactly the keys of en`, () => {
+      expect(leafPaths(WEB_MESSAGES[locale] as TreeNode).sort()).toEqual(
+        leafPaths(WEB_MESSAGES.en as TreeNode).sort(),
+      )
+    })
+  }
 })
 
 describe('NOTIFICATION_MESSAGES', () => {
-  it('ru has exactly the keys of en', () => {
-    expect(leafPaths(NOTIFICATION_MESSAGES.ru as TreeNode).sort()).toEqual(
-      leafPaths(NOTIFICATION_MESSAGES.en as TreeNode).sort(),
-    )
-  })
+  for (const locale of ['ru', 'es'] as const) {
+    it(`${locale} has exactly the keys of en`, () => {
+      expect(leafPaths(NOTIFICATION_MESSAGES[locale] as TreeNode).sort()).toEqual(
+        leafPaths(NOTIFICATION_MESSAGES.en as TreeNode).sort(),
+      )
+    })
+  }
 
   it('messages contain no Telegram HTML tags (they are composed in code)', () => {
     for (const leaf of leafPaths(NOTIFICATION_MESSAGES.en as TreeNode)) {
