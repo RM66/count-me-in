@@ -127,7 +127,7 @@
     "hero": {
       "badge": "Online-Buchungen für Gruppenveranstaltungen",
       "title": "Fülle deine Kurse, Veranstaltungen und Ausflüge ohne endloses Hin und Her",
-      "subtitle": "Veröffentliche deine Angebote mit Terminen und Kapazität. Teile einen einzigen Link. Gäste buchen in wenigen Sekunden auf der Website — ohne Konto und ohne App. Die Bestätigung kommt direkt in ihrem Messenger an.",
+      "subtitle": "Veröffentliche deine Angebote mit Terminen und Kapazität. Teile einen einzigen Link. Gäste buchen in wenigen Sekunden auf der Website — ohne Konto und ohne App. Die Bestätigung kommt direkt im Messenger an.",
       "startFree": "Kostenlos starten",
       "noCreditCard": "Keine Kreditkarte nötig. Richte dein erstes buchbares Angebot in wenigen Minuten ein.",
       "lookAround": "Möchtest du dich erst einmal umsehen?",
@@ -197,7 +197,7 @@
           "examples": "Gruppentraining, Tanz, Kampfsport, Lauf- und Kletterclubs, SUP und Skifahren."
         },
         {
-          "title": "Wellness und Achtsamkeit",
+          "title": "Wellness und Praktiken",
           "examples": "Meditation, Atemarbeit, Klangheilung, Baderituale, Retreats und Selbsthilfegruppen."
         },
         {
@@ -210,11 +210,11 @@
         },
         {
           "title": "Touren und Ausflüge",
-          "examples": "Stadtspaziergänge, Food-Touren, Wandern, Camping, Tauchen, Angeln, Segeln und kulinarische Touren."
+          "examples": "Stadtspaziergänge, Food-Touren, Wandern, Camping, Tauchen, Angeln, Yachtsport und kulinarische Touren."
         },
         {
           "title": "Tiere",
-          "examples": "Hundetraining, Sozialisierung und Erziehung von Hunden, Reiten und tierfreundliche Veranstaltungen."
+          "examples": "Sitzungen mit einem Kynologen, Sozialisierung und Erziehung von Hunden, Reiten und tierfreundliche Veranstaltungen."
         },
         {
           "title": "Beauty und professionelle Angebote",
@@ -460,7 +460,7 @@
       "confirmed": "Bestätigt",
       "cancelled": "Storniert",
       "viewAll": "Alle anzeigen",
-      "open": "Frei",
+      "open": "Öffnen",
       "preview": "Vorschau",
       "edit": "Bearbeiten",
       "view": "Ansehen",

@@ -126,8 +126,8 @@
   "Marketing": {
     "hero": {
       "badge": "Reservas en línea para eventos grupales",
-      "title": "Llena tus clases, eventos y excursiones sin interminables mensajes",
-      "subtitle": "Publica tus servicios con horarios y aforo. Comparte un único enlace. Los participantes reservan en la web en segundos, sin cuenta ni aplicación. La confirmación llega a su aplicación de mensajería.",
+      "title": "Llena tus clases, eventos y salidas sin mensajes interminables",
+      "subtitle": "Publica tus servicios con horarios y aforo. Comparte un único enlace. Los participantes reservan en la web en segundos, sin cuenta ni aplicación. La confirmación llega a la aplicación de mensajería.",
       "startFree": "Empezar gratis",
       "noCreditCard": "Sin tarjeta de crédito. Configura tu primer servicio reservable en minutos.",
       "lookAround": "¿Prefieres echar un vistazo primero?",
@@ -194,11 +194,11 @@
       "items": [
         {
           "title": "Deporte y ocio activo",
-          "examples": "Entrenamientos en grupo, danza, artes marciales, clubes de atletismo y escalada, SUP y esquí."
+          "examples": "Entrenamientos en grupo, danza, artes marciales, clubes de running y escalada, SUP y esquí."
         },
         {
           "title": "Bienestar y prácticas",
-          "examples": "Meditación, respiración, baños de sonido, ceremonias de baño, retiros y grupos de apoyo."
+          "examples": "Meditación, respiración consciente, baños de sonido, ceremonias de baño, retiros y grupos de apoyo."
         },
         {
           "title": "Aprendizaje y creatividad",
@@ -206,7 +206,7 @@
         },
         {
           "title": "Entretenimiento y comunidades",
-          "examples": "Concursos, mafia, juegos de mesa y de rol, clubes de lectura, networking, eventos infantiles y encuentros."
+          "examples": "Quizzes, mafia, juegos de mesa y de rol, clubes de lectura, networking, eventos infantiles y encuentros."
         },
         {
           "title": "Excursiones y salidas",
@@ -460,7 +460,7 @@
       "confirmed": "Confirmada",
       "cancelled": "Cancelada",
       "viewAll": "Ver todo",
-      "open": "Disponible",
+      "open": "Abrir",
       "preview": "Vista previa",
       "edit": "Editar",
       "view": "Ver",

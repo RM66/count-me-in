@@ -127,7 +127,7 @@
     "hero": {
       "badge": "Réservation en ligne pour les activités de groupe",
       "title": "Remplis tes cours, événements et sorties sans échanges interminables",
-      "subtitle": "Publie tes activités avec leurs créneaux et leur capacité. Partage un seul lien. Les participants réservent sur le site en quelques secondes — sans compte ni application. La confirmation arrive dans leur messagerie.",
+      "subtitle": "Publie tes activités avec leurs créneaux et leur capacité. Partage un seul lien. Les participants réservent sur le site en quelques secondes — sans compte ni application. La confirmation arrive dans la messagerie.",
       "startFree": "Commencer gratuitement",
       "noCreditCard": "Aucune carte bancaire requise. Crée ta première activité réservable en quelques minutes.",
       "lookAround": "Tu préfères d’abord découvrir le service ?",
@@ -198,11 +198,11 @@
         },
         {
           "title": "Bien-être et pratiques",
-          "examples": "Méditation, respiration, bains sonores, cérémonies du bain, retraites, groupes de soutien."
+          "examples": "Méditation, respiration consciente, bains sonores, cérémonies du bain, retraites, groupes de soutien."
         },
         {
           "title": "Apprentissage et créativité",
-          "examples": "Ateliers, cours, art et céramique, photographie, cuisine, musique, clubs de langues."
+          "examples": "Masterclasses, cours, art et céramique, photographie, cuisine, musique, clubs de langues."
         },
         {
           "title": "Divertissement et communautés",
@@ -218,7 +218,7 @@
         },
         {
           "title": "Beauté et services professionnels",
-          "examples": "Soins de beauté en groupe, cours de maquillage, consultations, coworking, groupes de réflexion."
+          "examples": "Soins de beauté en groupe, cours de maquillage, consultations, coworking, groupes mastermind."
         }
       ]
     },
@@ -369,7 +369,7 @@
   },
   "Auth": {
     "login": {
-      "welcomeBack": "Bienvenue",
+      "welcomeBack": "Bon retour",
       "description": "Connecte-toi avec ton compte Telegram.",
       "newHere": "Tu découvres CountMeIn ?",
       "createAccount": "Créer un compte",
@@ -460,7 +460,7 @@
       "confirmed": "Confirmée",
       "cancelled": "Annulée",
       "viewAll": "Tout voir",
-      "open": "Disponible",
+      "open": "Ouvrir",
       "preview": "Aperçu",
       "edit": "Modifier",
       "view": "Voir",
@@ -494,8 +494,8 @@
       }
     },
     "overview": {
-      "welcomeBack": "Bienvenue, {name}",
-      "welcomeFallback": "Bienvenue",
+      "welcomeBack": "Bon retour, {name}",
+      "welcomeFallback": "Bon retour",
       "subtitle": "Voici ce qui se passe dans tes réservations.",
       "newService": "Nouvelle activité",
       "statConfirmed": "Réservations confirmées",

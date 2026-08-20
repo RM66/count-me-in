@@ -198,11 +198,11 @@
         },
         {
           "title": "Bem-estar e práticas",
-          "examples": "Meditação, respiração, terapia sonora, cerimônias de banho, retiros e grupos de apoio."
+          "examples": "Meditação, respiração consciente, terapia sonora, cerimônias de banho, retiros e grupos de apoio."
         },
         {
           "title": "Aprendizado e criatividade",
-          "examples": "Oficinas, cursos, arte e cerâmica, fotografia, culinária, música e clubes de idiomas."
+          "examples": "Masterclasses, cursos, arte e cerâmica, fotografia, culinária, música e clubes de idiomas."
         },
         {
           "title": "Entretenimento e comunidades",
@@ -214,7 +214,7 @@
         },
         {
           "title": "Animais",
-          "examples": "Sessões com adestradores, socialização e treinamento de cães, equitação e eventos pet-friendly."
+          "examples": "Sessões com cinologistas, socialização e treinamento de cães, equitação e eventos pet-friendly."
         },
         {
           "title": "Beleza e serviços profissionais",
@@ -460,7 +460,7 @@
       "confirmed": "Confirmada",
       "cancelled": "Cancelada",
       "viewAll": "Ver tudo",
-      "open": "Disponível",
+      "open": "Abrir",
       "preview": "Visualizar",
       "edit": "Editar",
       "view": "Ver",

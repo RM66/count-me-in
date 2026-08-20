@@ -18,7 +18,7 @@
     "button": "Abrir en el panel"
   },
   "cancelledGuest": {
-    "title": "Tu reserva se ha cancelado",
+    "title": "Tu reserva ha sido cancelada",
     "byName": "por {name}",
     "footer": "Sentimos lo ocurrido; puedes elegir otra sesión abajo.",
     "button": "Ver otras sesiones"
