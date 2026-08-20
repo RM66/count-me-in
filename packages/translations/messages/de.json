@@ -1,0 +1,804 @@
+{
+  "LocaleSwitcher": {
+    "ariaLabel": "Sprache ändern"
+  },
+  "GuestLayout": {
+    "myBookings": "Meine Buchungen",
+    "poweredBy": "Unterstützt von"
+  },
+  "OrgPage": {
+    "metaTitle": "{name} — online buchen",
+    "bookOnline": "Online buchen",
+    "pageNotFound": "Seite nicht gefunden",
+    "services": "Angebote",
+    "available": "{count} verfügbar",
+    "nothingToBook": "Im Moment gibt es noch nichts zu buchen — schau bald wieder vorbei."
+  },
+  "ServiceCard": {
+    "next": "Nächster Termin:",
+    "noOpenSlots": "Keine freien Termine"
+  },
+  "ServicePage": {
+    "serviceNotFound": "Angebot nicht gefunden",
+    "chooseOne": "Wähle eine Option:",
+    "addOns": "Zusatzoptionen:",
+    "upcomingSlots": "Bevorstehende Termine",
+    "noSlotsYet": "Noch keine Termine",
+    "checkBackSoon": "Schau bald wieder vorbei — regelmäßig kommen neue Termine hinzu.",
+    "full": "Ausgebucht",
+    "book": "Buchen",
+    "bookNow": "Jetzt buchen",
+    "fullyBooked": "Ausgebucht"
+  },
+  "ServiceMetaBadges": {
+    "minutes": "{minutes} Min.",
+    "upToCapacity": "bis zu {capacity}"
+  },
+  "SeatsBadge": {
+    "fullyBooked": "Ausgebucht",
+    "seatsLeft": "{count, plural, =1 {Noch # Platz frei} other {Noch # Plätze frei}}"
+  },
+  "Booking": {
+    "pickTime": "Termin auswählen",
+    "chooseOptions": "Optionen auswählen",
+    "yourDetails": "Deine Angaben",
+    "confirmTelegram": "Mit Telegram bestätigen",
+    "booked": "Deine Buchung ist bestätigt!",
+    "continue": "Weiter",
+    "back": "Zurück",
+    "fullName": "Vollständiger Name",
+    "namePlaceholder": "Mila Petrović",
+    "nameHint": "Diesen Namen sieht der Veranstalter auf seiner Liste.",
+    "seats": "Plätze",
+    "removeSeat": "Einen Platz entfernen",
+    "addSeat": "Einen Platz hinzufügen",
+    "seatsHint": "Einschließlich dir. Bis zu {maxSeats, plural, =1 {# Platz} other {# Plätze}} bei diesem Termin.",
+    "optionsLegend": "Optionen",
+    "demoIntro": "Dies ist eine schreibgeschützte Demoseite, daher werden Buchungen nicht gespeichert.",
+    "createOwn": "Eigene Seite erstellen",
+    "demoOutro": "und echte Buchungen annehmen.",
+    "errorFallback": "Die Buchung konnte nicht abgeschlossen werden",
+    "findMyBookings": "Meine Buchungen finden →",
+    "confirmHint": "Bestätige mit Telegram — du brauchst kein Konto, und die Bestätigung weist nur deine Identität nach.",
+    "reserving": "Dein Platz wird reserviert…",
+    "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet, daher sind Buchungen derzeit nicht möglich.",
+    "errSoldOut": "Dieser Termin ist ausgebucht",
+    "errSeatsLeft": "Bei diesem Termin sind nur noch {count, plural, =1 {# Platz} other {# Plätze}} frei",
+    "errPartyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
+    "errDuplicate": "Du hast für diesen Termin bereits eine Buchung",
+    "errGone": "Dieser Termin ist nicht mehr verfügbar",
+    "errInvalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
+    "errAlreadyCancelled": "Diese Buchung wurde bereits storniert"
+  },
+  "SuccessStep": {
+    "confirmedNote": "Dein Platz ist gebucht. Unser Bot sendet dir eine Bestätigung in deinem Messenger.",
+    "service": "Angebot",
+    "when": "Wann",
+    "name": "Name",
+    "options": "Optionen",
+    "confirmed": "Bestätigt",
+    "manageThisBooking": "Diese Buchung verwalten"
+  },
+  "MyBookings": {
+    "title": "Buchung finden",
+    "subtitle": "Du hast deinen Link verloren? Bestätige dich mit dem Telegram-Konto, mit dem du gebucht hast, dann zeigen wir dir deine Buchungen.",
+    "lookingUp": "Deine Buchungen werden gesucht…",
+    "lookupFailed": "Deine Buchungen konnten nicht abgerufen werden",
+    "onlyThisAccount": "Wir zeigen nur Buchungen an, die mit diesem Konto vorgenommen wurden.",
+    "bookingsFound": "{count, plural, =1 {# Buchung gefunden} other {# Buchungen gefunden}}",
+    "seats": "{count, plural, =1 {# Platz} other {# Plätze}}",
+    "cancelled": "Storniert",
+    "noBookingsFound": "Keine Buchungen gefunden",
+    "noBookingsDescription": "Für dieses Telegram-Konto gibt es noch keine Buchungen. Wenn du mit einem anderen Konto gebucht hast, bestätige dich stattdessen damit.",
+    "nothingYet": "Noch nichts anzuzeigen",
+    "nothingYetDescription": "Bestätige dich oben mit Telegram, um deine Buchungen abzurufen.",
+    "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet, daher ist die Suche derzeit nicht verfügbar."
+  },
+  "ManageBooking": {
+    "backTo": "Zurück zu {name}",
+    "bookingWith": "Buchung bei {name} · {date}",
+    "date": "Datum",
+    "time": "Uhrzeit",
+    "minutes": "{minutes} Min.",
+    "name": "Name",
+    "price": "Preis",
+    "where": "Ort",
+    "contact": "Kontakt",
+    "options": "Optionen:",
+    "confirmed": "Bestätigt",
+    "cancelled": "Storniert",
+    "cancelledNote": "Diese Buchung wurde storniert und der Platz ist wieder frei.",
+    "bookAnotherTime": "Anderen Termin buchen",
+    "cancelBooking": "Buchung stornieren",
+    "cancelling": "Wird storniert…",
+    "cancelConfirmTitle": "Diese Buchung stornieren?",
+    "cancelConfirmDescription": "Dein Platz für {title} am {date} um {time} wird freigegeben. Dies kann nicht rückgängig gemacht werden.",
+    "keepBooking": "Buchung behalten",
+    "yesCancel": "Ja, stornieren",
+    "bookingCancelled": "Buchung storniert",
+    "cancelFailed": "Die Buchung konnte nicht storniert werden"
+  },
+  "AddToCalendar": {
+    "addToCalendar": "Zum Kalender hinzufügen",
+    "googleCalendar": "Google Calendar",
+    "downloadIcs": ".ics herunterladen"
+  },
+  "Marketing": {
+    "hero": {
+      "badge": "Online-Buchungen für Gruppenveranstaltungen",
+      "title": "Fülle deine Kurse, Veranstaltungen und Ausflüge ohne endloses Hin und Her",
+      "subtitle": "Veröffentliche deine Angebote mit Terminen und Kapazität. Teile einen einzigen Link. Gäste buchen in wenigen Sekunden auf der Website — ohne Konto und ohne App. Die Bestätigung kommt direkt in ihrem Messenger an.",
+      "startFree": "Kostenlos starten",
+      "noCreditCard": "Keine Kreditkarte nötig. Richte dein erstes buchbares Angebot in wenigen Minuten ein.",
+      "lookAround": "Möchtest du dich erst einmal umsehen?",
+      "guestPage": "Buchungsseite für Gäste ansehen",
+      "cabinet": "Veranstalterbereich ansehen"
+    },
+    "carousel": {
+      "ariaLabel": "Beispiele für Gruppenangebote, die du veröffentlichen kannst",
+      "showSlide": "{title} anzeigen",
+      "slides": [
+        {
+          "alt": "Ein morgendlicher Yogakurs in einem hellen Studio",
+          "title": "Vinyasa Flow am Morgen",
+          "meta": "Morgen · 07:00 · noch 3 Plätze frei"
+        },
+        {
+          "alt": "Eine kleine Gruppe wandert auf einem Bergweg",
+          "title": "Sonnenaufgangswanderung",
+          "meta": "Sa. · 06:00 · noch 8 Plätze frei"
+        },
+        {
+          "alt": "Ein kreativer Mitmach-Workshop an einem gemeinsamen Tisch",
+          "title": "Töpferworkshop",
+          "meta": "So. · 14:00 · noch 2 Plätze frei"
+        },
+        {
+          "alt": "Ein geführter Rundgang durch eine Straße in der Altstadt",
+          "title": "Altstadt-Rundgang",
+          "meta": "Fr. · 11:00 · noch 12 Plätze frei"
+        },
+        {
+          "alt": "Eine angeleitete Atemübung mit Menschen in einem ruhigen Sitzkreis",
+          "title": "Atemkreis",
+          "meta": "Mi. · 19:00 · noch 6 Plätze frei"
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "Von der Einrichtung bis zur ersten Buchung in wenigen Minuten",
+      "subtitle": "CountMeIn kümmert sich um Kapazitäten, Bestätigungen und Erinnerungen, damit du dich ganz auf deine Veranstaltungen konzentrieren kannst.",
+      "step": "Schritt {n}",
+      "items": [
+        {
+          "title": "Konto erstellen",
+          "body": "Registriere dich über deinen Messenger. Lege deinen öffentlichen Kurznamen, deinen Anzeigenamen und deine Zeitzone fest."
+        },
+        {
+          "title": "Angebote und Termine hinzufügen",
+          "body": "Beschreibe jedes Angebot, lege Kapazität und Dauer fest und öffne anschließend die Termine, die du anbietest."
+        },
+        {
+          "title": "Link teilen",
+          "body": "Sende Gästen den Link zu deiner Seite. Sie wählen einen Termin und buchen in wenigen Sekunden."
+        },
+        {
+          "title": "Benachrichtigungen erhalten",
+          "body": "Bei jeder Buchung erhältst du in deinem Messenger eine Nachricht mit einem direkten Link zu deinem Veranstalterbereich."
+        }
+      ]
+    },
+    "audiences": {
+      "title": "Für alle, die Gruppenveranstaltungen organisieren",
+      "subtitle": "Wenn Menschen zu einer festen Zeit zusammenkommen und die Plätze begrenzt sind, hält CountMeIn deine Buchungen in Ordnung — ganz gleich, was du organisierst.",
+      "items": [
+        {
+          "title": "Sport und aktive Freizeit",
+          "examples": "Gruppentraining, Tanz, Kampfsport, Lauf- und Kletterclubs, SUP und Skifahren."
+        },
+        {
+          "title": "Wellness und Achtsamkeit",
+          "examples": "Meditation, Atemarbeit, Klangheilung, Baderituale, Retreats und Selbsthilfegruppen."
+        },
+        {
+          "title": "Lernen und Kreativität",
+          "examples": "Meisterkurse, Kurse, Kunst und Keramik, Fotografie, Kochen, Musik und Sprachclubs."
+        },
+        {
+          "title": "Unterhaltung und Gemeinschaft",
+          "examples": "Quizrunden, Mafia, Brett- und Rollenspiele, Buchclubs, Networking, Kinderveranstaltungen und Meetups."
+        },
+        {
+          "title": "Touren und Ausflüge",
+          "examples": "Stadtspaziergänge, Food-Touren, Wandern, Camping, Tauchen, Angeln, Segeln und kulinarische Touren."
+        },
+        {
+          "title": "Tiere",
+          "examples": "Hundetraining, Sozialisierung und Erziehung von Hunden, Reiten und tierfreundliche Veranstaltungen."
+        },
+        {
+          "title": "Beauty und professionelle Angebote",
+          "examples": "Beauty-Anwendungen in Gruppen, Make-up-Kurse, Beratungen, Coworking und Mastermind-Gruppen."
+        }
+      ]
+    },
+    "features": {
+      "title": "Alles, was du für Gruppenbuchungen brauchst",
+      "subtitle": "Speziell für Kurse, Veranstaltungen und Ausflüge in kleinen Gruppen entwickelt.",
+      "items": [
+        {
+          "title": "Kapazität ohne Überbuchung",
+          "body": "Jeder Termin hat eine festgelegte Platzzahl. Buchungen werden atomar vergeben, sodass ein ausgebuchter Kurs nie überbucht werden kann."
+        },
+        {
+          "title": "Kein Konto für Gäste",
+          "body": "Gäste buchen nur mit einem Namen und der Anmeldeschaltfläche ihres Messengers. Ein einziger teilbarer Link erledigt den Rest."
+        },
+        {
+          "title": "Direkt im Messenger",
+          "body": "Verifizierung, Bestätigungen und Stornierungslinks kommen in dem Messenger an, den deine Gäste bereits nutzen."
+        },
+        {
+          "title": "Flexible Optionen",
+          "body": "Biete Abholorte, Zusatzoptionen oder Varianten pro Angebot an — mit Einfach- oder Mehrfachauswahl."
+        },
+        {
+          "title": "Zum Kalender hinzufügen",
+          "body": "Gäste speichern ihre Buchung mit einem Fingertipp in Google Calendar oder laden eine .ics-Datei herunter."
+        },
+        {
+          "title": "Einfache Stornierung",
+          "body": "Gäste verwalten ihre Buchungen über einen sicheren Link. Bei einer Stornierung werden die Plätze sofort wieder freigegeben."
+        }
+      ]
+    },
+    "trust": {
+      "title": "Ein Link statt Chaos",
+      "subtitle": "CountMeIn ersetzt die verschiedenen Hilfsmittel, die Veranstalter sonst kombinieren müssen, um eine Gruppe zu füllen.",
+      "pillars": [
+        {
+          "title": "Kein endloses Hin und Her per Nachricht",
+          "body": "Du musst nicht länger auf Nachrichten wie „Ist noch ein Platz frei?“ antworten. Dein Link zeigt in Echtzeit, was verfügbar ist."
+        },
+        {
+          "title": "Kein Jonglieren mit Tabellen",
+          "body": "Kapazität, Plätze und Stornierungen bleiben automatisch synchron — du musst nichts von Hand aktualisieren."
+        },
+        {
+          "title": "Keine versehentlichen Überbuchungen",
+          "body": "Plätze werden atomar vergeben, sodass ein ausgebuchter Kurs niemals eine Buchung zu viel annehmen kann."
+        }
+      ]
+    },
+    "faq": {
+      "title": "Häufig gestellte Fragen",
+      "subtitle": "Alles, was du vor der Veröffentlichung deines ersten Angebots wissen möchtest.",
+      "items": [
+        {
+          "q": "Ist CountMeIn wirklich kostenlos?",
+          "a": "Ja — solange CountMeIn noch neu ist, kannst du es vollständig kostenlos nutzen: Erstelle dein Konto, veröffentliche Angebote und nimm Buchungen kostenlos an. Später führen wir möglicherweise ein kostenpflichtiges Abonnement zu einem symbolischen Preis ein, aber heute kannst du kostenlos starten."
+        },
+        {
+          "q": "Müssen meine Gäste eine App installieren oder ein Konto erstellen?",
+          "a": "Nein. Gäste öffnen deinen Link, wählen einen Termin und bestätigen mit ihrem Messenger-Login und einem Namen. Es gibt keine separate App zum Herunterladen und kein Passwort, das sie sich merken müssen."
+        },
+        {
+          "q": "Wickelt CountMeIn Zahlungen ab?",
+          "a": "Noch nicht. Preise werden bei deinen Angeboten als Text angezeigt, damit Gäste die Kosten kennen. Die Bezahlung erfolgt weiterhin so, wie du sie bereits abwickelst. Mit der Buchung wird lediglich der Platz reserviert."
+        },
+        {
+          "q": "Wie werden meine Gäste und ich benachrichtigt?",
+          "a": "Bestätigungen, Stornierungslinks und Hinweise auf neue Buchungen kommen in dem Messenger an, den du und deine Gäste bereits nutzen — bei jeder neuen Buchung erhältst du einen direkten Link zu deinem Veranstalterbereich."
+        },
+        {
+          "q": "Kann ein Termin überbucht werden?",
+          "a": "Nein. Jeder Termin hat eine festgelegte Platzzahl und Buchungen werden atomar vergeben. Sobald ein Kurs ausgebucht ist, nimmt er keine weiteren Buchungen mehr an — eine Überbuchung ist ausgeschlossen."
+        },
+        {
+          "q": "Was passiert, wenn ein Gast stornieren muss?",
+          "a": "Gäste verwalten ihre Buchung über einen sicheren Link. Sobald sie stornieren, wird der Platz freigegeben und steht einer anderen Person zur Verfügung."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Bereit, deine nächste Veranstaltung zu füllen?",
+      "subtitle": "Richte noch heute dein erstes buchbares Angebot ein. Es dauert nur wenige Minuten.",
+      "getStarted": "Kostenlos starten",
+      "exploreDemo": "Oder sieh dir die Demo an — ganz ohne Registrierung:",
+      "guestPage": "Buchungsseite für Gäste",
+      "cabinet": "Veranstalterbereich"
+    },
+    "header": {
+      "howItWorks": "So funktioniert es",
+      "features": "Funktionen",
+      "examples": "Beispiele",
+      "goToCabinet": "Zum Veranstalterbereich",
+      "logIn": "Anmelden",
+      "getStarted": "Loslegen",
+      "openMenu": "Menü öffnen",
+      "navigation": "Navigation"
+    },
+    "footer": {
+      "tagline": "— Online-Buchungen für Gruppenveranstaltungen",
+      "features": "Funktionen",
+      "logIn": "Anmelden",
+      "terms": "Nutzungsbedingungen",
+      "privacy": "Datenschutz",
+      "contact": "Kontakt",
+      "copyright": "© 2026 CountMeIn"
+    },
+    "ogDescription": "Einfache Online-Buchungen für Gruppenkurse, Veranstaltungen und Ausflüge."
+  },
+  "Legal": {
+    "lastUpdated": "Zuletzt aktualisiert am {date}",
+    "terms": {
+      "metaTitle": "Nutzungsbedingungen — CountMeIn",
+      "metaDescription": "Die Bedingungen für die Nutzung von CountMeIn.",
+      "title": "Nutzungsbedingungen",
+      "updated": "1. August 2026",
+      "intro": "Diese Bedingungen regeln deine Nutzung von CountMeIn. Sie beschreiben die Vereinbarung zwischen CountMeIn und den Veranstaltern, die buchbare Angebote auf der Plattform veröffentlichen, sowie den Gästen, die diese buchen.",
+      "usingHeading": "1. Nutzung von CountMeIn",
+      "usingBody": "Mit CountMeIn können Veranstalter Angebote mit Terminen und Kapazität veröffentlichen und Gäste diese Termine ohne eigenes Konto buchen. Du bist dafür verantwortlich, dass die veröffentlichten Angebote, Preise und Verfügbarkeiten korrekt sind.",
+      "bookingsHeading": "2. Buchungen und Kapazität",
+      "bookingsBody": "Angezeigte Preise dienen nur zur Information — CountMeIn wickelt in dieser Version keine Zahlungen ab. Die Kapazität wird für jeden Termin eingehalten; sobald ein Termin ausgebucht ist, werden keine weiteren Buchungen angenommen.",
+      "guestDataHeading": "3. Daten der Gäste",
+      "guestDataBody": "Gäste geben einen Anzeigenamen an und authentifizieren sich für die Buchung mit ihrem Messenger-Konto. Du verpflichtest dich, die Daten der Gäste verantwortungsvoll und ausschließlich zur Erbringung des gebuchten Angebots zu verwenden.",
+      "cancellationsHeading": "4. Stornierungen",
+      "cancellationsBody": "Gäste können über ihren sicheren Verwaltungslink stornieren. Bei einer Stornierung werden die reservierten Plätze sofort wieder für den Termin freigegeben.",
+      "changesHeading": "5. Änderungen",
+      "changesBody": "Wir können diese Bedingungen aktualisieren, wenn sich das Produkt weiterentwickelt. Wenn du den Dienst nach Inkrafttreten der Änderungen weiter nutzt, stimmst du den überarbeiteten Bedingungen zu."
+    },
+    "privacy": {
+      "metaTitle": "Datenschutzerklärung — CountMeIn",
+      "metaDescription": "Wie CountMeIn mit den Daten von Veranstaltern und Gästen umgeht.",
+      "title": "Datenschutzerklärung",
+      "updated": "7. August 2026",
+      "intro": "Diese Datenschutzerklärung beschreibt, welche Daten CountMeIn erfasst und wie sie verwendet werden.",
+      "collectHeading": "Welche Daten wir erfassen",
+      "collectBody": "Für Veranstalter: Name, Messenger-Konto, Zeitzone sowie die veröffentlichten Angebote und Termine. Für Gäste: Anzeigename und Messenger-Konto zur Bestätigung und Verwaltung einer Buchung.",
+      "useHeading": "Wie wir die Daten verwenden",
+      "useBody": "Messenger-Konten werden bei der Buchung über das Messenger Login Widget verifiziert — Einmalcodes oder Passwörter werden nicht erfasst. Wir verwenden dein Messenger-Konto, um Buchungsbestätigungen und Stornierungslinks zu senden. Wir verkaufen keine personenbezogenen Daten.",
+      "analyticsHeading": "Analyse und Fehlerüberwachung",
+      "analyticsBody": "Wir verwenden PostHog für Produktanalysen (Seitenaufrufe und Nutzung von Funktionen) und Sentry zur Fehlerüberwachung (Absturzberichte und Leistungsmessungen). PostHog-Sitzungsaufzeichnungen sind aktiviert, wobei alle Eingabefelder maskiert werden. Daher erscheinen eingegebene personenbezogene Daten nicht in den Aufzeichnungen. Angemeldete Veranstalter werden anhand einer internen ID identifiziert, damit ihre Aktivitäten gruppiert werden können; Gäste werden in der Analyse nicht identifiziert. Keiner der beiden Dienste erhält deine Messenger-Zugangsdaten.",
+      "analyticsCookies": "Analyse-Cookies sind standardmäßig deaktiviert und werden erst geladen, nachdem du sie im Cookie-Banner akzeptiert hast. Wenn du sie ablehnst oder das Banner ignorierst, wird PostHog nicht initialisiert und es werden keine Analyse-Cookies gesetzt. Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv und benötigen keine Einwilligung. Die Fehlerüberwachung von Sentry funktioniert ohne Cookies. Du kannst deine Auswahl jederzeit ändern, indem du die Daten dieser Website in deinem Browser löschst.",
+      "retentionHeading": "Aufbewahrung",
+      "retentionBody": "Buchungsdaten werden aufbewahrt, damit Veranstalter ihren Verlauf einsehen können. Gäste können eine Buchung jederzeit über ihren Verwaltungslink stornieren.",
+      "contactHeading": "Kontakt",
+      "contactBody": "Fragen zum Datenschutz kannst du an den Veranstalter richten, bei dem du gebucht hast, oder an das Team von CountMeIn."
+    }
+  },
+  "Auth": {
+    "login": {
+      "welcomeBack": "Willkommen zurück",
+      "description": "Melde dich mit deinem Telegram-Konto an.",
+      "newHere": "Neu bei CountMeIn?",
+      "createAccount": "Konto erstellen",
+      "noAccountFound": "Kein Konto gefunden. Erstelle bitte zuerst ein Konto.",
+      "sameAccount": "Verwende dasselbe Telegram-Konto wie bei deiner Registrierung.",
+      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support."
+    },
+    "signup": {
+      "title": "Konto erstellen",
+      "description": "Richte dein Veranstalterprofil in zwei kurzen Schritten ein.",
+      "alreadyHave": "Du hast bereits ein Konto?",
+      "logIn": "Anmelden",
+      "stepTelegram": "Telegram",
+      "stepProfile": "Profil",
+      "accountExists": "Das Konto besteht bereits. Du wirst angemeldet…",
+      "authenticate": "Authentifiziere dich mit Telegram, um fortzufahren.",
+      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support.",
+      "displayName": "Anzeigename",
+      "namePlaceholder": "Studio Demo",
+      "publicHandle": "Öffentlicher Kurzname",
+      "slugPlaceholder": "studio-demo",
+      "slugHint": "Diesen Link teilst du mit deinen Gästen.",
+      "timezone": "Zeitzone",
+      "selectTimezone": "Zeitzone auswählen",
+      "timezoneHint": "Alle deine Termine werden in dieser Zeitzone angezeigt.",
+      "creating": "Konto wird erstellt…",
+      "continue": "Weiter",
+      "signInFailed": "Du konntest nicht angemeldet werden — authentifiziere dich erneut mit Telegram",
+      "createFailed": "Das Konto konnte nicht erstellt werden"
+    },
+    "loginLink": {
+      "opening": "Einen Moment, wir öffnen deinen Veranstalterbereich.",
+      "continue": "Weiter zum Veranstalterbereich"
+    }
+  },
+  "NotFound": {
+    "title": "Seite nicht gefunden",
+    "description": "Wir konnten die gesuchte Seite nicht finden. Sie wurde möglicherweise verschoben oder der Link ist nicht mehr gültig.",
+    "backHome": "Zur Startseite",
+    "findMyBooking": "Meine Buchung finden"
+  },
+  "GlobalError": {
+    "title": "Etwas ist schiefgelaufen",
+    "description": "Bei uns ist ein unerwarteter Fehler aufgetreten. Bitte versuche es gleich noch einmal.",
+    "tryAgain": "Erneut versuchen",
+    "backHome": "Zur Startseite"
+  },
+  "CookieConsent": {
+    "ariaLabel": "Cookie-Einwilligung",
+    "text": "Wir verwenden Analyse-Cookies, um zu verstehen, wie CountMeIn genutzt wird, und um den Dienst zu verbessern. ",
+    "essential": "Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv. ",
+    "privacyPolicy": "Datenschutzerklärung",
+    "reject": "Ablehnen",
+    "accept": "Akzeptieren"
+  },
+  "Ui": {
+    "close": "Schließen",
+    "navigation": "Navigation",
+    "loading": "Wird geladen",
+    "more": "Mehr",
+    "sidebar": "Seitenleiste",
+    "sidebarDescription": "Zeigt die mobile Seitenleiste an.",
+    "toggleSidebar": "Seitenleiste ein-/ausblenden",
+    "wrongImageType": "Verwende ein Bild im Format JPEG, PNG oder WebP",
+    "imageTooLarge": "Das Bild muss kleiner als {size} sein",
+    "breadcrumb": "Navigationspfad",
+    "compressFailed": "Das Bild konnte nicht ausreichend komprimiert werden — versuche es mit einem anderen",
+    "uploadFailed": "Hochladen fehlgeschlagen — versuche es erneut"
+  },
+  "Cabinet": {
+    "crumbs": {
+      "cabinet": "Veranstalterbereich",
+      "overview": "Übersicht",
+      "services": "Angebote",
+      "slots": "Termine",
+      "calendar": "Kalender",
+      "bookings": "Buchungen",
+      "analytics": "Analyse",
+      "settings": "Einstellungen",
+      "new": "Neu"
+    },
+    "common": {
+      "deletedService": "Gelöschtes Angebot",
+      "session": "Termin",
+      "seats": "{count, plural, =1 {# Platz} other {# Plätze}}",
+      "min": "{minutes} Min.",
+      "left": "Noch {count}",
+      "confirmed": "Bestätigt",
+      "cancelled": "Storniert",
+      "viewAll": "Alle anzeigen",
+      "open": "Frei",
+      "preview": "Vorschau",
+      "edit": "Bearbeiten",
+      "view": "Ansehen",
+      "cancel": "Abbrechen",
+      "saving": "Wird gespeichert...",
+      "close": "Schließen",
+      "full": "Ausgebucht"
+    },
+    "sidebar": {
+      "subtitle": "Veranstalter",
+      "manage": "Verwalten",
+      "public": "Öffentlich",
+      "viewPublicPage": "Öffentliche Seite ansehen",
+      "support": "Support",
+      "contact": "Kontakt",
+      "language": "Sprache",
+      "demoNote": "Du siehst einen Demo-Veranstalterbereich.",
+      "signUp": "Registrieren",
+      "logIn": "Anmelden",
+      "myAccount": "Mein Konto",
+      "profile": "Profil",
+      "logOut": "Abmelden",
+      "nav": {
+        "overview": "Übersicht",
+        "services": "Angebote",
+        "slots": "Termine",
+        "calendar": "Kalender",
+        "bookings": "Buchungen",
+        "analytics": "Analyse",
+        "settings": "Einstellungen"
+      }
+    },
+    "overview": {
+      "welcomeBack": "Willkommen zurück, {name}",
+      "welcomeFallback": "Willkommen zurück",
+      "subtitle": "Hier siehst du, was bei deinen Buchungen gerade passiert.",
+      "newService": "Neues Angebot",
+      "statConfirmed": "Bestätigte Buchungen",
+      "statSeats": "Gebuchte Plätze",
+      "statSlots": "Bevorstehende Termine",
+      "statFillRate": "Auslastung",
+      "last7Days": "{count} in den letzten 7 Tagen",
+      "next7Days": "{count} in den nächsten 7 Tagen",
+      "acrossUpcoming": "bei bevorstehenden Terminen",
+      "noUpcomingCapacity": "noch keine bevorstehende Kapazität",
+      "seatsTaken": "{booked} von {offered} Plätzen belegt",
+      "upcomingSlots": "Bevorstehende Termine",
+      "nextSessions": "Deine nächsten geplanten Termine.",
+      "createServiceFirst": "Erstelle ein Angebot und plane anschließend den ersten Termin.",
+      "nothingScheduled": "Noch nichts geplant — füge einen Termin hinzu, um Buchungen zu öffnen.",
+      "recentBookings": "Letzte Buchungen",
+      "slotBookings": "Buchungen für den Termin",
+      "latestActivity": "Letzte Aktivität.",
+      "sessionReservations": "Buchungen für den ausgewählten Termin.",
+      "noBookingsForSession": "Für diesen Termin gibt es noch keine Buchungen.",
+      "bookingsAppear": "Buchungen erscheinen hier, sobald ein Gast einen Platz reserviert.",
+      "yourPublicPage": "Deine öffentliche Seite",
+      "shareLink": "Teile diesen Link, damit Gäste deine Angebote ansehen und buchen können."
+    },
+    "dayFilter": {
+      "anyDay": "Beliebiger Tag",
+      "showEveryDay": "Alle Tage anzeigen",
+      "changeDay": "Nach {day} gefiltert. Tag ändern",
+      "filterByDay": "{entity} nach Tag filtern",
+      "showEveryBooking": "Alle Buchungen anzeigen",
+      "showEveryService": "Alle Angebote anzeigen",
+      "showEverySlot": "Alle Termine anzeigen"
+    },
+    "demoBanner": {
+      "readOnly": "Schreibgeschützte Demo.",
+      "text": "Dies sind Beispieldaten — die Bearbeitung ist deaktiviert und es wird nichts gespeichert.",
+      "createOwn": "Eigenen Bereich erstellen"
+    },
+    "booking": {
+      "details": "Buchungsdetails",
+      "service": "Angebot",
+      "when": "Wann",
+      "seats": "Plätze",
+      "options": "Optionen",
+      "cancelBooking": "Buchung stornieren",
+      "cancelling": "Wird storniert…",
+      "cancelTitle": "Diese Buchung stornieren?",
+      "cancelDescriptionBoth": "Die Buchung von {name} über {seats, plural, =1 {einen Platz} other {mehrere Plätze}} für {service} am {when} wird aufgehoben und die entsprechenden Plätze werden anderen Gästen angeboten. Dies kann nicht rückgängig gemacht werden.",
+      "cancelDescriptionService": "Die Buchung von {name} über {seats, plural, =1 {einen Platz} other {mehrere Plätze}} für {service} wird aufgehoben und die entsprechenden Plätze werden anderen Gästen angeboten. Dies kann nicht rückgängig gemacht werden.",
+      "cancelDescriptionWhen": "Die Buchung von {name} über {seats, plural, =1 {einen Platz} other {mehrere Plätze}} am {when} wird aufgehoben und die entsprechenden Plätze werden anderen Gästen angeboten. Dies kann nicht rückgängig gemacht werden.",
+      "cancelDescriptionPlain": "Die Buchung von {name} über {seats, plural, =1 {einen Platz} other {mehrere Plätze}} wird aufgehoben und die entsprechenden Plätze werden anderen Gästen angeboten. Dies kann nicht rückgängig gemacht werden.",
+      "keepBooking": "Buchung behalten",
+      "yesCancel": "Ja, stornieren",
+      "cancelledToast": "Buchung storniert",
+      "releasedToast": "Die Plätze von {name} wurden freigegeben.",
+      "cancelFailed": "Die Buchung konnte nicht storniert werden"
+    },
+    "slots": {
+      "title": "Termine",
+      "subtitle": "Plane Termine und behalte ihre Kapazität im Blick.",
+      "sessionsFor": "Termine für {service}.",
+      "noServicesYet": "Noch keine Angebote",
+      "noServicesDescription": "Termine gehören zu einem Angebot — erstelle zuerst eines und plane anschließend Termine dafür.",
+      "upcoming": "Bevorstehend ({count})",
+      "past": "Vergangen ({count})",
+      "addSlot": "Termin hinzufügen",
+      "pastSessions": "Vergangene Termine",
+      "upcomingSchedule": "Bevorstehende Termine",
+      "nothingRun": "Bisher hat noch nichts stattgefunden.",
+      "noUpcomingSessions": "Keine bevorstehenden Termine.",
+      "upcomingCount": "{count} {count, plural, =1 {bevorstehender Termin} other {bevorstehende Termine}}",
+      "pastCount": "{count} {count, plural, =1 {vergangener Termin} other {vergangene Termine}}",
+      "forServiceSuffix": " für {service}",
+      "nothingOnDay": "An diesem Tag gibt es nichts",
+      "noPastSessions": "Keine vergangenen Termine",
+      "nothingScheduled": "Nichts geplant",
+      "noUpcomingOnDay": "Keine bevorstehenden Termine am {day}",
+      "noPastOnDay": "Keine vergangenen Termine am {day}",
+      "sessionsMove": "Termine werden hier angezeigt, sobald ihre Startzeit verstrichen ist.",
+      "noUpcomingFor": "Für {service} gibt es noch keine bevorstehenden Termine.",
+      "addHint": "Füge einen Termin hinzu, damit Gäste ihn buchen können.",
+      "colService": "Angebot",
+      "colDateTime": "Datum und Uhrzeit",
+      "colCapacity": "Kapazität",
+      "colPrice": "Preis",
+      "colStatus": "Status",
+      "open": "Frei",
+      "fillingUp": "Fast ausgebucht",
+      "full": "Ausgebucht",
+      "left": "Noch {count}",
+      "slotActions": "Terminaktionen",
+      "editSlot": "Termin bearbeiten",
+      "viewBookings": "Buchungen ansehen",
+      "duplicate": "Duplizieren",
+      "cancelSlot": "Termin absagen",
+      "cancelTitle": "Diesen Termin absagen?",
+      "cancelDescriptionWithBookings": "Dieser Termin hat {count} {count, plural, =1 {gebuchten Platz} other {gebuchte Plätze}}. Wenn du ihn absagst, werden der Termin und alle zugehörigen Buchungen gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "cancelDescriptionPlain": "Der Termin wird entfernt und ist für Gäste nicht mehr sichtbar. Dies kann nicht rückgängig gemacht werden.",
+      "keepSlot": "Termin behalten",
+      "cancellingDialog": "Wird abgesagt...",
+      "cancelledToast": "Termin abgesagt",
+      "cancelFailed": "Der Termin konnte nicht abgesagt werden",
+      "dialogCreateTitle": "Termin hinzufügen",
+      "dialogCreateDescription": "Plane einen neuen Termin. Die Standardwerte werden aus dem Angebot übernommen.",
+      "dialogEditTitle": "Termin bearbeiten",
+      "dialogEditDescription": "Ändere, wann dieser Termin stattfindet und wie viele Plätze verfügbar sind.",
+      "dialogDuplicateTitle": "Termin duplizieren",
+      "dialogDuplicateDescription": "Derselbe Termin an einem neuen Datum. Passe vor dem Speichern alles Nötige an.",
+      "saveChanges": "Änderungen speichern",
+      "fieldService": "Angebot",
+      "selectService": "Angebot auswählen",
+      "fieldDate": "Datum",
+      "fieldTime": "Startzeit",
+      "fieldDuration": "Dauer",
+      "fieldCapacity": "Kapazität",
+      "fieldPrice": "Preis",
+      "pricePlaceholder": "$12",
+      "priceDescription": "Leer lassen, um den Standardwert des Angebots zu verwenden.",
+      "addedToast": "Termin hinzugefügt",
+      "updatedToast": "Termin aktualisiert",
+      "addFailed": "Der Termin konnte nicht hinzugefügt werden",
+      "updateFailed": "Der Termin konnte nicht aktualisiert werden"
+    },
+    "services": {
+      "title": "Angebote",
+      "subtitle": "Verwalte die Erlebnisse, die Gäste buchen können.",
+      "newService": "Neues Angebot",
+      "newTitle": "Neues Angebot",
+      "newSubtitle": "Erstelle ein Erlebnis, das Gäste buchen können.",
+      "noServicesYet": "Noch keine Angebote",
+      "noServicesDescription": "Erstelle dein erstes Angebot, damit Gäste etwas buchen können.",
+      "countBookings": "{count, plural, =1 {# Buchung} other {# Buchungen}}",
+      "details": "Details",
+      "detailsDescription": "Grundlegende Informationen, die Gäste sehen.",
+      "fieldTitle": "Titel",
+      "titlePlaceholder": "z. B. Vinyasa Flow am Morgen",
+      "fieldDescription": "Beschreibung",
+      "descriptionPlaceholder": "Beschreibe, was Gäste erwartet...",
+      "descriptionHint": "Wird auf der Angebotsseite angezeigt. Markdown wird nicht unterstützt.",
+      "fieldLocation": "Ort",
+      "locationPlaceholder": "z. B. Kralja Petra 123, Belgrad",
+      "locationHint": "Überschreibt den Ort aus deinem Profil, wenn angegeben.",
+      "fieldContact": "Kontakt",
+      "contactPlaceholder": "z. B. Telefon, E-Mail oder Social-Media-Link",
+      "contactHint": "Überschreibt den Kontakt aus deinem Profil, wenn angegeben.",
+      "defaults": "Standardwerte",
+      "defaultsDescription": "Werden auf neue Termine angewendet. Du kannst sie für jeden Termin überschreiben.",
+      "fieldPrice": "Preis",
+      "fieldCapacity": "Kapazität",
+      "fieldDuration": "Dauer (Min.)",
+      "groupBookings": "Gruppenbuchungen",
+      "groupBookingsDescription": "Wie viele Plätze ein Gast mit einer Buchung reservieren darf.",
+      "fieldMaxSeats": "Maximale Plätze pro Buchung",
+      "maxSeatsHint": "Setze den Wert auf 1, wenn nur Einzelbuchungen möglich sein sollen. Mit einer höheren Zahl kann ein Gast weitere Personen mitbringen, jedoch nie mehr als diese Anzahl auf einmal — so kann eine Person nicht alle Plätze eines Termins belegen.",
+      "optionsTitle": "Buchungsoptionen",
+      "optionsDescription": "Optionale Zusatzleistungen oder Auswahlmöglichkeiten, die Gäste bei der Buchung wählen.",
+      "addOption": "Option hinzufügen",
+      "optionPlaceholder": "z. B. Studio am Fluss",
+      "add": "Hinzufügen",
+      "removeOption": "{option} entfernen",
+      "selectionMode": "Auswahlmodus",
+      "singleChoice": "Einfachauswahl (Gast wählt eine Option)",
+      "multipleChoice": "Mehrfachauswahl (Gast wählt beliebig viele)",
+      "publish": "Veröffentlichen",
+      "publishDescription": "Änderungen an diesem Angebot speichern.",
+      "saveChanges": "Änderungen speichern",
+      "createService": "Angebot erstellen",
+      "deleteService": "Angebot löschen",
+      "deleting": "Wird gelöscht...",
+      "deleteTitle": "Dieses Angebot löschen?",
+      "deleteDescription": "{title} und alle zugehörigen Termine und Buchungen werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "keepService": "Angebot behalten",
+      "delete": "Löschen",
+      "coverPhoto": "Titelbild",
+      "coverHint": "Wird auf deiner öffentlichen Seite angezeigt.",
+      "uploading": "Wird hochgeladen...",
+      "replaceImage": "Bild ersetzen",
+      "uploadImage": "Bild hochladen",
+      "removeImage": "Bild entfernen",
+      "photoReady": "Foto ist bereit — zum Übernehmen speichern",
+      "serviceCover": "Titelbild des Angebots",
+      "createdToast": "Angebot erstellt",
+      "updatedToast": "Angebot aktualisiert",
+      "deletedToast": "Angebot gelöscht",
+      "createFailed": "Das Angebot konnte nicht erstellt werden",
+      "updateFailed": "Das Angebot konnte nicht aktualisiert werden",
+      "deleteFailed": "Das Angebot konnte nicht gelöscht werden",
+      "notFound": "Angebot nicht gefunden",
+      "backToList": "Zurück zu den Angeboten",
+      "pricePlaceholder": "$12",
+      "editSubtitle": "Details und Optionen des Angebots bearbeiten."
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "profile": "Profil",
+      "profileDescription": "So wirst du Gästen angezeigt.",
+      "uploading": "Wird hochgeladen...",
+      "changePhoto": "Foto ändern",
+      "photoUpdated": "Foto aktualisiert",
+      "displayName": "Anzeigename",
+      "publicPageUrl": "URL der öffentlichen Seite",
+      "edit": "Bearbeiten",
+      "copy": "Kopieren",
+      "linkCopied": "Link kopiert",
+      "slugFixed": "Die URL der Demoseite ist festgelegt.",
+      "slugEditable": "Deine öffentliche Buchungsseite. Klicke zum Ändern auf „Bearbeiten“ (alte Links funktionieren danach nicht mehr).",
+      "slugWarning": "Warnung: Durch diese Änderung funktionieren bereits mit Gästen geteilte Links nicht mehr.",
+      "bio": "Über mich",
+      "bioHint": "Wird oben auf deiner öffentlichen Seite angezeigt. Markdown wird unterstützt.",
+      "contact": "Kontakt",
+      "contactPlaceholder": "z. B. +381 64 123 4567 oder studio@example.com",
+      "contactHint": "Wird Gästen auf deiner öffentlichen Seite angezeigt. Telefon, E-Mail, Social-Media-Link usw.",
+      "timezone": "Zeitzone",
+      "location": "Ort",
+      "locationPlaceholder": "z. B. Belgrad, Serbien",
+      "locationHint": "Optional. Wird auf deiner öffentlichen Seite angezeigt und kann pro Angebot überschrieben werden.",
+      "saveChanges": "Änderungen speichern",
+      "noChanges": "Keine Änderungen zu speichern",
+      "updatedToast": "Profil aktualisiert",
+      "updateFailed": "Das Profil konnte nicht aktualisiert werden",
+      "loadFailed": "Dein Profil konnte nicht geladen werden — aktualisiere die Seite, um es erneut zu versuchen."
+    },
+    "bookings": {
+      "title": "Buchungen",
+      "subtitle": "Alle Buchungen für deine Angebote.",
+      "reservationsFor": "Buchungen für {label}.",
+      "all": "Alle",
+      "confirmed": "Bestätigt",
+      "cancelled": "Storniert",
+      "colGuest": "Gast",
+      "colService": "Angebot",
+      "colWhen": "Wann",
+      "colSeats": "Plätze",
+      "colStatus": "Status",
+      "searchPlaceholder": "Nach Gast oder Angebot suchen",
+      "noBookingsFound": "Keine Buchungen gefunden",
+      "noBookingsForSlot": "Für {label} gibt es noch keine Buchungen.",
+      "noBookingsForService": "Für {service} gibt es noch keine Buchungen.",
+      "bookingsAppear": "Buchungen erscheinen hier, sobald ein Gast einen Platz reserviert.",
+      "noBookingsOnDay": "Keine Buchungen am {day}",
+      "forServiceSuffix": " für {service}",
+      "tryFilters": "Passe deine Filter oder die Suche an."
+    },
+    "analytics": {
+      "title": "Analyse",
+      "subtitle": "Verfolge die Entwicklung deiner Buchungen.",
+      "totalBookings": "Buchungen insgesamt",
+      "seatsSold": "Gebuchte Plätze",
+      "avgFillRate": "Durchschn. Auslastung",
+      "cancellations": "Stornierungen",
+      "confirmedLast30": "in den letzten 30 Tagen bestätigt",
+      "bookingsInWindow": "{count, plural, =1 {# Buchung} other {# Buchungen}} im Zeitraum",
+      "bookingsThisWeek": "Buchungen in dieser Woche",
+      "bookingsThisWeekHint": "Bestätigte Buchungen und gebuchte Plätze pro Tag.",
+      "noBookingsYet": "Noch keine Buchungen — sie erscheinen hier, sobald ein Gast einen Platz reserviert.",
+      "byService": "Nach Angebot",
+      "byServiceHint": "Bestätigte Buchungen in den letzten 30 Tagen.",
+      "noBookings30": "Keine Buchungen in den letzten 30 Tagen.",
+      "trendAria": "Bestätigte Buchungen und gebuchte Plätze pro Tag in den letzten 7 Tagen",
+      "serviceAria": "Bestätigte Buchungen pro Angebot in den letzten 30 Tagen",
+      "upcomingSlotsCount": "{count, plural, =1 {# bevorstehender Termin} other {# bevorstehende Termine}}",
+      "bookingsLabel": "Buchungen",
+      "seatsLabel": "Plätze"
+    },
+    "calendar": {
+      "title": "Kalender",
+      "subtitle": "Deine Woche auf einen Blick — jeder Termin mit Startzeit und Dauer.",
+      "today": "Heute",
+      "previousWeek": "Vorherige Woche",
+      "nextWeek": "Nächste Woche",
+      "jumpToDate": "Zu einem Datum springen",
+      "jumpToWeek": "Zu einer Woche springen",
+      "open": "Frei",
+      "fillingUp": "Fast ausgebucht",
+      "full": "Ausgebucht",
+      "left": "Noch {count}"
+    }
+  },
+  "ApiErrors": {
+    "invalidInput": "Ungültige Eingabe",
+    "invalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
+    "ticketExpired": "Deine Telegram-Bestätigung ist abgelaufen — authentifiziere dich erneut",
+    "telegramNotConfigured": "Der Telegram-Bot ist nicht eingerichtet",
+    "telegramInvalid": "Ungültige Telegram-Authentifizierungsdaten",
+    "telegramValidationFailed": "Die Telegram-Authentifizierung konnte nicht validiert werden",
+    "authSessionExpired": "Die Authentifizierungssitzung ist abgelaufen — authentifiziere dich erneut mit Telegram",
+    "organizerNotFound": "Veranstalter nicht gefunden",
+    "demoNotSeeded": "Der Demo-Veranstalter wurde nicht angelegt",
+    "serviceNotFound": "Angebot nicht gefunden",
+    "slotNotFound": "Termin nicht gefunden",
+    "bookingNotFound": "Buchung nicht gefunden",
+    "photoPrefix": "Ungültige photoUrl: Die URL muss zu deinem Medienpräfix gehören",
+    "cannotCreateService": "Das Angebot konnte nicht erstellt werden",
+    "slugTaken": "Dieser öffentliche Kurzname ist bereits vergeben — wähle einen anderen",
+    "accountExists": "Für diese Telegram-Identität besteht bereits ein Konto — melde dich stattdessen an",
+    "nothingToUpdate": "Keine Felder zum Aktualisieren",
+    "capacityBelowBooked": "Die Kapazität darf nicht unter {count, plural, =1 {dem bereits gebuchten # Platz} other {den bereits gebuchten # Plätzen}} liegen",
+    "demoReadOnly": "Dies ist ein schreibgeschütztes Demokonto — registriere dich, um eigene buchbare Angebote zu erstellen.",
+    "soldOut": "Dieser Termin ist ausgebucht",
+    "seatsLeftOnSession": "Bei diesem Termin sind nur noch {count, plural, =1 {# Platz} other {# Plätze}} frei",
+    "partyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
+    "duplicateBooking": "Du hast für diesen Termin bereits eine Buchung",
+    "alreadyCancelled": "Diese Buchung wurde bereits storniert",
+    "slotGone": "Dieser Termin ist nicht mehr verfügbar"
+  }
+}

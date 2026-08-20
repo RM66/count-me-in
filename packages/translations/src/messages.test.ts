@@ -27,7 +27,7 @@ function leafPaths(node: TreeNode, prefix = ''): string[] {
 }
 
 describe('WEB_MESSAGES', () => {
-  for (const locale of ['ru', 'es'] as const) {
+  for (const locale of ['ru', 'es', 'de'] as const) {
     it(`${locale} has exactly the keys of en`, () => {
       expect(leafPaths(WEB_MESSAGES[locale] as TreeNode).sort()).toEqual(
         leafPaths(WEB_MESSAGES.en as TreeNode).sort(),
@@ -37,7 +37,7 @@ describe('WEB_MESSAGES', () => {
 })
 
 describe('NOTIFICATION_MESSAGES', () => {
-  for (const locale of ['ru', 'es'] as const) {
+  for (const locale of ['ru', 'es', 'de'] as const) {
     it(`${locale} has exactly the keys of en`, () => {
       expect(leafPaths(NOTIFICATION_MESSAGES[locale] as TreeNode).sort()).toEqual(
         leafPaths(NOTIFICATION_MESSAGES.en as TreeNode).sort(),

@@ -131,7 +131,7 @@ describe('notificationLocale', () => {
     const badView = {
       ...view,
       organizer: { ...organizer, language: 'fr' } as Organizer,
-      booking: { ...booking, guestLocale: 'de' } as Booking,
+      booking: { ...booking, guestLocale: 'it' } as Booking,
     }
     expect(notificationLocale('organizer', badView)).toBe(DEFAULT_LOCALE)
     expect(notificationLocale('guest', badView)).toBe(DEFAULT_LOCALE)
@@ -211,6 +211,18 @@ describe('bookingCreatedForOrganizer', () => {
     expect(many.text).toContain('2 plazas')
     expect(many.button?.text).toBe('Abrir en el panel')
   })
+
+  it('renders the German copy with correct plural forms', () => {
+    const deView = { ...view, organizer: { ...organizer, language: 'de' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...deView, booking: { ...booking, seats: 1 } }, 'u', 'de')
+    expect(one.text).toContain('Neue Buchung')
+    expect(one.text).toContain('1 Platz')
+
+    const many = bookingCreatedForOrganizer({ ...deView, booking: { ...booking, seats: 2 } }, 'u', 'de')
+    expect(many.text).toContain('2 Plätze')
+    expect(many.button?.text).toBe('Im Veranstalterbereich öffnen')
+  })
 })
 
 // ── bookingCreatedForGuest ────────────────────────────────────────────────────
@@ -261,6 +273,18 @@ describe('bookingCreatedForGuest', () => {
     expect(msg.text).toContain('Estudio Loto')
     expect(msg.button?.text).toBe('Gestionar mi reserva')
   })
+
+  it('renders German with the guest locale', () => {
+    const deView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'de' } as Booking,
+      organizer: { ...organizer, name: 'Studio Lotus' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(deView, 'https://app/booking/token', 'de')
+    expect(msg.text).toContain('Buchung bestätigt')
+    expect(msg.text).toContain('Studio Lotus')
+    expect(msg.button?.text).toBe('Meine Buchung verwalten')
+  })
 })
 
 // ── bookingCancelledForOrganizer ─────────────────────────────────────────────
@@ -295,6 +319,14 @@ describe('bookingCancelledForOrganizer', () => {
     expect(msg.text).toContain('8 plazas libres')
     expect(msg.button?.text).toBe('Abrir en el panel')
   })
+
+  it('renders German', () => {
+    const deView = { ...view, organizer: { ...organizer, language: 'de' } as Organizer }
+    const msg = bookingCancelledForOrganizer(deView, 'https://app/cabinet', 'de')
+    expect(msg.text).toContain('Buchung storniert')
+    expect(msg.text).toContain('8 Plätze')
+    expect(msg.button?.text).toBe('Im Veranstalterbereich öffnen')
+  })
 })
 
 // ── bookingCancelledForGuest ──────────────────────────────────────────────────
@@ -321,6 +353,13 @@ describe('bookingCancelledForGuest', () => {
     expect(msg.text).toContain('Tu reserva se ha cancelado')
     expect(msg.text).toContain('por Yoga Studio')
     expect(msg.button?.text).toBe('Ver otras sesiones')
+  })
+
+  it('renders German', () => {
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'de')
+    expect(msg.text).toContain('Deine Buchung wurde storniert')
+    expect(msg.text).toContain('von Yoga Studio')
+    expect(msg.button?.text).toBe('Andere Termine ansehen')
   })
 })
 

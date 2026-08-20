@@ -14,7 +14,7 @@ import { z } from 'zod'
  * `packages/translations`.
  */
 
-export const LOCALES = ['en', 'ru', 'es'] as const
+export const LOCALES = ['en', 'ru', 'es', 'de'] as const
 
 export const appLocaleEnum = z.enum(LOCALES)
 export type AppLocale = z.infer<typeof appLocaleEnum>
