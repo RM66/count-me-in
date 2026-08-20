@@ -44,7 +44,8 @@ describe('createBookingInput', () => {
   it('accepts a supported guestLocale and rejects others', () => {
     expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'ru' }).success).toBe(true)
     expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'fr' }).success).toBe(true)
-    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'pt' }).success).toBe(
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'pt' }).success).toBe(true)
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'nl' }).success).toBe(
       false,
     )
   })

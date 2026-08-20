@@ -6,12 +6,14 @@ import messagesEn from '../messages/en.json'
 import messagesEs from '../messages/es.json'
 import messagesFr from '../messages/fr.json'
 import messagesJa from '../messages/ja.json'
+import messagesPt from '../messages/pt.json'
 import messagesRu from '../messages/ru.json'
 import notificationsDe from '../notifications/de.json'
 import notificationsEn from '../notifications/en.json'
 import notificationsEs from '../notifications/es.json'
 import notificationsFr from '../notifications/fr.json'
 import notificationsJa from '../notifications/ja.json'
+import notificationsPt from '../notifications/pt.json'
 import notificationsRu from '../notifications/ru.json'
 
 /**
@@ -46,6 +48,7 @@ export const WEB_MESSAGES = {
   de: messagesDe,
   ja: messagesJa,
   fr: messagesFr,
+  pt: messagesPt,
 } as const satisfies Record<AppLocale, unknown>
 
 export const NOTIFICATION_MESSAGES = {
@@ -55,6 +58,7 @@ export const NOTIFICATION_MESSAGES = {
   de: notificationsDe,
   ja: notificationsJa,
   fr: notificationsFr,
+  pt: notificationsPt,
 } as const satisfies Record<AppLocale, unknown>
 
 /** The web UI message shape shared by every locale; English keys are the source of truth. */

@@ -130,7 +130,7 @@ describe('notificationLocale', () => {
   it('falls back to English for unknown stored values', () => {
     const badView = {
       ...view,
-      organizer: { ...organizer, language: 'pt' } as Organizer,
+      organizer: { ...organizer, language: 'nl' } as Organizer,
       booking: { ...booking, guestLocale: 'it' } as Booking,
     }
     expect(notificationLocale('organizer', badView)).toBe(DEFAULT_LOCALE)
@@ -247,6 +247,18 @@ describe('bookingCreatedForOrganizer', () => {
     expect(many.text).toContain('2 places')
     expect(many.button?.text).toBe('Ouvrir dans mon espace')
   })
+
+  it('renders the Portuguese copy with correct plural forms', () => {
+    const ptView = { ...view, organizer: { ...organizer, language: 'pt' } as Organizer }
+
+    const one = bookingCreatedForOrganizer({ ...ptView, booking: { ...booking, seats: 1 } }, 'u', 'pt')
+    expect(one.text).toContain('Nova reserva')
+    expect(one.text).toContain('1 vaga')
+
+    const many = bookingCreatedForOrganizer({ ...ptView, booking: { ...booking, seats: 2 } }, 'u', 'pt')
+    expect(many.text).toContain('2 vagas')
+    expect(many.button?.text).toBe('Abrir no painel')
+  })
 })
 
 // ── bookingCreatedForGuest ────────────────────────────────────────────────────
@@ -333,6 +345,18 @@ describe('bookingCreatedForGuest', () => {
     expect(msg.text).toContain('Studio Lotus')
     expect(msg.button?.text).toBe('Gérer ma réservation')
   })
+
+  it('renders Portuguese with the guest locale', () => {
+    const ptView = {
+      ...view,
+      booking: { ...booking, guestLocale: 'pt' } as Booking,
+      organizer: { ...organizer, name: 'Estúdio Lótus' } as Organizer,
+    }
+    const msg = bookingCreatedForGuest(ptView, 'https://app/booking/token', 'pt')
+    expect(msg.text).toContain('Reserva confirmada')
+    expect(msg.text).toContain('Estúdio Lótus')
+    expect(msg.button?.text).toBe('Gerenciar minha reserva')
+  })
 })
 
 // ── bookingCancelledForOrganizer ─────────────────────────────────────────────
@@ -391,6 +415,14 @@ describe('bookingCancelledForOrganizer', () => {
     expect(msg.text).toContain('8 places')
     expect(msg.button?.text).toBe('Ouvrir dans mon espace')
   })
+
+  it('renders Portuguese', () => {
+    const ptView = { ...view, organizer: { ...organizer, language: 'pt' } as Organizer }
+    const msg = bookingCancelledForOrganizer(ptView, 'https://app/cabinet', 'pt')
+    expect(msg.text).toContain('Reserva cancelada')
+    expect(msg.text).toContain('8 vagas')
+    expect(msg.button?.text).toBe('Abrir no painel')
+  })
 })
 
 // ── bookingCancelledForGuest ──────────────────────────────────────────────────
@@ -438,6 +470,13 @@ describe('bookingCancelledForGuest', () => {
     expect(msg.text).toContain('Ta réservation a été annulée')
     expect(msg.text).toContain('par Yoga Studio')
     expect(msg.button?.text).toBe('Voir les autres séances')
+  })
+
+  it('renders Portuguese', () => {
+    const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'pt')
+    expect(msg.text).toContain('Sua reserva foi cancelada')
+    expect(msg.text).toContain('por Yoga Studio')
+    expect(msg.button?.text).toBe('Ver outras sessões')
   })
 })
 
