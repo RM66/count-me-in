@@ -75,7 +75,10 @@ export function bookingErrorResponse(
     )
   }
   if (error instanceof DuplicateBookingError) {
-    return NextResponse.json({ error: t('duplicateBooking'), code: 'duplicate_booking' }, { status: 409 })
+    return NextResponse.json(
+      { error: t('duplicateBooking'), code: 'duplicate_booking' },
+      { status: 409 },
+    )
   }
   if (error instanceof BookingAlreadyCancelledError) {
     return NextResponse.json({ error: t('alreadyCancelled') }, { status: 409 })

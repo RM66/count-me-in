@@ -82,7 +82,11 @@ export function ServicePhotoField({
           disabled={upload.isUploading || disabled}
         >
           <ImageIcon data-icon="inline-start" />
-          {upload.isUploading ? t('uploading') : photoUrl.value ? t('replaceImage') : t('uploadImage')}
+          {upload.isUploading
+            ? t('uploading')
+            : photoUrl.value
+              ? t('replaceImage')
+              : t('uploadImage')}
         </Button>
 
         {photoUrl.value && !disabled && (

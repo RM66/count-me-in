@@ -61,7 +61,9 @@ function DialogContent({
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" className="absolute top-4 end-4 bg-secondary" size="icon-sm">
               <XIcon />
-              <span className="sr-only"><UiCloseLabel /></span>
+              <span className="sr-only">
+                <UiCloseLabel />
+              </span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -93,7 +95,9 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline"><UiCloseLabel /></Button>
+          <Button variant="outline">
+            <UiCloseLabel />
+          </Button>
         </DialogPrimitive.Close>
       )}
     </div>
@@ -138,7 +142,6 @@ export {
   DialogTitle,
   DialogTrigger,
 }
-
 
 function UiCloseLabel() {
   const t = useTranslations('Ui')

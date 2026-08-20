@@ -1,6 +1,6 @@
 'use client'
 
-import { type AppLocale,DEFAULT_LOCALE, isAppLocale } from '@repo/contracts'
+import { type AppLocale, DEFAULT_LOCALE, isAppLocale } from '@repo/contracts'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'

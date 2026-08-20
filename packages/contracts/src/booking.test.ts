@@ -46,9 +46,7 @@ describe('createBookingInput', () => {
     expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'fr' }).success).toBe(true)
     expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'pt' }).success).toBe(true)
     expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'ar' }).success).toBe(true)
-    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'nl' }).success).toBe(
-      false,
-    )
+    expect(createBookingInput.safeParse({ ...validPayload, guestLocale: 'nl' }).success).toBe(false)
   })
 })
 

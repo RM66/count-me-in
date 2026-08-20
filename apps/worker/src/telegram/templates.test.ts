@@ -189,25 +189,45 @@ describe('bookingCreatedForOrganizer', () => {
   it('renders the Russian copy with correct plural forms', () => {
     const ruView = { ...view, organizer: { ...organizer, language: 'ru' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 1 } }, 'u', 'ru')
+    const one = bookingCreatedForOrganizer(
+      { ...ruView, booking: { ...booking, seats: 1 } },
+      'u',
+      'ru',
+    )
     expect(one.text).toContain('Новое бронирование')
     expect(one.text).toContain('1 место')
 
-    const few = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 2 } }, 'u', 'ru')
+    const few = bookingCreatedForOrganizer(
+      { ...ruView, booking: { ...booking, seats: 2 } },
+      'u',
+      'ru',
+    )
     expect(few.text).toContain('2 места')
 
-    const many = bookingCreatedForOrganizer({ ...ruView, booking: { ...booking, seats: 5 } }, 'u', 'ru')
+    const many = bookingCreatedForOrganizer(
+      { ...ruView, booking: { ...booking, seats: 5 } },
+      'u',
+      'ru',
+    )
     expect(many.text).toContain('5 мест')
   })
 
   it('renders the Spanish copy with correct plural forms', () => {
     const esView = { ...view, organizer: { ...organizer, language: 'es' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...esView, booking: { ...booking, seats: 1 } }, 'u', 'es')
+    const one = bookingCreatedForOrganizer(
+      { ...esView, booking: { ...booking, seats: 1 } },
+      'u',
+      'es',
+    )
     expect(one.text).toContain('Nueva reserva')
     expect(one.text).toContain('1 plaza')
 
-    const many = bookingCreatedForOrganizer({ ...esView, booking: { ...booking, seats: 2 } }, 'u', 'es')
+    const many = bookingCreatedForOrganizer(
+      { ...esView, booking: { ...booking, seats: 2 } },
+      'u',
+      'es',
+    )
     expect(many.text).toContain('2 plazas')
     expect(many.button?.text).toBe('Abrir en el panel')
   })
@@ -215,11 +235,19 @@ describe('bookingCreatedForOrganizer', () => {
   it('renders the German copy with correct plural forms', () => {
     const deView = { ...view, organizer: { ...organizer, language: 'de' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...deView, booking: { ...booking, seats: 1 } }, 'u', 'de')
+    const one = bookingCreatedForOrganizer(
+      { ...deView, booking: { ...booking, seats: 1 } },
+      'u',
+      'de',
+    )
     expect(one.text).toContain('Neue Buchung')
     expect(one.text).toContain('1 Platz')
 
-    const many = bookingCreatedForOrganizer({ ...deView, booking: { ...booking, seats: 2 } }, 'u', 'de')
+    const many = bookingCreatedForOrganizer(
+      { ...deView, booking: { ...booking, seats: 2 } },
+      'u',
+      'de',
+    )
     expect(many.text).toContain('2 Plätze')
     expect(many.button?.text).toBe('Im Veranstalterbereich öffnen')
   })
@@ -227,11 +255,19 @@ describe('bookingCreatedForOrganizer', () => {
   it('renders the Japanese copy with localized counters', () => {
     const jaView = { ...view, organizer: { ...organizer, language: 'ja' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...jaView, booking: { ...booking, seats: 1 } }, 'u', 'ja')
+    const one = bookingCreatedForOrganizer(
+      { ...jaView, booking: { ...booking, seats: 1 } },
+      'u',
+      'ja',
+    )
     expect(one.text).toContain('新しい予約')
     expect(one.text).toContain('1名')
 
-    const many = bookingCreatedForOrganizer({ ...jaView, booking: { ...booking, seats: 2 } }, 'u', 'ja')
+    const many = bookingCreatedForOrganizer(
+      { ...jaView, booking: { ...booking, seats: 2 } },
+      'u',
+      'ja',
+    )
     expect(many.text).toContain('2名')
     expect(many.button?.text).toBe('管理画面で開く')
   })
@@ -239,11 +275,19 @@ describe('bookingCreatedForOrganizer', () => {
   it('renders the French copy with correct plural forms', () => {
     const frView = { ...view, organizer: { ...organizer, language: 'fr' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...frView, booking: { ...booking, seats: 1 } }, 'u', 'fr')
+    const one = bookingCreatedForOrganizer(
+      { ...frView, booking: { ...booking, seats: 1 } },
+      'u',
+      'fr',
+    )
     expect(one.text).toContain('Nouvelle réservation')
     expect(one.text).toContain('1 place')
 
-    const many = bookingCreatedForOrganizer({ ...frView, booking: { ...booking, seats: 2 } }, 'u', 'fr')
+    const many = bookingCreatedForOrganizer(
+      { ...frView, booking: { ...booking, seats: 2 } },
+      'u',
+      'fr',
+    )
     expect(many.text).toContain('2 places')
     expect(many.button?.text).toBe('Ouvrir dans mon espace')
   })
@@ -251,11 +295,19 @@ describe('bookingCreatedForOrganizer', () => {
   it('renders the Portuguese copy with correct plural forms', () => {
     const ptView = { ...view, organizer: { ...organizer, language: 'pt' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...ptView, booking: { ...booking, seats: 1 } }, 'u', 'pt')
+    const one = bookingCreatedForOrganizer(
+      { ...ptView, booking: { ...booking, seats: 1 } },
+      'u',
+      'pt',
+    )
     expect(one.text).toContain('Nova reserva')
     expect(one.text).toContain('1 vaga')
 
-    const many = bookingCreatedForOrganizer({ ...ptView, booking: { ...booking, seats: 2 } }, 'u', 'pt')
+    const many = bookingCreatedForOrganizer(
+      { ...ptView, booking: { ...booking, seats: 2 } },
+      'u',
+      'pt',
+    )
     expect(many.text).toContain('2 vagas')
     expect(many.button?.text).toBe('Abrir no painel')
   })
@@ -263,17 +315,33 @@ describe('bookingCreatedForOrganizer', () => {
   it('renders the Arabic copy with locale-specific plural forms', () => {
     const arView = { ...view, organizer: { ...organizer, language: 'ar' } as Organizer }
 
-    const one = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 1 } }, 'u', 'ar')
+    const one = bookingCreatedForOrganizer(
+      { ...arView, booking: { ...booking, seats: 1 } },
+      'u',
+      'ar',
+    )
     expect(one.text).toContain('حجز جديد')
     expect(one.text).toContain('مكان واحد')
 
-    const two = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 2 } }, 'u', 'ar')
+    const two = bookingCreatedForOrganizer(
+      { ...arView, booking: { ...booking, seats: 2 } },
+      'u',
+      'ar',
+    )
     expect(two.text).toContain('مكانان')
 
-    const few = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 3 } }, 'u', 'ar')
+    const few = bookingCreatedForOrganizer(
+      { ...arView, booking: { ...booking, seats: 3 } },
+      'u',
+      'ar',
+    )
     expect(few.text).toContain('3 أماكن')
 
-    const many = bookingCreatedForOrganizer({ ...arView, booking: { ...booking, seats: 11 } }, 'u', 'ar')
+    const many = bookingCreatedForOrganizer(
+      { ...arView, booking: { ...booking, seats: 11 } },
+      'u',
+      'ar',
+    )
     expect(many.text).toContain('11 مكانًا')
     expect(many.button?.text).toBe('فتح في لوحة التحكم')
   })
@@ -484,7 +552,7 @@ describe('bookingCancelledForGuest', () => {
 
   it('renders Spanish', () => {
     const msg = bookingCancelledForGuest(view, 'https://app/yoga-studio', 'es')
-    expect(msg.text).toContain('Tu reserva se ha cancelado')
+    expect(msg.text).toContain('Tu reserva ha sido cancelada')
     expect(msg.text).toContain('por Yoga Studio')
     expect(msg.button?.text).toBe('Ver otras sesiones')
   })

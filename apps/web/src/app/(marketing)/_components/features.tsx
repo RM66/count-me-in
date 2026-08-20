@@ -6,12 +6,12 @@ const ICONS = [Users, LinkIcon, MessageCircle, Layers, CalendarDays, ShieldCheck
 export async function Features() {
   const t = await getTranslations('Marketing.features')
 
-  const features = (
-    t.raw('items') as Array<{ title: string; body: string }>
-  ).map((item, index) => ({
-    ...item,
-    icon: ICONS[index % ICONS.length],
-  }))
+  const features = (t.raw('items') as Array<{ title: string; body: string }>).map(
+    (item, index) => ({
+      ...item,
+      icon: ICONS[index % ICONS.length],
+    }),
+  )
 
   return (
     <section id="features" className="mx-auto max-w-6xl px-6 py-16 sm:py-20">

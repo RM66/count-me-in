@@ -103,9 +103,18 @@ export function BookingDetailsSheet({
 
   const cancelDescription = booking
     ? service && when
-      ? t('cancelDescriptionBoth', { name: booking.guestName, seats: booking.seats, service: service.title, when })
+      ? t('cancelDescriptionBoth', {
+          name: booking.guestName,
+          seats: booking.seats,
+          service: service.title,
+          when,
+        })
       : service
-        ? t('cancelDescriptionService', { name: booking.guestName, seats: booking.seats, service: service.title })
+        ? t('cancelDescriptionService', {
+            name: booking.guestName,
+            seats: booking.seats,
+            service: service.title,
+          })
         : when
           ? t('cancelDescriptionWhen', { name: booking.guestName, seats: booking.seats, when })
           : t('cancelDescriptionPlain', { name: booking.guestName, seats: booking.seats })

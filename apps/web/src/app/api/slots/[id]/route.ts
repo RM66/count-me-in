@@ -66,7 +66,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
     }
     // `409` — the payload is well-formed, it conflicts with current state.
     if (error instanceof SlotCapacityBelowBookedError) {
-      return NextResponse.json({ error: t('capacityBelowBooked', { count: error.bookedCount }) }, { status: 409 })
+      return NextResponse.json(
+        { error: t('capacityBelowBooked', { count: error.bookedCount }) },
+        { status: 409 },
+      )
     }
     throw error
   }

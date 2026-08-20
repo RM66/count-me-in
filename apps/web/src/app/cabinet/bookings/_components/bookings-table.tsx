@@ -151,7 +151,9 @@ export function BookingsTable({
             )
           )}
 
-          {state.day && <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.setDay('')} />}
+          {state.day && (
+            <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.setDay('')} />
+          )}
         </div>
 
         <div className="flex items-center gap-2">

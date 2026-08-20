@@ -167,9 +167,7 @@ export function bookingCreatedForOrganizer(
     guestContactLine(view.booking),
     ...bookingLines(view, t, locale),
     '',
-    left === 0
-      ? t('createdOrganizer.full')
-      : t('createdOrganizer.stillFree', { count: left }),
+    left === 0 ? t('createdOrganizer.full') : t('createdOrganizer.stillFree', { count: left }),
   ].join('\n')
 
   return { text, button: { text: t('createdOrganizer.button'), url: cabinetUrl } }

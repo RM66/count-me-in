@@ -8,7 +8,9 @@ import { cn } from '@/lib/utils'
 function Breadcrumb({ className, ...props }: ComponentProps<'nav'>) {
   const t = useTranslations('Ui')
 
-  return <nav aria-label={t('breadcrumb')} data-slot="breadcrumb" className={cn(className)} {...props} />
+  return (
+    <nav aria-label={t('breadcrumb')} data-slot="breadcrumb" className={cn(className)} {...props} />
+  )
 }
 
 function BreadcrumbList({ className, ...props }: ComponentProps<'ol'>) {

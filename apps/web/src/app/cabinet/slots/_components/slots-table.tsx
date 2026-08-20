@@ -105,7 +105,10 @@ export function SlotsTable({
     )
   }
 
-  const FILL_BADGE: Record<SlotFill, { label: string; variant: 'secondary' | 'outline' | 'default' }> = {
+  const FILL_BADGE: Record<
+    SlotFill,
+    { label: string; variant: 'secondary' | 'outline' | 'default' }
+  > = {
     open: { label: t('open'), variant: 'outline' },
     filling: { label: t('fillingUp'), variant: 'default' },
     full: { label: t('full'), variant: 'secondary' },
@@ -132,7 +135,9 @@ export function SlotsTable({
             <ToggleGroupItem value="upcoming">
               {t('upcoming', { count: state.upcoming.length })}
             </ToggleGroupItem>
-            <ToggleGroupItem value="past">{t('past', { count: state.past.length })}</ToggleGroupItem>
+            <ToggleGroupItem value="past">
+              {t('past', { count: state.past.length })}
+            </ToggleGroupItem>
           </ToggleGroup>
 
           {/*
@@ -147,7 +152,9 @@ export function SlotsTable({
             />
           )}
 
-          {state.day && <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.selectDay('')} />}
+          {state.day && (
+            <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.selectDay('')} />
+          )}
         </div>
 
         <div className="flex items-center gap-2">

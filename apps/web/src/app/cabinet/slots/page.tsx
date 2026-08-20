@@ -51,10 +51,7 @@ export default async function SlotsPage({
           { label: tcrumbs('cabinet'), href: '/cabinet' },
           // Filtered by a service? Then "Slots" is a step back to the full list.
           ...(activeService
-            ? [
-                { label: tcrumbs('slots'), href: '/cabinet/slots' },
-                { label: activeService.title },
-              ]
+            ? [{ label: tcrumbs('slots'), href: '/cabinet/slots' }, { label: activeService.title }]
             : [{ label: tcrumbs('slots') }]),
         ]}
       />

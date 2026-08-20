@@ -6,9 +6,10 @@ const ICONS = [UserPlus, CalendarPlus, Share2, PhoneCall] as const
 export async function HowItWorks() {
   const t = await getTranslations('Marketing.howItWorks')
 
-  const steps = (t.raw('items') as Array<{ title: string; body: string }>).map(
-    (item, index) => ({ ...item, icon: ICONS[index % ICONS.length] }),
-  )
+  const steps = (t.raw('items') as Array<{ title: string; body: string }>).map((item, index) => ({
+    ...item,
+    icon: ICONS[index % ICONS.length],
+  }))
 
   return (
     <section id="how-it-works" className="border-t bg-muted/30">

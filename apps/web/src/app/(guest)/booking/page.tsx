@@ -71,7 +71,11 @@ export default function FindBookingPage() {
                       }),
                     )
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message || t('lookupFailed') : t('lookupFailed'))
+                    toast.error(
+                      error instanceof Error
+                        ? error.message || t('lookupFailed')
+                        : t('lookupFailed'),
+                    )
                   }
                 }}
               />

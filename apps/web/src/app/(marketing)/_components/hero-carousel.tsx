@@ -20,18 +20,18 @@ export function HeroCarousel() {
   const t = useTranslations('Marketing.carousel')
 
   // The slide copy lives in the dictionaries; only the image path is fixed.
-  const slides: Slide[] = (t.raw('slides') as Array<{ alt: string; title: string; meta: string }>).map(
-    (slide, index) => ({
-      ...slide,
-      src: [
-        '/service-yoga.png',
-        '/service-hiking.png',
-        '/service-workshop.png',
-        '/service-tour.png',
-        '/service-breathwork.png',
-      ][index] as string,
-    }),
-  )
+  const slides: Slide[] = (
+    t.raw('slides') as Array<{ alt: string; title: string; meta: string }>
+  ).map((slide, index) => ({
+    ...slide,
+    src: [
+      '/service-yoga.png',
+      '/service-hiking.png',
+      '/service-workshop.png',
+      '/service-tour.png',
+      '/service-breathwork.png',
+    ][index] as string,
+  }))
 
   // `active` starts at 0 so the server and the first client render agree; the
   // random slide is picked only after mount, when the images are rendered.
@@ -47,9 +47,12 @@ export function HeroCarousel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const goTo = useCallback((index: number) => {
-    setActive((index + slides.length) % slides.length)
-  }, [slides.length])
+  const goTo = useCallback(
+    (index: number) => {
+      setActive((index + slides.length) % slides.length)
+    },
+    [slides.length],
+  )
 
   useEffect(() => {
     if (paused || reducedMotion.current) return

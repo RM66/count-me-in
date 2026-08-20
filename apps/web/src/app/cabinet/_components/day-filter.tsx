@@ -216,7 +216,9 @@ export function DayFilterPicker({
           type="button"
           variant="outline"
           size="sm"
-          aria-label={day ? t('changeDay', { day: dayLabel }) : t('filterByDay', { entity: entityLabel })}
+          aria-label={
+            day ? t('changeDay', { day: dayLabel }) : t('filterByDay', { entity: entityLabel })
+          }
         >
           <CalendarIcon data-icon="inline-start" />
           {day ? dayLabel : t('anyDay')}
