@@ -1,5 +1,5 @@
 import { effectiveContact, effectiveLocation, seatsLeft, slotPrice } from '@repo/contracts'
-import { ArrowLeft, CalendarX, MapPin } from 'lucide-react'
+import { ArrowLeft, CalendarX } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { ContactLink } from '@/components/contact-link'
+import { LocationLink } from '@/components/location-link'
 import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
@@ -105,10 +106,11 @@ export default async function ServicePage({
               className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground"
             />
             {location ? (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="size-4" />
-                {location}
-              </span>
+              <LocationLink
+                location={location}
+                className="flex items-center gap-1.5 hover:text-foreground"
+                iconClassName="size-4"
+              />
             ) : null}
             {contact ? <ContactLink contact={contact} className="hover:text-foreground" /> : null}
           </div>

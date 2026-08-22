@@ -1,11 +1,11 @@
 import { seatsLeft } from '@repo/contracts'
-import { MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 
 import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { ContactLink } from '@/components/contact-link'
+import { LocationLink } from '@/components/location-link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-preview'
 import { Separator } from '@/components/ui/separator'
@@ -86,10 +86,11 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{organizer.name}</h1>
           {organizer.location ? (
-            <p className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="size-3.5" />
-              {organizer.location}
-            </p>
+            <LocationLink
+              location={organizer.location}
+              className="flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              iconClassName="size-3.5"
+            />
           ) : null}
           {/*
             Rendered through `ContactLink` so a phone becomes `tel:` and an email
