@@ -1,6 +1,6 @@
 import { detectContactKind } from '@/helpers/contact'
 
-interface ContactLinkProps {
+type ContactLinkProps = {
   contact: string
   className?: string
 }

@@ -20,4 +20,21 @@ export default [
       "countmein/no-untranslated-strings": "error",
     },
   },
+  {
+    // Component props are always `type` (any declaration named `*Props`).
+    // Lives here, not in the shared base config: React components exist only
+    // in this app. Other object shapes are the author's choice — `interface`
+    // stays legal for plain object shapes and remains required in ambient
+    // declarations (`**/*.d.ts`), where declaration merging needs it.
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "TSInterfaceDeclaration[id.name=/Props$/]",
+          message: "Component props use `type Props = { ... }`, never `interface`.",
+        },
+      ],
+    },
+  },
 ];

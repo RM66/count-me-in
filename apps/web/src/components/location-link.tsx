@@ -2,7 +2,7 @@ import { MapPin } from 'lucide-react'
 
 import { mapSearchUrl } from '@/helpers/location'
 
-interface LocationLinkProps {
+type LocationLinkProps = {
   location: string
   className?: string
   iconClassName?: string
