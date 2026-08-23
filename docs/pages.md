@@ -13,7 +13,9 @@ Legend: **MVP** unless marked _(later)_.
 
 Landing links to both demo sides — guest page (`/demo`) and cabinet (`/cabinet`) — from hero and CTA ([ADR-010](decisions/010-demo-organizer-account.md)).
 
-Signed-in organizers are **not** redirected from `/`: header swaps "Log in" for "Go to cabinet". Keeps page statically prerendered.
+Signed-in organizers are **not** redirected from `/`: header swaps "Log in" for "Go to cabinet".
+
+Rendering note: locale resolution reads cookies/headers per request ([ADR-011](decisions/011-i18n.md)), so every route renders dynamically — there is no static prerender. Public guest-page reads are cached instead: `unstable_cache` (5 min TTL) with tag invalidation on organizer/service writes; `app/sitemap.ts` re-reads the catalog on each fetch. Pages overwrite the `Vary` header with Next's internal RSC values, so they rely on not being shared-cached; `/api/*` sends `Vary: Accept-Language` for its localized error copy.
 
 ## 2. Guest (public booking, no Auth.js account)
 

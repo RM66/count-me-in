@@ -37,6 +37,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Cleanup of superseded R2 objects on avatar change (deferred: versioned keys + small objects).
 - Waitlist / notify-on-free-seat; realtime capacity if demand justifies.
 - Occupancy analytics dashboard: fill-rate heatmap by hour/day, per service/slot.
+- Localized routes + hreflang when non-English organic search matters: locales currently share one URL via cookie/header negotiation ([ADR-011](decisions/011-i18n.md)), so only the English rendering is indexable. Trigger to revisit: meaningful non-EN search traffic.
 
 ## Phase 3+
 

@@ -12,8 +12,9 @@
 
 import type { CreateServiceInput, ServiceRecord, UpdateServiceInput } from '@repo/contracts'
 import type { Service } from '@repo/db'
-import { db, services, timeSlots } from '@repo/db'
+import { db, organizers, services, timeSlots } from '@repo/db'
 import { and, asc, count, eq, gte, inArray } from 'drizzle-orm'
+import { revalidateTag, unstable_cache } from 'next/cache'
 
 import { pickDefined } from './shared'
 
@@ -54,8 +55,14 @@ export function toServiceRecord(row: Service): ServiceRecord {
   }
 }
 
-/** All services belonging to an organizer, oldest first. */
-export async function listServices(organizerId: string): Promise<ServiceRecord[]> {
+/**
+ * All services belonging to an organizer, oldest first.
+ *
+ * Cached: the public organizer page renders this list on every guest visit
+ * (the cabinet shares the function, so its writes below revalidate the same
+ * tag). The DTO is JSON-safe — `createdAt` is already an ISO string.
+ */
+async function queryServicesByOrganizer(organizerId: string): Promise<ServiceRecord[]> {
   const rows = await db
     .select()
     .from(services)
@@ -63,6 +70,25 @@ export async function listServices(organizerId: string): Promise<ServiceRecord[]
     .orderBy(asc(services.createdAt))
 
   return rows.map(toServiceRecord)
+}
+
+export const listServices = unstable_cache(queryServicesByOrganizer, ['services-by-organizer'], {
+  revalidate: 300,
+  tags: ['public-services'],
+})
+
+/**
+ * Every service with its owner's slug, for `app/sitemap.ts` — the
+ * `/{orgSlug}/{serviceId}` URL is assembled from two tables.
+ */
+export async function listPublicServicePaths(): Promise<
+  Array<{ orgSlug: string; serviceId: string }>
+> {
+  return db
+    .select({ orgSlug: organizers.slug, serviceId: services.id })
+    .from(services)
+    .innerJoin(organizers, eq(services.organizerId, organizers.id))
+    .orderBy(asc(services.createdAt))
 }
 
 /**
@@ -87,7 +113,7 @@ export async function getOwnedService(
  * to a different organizer. There is no separate public DTO: every column of
  * `serviceRecord` is already shown on the service page.
  */
-export async function getPublicService(
+async function queryPublicService(
   organizerId: string,
   serviceId: string,
 ): Promise<ServiceRecord | null> {
@@ -99,6 +125,11 @@ export async function getPublicService(
 
   return row ? toServiceRecord(row) : null
 }
+
+export const getPublicService = unstable_cache(queryPublicService, ['public-service'], {
+  revalidate: 300,
+  tags: ['public-services'],
+})
 
 /**
  * Number of *upcoming* slots per service id, for the cabinet list.
@@ -147,6 +178,8 @@ export async function createService(
     })
     .returning()
 
+  revalidateTag('public-services', { expire: 0 })
+
   return created ? toServiceRecord(created) : null
 }
 
@@ -181,6 +214,8 @@ export async function updateOwnedService(
     .where(and(eq(services.id, serviceId), eq(services.organizerId, organizerId)))
     .returning()
 
+  revalidateTag('public-services', { expire: 0 })
+
   return updated ? toServiceRecord(updated) : null
 }
 
@@ -197,6 +232,8 @@ export async function deleteOwnedService(
     .delete(services)
     .where(and(eq(services.id, serviceId), eq(services.organizerId, organizerId)))
     .returning({ id: services.id })
+
+  revalidateTag('public-services', { expire: 0 })
 
   return deleted?.id ?? null
 }

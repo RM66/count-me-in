@@ -37,6 +37,40 @@ const nextConfig = {
     ],
   },
   allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
+  async redirects() {
+    return [
+      {
+        // One canonical host for the apex deployment; preview/staging domains
+        // use other hostnames and never match.
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.countmein.group' }],
+        destination: 'https://countmein.group/:path*',
+        permanent: true,
+      },
+    ]
+  },
+  async headers() {
+    return [
+      {
+        // API error copy is localized per request (ApiErrors dictionaries), so
+        // shared caches must key responses by language. Note: App Router pages
+        // overwrite `Vary` with Next's internal RSC values — pages rely on
+        // being uncached instead; revisit if a shared HTML cache is added.
+        source: '/api/:path*',
+        headers: [{ key: 'Vary', value: 'Accept-Language' }],
+      },
+      {
+        // Belt-and-braces noindex alongside the meta robots on private pages:
+        // headers hold even when the response is not the page's HTML.
+        source: '/api/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
+      },
+      {
+        source: '/login/link/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
+      },
+    ]
+  },
 }
 
 // Source-map upload only runs in CI with SENTRY_AUTH_TOKEN; no-op otherwise.

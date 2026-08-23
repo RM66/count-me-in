@@ -11,9 +11,12 @@ import { getGuestBookingByToken } from '@/server/db/booking'
 /**
  * A booking's management page is private to whoever holds the link, so it must
  * never reach a search index — the token in the URL is the credential.
+ * `canonical: null` blocks the `/booking` layout's canonical from cascading
+ * onto a URL that must never be treated as a duplicate of anything.
  */
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
+  alternates: { canonical: null },
 }
 
 export default async function BookingManagePage({

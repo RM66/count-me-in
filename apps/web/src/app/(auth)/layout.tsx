@@ -1,8 +1,18 @@
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
+
+/**
+ * Auth pages are utility surfaces, not landing content — kept out of search
+ * indexes so they never compete with `/`. Inherited by login and signup.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  title: 'Account access',
+}
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (

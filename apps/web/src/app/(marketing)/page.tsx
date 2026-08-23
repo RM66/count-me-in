@@ -7,7 +7,14 @@ import { Features } from '@/app/(marketing)/_components/features'
 import { Hero } from '@/app/(marketing)/_components/hero'
 import { HowItWorks } from '@/app/(marketing)/_components/how-it-works'
 import { Trust } from '@/app/(marketing)/_components/trust'
-import { SITE_DESCRIPTION, SITE_URL } from '@/constants/site'
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '@/constants/site'
+import { pageMetadata } from '@/lib/seo'
+
+export const metadata = pageMetadata({
+  title: { absolute: SITE_TITLE },
+  description: SITE_DESCRIPTION,
+  path: '/',
+})
 
 /**
  * JSON-LD structured data. Emitted server-side so search engines can render a

@@ -13,7 +13,7 @@ interface TelegramUser {
   hash: string
 }
 
-interface TelegramLoginButtonProps {
+type TelegramLoginButtonProps = {
   botUsername: string
   buttonSize?: 'large' | 'medium' | 'small'
   cornerRadius?: number

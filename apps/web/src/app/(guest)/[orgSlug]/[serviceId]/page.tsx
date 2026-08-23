@@ -1,5 +1,5 @@
 import { effectiveContact, effectiveLocation, seatsLeft, slotPrice } from '@repo/contracts'
-import { ArrowLeft, CalendarX, MapPin } from 'lucide-react'
+import { ArrowLeft, CalendarX } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -10,10 +10,13 @@ import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { ContactLink } from '@/components/contact-link'
+import { LocationLink } from '@/components/location-link'
 import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
+import { SITE_URL } from '@/constants/site'
 import { formatDate, formatTime } from '@/helpers/date'
+import { pageMetadata } from '@/lib/seo'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
 import { getPublicService } from '@/server/db/service'
 import { listUpcomingSlotsForServices } from '@/server/db/time-slot'
@@ -46,10 +49,11 @@ export async function generateMetadata({
 
   if (!resolved) return { title: t('serviceNotFound') }
 
-  return {
+  return pageMetadata({
     title: `${resolved.service.title} — ${resolved.organizer.name}`,
     description: resolved.service.description ?? undefined,
-  }
+    path: `/${orgSlug}/${serviceId}`,
+  })
 }
 
 export default async function ServicePage({
@@ -75,8 +79,58 @@ export default async function ServicePage({
   const location = effectiveLocation(service, organizer)
   const contact = effectiveContact(service, organizer)
 
+  // Each upcoming slot is a concrete `Event` (date, availability), so search
+  // engines can surface open sessions as rich results. Prices are display
+  // text, not amounts (docs/domain.md) — deliberately absent from the offers.
+  const serviceUrl = `${SITE_URL}/${organizer.slug}/${service.id}`
+  const isOpen = (slot: (typeof slots)[number]) => seatsLeft(slot) > 0
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: organizer.name,
+            item: `${SITE_URL}/${organizer.slug}`,
+          },
+          { '@type': 'ListItem', position: 2, name: service.title, item: serviceUrl },
+        ],
+      },
+      ...slots.map((slot) => ({
+        '@type': 'Event',
+        name: service.title,
+        ...(service.description ? { description: service.description } : {}),
+        startDate: slot.startsAt,
+        eventStatus: isOpen(slot)
+          ? 'https://schema.org/EventScheduled'
+          : 'https://schema.org/EventSoldOut',
+        ...(location ? { location: { '@type': 'Place', name: location } } : {}),
+        organizer: {
+          '@type': 'Organization',
+          name: organizer.name,
+          url: `${SITE_URL}/${organizer.slug}`,
+        },
+        offers: {
+          '@type': 'Offer',
+          url: serviceUrl,
+          availability: isOpen(slot)
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/SoldOut',
+        },
+      })),
+    ],
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <div className="flex flex-col gap-5">
         <Link
           href={`/${organizer.slug}`}
@@ -87,14 +141,18 @@ export default async function ServicePage({
         </Link>
 
         <div className="overflow-hidden rounded-xl border">
-          <Image
-            src={service.photoUrl || '/placeholder.svg'}
-            alt={service.title}
-            width={720}
-            height={360}
-            className="aspect-2/1 w-full object-cover"
-            priority
-          />
+          {service.photoUrl ? (
+            <Image
+              src={service.photoUrl}
+              alt={service.title}
+              width={720}
+              height={360}
+              className="aspect-2/1 w-full object-cover"
+              priority
+            />
+          ) : (
+            <div aria-hidden className="aspect-2/1 w-full bg-linear-to-br from-primary/15 to-primary/5" />
+          )}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -105,10 +163,11 @@ export default async function ServicePage({
               className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground"
             />
             {location ? (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="size-4" />
-                {location}
-              </span>
+              <LocationLink
+                location={location}
+                className="flex items-center gap-1.5 hover:text-foreground"
+                iconClassName="size-4"
+              />
             ) : null}
             {contact ? <ContactLink contact={contact} className="hover:text-foreground" /> : null}
           </div>
