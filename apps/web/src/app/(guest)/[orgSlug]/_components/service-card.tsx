@@ -43,13 +43,21 @@ export async function ServiceCard({
       href={`/${orgSlug}/${service.id}`}
       className="group flex gap-4 rounded-xl border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent/40"
     >
-      <Image
-        src={service.photoUrl || '/placeholder.svg'}
-        alt=""
-        width={112}
-        height={112}
-        className="size-24 shrink-0 rounded-lg object-cover sm:size-28"
-      />
+      {service.photoUrl ? (
+        <Image
+          src={service.photoUrl}
+          alt=""
+          width={112}
+          height={112}
+          sizes="(min-width: 640px) 7rem, 6rem"
+          className="size-24 shrink-0 rounded-lg object-cover sm:size-28"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="size-24 shrink-0 rounded-lg bg-linear-to-br from-primary/15 to-primary/5 sm:size-28"
+        />
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-medium leading-tight text-balance">{service.title}</h3>

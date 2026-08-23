@@ -80,11 +80,9 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
         <CardContent className="flex flex-col gap-6">
           <div className="flex items-center gap-4">
             <Avatar className="size-16">
-              <AvatarImage
-                src={organizer.photoUrl || '/placeholder.svg'}
-                sizes="4rem"
-                alt={organizer.name}
-              />
+              {organizer.photoUrl ? (
+                <AvatarImage src={organizer.photoUrl} sizes="4rem" alt={organizer.name} />
+              ) : null}
               <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
             </Avatar>
             <input

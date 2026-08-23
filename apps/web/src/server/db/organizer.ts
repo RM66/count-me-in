@@ -20,7 +20,8 @@ import type {
 import { DEFAULT_LOCALE, isAppLocale, isDemoOrganizerId } from '@repo/contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
+import { revalidateTag, unstable_cache } from 'next/cache'
 
 import { pickDefined } from './shared'
 
@@ -84,8 +85,12 @@ export function toPublicOrganizer(row: Organizer): PublicOrganizer {
  * The organizer behind a public slug, or `null` when no such page exists — the
  * caller answers `404`. Slugs are stored lowercase (the `slug` primitive
  * transforms them), so the lookup lowercases too.
+ *
+ * Cached: this read sits on every guest page render and both OG-image
+ * routes. The DTO is JSON-safe (no Date objects), so `unstable_cache` can hold
+ * it across requests; writes below revalidate the tag.
  */
-export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {
+async function queryPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {
   const [row] = await db
     .select()
     .from(organizers)
@@ -93,6 +98,19 @@ export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrga
     .limit(1)
 
   return row ? toPublicOrganizer(row) : null
+}
+
+export const getPublicOrganizerBySlug = unstable_cache(queryPublicOrganizerBySlug, ['public-organizer-by-slug'], {
+  revalidate: 300,
+  tags: ['public-organizers'],
+})
+
+/**
+ * Every organizer slug, for `app/sitemap.ts`. Slugs are unique (schema index),
+ * so the list maps one-to-one onto public URLs.
+ */
+export async function listPublicOrganizerSlugs(): Promise<Array<{ slug: string }>> {
+  return db.select({ slug: organizers.slug }).from(organizers).orderBy(asc(organizers.createdAt))
 }
 
 /**
@@ -129,6 +147,10 @@ export async function updateOrganizerProfile(
     .returning()
 
   if (!updated) return null
+
+  // Slug/description/photo feed the public page and its metadata. Next 16's
+  // revalidateTag takes a cache-life profile; `expire: 0` invalidates at once.
+  revalidateTag('public-organizers', { expire: 0 })
 
   return toOrganizerProfile(updated, false)
 }

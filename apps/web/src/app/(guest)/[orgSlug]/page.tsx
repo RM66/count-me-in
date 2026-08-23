@@ -9,6 +9,8 @@ import { LocationLink } from '@/components/location-link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-preview'
 import { Separator } from '@/components/ui/separator'
+import { SITE_URL } from '@/constants/site'
+import { pageMetadata } from '@/lib/seo'
 import { getPublicOrganizerBySlug } from '@/server/db/organizer'
 import { listServices } from '@/server/db/service'
 import { listUpcomingSlotsForServices } from '@/server/db/time-slot'
@@ -34,10 +36,11 @@ export async function generateMetadata({
     return { title: t('pageNotFound') }
   }
 
-  return {
+  return pageMetadata({
     title: t('metaTitle', { name: organizer.name }),
     description: organizer.description ?? undefined,
-  }
+    path: `/${organizer.slug}`,
+  })
 }
 
 export default async function OrganizerPage({ params }: { params: Promise<{ orgSlug: string }> }) {
@@ -72,15 +75,40 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
     (slotsByService.get(service.id) ?? []).some((slot) => seatsLeft(slot) > 0),
   ).length
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: organizer.name,
+        url: `${SITE_URL}/${organizer.slug}`,
+        ...(organizer.description ? { description: organizer.description } : {}),
+        ...(organizer.photoUrl ? { logo: organizer.photoUrl } : {}),
+      },
+      {
+        '@type': 'ItemList',
+        itemListElement: services.map((service, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: service.title,
+          url: `${SITE_URL}/${organizer.slug}/${service.id}`,
+        })),
+      },
+    ],
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <script
+        type="application/ld+json"
+        // Structured data built from the same public rows the page renders.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <div className="flex flex-col items-center gap-4 text-center">
         <Avatar className="size-20">
-          <AvatarImage
-            src={organizer.photoUrl || '/placeholder.svg'}
-            sizes="5rem"
-            alt={organizer.name}
-          />
+          {organizer.photoUrl ? (
+            <AvatarImage src={organizer.photoUrl} sizes="5rem" alt={organizer.name} />
+          ) : null}
           <AvatarFallback>{organizer.name.slice(0, 2)}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col gap-1">

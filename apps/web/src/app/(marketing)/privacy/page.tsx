@@ -1,10 +1,15 @@
 import { getTranslations } from 'next-intl/server'
 
 import { LegalPage, LegalSection } from '@/app/(marketing)/_components/legal-page'
+import { pageMetadata } from '@/lib/seo'
 
 export async function generateMetadata() {
   const t = await getTranslations('Legal.privacy')
-  return { title: t('metaTitle'), description: t('metaDescription') }
+  return pageMetadata({
+    title: { absolute: t('metaTitle') },
+    description: t('metaDescription'),
+    path: '/privacy',
+  })
 }
 
 export default async function PrivacyPage() {
