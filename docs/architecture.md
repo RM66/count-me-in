@@ -10,7 +10,7 @@ High-level system design for CountMeIn. Product domain in [domain.md](domain.md)
 | Public booking    | `apps/web`                  | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book      |
 | Organizer cabinet | `apps/web`                  | Organizers | Services, slots, bookings, profile — opened from messenger links |
 | API               | `apps/web` (Route Handlers) | Clients    | HTTP API; Auth.js for organizers                                 |
-| Worker            | `apps/worker`               | —          | Messenger notifications / jobs                                   |
+| Jobs              | `apps/web` (Route Handlers) | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}` |
 
 **MVP entry for organizers:** register via Telegram Login Widget → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
 
@@ -23,38 +23,38 @@ flowchart LR
   Cabinet[apps/web Organizer cabinet]
   Messenger[Messenger WebView]
   API[apps/web API]
-  Worker[apps/worker]
+  Jobs[apps/web Jobs API]
   DB[(Postgres)]
   Redis[(Redis)]
   R2[(Cloudflare R2)]
-  MQ[pg-boss]
+  QStash[(Upstash QStash)]
 
   Landing --> API
   Public --> API
   Cabinet --> API
   Messenger -->|"deep link"| Cabinet
-  Worker -->|"notify + cabinet URL"| Messenger
+  API -->|"publish after commit"| QStash
+  QStash -->|"signed delivery + cron"| Jobs
+  Jobs -->|"notify + cabinet URL"| Messenger
+  Jobs --> DB
   API --> DB
   API --> Redis
   API --> R2
-  API --> MQ
-  MQ --> Worker
-  Worker --> DB
 ```
 
 ## Component roles
 
 | Component                                      | Role                                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| `apps/web`                                     | Next.js: landing, public booking, cabinet, API, Auth.js                       |
-| `apps/worker`                                  | Jobs: messenger notifications with cabinet deep links (Telegram first)        |
+| `apps/web`                                     | Next.js: landing, public booking, cabinet, API, Auth.js, job handlers          |
 | `packages/db`                                  | Drizzle schema, migrations, client                                            |
 | `packages/redis`                               | ioredis singleton (sessions, auth tickets, rate limits)                       |
-| `packages/contracts`                           | Zod schemas shared by web and worker                                          |
+| `packages/contracts`                           | Zod schemas shared across the web app's layers                                |
 | `packages/media-storage`                       | R2 signed upload helpers                                                      |
 | `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                      |
-| Postgres                                       | Domain + `pg-boss`                                                            |
+| Postgres                                       | Domain data                                                                   |
 | Redis                                          | Sessions, short-lived auth tickets, rate limits                               |
+| Upstash QStash                                 | Job queue: at-least-once delivery, retries, demo-refresh cron                 |
 | Cloudflare R2                                  | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md)) |
 
 ## Critical flow: create booking (guest)
@@ -66,15 +66,15 @@ flowchart LR
    - **claim seats atomically**: `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` (not read-then-write)
    - if no row updated → slot full → abort
    - insert `Booking` (`confirmed`)
-4. Enqueue `booking.created` (management link for guest; cabinet URL for organizer).
-5. Worker notifies guest + organizer.
+4. Commit, then publish `booking.created` to QStash (management link for guest; cabinet URL for organizer) via `after()`.
+5. QStash delivers to `/api/jobs/booking.created`; the handler notifies guest + organizer.
 6. Invalidate TanStack Query on public page (and cabinet if open).
 
 If slot filled while authenticating, conditional `UPDATE` affects no row → abort. No `pending` status.
 
 ### Cancel (MVP)
 
-Guests cancel on `/booking/{manageToken}` (deep link from messenger) or re-authenticate for booking lookup. Organizers cancel from cabinet. One transaction: set `cancelled` + decrement `bookedCount` + enqueue `booking.cancelled`.
+Guests cancel on `/booking/{manageToken}` (deep link from messenger) or re-authenticate for booking lookup. Organizers cancel from cabinet. One transaction: set `cancelled` + decrement `bookedCount`; after commit the route publishes `booking.cancelled`.
 
 ### Media upload (organizer)
 
@@ -82,12 +82,12 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 ## Auth boundary
 
-- **Organizers:** Auth.js (Telegram Login Widget, server-side HMAC); session for cabinet. Notification deep links use **one-time login link**: worker stores `{ organizerId, next }` in Redis under 32-byte token → `/login/link/{token}` consumed via `POST` (server action calling `signIn`). `GET` does not consume — link previewers fetch URLs before human clicks. Single-use, 30-day TTL, `noindex`, demo id refused; failure → `/login`. See [ADR-008](decisions/008-messenger-only-auth.md).
+- **Organizers:** Auth.js (Telegram Login Widget, server-side HMAC); session for cabinet. Notification deep links use **one-time login link**: the job handler stores `{ organizerId, next }` in Redis under 32-byte token → `/login/link/{token}` consumed via `POST` (server action calling `signIn`). `GET` does not consume — link previewers fetch URLs before human clicks. Single-use, 30-day TTL, `noindex`, demo id refused; failure → `/login`. See [ADR-008](decisions/008-messenger-only-auth.md).
 - **Visitors:** No Auth.js account; booking requires widget auth (short-lived ticket); management via deep link or re-auth. See [ADR-002](decisions/002-guest-booking.md).
 
 ## Jobs / notifications
 
-`pg-boss` + `apps/worker`; messengers primary ([ADR-008](decisions/008-messenger-only-auth.md), [ADR-004](decisions/004-queue-pg-boss.md)).
+**Upstash QStash** consumed by `apps/web` route handlers; messengers primary ([ADR-008](decisions/008-messenger-only-auth.md), [ADR-012](decisions/012-queue-upstash-qstash.md)).
 
 ### Queues
 
@@ -97,9 +97,9 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 | `booking.cancelled` | `{ bookingId, cancelledBy }` | One — counterparty only                 |
 | `demo.refresh`      | —                            | Scheduled daily (`seedDemo()`, ADR-010) |
 
-**One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — worker refetches at send time, so `manageToken` and login tokens never reach `pgboss.job`. Contracts in `packages/contracts/src/jobs.ts`.
+**One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — the handler refetches at send time, so `manageToken` and login tokens never leave the database boundary. Contracts in `packages/contracts/src/jobs.ts`.
 
-**Enqueue inside the booking transaction** (`apps/web/src/server/queue.ts`, pg-boss `fromDrizzle` over caller's `tx`). Web instance is send-only; maintenance/cron belong to the single worker.
+**Publish after commit** (`apps/web/src/server/queue.ts`): the route handler publishes inside `after()` once the booking transaction has returned; QStash delivers to `POST /api/jobs/{queue}` with 5 retries. The accepted loss window is a crash between commit and publish ([ADR-012](decisions/012-queue-upstash-qstash.md)).
 
 ### Links in messages
 
@@ -113,42 +113,35 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 Telegram bot can only message users who pressed **Start** — UX includes bot-start step after widget auth, with management deep link shown on-screen as fallback.
 
-| Telegram response           | Action                                        |
-| --------------------------- | --------------------------------------------- |
-| `403`, `400 chat not found` | Complete job and log — no retry can succeed   |
-| `429`, `5xx`, network       | Throw → pg-boss retries (5 attempts, backoff) |
-| Other `4xx`                 | Fail loudly — our bug                         |
+| Telegram response           | Action                                          |
+| --------------------------- | ----------------------------------------------- |
+| `403`, `400 chat not found` | Complete delivery (`200`) and log — no retry can succeed |
+| `429`, `5xx`, network       | Throw → QStash retries (5 attempts, backoff)    |
+| Other `4xx`                 | Fail loudly — our bug                           |
 
-Worker refuses demo organizer in every handler (`isDemoOrganizerId`).
+Every handler refuses the demo organizer (`isDemoOrganizerId`).
 
 ### Running locally
 
-`bun run dev` starts **both** `web` and `worker`. Enqueue is transactional — booking with no worker still succeeds, jobs sit in `pgboss.job` as `created` until one starts. Check for running worker before suspecting send path:
+`bun run dev` starts `web`. Publishing needs `QSTASH_TOKEN`; without it dev skips publishing with a warning — bookings succeed, no notifications send. End-to-end delivery additionally needs a publicly reachable `APP_URL`, because QStash POSTs from Upstash to that URL (localhost is not routable — use a deployed preview or a tunnel).
 
-```sql
-select name, data->>'recipient' as recipient, state, retry_count
-from pgboss.job order by created_on desc limit 10;
-```
-
-`created` = nothing consumed it. `failed` / non-zero `retry_count` = send failing; `output` column holds error.
-
-Both processes read repo-root `.env` — worker via `--env-file=../../.env`.
+Delivery state lives in the QStash console (message log, retries, events) — check it before suspecting the send path.
 
 ## Observability
 
 Two tools, one job each — Sentry for errors and performance, PostHog for product analytics and behaviour.
 
-| Tool        | Scope                                                                        | Where it runs                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload   | `apps/web` (client + server via `instrumentation.ts` + `sentry.client.config.ts`), `apps/worker` (`@sentry/bun`) |
-| **PostHog** | Page views, funnels, feature flags, session replay, notification-sent events | `apps/web` (browser via `lib/posthog.ts`), `apps/worker` (`posthog-node` for server events)                      |
+| Tool        | Scope                                                                        | Where it runs                                                                   |
+| ----------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload   | `apps/web` (client + server via `instrumentation.ts` + `sentry.client.config.ts`) |
+| **PostHog** | Page views, funnels, feature flags, session replay, notification-sent events | `apps/web` (browser via `lib/posthog.ts`; server via `server/posthog.ts`)          |
 
 ### Sentry
 
 - **Server init:** [`apps/web/src/instrumentation.ts`](../apps/web/src/instrumentation.ts) — `src/`-root Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
 - **Client init:** [`apps/web/sentry.client.config.ts`](../apps/web/sentry.client.config.ts) — loaded automatically by `@sentry/nextjs` in the browser bundle.
 - **Error boundaries:** [`apps/web/src/app/error.tsx`](../apps/web/src/app/error.tsx) and [`apps/web/src/app/global-error.tsx`](../apps/web/src/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
-- **Worker:** [`apps/worker/src/index.ts`](../apps/worker/src/index.ts) inits `@sentry/bun` and captures in `runHandler` (both retriable and unretriable failures) and `boss.on('error')`.
+- **Job dispatch:** [`apps/web/src/server/jobs/run.ts`](../apps/web/src/server/jobs/run.ts) captures unretriable failures (recipient unreachable); handler errors bubble to the route's `500`, where server instrumentation captures them. The publisher captures its own failures in `after()`.
 - **Source maps:** `withSentryConfig` in [`apps/web/next.config.js`](../apps/web/next.config.js) uploads source maps during CI builds when `SENTRY_AUTH_TOKEN` is set.
 - **Replay is off** — PostHog session replay covers the "what did the user do" question; enabling Sentry replay too would double the client payload cost.
 
@@ -156,7 +149,7 @@ Two tools, one job each — Sentry for errors and performance, PostHog for produ
 
 - **Browser client:** [`apps/web/src/lib/posthog.ts`](../apps/web/src/lib/posthog.ts) — lazy singleton, initialised from [`apps/web/src/app/providers.tsx`](../apps/web/src/app/providers.tsx). Autocaptures page views; session replay masks all inputs (no PII).
 - **User identification:** signed-in organizers are identified by `Organizer.id`. Guests stay anonymous — their messenger identity is PII that does not belong in analytics.
-- **Worker events:** [`apps/worker/src/posthog.ts`](../apps/worker/src/posthog.ts) exposes a `posthog-node` client. Job handlers emit `notification_sent` with `{ queue, recipient, bookingId }` after a successful send. Flushed on shutdown.
+- **Server events:** [`apps/web/src/server/posthog.ts`](../apps/web/src/server/posthog.ts) exposes a `posthog-node` client. Job handlers emit `notification_sent` with `{ queue, recipient, bookingId }` after a successful send. Flushes after every event (`flushAt: 1`) — serverless functions may freeze as soon as the response is sent.
 - **PostHog Cloud** — `NEXT_PUBLIC_POSTHOG_HOST` defaults to `https://app.posthog.com`.
 
 ### No-op without keys

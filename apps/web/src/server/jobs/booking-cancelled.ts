@@ -2,33 +2,36 @@
  * `booking.cancelled` — tell the *other* party that a booking was cancelled.
  * The actor already saw the result on screen, so only the counterparty is
  * notified; the job records who cancelled and the recipient is derived from it.
+ *
+ * Reached as a QStash delivery to `POST /api/jobs/booking.cancelled`; the
+ * dispatch layer (`run.ts`) has already validated the payload.
  */
 
 import {
-  bookingCancelledJob,
+  type BookingCancelledJob,
   cancelNotificationRecipient,
   isDemoOrganizerId,
 } from '@repo/contracts'
 
 import { issueLoginLink } from '../auth/login-link'
-import { getNotificationContext } from '../db/notification-context'
-import type { WorkerEnv } from '../env'
-import { cabinetSlotPath, loginLinkUrl, organizerPageUrl } from '../links'
 import { getPostHog } from '../posthog'
-import { sendMessage } from '../telegram/client'
+import type { JobsEnv } from './env'
+import { cabinetSlotPath, loginLinkUrl, organizerPageUrl } from './links'
+import { getNotificationContext } from './notification-context'
+import { sendMessage } from './telegram/client'
 import {
   bookingCancelledForGuest,
   bookingCancelledForOrganizer,
   notificationLocale,
-} from '../telegram/templates'
+} from './telegram/templates'
 
-export async function handleBookingCancelled(env: WorkerEnv, data: unknown): Promise<void> {
-  const parsed = bookingCancelledJob.safeParse(data)
-  if (!parsed.success) {
-    throw new Error(`[booking.cancelled] invalid payload: ${parsed.error.message}`)
-  }
+import 'server-only'
 
-  const { bookingId, cancelledBy } = parsed.data
+export async function handleBookingCancelled(
+  env: JobsEnv,
+  data: BookingCancelledJob,
+): Promise<void> {
+  const { bookingId, cancelledBy } = data
 
   const context = await getNotificationContext(bookingId)
   if (!context) {

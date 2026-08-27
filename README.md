@@ -20,8 +20,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 
 | App           | Role                                                      |
 | ------------- | --------------------------------------------------------- |
-| `apps/web`    | Landing, public booking, organizer cabinet, API (Next.js) |
-| `apps/worker` | Notification / job worker (`pg-boss`)                     |
+| `apps/web`    | Landing, public booking, organizer cabinet, API, job handlers (Next.js) |
 
 ## Packages
 
@@ -44,7 +43,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Validation:** Zod (`packages/contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
 - **Media:** Cloudflare R2
-- **Jobs:** `pg-boss` + `apps/worker`
+- **Jobs:** Upstash QStash ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links
 - **Observability:** PostHog, Sentry
 
@@ -74,7 +73,7 @@ bun run db:studio     # open Drizzle Studio
 
 ### Demo organizer
 
-A read-only demo organizer is seeded at `/demo`. All write paths reject it; the worker never notifies it. See [ADR-010](docs/decisions/010-demo-organizer-account.md).
+A read-only demo organizer is seeded at `/demo`. All write paths reject it; notifications are never sent for it; the seed refreshes daily via a QStash schedule. See [ADR-010](docs/decisions/010-demo-organizer-account.md).
 
 ### Testing
 
@@ -85,7 +84,7 @@ bun run test          # all packages (Turborepo)
 bun run test:watch    # watch mode
 ```
 
-Coverage spans Zod schemas (`packages/contracts`), helpers, API client, server guards, React hooks, components (`apps/web`), and Telegram templates/client (`apps/worker`).
+Coverage spans Zod schemas (`packages/contracts`), helpers, API client, server guards, React hooks, components, and Telegram templates/client (`apps/web`).
 
 ## Key conventions
 
@@ -94,7 +93,7 @@ Coverage spans Zod schemas (`packages/contracts`), helpers, API client, server g
 - **Atomic capacity** — single conditional `UPDATE` inside booking transaction, never read-then-write.
 - **Prices are display text only** in MVP (no payments).
 - **`/cabinet` requires no session** — anonymous visitors see read-only demo ([ADR-010](docs/decisions/010-demo-organizer-account.md)).
-- **Notifications enqueued inside transaction** — jobs carry ids only; worker refetches at send time.
+- **Notifications published after commit** — jobs carry ids only; the handler refetches at send time ([ADR-012](docs/decisions/012-queue-upstash-qstash.md)).
 - **Organizer deep links** are one-time login links consumed via `POST`.
 
 See [`AGENTS.md`](AGENTS.md) for full conventions and monorepo layout.

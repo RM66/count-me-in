@@ -1,9 +1,10 @@
 import { cancelBookingByOrganizerInput } from '@repo/contracts'
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { getTranslations } from 'next-intl/server'
 
 import { cancelOwnedBooking } from '@/server/db/booking'
 import { parseJsonBody, requireWritableOrganizer } from '@/server/http'
+import { publishBookingCancelled } from '@/server/queue'
 import { bookingErrorResponse } from '../_error-response'
 
 /**
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
     if (!booking) {
       return NextResponse.json({ error: t('bookingNotFound') }, { status: 404 })
     }
+
+    // After-commit notification (ADR-012): the guest is told via QStash
+    // delivery once the cancellation is durable; the publisher never throws.
+    after(() => publishBookingCancelled(booking.id, 'organizer'))
 
     return NextResponse.json({ booking })
   } catch (error) {

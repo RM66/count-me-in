@@ -16,7 +16,7 @@
  *   {@link assertNotDemo} *inside* the booking transaction rather than a route
  *   guard, because they carry no session: the organizer is only known once the
  *   slot has been joined to its service.
- * - worker: skip notification jobs entirely (see `isDemoOrganizerId`)
+ * - jobs: skip notification jobs entirely (see `isDemoOrganizerId`)
  */
 
 import {

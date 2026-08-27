@@ -22,8 +22,8 @@ import 'server-only'
  * - `ticket` — the `signIn('telegram', { ticket })` call the signup page makes
  *   after profile completion.
  * - `loginLinkToken` — a one-time link from a notification message
- *   (`/login/link/{token}`), minted by `apps/worker` into the organizer's own
- *   Telegram chat.
+ *   (`/login/link/{token}`), minted by the notification job into the
+ *   organizer's own Telegram chat.
  */
 export function createTelegramProvider() {
   return Credentials({

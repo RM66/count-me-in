@@ -6,7 +6,6 @@ import { bookings, db, organizers, services, timeSlots } from '@repo/db'
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { assertNotDemo } from '../demo'
-import { enqueueBookingCancelled, enqueueBookingCreated } from '../queue'
 import { toPublicOrganizer } from './organizer'
 import { toServiceRecord } from './service'
 import { toTimeSlotRecord } from './time-slot'
@@ -406,8 +405,6 @@ export async function createGuestBooking(input: {
       throw error
     }
 
-    await enqueueBookingCreated(tx, created.id)
-
     return toGuestBooking({
       booking: created,
       slot: claimed,
@@ -463,8 +460,6 @@ export async function cancelGuestBookingByToken(token: string): Promise<GuestBoo
       .where(eq(timeSlots.id, cancelled.timeSlotId))
       .returning()
 
-    await enqueueBookingCancelled(tx, cancelled.id, 'guest')
-
     return toGuestBooking({
       booking: cancelled,
       slot: released ?? target.slot,
@@ -518,8 +513,6 @@ export async function cancelOwnedBooking(
       .update(timeSlots)
       .set({ bookedCount: sql`greatest(0, ${timeSlots.bookedCount} - ${cancelled.seats})` })
       .where(eq(timeSlots.id, cancelled.timeSlotId))
-
-    await enqueueBookingCancelled(tx, cancelled.id, 'organizer')
 
     return toBookingRecord(cancelled)
   })

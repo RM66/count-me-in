@@ -1,6 +1,6 @@
 # ADR-004: Postgres-backed job queue (`pg-boss`)
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-012](012-queue-upstash-qstash.md)
 - **Date:** 2026-07-18
 
 ## Context

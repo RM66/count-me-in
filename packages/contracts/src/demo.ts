@@ -7,8 +7,8 @@
  * name the organizer in code anyway (auth is messenger-only — ADR-008).
  * A mutable `is_demo` flag would be additional security-relevant state.
  *
- * Lives in `contracts` so that `apps/web` and `apps/worker` share one
- * source of truth.
+ * Lives in `contracts` so that every layer that must recognize the demo id —
+ * web writes, notification handlers — shares one source of truth.
  */
 
 /** Fixed id of the seeded demo organizer. Stable across re-seeds. */

@@ -4,13 +4,15 @@
  * to audit than the request it replaces.
  *
  * The interesting part is not the call but the **error classification**. A
- * notification worker that retries everything is worse than one that retries
+ * notification job that retries everything is worse than one that retries
  * nothing: the single most common failure is a recipient who never pressed
  * Start on the bot (see docs/architecture.md — a bot may only message users who
  * did), and that never becomes deliverable no matter how many times it is
  * tried. Retrying it burns the job's budget, fills the log with noise, and
  * still ends in `failed`.
  */
+
+import 'server-only'
 
 /** A link rendered as a tappable button under the message. */
 export interface MessageButton {
@@ -28,7 +30,7 @@ export interface SendMessageInput {
 /**
  * Why a send did not happen, when it is not worth retrying.
  * `unreachable` covers both "never started the bot" (403) and "chat not found"
- * (400): from the queue's point of view they are the same event — the recipient
+ * (400): from the receiver's point of view they are the same event — the recipient
  * cannot be messaged, and the job is done as well as it ever will be.
  */
 export class TelegramUnreachableError extends Error {

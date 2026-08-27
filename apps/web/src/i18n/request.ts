@@ -11,7 +11,7 @@ import { getRequestConfig } from 'next-intl/server'
  * the `NEXT_LOCALE` cookie (set by the language switcher) → the
  * `Accept-Language` header → English. The cookie is a pure viewer preference;
  * the booking row and the organizer profile carry the per-person languages the
- * worker needs for notifications.
+ * notification job needs for messages.
  *
  * The messages themselves live in `@repo/translations` (ICU JSON per locale);
  * this module only resolves which one applies to this request.

@@ -1,1 +1,1 @@
-export { closeRedis, getRedis } from './client'
+export { getRedis } from './client'

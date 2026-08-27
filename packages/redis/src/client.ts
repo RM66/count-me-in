@@ -3,11 +3,11 @@ import Redis from 'ioredis'
 /**
  * Shared Redis client.
  *
- * Redis is infrastructure both apps talk to — `apps/web` for sessions, auth
- * tickets and rate limits, `apps/worker` for minting one-time login links — so
- * the connection lives here for the same reason `@repo/db` owns the Postgres
- * pool. Two hand-rolled singletons drifted apart almost immediately, which is
- * exactly the failure a shared package prevents.
+ * Redis is infrastructure shared across the web app's server layers — sessions,
+ * auth tickets, rate limits, and minting one-time login links from notification
+ * jobs — so the connection lives here for the same reason `@repo/db` owns the
+ * Postgres pool. Two hand-rolled singletons drifted apart almost immediately,
+ * which is exactly the failure a shared package prevents.
  *
  * What is *not* here: key names and payload shapes. Those are contracts between
  * the two apps and live in `@repo/contracts` (see `loginLinkKey`).
@@ -41,16 +41,4 @@ export function getRedis(): Redis {
   }
 
   return globalForRedis.redis
-}
-
-/**
- * Close the connection.
- * For long-running processes that shut down deliberately — the worker drains
- * its jobs on `SIGTERM` and would otherwise hang on an open socket.
- */
-export async function closeRedis(): Promise<void> {
-  if (globalForRedis.redis) {
-    await globalForRedis.redis.quit()
-    globalForRedis.redis = undefined
-  }
 }

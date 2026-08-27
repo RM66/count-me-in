@@ -6,8 +6,8 @@ import { z } from 'zod'
  * Locale is **not part of the URL**: the same route serves every language and
  * the choice travels in a cookie (viewer preference) or, at booking time, on
  * the booking row (the language the guest's confirmation message is rendered
- * in). Lives in contracts because both ends need it — `apps/web` renders UI
- * copy, `apps/worker` renders notifications — and they must agree on what a
+ * in). Lives in contracts because both ends need it — the web UI renders page
+ * copy, the notification job renders messages — and they must agree on what a
  * locale string is.
  *
  * Add a language in one place here; the dictionaries live in

@@ -36,6 +36,13 @@
       "when": 1787673600000,
       "tag": "0004_enable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787758673000,
+      "tag": "0005_drop_pgboss_schema",
+      "breakpoints": true
     }
   ]
 }

@@ -26,7 +26,6 @@ apps/web         # Next.js: landing + public booking + organizer cabinet + HTTP 
     proxy.ts     # Auth.js v5 middleware — src/ root, do not move
     instrumentation.ts # Sentry server-side init
   public/        # Static assets
-apps/worker      # job consumer (notifications)
 packages/db
 packages/redis
 packages/contracts

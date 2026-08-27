@@ -6,14 +6,14 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 ## MVP
 
-- Turborepo: `apps/web`, `apps/worker`, packages (`db`, `contracts`, `media-storage`, `eslint-config`, `typescript-config`).
-- `apps/web`: landing + public booking + **organizer cabinet** + HTTP API.
+- Turborepo: `apps/web`, packages (`db`, `contracts`, `translations`, `media-storage`, `eslint-config`, `typescript-config`).
+- `apps/web`: landing + public booking + **organizer cabinet** + HTTP API + job handlers.
 - Organizer flow: messenger login widget → notifications → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
 - Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
-- Messenger notifications via `pg-boss` + worker; Telegram first.
+- Messenger notifications via Upstash QStash job handlers; Telegram first ([ADR-012](decisions/012-queue-upstash-qstash.md)).
 - Image uploads (avatar, service photo) via Cloudflare R2, browser-downscaled to 512×512 WebP ([ADR-007](decisions/007-cloudflare-r2.md)).
-- Read-only demo organizer at `/demo`, linked from landing; writes reject it, worker never notifies ([ADR-010](decisions/010-demo-organizer-account.md)).
+- Read-only demo organizer at `/demo`, linked from landing; writes reject it, notifications never send for it; seed refreshed by a QStash schedule ([ADR-010](decisions/010-demo-organizer-account.md)).
 - Observability: Sentry, PostHog (basic).
 - Docs: AGENTS.md + `docs/`.
 
@@ -45,7 +45,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Team members / roles; custom domains.
 - Optional visitor accounts.
 - External calendar sync.
-- Alternate job broker if `pg-boss` outgrown.
+- Alternate job broker if QStash outgrown.
 
 ## Settled choices
 
