@@ -7,6 +7,8 @@
  * should not be re-derived by hand in each template.
  */
 
+import 'server-only'
+
 /**
  * Cabinet bookings, filtered to one slot.
  * Relative on purpose: this is the `next` stored inside a login-link payload,

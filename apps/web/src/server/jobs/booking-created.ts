@@ -2,29 +2,32 @@
  * `booking.created` — tell one recipient that a booking exists.
  * One job per recipient (see `contracts/jobs.ts`), so this handler always
  * sends exactly one message and a retry re-sends only to the party that failed.
+ *
+ * Reached as a QStash delivery to `POST /api/jobs/booking.created`; the
+ * dispatch layer (`run.ts`) has already validated the payload.
  */
 
-import { bookingCreatedJob, isDemoOrganizerId } from '@repo/contracts'
+import { type BookingCreatedJob, isDemoOrganizerId } from '@repo/contracts'
 
 import { issueLoginLink } from '../auth/login-link'
-import { getNotificationContext } from '../db/notification-context'
-import type { WorkerEnv } from '../env'
-import { cabinetSlotPath, loginLinkUrl, manageBookingUrl } from '../links'
 import { getPostHog } from '../posthog'
-import { sendMessage } from '../telegram/client'
+import type { JobsEnv } from './env'
+import { cabinetSlotPath, loginLinkUrl, manageBookingUrl } from './links'
+import { getNotificationContext } from './notification-context'
+import { sendMessage } from './telegram/client'
 import {
   bookingCreatedForGuest,
   bookingCreatedForOrganizer,
   notificationLocale,
-} from '../telegram/templates'
+} from './telegram/templates'
 
-export async function handleBookingCreated(env: WorkerEnv, data: unknown): Promise<void> {
-  const parsed = bookingCreatedJob.safeParse(data)
-  if (!parsed.success) {
-    throw new Error(`[booking.created] invalid payload: ${parsed.error.message}`)
-  }
+import 'server-only'
 
-  const { bookingId, recipient } = parsed.data
+export async function handleBookingCreated(
+  env: JobsEnv,
+  data: BookingCreatedJob,
+): Promise<void> {
+  const { bookingId, recipient } = data
 
   const context = await getNotificationContext(bookingId)
   if (!context) {

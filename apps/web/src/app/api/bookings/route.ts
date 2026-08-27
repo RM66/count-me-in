@@ -1,9 +1,10 @@
 import { createBookingInput } from '@repo/contracts'
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { getTranslations } from 'next-intl/server'
 
 import { createGuestBooking } from '@/server/db/booking'
 import { parseJsonBody, requireGuestIdentity } from '@/server/http'
+import { publishBookingCreated } from '@/server/queue'
 import { bookingErrorResponse } from './_error-response'
 
 /**
@@ -39,6 +40,15 @@ export async function POST(request: Request) {
       guestLocale: booking.guestLocale,
       guest: identity.value,
     })
+
+    // Notifications publish after the transaction commits (ADR-012), and in
+    // `after()` so the guest's response is not delayed by the QStash round
+    // trip. The publisher absorbs its own errors — the booking is already in.
+    //
+    // Invariant: `createGuestBooking` returns only once its transaction has
+    // committed, so `created.id` is durable here. Do not move this publish
+    // inside the transaction — QStash is an HTTPS call and cannot join it.
+    after(() => publishBookingCreated(created.id))
 
     return NextResponse.json({ booking: created }, { status: 201 })
   } catch (error) {

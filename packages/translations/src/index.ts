@@ -30,8 +30,8 @@ import notificationsRu from '../notifications/ru.json'
  * - {@link WEB_MESSAGES} — the web UI (`apps/web`), namespaced by page and
  *   consumed through next-intl's `useTranslations` / `getTranslations`. The
  *   web's `IntlMessages` global is declared from {@link WebMessages}.
- * - {@link NOTIFICATION_MESSAGES} — the Telegram notifications (`apps/worker`),
- *   consumed through `createTranslator<NotificationMessages>`.
+ * - {@link NOTIFICATION_MESSAGES} — the Telegram notifications (the QStash
+ *   job handlers), consumed through `createTranslator<NotificationMessages>`.
  *
  * English is the source of truth for the *shape* of both: every translated
  * message mirrors an `en` key, enforced by parity tests. TypeScript infers JSON module

@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 
 /**
  * Base Vitest config for pure-logic packages (no DOM environment).
- * Used by `packages/contracts` and `apps/worker`.
+ * Used by `packages/contracts`.
  */
 export const baseConfig = defineConfig({
   test: {

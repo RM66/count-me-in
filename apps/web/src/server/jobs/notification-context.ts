@@ -3,22 +3,26 @@
  *
  * Jobs carry only ids (see `contracts/jobs.ts`), so every handler starts
  * here. Deliberately a *fresh* read at send time: a job that waited out a retry
- * backoff — or sat in the queue while the worker was down — must render the
- * booking as it is now, not as it was when the transaction committed.
+ * backoff — or sat in QStash while the receiver endpoint was down — must
+ * render the booking as it is now, not as it was when the transaction
+ * committed.
  *
  * The chain is walked in one statement because all four rows are always needed
  * together: the organizer supplies the timezone every instant is rendered in
  * and the chat to notify, the service its title and display overrides, the slot
  * the time, the booking the guest and their `manageToken`.
  *
- * This mirrors the join in `apps/web/lib/server/db/booking.ts` rather than
- * importing it: that module is `server-only` and app-local by design (ADR-001),
- * so the worker talks to `@repo/db` directly.
+ * This mirrors the join in `server/db/booking.ts` rather than importing it:
+ * that module returns DTOs for HTTP responses, while a notification needs the
+ * raw rows (organizer timezone and chat id, `manageToken`, display overrides)
+ * — two read models over one chain, kept separate on purpose.
  */
 
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { bookings, db, organizers, services, timeSlots } from '@repo/db'
 import { eq } from 'drizzle-orm'
+
+import 'server-only'
 
 export interface NotificationContext {
   booking: Booking

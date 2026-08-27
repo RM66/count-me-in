@@ -218,7 +218,7 @@ export async function updateOwnedSlot(
  * Delete a slot **scoped to its owner**, returning its id.
  * Bookings cascade (see the `time_slots` FK). Returns `null` when nothing
  * matched. Guests are not notified from here — cancelling a slot with live
- * bookings is a notification concern for the worker.
+ * bookings is a notification concern for the job handler.
  */
 export async function deleteOwnedSlot(organizerId: string, slotId: string): Promise<string | null> {
   const [deleted] = await db

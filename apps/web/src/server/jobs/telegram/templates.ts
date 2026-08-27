@@ -2,12 +2,12 @@
  * The rendering side of every notification, as Telegram HTML.
  *
  * The copy itself lives in `@repo/translations` (data, not queue plumbing);
- * this module keeps what belongs to the worker: the ICU translator, HTML
- * composition around `t()` results, the time formatter, and the per-recipient
- * locale policy. Times are rendered here rather than through `apps/web`'s
- * `helpers/date.ts` because that module is an app-local presentation helper
- * (AGENTS.md) — the worker renders the same instants with the same rules but
- * owns its own formatter.
+ * this module keeps what belongs to the notification job: the ICU translator,
+ * HTML composition around `t()` results, the time formatter, and the
+ * per-recipient locale policy. Times are rendered here rather than through
+ * `helpers/date.ts` because that module is a browser-facing presentation
+ * helper (AGENTS.md) — the job renders the same instants with the same rules
+ * but owns its own formatter.
  *
  * **Language (ADR-011).** Every message is ICU-rendered in one of the app
  * locales. Which locale applies is per recipient: the organizer reads their
@@ -39,6 +39,8 @@ import { NOTIFICATION_MESSAGES, type NotificationMessages } from '@repo/translat
 import { createTranslator } from 'next-intl'
 
 import type { MessageButton } from './client'
+
+import 'server-only'
 
 export interface Message {
   text: string

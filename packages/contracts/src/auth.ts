@@ -49,8 +49,8 @@ export type GuestTicketResponse = z.infer<typeof guestTicketResponse>
 // recipient is, so the link carries that proof — the same reasoning that makes
 // `manageToken` sufficient for guests.
 //
-// Minted by `apps/worker` at send time, consumed by `apps/web`, so the key
-// format and payload shape live here where both can see them.
+// Minted by the notification job at send time, consumed on the login route,
+// so the key format and payload shape live here where both can see them.
 
 /**
  * How long a login link stays valid (30 days).

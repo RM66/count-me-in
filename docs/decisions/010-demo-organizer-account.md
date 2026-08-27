@@ -36,7 +36,7 @@ endpoints; `apps/web/lib/server/db/booking/` is an empty placeholder.
 
 2. **Mark the demo account with a code constant, not a database column.**
    `DEMO_ORGANIZER_ID` / `DEMO_ORGANIZER_SLUG` live in `packages/contracts/src/demo.ts`,
-   shared by `apps/web` and `apps/worker`.
+   shared by the web app's write paths and the notification job handlers.
 
 3. **Reserve the `demo` slug** by adding it to `RESERVED_SLUGS` (ADR-009's list).
 
@@ -191,7 +191,7 @@ indistinguishable from real data at read time, which is the entire point.
   (`POST /api/bookings`, `POST /api/bookings/cancel`) all reject the demo id — the guest paths via
   `assertNotDemo()` inside the booking transaction, since they are reached without a session.
   Every cabinet page reads through `resolveCabinetOrganizerId()`.
-- Recurring `pg-boss` job calling `seedDemo()`; notification handlers skipping demo ids.
+- Recurring QStash schedule calling `seedDemo()` (ADR-012); notification handlers skipping demo ids.
 - A test asserting `demo` is rejected by the `slug` schema.
 - A test asserting anonymous `PUT /api/organizers/me` answers `403 DEMO_READ_ONLY`.
 - A test asserting `POST /api/bookings` against a demo slot answers `403 DEMO_READ_ONLY` and leaves
