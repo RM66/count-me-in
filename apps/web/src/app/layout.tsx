@@ -1,6 +1,6 @@
 import { localeDirection } from '@repo/contracts'
 import type { Metadata } from 'next'
-import { Figtree } from 'next/font/google'
+import { Figtree, Manrope } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 
@@ -10,9 +10,21 @@ import { Providers } from './providers'
 
 import './globals.css'
 
-// Figtree ships latin subsets only — ru/ar/ja fall back to the system sans
-// stack in globals.css, which has full script coverage.
-const figtree = Figtree({ subsets: ['latin', 'latin-ext'], variable: '--font-sans' })
+// Figtree ships latin subsets only. Russian therefore uses Manrope (full
+// Cyrillic coverage); ar/ja fall back to the system sans stack in
+// globals.css. Only the active locale's variable lands on <body>, but CSS
+// for both fonts ships to every page — Manrope opts out of preloading so
+// non-ru locales never fetch it, while Figtree preloads everywhere and ru
+// pays for it as the cost of keeping first paint instant elsewhere.
+const figtree = Figtree({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-sans',
+})
+const manrope = Manrope({
+  subsets: ['cyrillic', 'cyrillic-ext', 'latin', 'latin-ext'],
+  variable: '--font-sans',
+  preload: false,
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -50,7 +62,14 @@ export default async function RootLayout({
       suppressHydrationWarning
       className="bg-background"
     >
-      <body className={cn('font-sans', 'antialiased', 'text-foreground', figtree.variable)}>
+      <body
+        className={cn(
+          'font-sans',
+          'antialiased',
+          'text-foreground',
+          locale === 'ru' ? manrope.variable : figtree.variable,
+        )}
+      >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
