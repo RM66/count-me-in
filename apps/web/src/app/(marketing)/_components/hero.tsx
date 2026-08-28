@@ -18,7 +18,7 @@ export async function Hero() {
             <CalendarCheck className="size-3.5" />
             {t('badge')}
           </Badge>
-          <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
             {t('title')}
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground text-pretty">{t('subtitle')}</p>
