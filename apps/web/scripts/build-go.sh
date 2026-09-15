@@ -1,12 +1,12 @@
 #!/bin/sh
 # Verify the module compiles the way Vercel will build it: internal
 # packages as a whole, api/ entry files one at a time (each .go file
-# becomes its own serverless function compiled individually, and the
-# bracket route dirs — [id], [queue] — cannot appear in a ./... pattern
-# because the Go tool rejects '[' in import paths). Also fails when
-# formatting drifts. Translation copy is generated from
-# packages/translations by scripts/generate-i18n-go.ts; CI verifies
-# the generated file is current with `git diff --exit-code`.
+# becomes its own serverless function compiled individually). Dynamic
+# route dirs use plain names (by-id, by-queue) — vercel.json rewrites
+# map :id / :queue to them. Also fails when formatting drifts.
+# Translation copy is generated from packages/translations by
+# scripts/generate-i18n-go.ts; CI verifies the generated file is
+# current with `git diff --exit-code`.
 set -eu
 cd "$(dirname "$0")/.."
 

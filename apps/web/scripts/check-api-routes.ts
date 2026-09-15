@@ -1,8 +1,8 @@
 /**
  * Verify api-rewrites.mjs paths match the Go API handlers under apps/web/api/.
  * One directory per route; each index.go is a Vercel function. Directory → URL:
- *   api/bookings/index.go      → /api/bookings
- *   api/services/[id]/index.go → /api/services/:id
+ *   api/bookings/index.go          → /api/bookings
+ *   api/services/by-id/index.go    → /api/services/:id (vercel.json rewrite)
  * Auth.js (/api/auth/[...nextauth]) stays on Next.js — not in the rewrite list.
  */
 import { readdirSync, statSync } from 'node:fs'
@@ -14,12 +14,22 @@ import { apiRoutePaths } from './api-rewrites.mjs'
 
 const goApiDir = join(fileURLToPath(import.meta.url), '..', '..', 'api')
 
+// Vercel Go functions cannot use bracket directories ([id], [queue]) —
+// go mod tidy rejects '[' in import paths. Dynamic route dirs use plain
+// names (by-id, by-queue) and vercel.json rewrites map :id / :queue to
+// them. This table restores the :param shape for the dev-mode rewrite
+// list so it matches the URL contract.
+const dynamicSegmentMap: Record<string, string> = {
+  'by-id': ':id',
+  'by-queue': ':queue',
+}
+
 function collectGoRoutes(dir: string, prefix = ''): string[] {
   const routes: string[] = []
   for (const entry of readdirSync(dir)) {
     const fullPath = join(dir, entry)
     if (statSync(fullPath).isDirectory()) {
-      const segment = entry.replace(/^\[(.+)\]$/, ':$1')
+      const segment = dynamicSegmentMap[entry] ?? entry
       const path = prefix ? `${prefix}/${segment}` : `/${segment}`
       try {
         statSync(join(fullPath, 'index.go'))

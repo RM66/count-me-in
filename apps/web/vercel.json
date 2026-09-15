@@ -5,5 +5,10 @@
     "api/bookings/cancel/index.go": { "memory": 1024, "maxDuration": 15 },
     "api/bookings/cancel-by-organizer/index.go": { "memory": 1024, "maxDuration": 15 },
     "api/**/*.go": { "memory": 1024, "maxDuration": 10 }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/services/:id", "destination": "/api/services/by-id" },
+    { "source": "/api/slots/:id", "destination": "/api/slots/by-id" },
+    { "source": "/api/jobs/:queue", "destination": "/api/jobs/by-queue" }
+  ]
 }

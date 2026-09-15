@@ -2,9 +2,9 @@
 // The files under api/ are thin Vercel entry points (one per function,
 // each exporting Handler) that delegate here; cmd/dev mounts the same
 // handlers on a local mux. Keeping the logic in internal/ is what makes
-// both possible — the bracket route dirs ([id], [queue]) cannot be
-// imported (Go rejects '[' in import paths), so a local server could
-// never reach entry files directly.
+// both possible — the dynamic route dirs (by-id, by-queue) are plain
+// names because Go rejects '[' in import paths, and vercel.json
+// rewrites map :id / :queue to them in production.
 package routes
 
 import (

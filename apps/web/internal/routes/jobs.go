@@ -36,7 +36,7 @@ func JobsReceiver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queue := httpx.PathParam(r, "/api/jobs/")
+	queue := httpx.PathParam(r, "/api/jobs/", "queue")
 
 	currentSigningKey := os.Getenv("QSTASH_CURRENT_SIGNING_KEY")
 	nextSigningKey := os.Getenv("QSTASH_NEXT_SIGNING_KEY")

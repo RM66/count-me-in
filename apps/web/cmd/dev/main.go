@@ -4,9 +4,10 @@
 // the Vercel CLI. Production traffic never flows through this binary —
 // Vercel compiles each api/ entry file into its own function.
 //
-// The bracket route dirs ([id], [queue]) cannot be imported (Go
-// rejects '[' in import paths), which is exactly why the route logic
-// lives in internal/routes and the entry files are thin wrappers.
+// Dynamic route dirs use plain names (by-id, by-queue) because Go
+// rejects '[' in import paths — vercel.json rewrites map :id / :queue
+// to them in production. The route logic lives in internal/routes and
+// the entry files are thin wrappers.
 package main
 
 import (

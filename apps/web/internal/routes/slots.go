@@ -79,7 +79,7 @@ func slotsCreate(w http.ResponseWriter, r *http.Request) {
 // the seats already sold answers 409. DELETE cascades bookings (the
 // time_slots FK); guests are not notified from here.
 func SlotItem(w http.ResponseWriter, r *http.Request) {
-	id := httpx.PathParam(r, "/api/slots/")
+	id := httpx.PathParam(r, "/api/slots/", "id")
 	switch r.Method {
 	case http.MethodGet:
 		slotGet(w, r, id)

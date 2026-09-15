@@ -89,7 +89,7 @@ func servicesCreate(w http.ResponseWriter, r *http.Request) {
 // follows the profile convention (absent key = untouched, explicit null
 // clears). DELETE cascades to slots and their bookings (the services FK).
 func ServiceItem(w http.ResponseWriter, r *http.Request) {
-	id := httpx.PathParam(r, "/api/services/")
+	id := httpx.PathParam(r, "/api/services/", "id")
 	switch r.Method {
 	case http.MethodGet:
 		serviceGet(w, r, id)
