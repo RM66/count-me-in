@@ -1,7 +1,7 @@
 /**
  * Server-side reads and DTO mapping for organizers.
  *
- * Profile updates moved to the Go API (`apps/api-go/internal/db/organizer.go`)
+ * Profile updates moved to the Go API (`apps/web/internal/db/organizer.go`)
  * together with the route handlers — this module now serves only the pages
  * that read Postgres directly: the cabinet, the public organizer pages and
  * the sitemap.
@@ -12,7 +12,7 @@
  * stops the messenger identity from leaking to a public page by omission.
  */
 
-import type { AppLocale, OrganizerProfile, PublicOrganizer } from '@repo/contracts'
+import type { OrganizerProfile, PublicOrganizer } from '@repo/contracts'
 import { DEFAULT_LOCALE, isAppLocale, isDemoOrganizerId } from '@repo/contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
@@ -110,17 +110,4 @@ export async function getOrganizerProfile(
   if (!row) return null
 
   return toOrganizerProfile(row, isDemo)
-}
-
-/**
- * Set the organizer's notification language (ADR-011). Called by the language
- * switcher's server action — the switcher is the single language setting, so
- * switching while signed in keeps `organizers.language` in sync with the UI
- * locale. Silent no-op for an unknown id (e.g. a stale session).
- */
-export async function updateOrganizerLanguage(
-  organizerId: string,
-  language: AppLocale,
-): Promise<void> {
-  await db.update(organizers).set({ language }).where(eq(organizers.id, organizerId))
 }

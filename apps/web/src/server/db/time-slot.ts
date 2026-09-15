@@ -2,7 +2,7 @@
  * Server-side reads and DTO mapping for time slots.
  *
  * The write paths (create, update, delete) moved to the Go API
- * (`apps/api-go/internal/db/timeslot.go`) together with the route
+ * (`apps/web/internal/db/timeslot.go`) together with the route
  * handlers — this module now serves only the pages that read Postgres
  * directly: the cabinet schedule/calendar and the public service pages.
  *

@@ -12,11 +12,18 @@ import { resolveCabinetOrganizerId } from '@/server/demo'
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ service?: string; slot?: string }>
+  searchParams: Promise<{ service?: string; slot?: string; page?: string }>
 }) {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
   const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
-  const { service: serviceParam, slot: slotParam } = await searchParams
+  const { service: serviceParam, slot: slotParam, page: pageParam } = await searchParams
+
+  // Pagination (Phase 2.2): one page of bookings at a time, 50 per page, so
+  // the cabinet never loads the whole history into memory. The page number
+  // lives in the URL so back/forward and deep links keep working.
+  const page = Math.max(1, Number(pageParam) || 1)
+  const PAGE_SIZE = 50
+  const offset = (page - 1) * PAGE_SIZE
 
   const t = await getTranslations('Cabinet.bookings')
   const tcrumbs = await getTranslations('Cabinet.crumbs')
@@ -30,7 +37,7 @@ export default async function BookingsPage({
     getOrganizerProfile(organizerId, isReadOnly),
     listServices(organizerId),
     listSlots(organizerId),
-    listBookings(organizerId),
+    listBookings(organizerId, { limit: PAGE_SIZE, offset }),
   ])
 
   // The filters live in the URL so the services and slots pages can deep-link
@@ -97,6 +104,8 @@ export default async function BookingsPage({
           // seed has not run) — the table still renders rather than throwing.
           timezone={timezone}
           isReadOnly={isReadOnly}
+          page={page}
+          pageSize={PAGE_SIZE}
         />
       </div>
     </>

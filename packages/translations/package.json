@@ -12,7 +12,7 @@
     "lint": "eslint --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "sync:go": "cd ../../apps/api-go && sh scripts/sync-translations.sh"
+    "generate:go": "bun run ../../apps/web/scripts/generate-i18n-go.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

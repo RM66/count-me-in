@@ -29,7 +29,6 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 | `@repo/db`                | Drizzle schema & client                                 |
 | `@repo/redis`             | ioredis singleton (sessions, auth tickets, rate limits) |
 | `@repo/contracts`         | Shared Zod / API types                                  |
-| `@repo/media-storage`     | Cloudflare R2 helpers                                   |
 | `@repo/eslint-config`     | ESLint configs                                          |
 | `@repo/typescript-config` | TypeScript configs                                      |
 

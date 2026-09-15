@@ -737,7 +737,10 @@
       "bookingsAppear": "Buchungen erscheinen hier, sobald ein Gast einen Platz reserviert.",
       "noBookingsOnDay": "Keine Buchungen am {day}",
       "forServiceSuffix": " für {service}",
-      "tryFilters": "Passe deine Filter oder die Suche an."
+      "tryFilters": "Passe deine Filter oder die Suche an.",
+      "prevPage": "Zurück",
+      "nextPage": "Weiter",
+      "pageLabel": "Seite {page}"
     },
     "analytics": {
       "title": "Analyse",
@@ -799,6 +802,8 @@
     "partyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
     "duplicateBooking": "Du hast für diesen Termin bereits eine Buchung",
     "alreadyCancelled": "Diese Buchung wurde bereits storniert",
-    "slotGone": "Dieser Termin ist nicht mehr verfügbar"
+    "slotGone": "Dieser Termin ist nicht mehr verfügbar",
+    "tooManyRequests": "Zu viele Anfragen — bitte versuchen Sie es gleich noch einmal",
+    "slotHasActiveBookings": "Dieser Termin hat noch bestätigte Buchungen — stornieren Sie diese, bevor Sie ihn löschen"
   }
 }

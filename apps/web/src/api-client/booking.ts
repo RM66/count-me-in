@@ -37,12 +37,9 @@ export function useCreateBooking() {
  * strings end up in logs and `Referer` headers.
  */
 export function useCancelBooking() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (manageToken: string) =>
       post<{ booking: GuestBooking }>('/api/bookings/cancel', { manageToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
   })
 }
 
@@ -51,21 +48,13 @@ export function useCancelBooking() {
  * Separate hook from {@link useCancelBooking} because it uses a different
  * credential (session + ownership) against a different endpoint, and resolves
  * to a `BookingRecord` (no `manageToken`).
- * Invalidating `bookings.all` is not enough on its own: the cabinet lists are
- * server-rendered, so the caller follows this with `router.refresh()`.
+ * The cabinet lists are server-rendered, so the caller follows this with
+ * `router.refresh()` (Phase 2.3 — no client cache to invalidate).
  */
 export function useCancelBookingByOrganizer() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (bookingId: string) =>
       post<{ booking: BookingRecord }>('/api/bookings/cancel-by-organizer', { bookingId }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
-      ])
-    },
   })
 }
 

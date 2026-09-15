@@ -25,11 +25,11 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
 - **Validation:** Zod (`packages/contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
-- **Media:** Cloudflare R2 (`packages/media-storage`)
+- **Media:** Cloudflare R2 (signed upload URLs minted by the Go API; `packages/media-storage` deleted — R2 helpers now live in `apps/web/internal/storage`)
 - **Jobs:** Upstash QStash — `apps/web` publishes after commit, `POST /api/jobs/{queue}` consumes ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links in messages
 - **Observability:** PostHog, Sentry (web); structured JSON stdout logs (`internal/logx`) in the Go API
-- **API:** `apps/api-go` — Vercel Functions, `net/http` only; the TS route handlers have been deleted, `auth/[...nextauth]` stays in Next.js permanently ([ADR-013](docs/decisions/013-api-go-rewrite.md))
+- **API:** `apps/web/api` + `apps/web/internal` — Vercel Functions, `net/http` only; the TS route handlers have been deleted, `auth/[...nextauth]` stays in Next.js permanently ([ADR-013](docs/decisions/013-api-go-rewrite.md)). `apps/web/` is the Vercel project root (single project for web + Go API, so env vars are configured once).
 
 No separate organizer native app in MVP — [ADR-006](docs/decisions/006-organizer-capacitor.md). WebSockets out of MVP — [ADR-003](docs/decisions/003-no-websocket-mvp.md).
 
@@ -51,10 +51,12 @@ apps/
       proxy.ts         # Auth.js v5 middleware — src/ root, do not move
       instrumentation.ts # Sentry server-side init
     public/            # Static assets
-  api-go/              # Go port of the API — Vercel Functions, net/http only (ADR-013)
-    api/               # One directory per route; each index.go = one serverless function
+    go.mod / go.sum    # module "countmein" — shared by api/ and internal/
+    vercel.json        # Go function memory/maxDuration config
+    api/               # Go API — Vercel Functions, one directory per route; each index.go = one serverless function
     internal/          # contracts, validation, db, auth, i18n, httpx, jobs, queue, storage, demo, logx
-    scripts/           # build.sh (CI entry), sync/check-translations.sh
+    cmd/dev/           # local dev server (never deployed)
+    scripts/           # api-rewrites.mjs, check-api-routes.ts, ensure-qstash.ts, generate-i18n-go.ts, build-go.sh
 packages/
   db/                  # Drizzle schema, migrations
   redis/               # ioredis singleton (tickets, login links, rate limits)
@@ -91,7 +93,7 @@ docs/
 
 **Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and entity files live at `server/db/service.ts` (kind → entity). Never reintroduce `services/`.
 
-**`api-client/` vs the Go API** — two ends of one wire. `api-client/` is the browser client (React Query). The Go API (`apps/api-go`) holds the server handlers; `app/api/auth/[...nextauth]/route.ts` is the only TS route handler left (Auth.js). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
+**`api-client/` vs the Go API** — two ends of one wire. `api-client/` is the browser client (React Query). The Go API (`apps/web/api` + `apps/web/internal`) holds the server handlers; `app/api/auth/[...nextauth]/route.ts` is the only TS route handler left (Auth.js). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
 
 **What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/contracts`.
 
@@ -133,9 +135,9 @@ Per-package: `cd <package> && bun run test`.
 - Optional display `location` and `contact` on `Organizer` and `Service`; `Service.*` overrides the organizer's — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/contracts`. Every write path must reject it, including guest booking + cancel, and notifications must never be sent for it — [ADR-010](docs/decisions/010-demo-organizer-account.md). The seed is refreshed daily by a QStash schedule, kept in sync by CI (`apps/web/scripts/ensure-qstash.ts`).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. Scope every cabinet read through `resolveCabinetOrganizerId()` and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `RequireGuestIdentity()` in the Go API (`apps/api-go/internal/httpx`) is the only way it enters a write; single-use, so a replayed booking fails.
-- **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via the Go publisher (`apps/api-go/internal/queue`), inline after the DB commit (no `after()` on the Go runtime). The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**.
-- **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Go: `apps/api-go/api/jobs/[queue]/index.go`): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/api-go/internal/jobs/run.go`.
+- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `RequireGuestIdentity()` in the Go API (`apps/web/internal/httpx`) is the only way it enters a write; single-use, so a replayed booking fails.
+- **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via the Go publisher (`apps/web/internal/queue`), inline after the DB commit (no `after()` on the Go runtime). The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**.
+- **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Go: `apps/web/api/jobs/[queue]/index.go`): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/web/internal/jobs/run.go`.
 - **Organizer deep links are one-time login links.** The notification job mints `{ organizerId, next }` into Redis (`issueLoginLink` in `src/server/auth/login-link.ts`) and links to `/login/link/{token}`, consumed on **`POST`** (never `GET` — previewers fetch URLs before a human clicks). Single-use, `noindex`, demo id refused.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the delivery with a log instead of retrying — only `429`/`5xx`/network are retried.
 - `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in the Go API, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers. The TS `server/db/booking.ts` reads it for the guest management page but does not generate it.

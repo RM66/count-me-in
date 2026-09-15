@@ -10,6 +10,8 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "check:api-routes": "turbo run check:api-routes",
+    "check:contracts": "turbo run check:contracts",
+    "generate:i18n": "turbo run generate:i18n",
     "knip": "knip --exclude duplicates"
   },
   "devDependencies": {

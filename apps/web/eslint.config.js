@@ -1,4 +1,4 @@
-import { nextJsConfig } from "@repo/eslint-config/next-js";
+import { nextJsConfig } from '@repo/eslint-config/next-js'
 
 /**
  * `countmein/no-untranslated-strings` is enabled app-wide (ADR-011).
@@ -14,10 +14,10 @@ import { nextJsConfig } from "@repo/eslint-config/next-js";
 export default [
   ...nextJsConfig,
   {
-    files: ["src/**/*.{ts,tsx}"],
-    ignores: ["**/*.test.*", "**/*.stories.*"],
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*', '**/*.stories.*'],
     rules: {
-      "countmein/no-untranslated-strings": "error",
+      'countmein/no-untranslated-strings': 'error',
     },
   },
   {
@@ -26,15 +26,32 @@ export default [
     // in this app. Other object shapes are the author's choice — `interface`
     // stays legal for plain object shapes and remains required in ambient
     // declarations (`**/*.d.ts`), where declaration merging needs it.
-    files: ["src/**/*.{ts,tsx}"],
+    files: ['src/**/*.{ts,tsx}'],
     rules: {
-      "no-restricted-syntax": [
-        "error",
+      'no-restricted-syntax': [
+        'error',
         {
-          selector: "TSInterfaceDeclaration[id.name=/Props$/]",
-          message: "Component props use `type Props = { ... }`, never `interface`.",
+          selector: 'TSInterfaceDeclaration[id.name=/Props$/]',
+          message: 'Component props use `type Props = { ... }`, never `interface`.',
         },
       ],
     },
   },
-];
+  {
+    // CQRS boundary (Phase 3.1): `src/server/db/*` is read-only — the write
+    // side lives in the Go API. Forbid Drizzle's mutating methods here so a
+    // stray `.insert/.update/.delete/.set` cannot slip a write past the
+    // server-render layer. Reads (`.select`, `.query`) stay legal.
+    files: ['src/server/db/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.property.name=/^(insert|update|delete|set)$/]',
+          message:
+            'src/server/db is read-only — writes go through the Go API. Use .select() for reads.',
+        },
+      ],
+    },
+  },
+]

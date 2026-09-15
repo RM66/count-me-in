@@ -4,8 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n web,api -c blue,green \"next dev --port 3000\" \"cd ../api-go && go run ./cmd/dev\"",
+    "dev": "concurrently -n web,api -c blue,green \"next dev --port 3000\" \"go run ./cmd/dev\"",
     "build": "next build",
+    "build:go": "bun run generate:i18n && sh scripts/build-go.sh",
+    "generate:i18n": "bun scripts/generate-i18n-go.ts",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "NODE_ENV=development next typegen && tsc --noEmit",
@@ -13,6 +15,7 @@
     "build-storybook": "storybook build",
     "qstash:schedules": "bun scripts/ensure-qstash.ts",
     "check:api-routes": "bun scripts/check-api-routes.ts",
+    "check:contracts": "bun scripts/check-contracts.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

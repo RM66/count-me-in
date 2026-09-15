@@ -1,5 +1,5 @@
 /**
- * Verify api-rewrites.mjs paths match the Go API handlers under apps/api-go/api/.
+ * Verify api-rewrites.mjs paths match the Go API handlers under apps/web/api/.
  * One directory per route; each index.go is a Vercel function. Directory → URL:
  *   api/bookings/index.go      → /api/bookings
  *   api/services/[id]/index.go → /api/services/:id
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 import { apiRoutePaths } from './api-rewrites.mjs'
 
-const goApiDir = join(fileURLToPath(import.meta.url), '..', '..', '..', 'api-go', 'api')
+const goApiDir = join(fileURLToPath(import.meta.url), '..', '..', 'api')
 
 function collectGoRoutes(dir: string, prefix = ''): string[] {
   const routes: string[] = []

@@ -7,12 +7,11 @@ import type {
   UpdateServiceInput,
 } from '@repo/contracts'
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
 import { del, post, put } from './client'
 import { ApiError } from './error'
 import { resizeServicePhoto } from './image'
-import { queryKeys } from './keys'
 
 /**
  * Last-resort fallbacks for upload failures: api-client has no locale, so the
@@ -25,43 +24,31 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 /**
  * Client-side API for the **Service** entity — writes plus the cover upload
  * flow. Cabinet pages read services on the server (`lib/server/db/service.ts`),
- * so there is no list/detail query here yet; the mutations still have to drop
- * that cache when a server component refetches.
+ * so there is no list/detail query here. The mutations return the created or
+ * updated record; the caller follows with `router.refresh()` to re-render the
+ * server component (Phase 2.3 — no client cache to invalidate).
  */
-
-function invalidateServices(queryClient: ReturnType<typeof useQueryClient>) {
-  return queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
-}
 
 /** Create a service owned by the signed-in organizer. */
 export function useCreateService() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (input: CreateServiceInput) =>
       post<{ service: ServiceRecord }>('/api/services', input),
-    onSuccess: () => invalidateServices(queryClient),
   })
 }
 
 /** Update one service. Only the fields present in `input` are written. */
 export function useUpdateService(serviceId: string) {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (input: UpdateServiceInput) =>
       put<{ service: ServiceRecord }>(`/api/services/${serviceId}`, input),
-    onSuccess: () => invalidateServices(queryClient),
   })
 }
 
 /** Delete one service. Slots and bookings cascade server-side. */
 export function useDeleteService(serviceId: string) {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: () => del<{ id: string }>(`/api/services/${serviceId}`),
-    onSuccess: () => invalidateServices(queryClient),
   })
 }
 

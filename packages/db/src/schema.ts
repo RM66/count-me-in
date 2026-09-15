@@ -119,7 +119,7 @@ export const bookings = pgTable(
       .$defaultFn(() => uuidv7()),
     timeSlotId: uuid('time_slot_id')
       .notNull()
-      .references(() => timeSlots.id, { onDelete: 'cascade' }),
+      .references(() => timeSlots.id, { onDelete: 'restrict' }),
     status: bookingStatus('status').notNull(),
     seats: integer('seats').notNull(),
     guestName: text('guest_name').notNull(),

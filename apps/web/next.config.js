@@ -59,9 +59,11 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // beforeFiles rewrites proxy all other /api/* to Go (bypassing
-        // headers()); Go sets its own Vary/X-Robots-Tag. Only the Auth.js
-        // route stays on Next.js and needs noindex here.
+        // In production Vercel's filesystem routing serves Go functions at
+        // /api/* directly (bypassing headers()); Go sets its own Vary /
+        // X-Robots-Tag. In dev, beforeFiles rewrites proxy /api/* to the
+        // local Go server (also bypassing headers()). Only the Auth.js route
+        // stays on Next.js and needs noindex here.
         source: '/api/auth/:path*',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
       },
