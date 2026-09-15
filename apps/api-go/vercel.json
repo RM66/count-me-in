@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/bookings/index.go": { "memory": 1024, "maxDuration": 15 },
+    "api/bookings/cancel/index.go": { "memory": 1024, "maxDuration": 15 },
+    "api/bookings/cancel-by-organizer/index.go": { "memory": 1024, "maxDuration": 15 },
+    "api/**/*.go": { "memory": 1024, "maxDuration": 10 }
+  }
+}

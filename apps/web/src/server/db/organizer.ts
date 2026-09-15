@@ -1,9 +1,10 @@
 /**
- * Server-side reads, writes and DTO mapping for organizers.
+ * Server-side reads and DTO mapping for organizers.
  *
- * Cabinet pages are server components that query Postgres directly, while the
- * route handlers return the same shape over HTTP — both go through
- * {@link toOrganizerProfile} so the client only ever sees one contract.
+ * Profile updates moved to the Go API (`apps/api-go/internal/db/organizer.go`)
+ * together with the route handlers — this module now serves only the pages
+ * that read Postgres directly: the cabinet, the public organizer pages and
+ * the sitemap.
  *
  * Two projections, one table: {@link toOrganizerProfile} is the organizer's own
  * view, {@link toPublicOrganizer} the one guests get on `/{orgSlug}`. Keeping
@@ -11,36 +12,14 @@
  * stops the messenger identity from leaking to a public page by omission.
  */
 
-import type {
-  AppLocale,
-  OrganizerProfile,
-  PublicOrganizer,
-  UpdateOrganizerProfileInput,
-} from '@repo/contracts'
+import type { AppLocale, OrganizerProfile, PublicOrganizer } from '@repo/contracts'
 import { DEFAULT_LOCALE, isAppLocale, isDemoOrganizerId } from '@repo/contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
 import { asc, eq } from 'drizzle-orm'
-import { revalidateTag, unstable_cache } from 'next/cache'
-
-import { pickDefined } from './shared'
+import { unstable_cache } from 'next/cache'
 
 import 'server-only'
-
-/**
- * Profile columns the cabinet may write. Messenger identity (`messenger`,
- * `messengerId`), `id` and `createdAt` are deliberately absent — they are set
- * at registration and never editable.
- */
-const UPDATABLE_FIELDS = [
-  'name',
-  'slug',
-  'timezone',
-  'description',
-  'location',
-  'contact',
-  'photoUrl',
-] as const
 
 /** Normalize an `organizers` row into the API/DTO shape (dates → ISO strings). */
 export function toOrganizerProfile(row: Organizer, isDemo: boolean): OrganizerProfile {
@@ -100,10 +79,14 @@ async function queryPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer
   return row ? toPublicOrganizer(row) : null
 }
 
-export const getPublicOrganizerBySlug = unstable_cache(queryPublicOrganizerBySlug, ['public-organizer-by-slug'], {
-  revalidate: 300,
-  tags: ['public-organizers'],
-})
+export const getPublicOrganizerBySlug = unstable_cache(
+  queryPublicOrganizerBySlug,
+  ['public-organizer-by-slug'],
+  {
+    revalidate: 300,
+    tags: ['public-organizers'],
+  },
+)
 
 /**
  * Every organizer slug, for `app/sitemap.ts`. Slugs are unique (schema index),
@@ -127,32 +110,6 @@ export async function getOrganizerProfile(
   if (!row) return null
 
   return toOrganizerProfile(row, isDemo)
-}
-
-/**
- * Update the current organizer's profile.
- * Editable fields: name, slug, timezone, description, location, contact, photoUrl.
- * Messenger identity is not editable. Returns `null` when the id does not exist.
- */
-export async function updateOrganizerProfile(
-  organizerId: string,
-  input: UpdateOrganizerProfileInput,
-): Promise<OrganizerProfile | null> {
-  const updates = pickDefined(input, UPDATABLE_FIELDS)
-
-  const [updated] = await db
-    .update(organizers)
-    .set(updates)
-    .where(eq(organizers.id, organizerId))
-    .returning()
-
-  if (!updated) return null
-
-  // Slug/description/photo feed the public page and its metadata. Next 16's
-  // revalidateTag takes a cache-life profile; `expire: 0` invalidates at once.
-  revalidateTag('public-organizers', { expire: 0 })
-
-  return toOrganizerProfile(updated, false)
 }
 
 /**

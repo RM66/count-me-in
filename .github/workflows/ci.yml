@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, check-types, test]
+        task: [lint, check-types, test, check:api-routes]
     steps:
       - uses: actions/checkout@v5
 
@@ -44,6 +44,28 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - run: bun run ${{ matrix.task }}
+
+  # The Go API is a separate module with its own toolchain. scripts/build.sh
+  # runs the whole verification set: build + vet + unit tests, per-file builds
+  # of the Vercel entry points (bracket route dirs cannot appear in a ./...
+  # pattern), gofmt, and the embedded-translations drift check against
+  # packages/translations.
+  go-api:
+    name: Go API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Keep in sync with "go" in apps/api-go/go.mod.
+          go-version: '1.24'
+          cache-dependency-path: apps/api-go/go.sum
+
+      - name: Build, vet, test, check translations
+        working-directory: apps/api-go
+        run: sh scripts/build.sh
 
   # Apply DB migrations only on the production deploy trigger (push to main),
   # after all checks pass. Running them in the Vercel build command would be

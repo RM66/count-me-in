@@ -45,4 +45,3 @@ export function pageMetadata({ title, description, path }: PageMetadataProps): M
     },
   }
 }
-

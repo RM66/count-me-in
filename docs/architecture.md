@@ -4,13 +4,13 @@ High-level system design for CountMeIn. Product domain in [domain.md](domain.md)
 
 ## Product surfaces
 
-| Surface           | App                         | Audience   | Responsibility                                                   |
-| ----------------- | --------------------------- | ---------- | ---------------------------------------------------------------- |
-| Landing           | `apps/web`                  | Prospects  | Marketing, organizer sign-up                                     |
-| Public booking    | `apps/web`                  | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book      |
-| Organizer cabinet | `apps/web`                  | Organizers | Services, slots, bookings, profile — opened from messenger links |
-| API               | `apps/web` (Route Handlers) | Clients    | HTTP API; Auth.js for organizers                                 |
-| Jobs              | `apps/web` (Route Handlers) | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}` |
+| Surface           | App           | Audience   | Responsibility                                                                                                                      |
+| ----------------- | ------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Landing           | `apps/web`    | Prospects  | Marketing, organizer sign-up                                                                                                        |
+| Public booking    | `apps/web`    | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book                                                                         |
+| Organizer cabinet | `apps/web`    | Organizers | Services, slots, bookings, profile — opened from messenger links                                                                    |
+| API               | `apps/api-go` | Clients    | HTTP API (Vercel Functions, `net/http` only); Auth.js `[...nextauth]` stays in Next.js ([ADR-013](decisions/013-api-go-rewrite.md)) |
+| Jobs              | `apps/api-go` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                   |
 
 **MVP entry for organizers:** register via Telegram Login Widget → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
 
@@ -22,8 +22,8 @@ flowchart LR
   Public[apps/web Public booking]
   Cabinet[apps/web Organizer cabinet]
   Messenger[Messenger WebView]
-  API[apps/web API]
-  Jobs[apps/web Jobs API]
+  API[apps/api-go API]
+  Jobs[apps/api-go Jobs API]
   DB[(Postgres)]
   Redis[(Redis)]
   R2[(Cloudflare R2)]
@@ -44,18 +44,19 @@ flowchart LR
 
 ## Component roles
 
-| Component                                      | Role                                                                          |
-| ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| `apps/web`                                     | Next.js: landing, public booking, cabinet, API, Auth.js, job handlers          |
-| `packages/db`                                  | Drizzle schema, migrations, client                                            |
-| `packages/redis`                               | ioredis singleton (sessions, auth tickets, rate limits)                       |
-| `packages/contracts`                           | Zod schemas shared across the web app's layers                                |
-| `packages/media-storage`                       | R2 signed upload helpers                                                      |
-| `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                      |
-| Postgres                                       | Domain data                                                                   |
-| Redis                                          | Sessions, short-lived auth tickets, rate limits                               |
-| Upstash QStash                                 | Job queue: at-least-once delivery, retries, demo-refresh cron                 |
-| Cloudflare R2                                  | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md)) |
+| Component                                      | Role                                                                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`                                     | Next.js: landing, public booking, cabinet, Auth.js, server-side page reads (Postgres)                                  |
+| `apps/api-go`                                  | Go API: Vercel Functions, `net/http` only — all API routes + job handlers ([ADR-013](decisions/013-api-go-rewrite.md)) |
+| `packages/db`                                  | Drizzle schema, migrations, client                                                                                     |
+| `packages/redis`                               | ioredis singleton (sessions, auth tickets, rate limits)                                                                |
+| `packages/contracts`                           | Zod schemas shared across the web app's layers                                                                         |
+| `packages/media-storage`                       | R2 signed upload helpers                                                                                               |
+| `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                                                               |
+| Postgres                                       | Domain data                                                                                                            |
+| Redis                                          | Sessions, short-lived auth tickets, rate limits                                                                        |
+| Upstash QStash                                 | Job queue: at-least-once delivery, retries, demo-refresh cron                                                          |
+| Cloudflare R2                                  | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md))                                          |
 
 ## Critical flow: create booking (guest)
 
@@ -66,7 +67,7 @@ flowchart LR
    - **claim seats atomically**: `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` (not read-then-write)
    - if no row updated → slot full → abort
    - insert `Booking` (`confirmed`)
-4. Commit, then publish `booking.created` to QStash (management link for guest; cabinet URL for organizer) via `after()`.
+4. Commit, then publish `booking.created` to QStash (management link for guest; cabinet URL for organizer) inline after the commit (no `after()` on the Go runtime — ADR-012).
 5. QStash delivers to `/api/jobs/booking.created`; the handler notifies guest + organizer.
 6. Invalidate TanStack Query on public page (and cabinet if open).
 
@@ -87,7 +88,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 ## Jobs / notifications
 
-**Upstash QStash** consumed by `apps/web` route handlers; messengers primary ([ADR-008](decisions/008-messenger-only-auth.md), [ADR-012](decisions/012-queue-upstash-qstash.md)).
+**Upstash QStash** consumed by `apps/api-go` route handlers; messengers primary ([ADR-008](decisions/008-messenger-only-auth.md), [ADR-012](decisions/012-queue-upstash-qstash.md)).
 
 ### Queues
 
@@ -99,7 +100,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 **One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — the handler refetches at send time, so `manageToken` and login tokens never leave the database boundary. Contracts in `packages/contracts/src/jobs.ts`.
 
-**Publish after commit** (`apps/web/src/server/queue.ts`): the route handler publishes inside `after()` once the booking transaction has returned; QStash delivers to `POST /api/jobs/{queue}` with 5 retries. The accepted loss window is a crash between commit and publish ([ADR-012](decisions/012-queue-upstash-qstash.md)).
+**Publish after commit** (`apps/api-go/internal/queue`): the Go handler publishes inline once the booking transaction has committed and the response is written (no `after()` on the Vercel Go runtime) — the guest does not wait for QStash, but the function stays alive until the publish completes (bounded context, 3s). QStash delivers to `POST /api/jobs/{queue}` with 5 retries. The accepted loss window is a crash between commit and publish ([ADR-012](decisions/012-queue-upstash-qstash.md)).
 
 ### Links in messages
 
@@ -113,17 +114,17 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 Telegram bot can only message users who pressed **Start** — UX includes bot-start step after widget auth, with management deep link shown on-screen as fallback.
 
-| Telegram response           | Action                                          |
-| --------------------------- | ----------------------------------------------- |
+| Telegram response           | Action                                                   |
+| --------------------------- | -------------------------------------------------------- |
 | `403`, `400 chat not found` | Complete delivery (`200`) and log — no retry can succeed |
-| `429`, `5xx`, network       | Throw → QStash retries (5 attempts, backoff)    |
-| Other `4xx`                 | Fail loudly — our bug                           |
+| `429`, `5xx`, network       | Throw → QStash retries (5 attempts, backoff)             |
+| Other `4xx`                 | Fail loudly — our bug                                    |
 
 Every handler refuses the demo organizer (`isDemoOrganizerId`).
 
 ### Running locally
 
-`bun run dev` starts `web`. Publishing needs `QSTASH_TOKEN`; without it dev skips publishing with a warning — bookings succeed, no notifications send. End-to-end delivery additionally needs a publicly reachable `APP_URL`, because QStash POSTs from Upstash to that URL (localhost is not routable — use a deployed preview or a tunnel).
+`bun run dev` starts `web` (Next.js on :3000) and the Go API (:3001) concurrently; `next.config.js` proxies Go-owned `/api/*` routes to it. Publishing needs `QSTASH_TOKEN`; without it dev skips publishing with a warning — bookings succeed, no notifications send. End-to-end delivery additionally needs a publicly reachable `APP_URL`, because QStash POSTs from Upstash to that URL (localhost is not routable — use a deployed preview or a tunnel).
 
 Delivery state lives in the QStash console (message log, retries, events) — check it before suspecting the send path.
 
@@ -131,17 +132,17 @@ Delivery state lives in the QStash console (message log, retries, events) — ch
 
 Two tools, one job each — Sentry for errors and performance, PostHog for product analytics and behaviour.
 
-| Tool        | Scope                                                                        | Where it runs                                                                   |
-| ----------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload   | `apps/web` (client + server via `instrumentation.ts` + `sentry.client.config.ts`) |
-| **PostHog** | Page views, funnels, feature flags, session replay, notification-sent events | `apps/web` (browser via `lib/posthog.ts`; server via `server/posthog.ts`)          |
+| Tool        | Scope                                                                      | Where it runs                                                                     |
+| ----------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload | `apps/web` (client + server via `instrumentation.ts` + `sentry.client.config.ts`) |
+| **PostHog** | Page views, funnels, feature flags, session replay                         | `apps/web` (browser via `lib/posthog.ts`)                                         |
 
 ### Sentry
 
 - **Server init:** [`apps/web/src/instrumentation.ts`](../apps/web/src/instrumentation.ts) — `src/`-root Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
 - **Client init:** [`apps/web/sentry.client.config.ts`](../apps/web/sentry.client.config.ts) — loaded automatically by `@sentry/nextjs` in the browser bundle.
 - **Error boundaries:** [`apps/web/src/app/error.tsx`](../apps/web/src/app/error.tsx) and [`apps/web/src/app/global-error.tsx`](../apps/web/src/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
-- **Job dispatch:** [`apps/web/src/server/jobs/run.ts`](../apps/web/src/server/jobs/run.ts) captures unretriable failures (recipient unreachable); handler errors bubble to the route's `500`, where server instrumentation captures them. The publisher captures its own failures in `after()`.
+- **Job dispatch:** [`apps/api-go/internal/jobs/run.go`](../apps/api-go/internal/jobs/run.go) captures unretriable failures (recipient unreachable); handler errors bubble to the route's `500`, captured by Vercel log drains via `internal/logx`. The publisher captures its own failures inline.
 - **Source maps:** `withSentryConfig` in [`apps/web/next.config.js`](../apps/web/next.config.js) uploads source maps during CI builds when `SENTRY_AUTH_TOKEN` is set.
 - **Replay is off** — PostHog session replay covers the "what did the user do" question; enabling Sentry replay too would double the client payload cost.
 
@@ -149,8 +150,8 @@ Two tools, one job each — Sentry for errors and performance, PostHog for produ
 
 - **Browser client:** [`apps/web/src/lib/posthog.ts`](../apps/web/src/lib/posthog.ts) — lazy singleton, initialised from [`apps/web/src/app/providers.tsx`](../apps/web/src/app/providers.tsx). Autocaptures page views; session replay masks all inputs (no PII).
 - **User identification:** signed-in organizers are identified by `Organizer.id`. Guests stay anonymous — their messenger identity is PII that does not belong in analytics.
-- **Server events:** [`apps/web/src/server/posthog.ts`](../apps/web/src/server/posthog.ts) exposes a `posthog-node` client. Job handlers emit `notification_sent` with `{ queue, recipient, bookingId }` after a successful send. Flushes after every event (`flushAt: 1`) — serverless functions may freeze as soon as the response is sent.
 - **PostHog Cloud** — `NEXT_PUBLIC_POSTHOG_HOST` defaults to `https://app.posthog.com`.
+- **Server events:** the Go API does not include a PostHog SDK; notification-sent events are structured JSON logs (`internal/logx`) captured by Vercel log drains. Restoring the product-analytics stream is a follow-up (ADR-013).
 
 ### No-op without keys
 

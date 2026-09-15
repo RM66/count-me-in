@@ -1,0 +1,26 @@
+{
+  "seats": "{count, plural, =1 {#名} other {#名}}",
+  "createdOrganizer": {
+    "title": "新しい予約",
+    "stillFree": "🎟 残り{count, plural, =1 {#枠} other {#枠}}です。",
+    "full": "✅ この回は満席になりました。",
+    "button": "管理画面で開く"
+  },
+  "createdGuest": {
+    "title": "予約が確定しました",
+    "withName": "予約先：{name}",
+    "footer": "予定を変更する場合は、下のボタンからお手続きください。",
+    "button": "予約を管理"
+  },
+  "cancelledOrganizer": {
+    "title": "予約がキャンセルされました",
+    "freed": "🎟 この回に{count, plural, =1 {#枠} other {#枠}}の空きが出ました。",
+    "button": "管理画面で開く"
+  },
+  "cancelledGuest": {
+    "title": "予約がキャンセルされました",
+    "byName": "（{name}によるキャンセル）",
+    "footer": "申し訳ありません。下のボタンから別の回をお選びいただけます。",
+    "button": "別の回を見る"
+  }
+}

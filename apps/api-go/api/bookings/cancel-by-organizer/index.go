@@ -1,0 +1,15 @@
+// POST /api/bookings/cancel-by-organizer — see
+// internal/routes/bookings.go for the route logic. This file is only
+// the Vercel entry point.
+package handler
+
+import (
+	"net/http"
+
+	"api-go/internal/httpx"
+	"api-go/internal/routes"
+)
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	httpx.Recover(routes.BookingCancelByOrganizer)(w, r)
+}

@@ -28,7 +28,8 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Media:** Cloudflare R2 (`packages/media-storage`)
 - **Jobs:** Upstash QStash — `apps/web` publishes after commit, `POST /api/jobs/{queue}` consumes ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links in messages
-- **Observability:** PostHog, Sentry
+- **Observability:** PostHog, Sentry (web); structured JSON stdout logs (`internal/logx`) in the Go API
+- **API:** `apps/api-go` — Vercel Functions, `net/http` only; the TS route handlers have been deleted, `auth/[...nextauth]` stays in Next.js permanently ([ADR-013](docs/decisions/013-api-go-rewrite.md))
 
 No separate organizer native app in MVP — [ADR-006](docs/decisions/006-organizer-capacitor.md). WebSockets out of MVP — [ADR-003](docs/decisions/003-no-websocket-mvp.md).
 
@@ -41,7 +42,7 @@ apps/
       app/             # App Router: pages, layouts, route handlers
       components/      # React components (shadcn/ui + app components)
       hooks/           # React hooks (shadcn-owned alias `@/hooks`)
-      server/          # server-only: db, auth, jobs, storage, queue, demo (import 'server-only')
+      server/          # server-only: db (reads), auth, demo (import 'server-only')
       api-client/      # client-only React Query layer — the browser end of the wire
       helpers/         # pure presentation utilities (date, name, contact)
       constants/       # static data tables (timezones, site)
@@ -50,6 +51,10 @@ apps/
       proxy.ts         # Auth.js v5 middleware — src/ root, do not move
       instrumentation.ts # Sentry server-side init
     public/            # Static assets
+  api-go/              # Go port of the API — Vercel Functions, net/http only (ADR-013)
+    api/               # One directory per route; each index.go = one serverless function
+    internal/          # contracts, validation, db, auth, i18n, httpx, jobs, queue, storage, demo, logx
+    scripts/           # build.sh (CI entry), sync/check-translations.sh
 packages/
   db/                  # Drizzle schema, migrations
   redis/               # ioredis singleton (tickets, login links, rate limits)
@@ -67,13 +72,10 @@ docs/
 
 **`apps/web/src/` structure — the data wire is the load-bearing seam:**
 
-- `server/` — **server-only** code; every module carries `import 'server-only'`. The server end of the wire.
-  - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`
-  - `db/` — Postgres reads **and writes** + DTO mapping, one file per entity (`organizer.ts`, `service.ts`); `shared.ts` holds `pickDefined`. Route handlers must not run SQL inline.
-  - `http.ts` — route-handler plumbing: `requireWritableOrganizer()` (session + demo guard), `requireGuestIdentity()` (consumes an auth ticket) and `parseJsonBody()` (Zod + `400`). All return a `Guarded<T>` discriminated union — check `.ok`, never truthiness. **Request-level only: must not import from `db/`.**
-  - `jobs/` — QStash consumer: `run.ts` dispatch (`POST /api/jobs/{queue}`), one handler per queue, Telegram client + templates, `env.ts` per-delivery config
-  - `storage/` — Cloudflare R2 orchestration (avatar, service-photo, media ownership)
-  - `demo.ts`, `queue.ts`, `posthog.ts` — cross-cutting policy guard / QStash publisher / server analytics client
+- `server/` — **server-only** code; every module carries `import 'server-only'`. Read-only Postgres access for pages + Auth.js config. The write side (route handlers, guards, QStash, storage, jobs) moved to the Go API.
+  - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`, `login-link.ts`
+  - `db/` — Postgres **reads only** + DTO mapping, one file per entity (`organizer.ts`, `service.ts`, `booking.ts`, `time-slot.ts`). Writes moved to the Go API; these modules serve pages that read Postgres directly (cabinet, public pages, sitemap, OG images).
+  - `demo.ts` — cabinet organizer resolution: `resolveCabinetOrganizerId()` (whose data to show) and `isDemoSession()`. Write-side demo guards moved to the Go API.
 - `api-client/` — **client-only** React Query layer, one file per entity (`organizer.ts`, `service.ts`, `auth.ts`), each holding queries _and_ mutations. `keys.ts` is the cache-key factory, `client.ts` the fetch helpers, `image.ts` browser-side downscaling. Import via `@/api-client`. The browser end of the wire.
 - `helpers/` — pure presentation utilities: formatting and adapters (`date.ts`, `name.ts`, `contact.ts`).
 - `constants/` — static data tables (`timezones.ts`, `site.ts`).
@@ -89,7 +91,7 @@ docs/
 
 **Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and entity files live at `server/db/service.ts` (kind → entity). Never reintroduce `services/`.
 
-**`app/api/` vs `api-client/`** — two ends of one wire. `app/api/**/route.ts` is the URL and holds server handlers. `api-client/` is the browser client. They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
+**`api-client/` vs the Go API** — two ends of one wire. `api-client/` is the browser client (React Query). The Go API (`apps/api-go`) holds the server handlers; `app/api/auth/[...nextauth]/route.ts` is the only TS route handler left (Auth.js). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
 
 **What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/contracts`.
 
@@ -109,7 +111,7 @@ bun run test:watch    # watch mode
 Per-package: `cd <package> && bun run test`.
 
 - **`packages/contracts`** — Zod schemas, slot/timezone/options logic (node env).
-- **`apps/web`** — helpers, API client, server guards, job/Telegram templates + client error classification + link builders, React hooks, components (happy-dom env). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.
+- **`apps/web`** — helpers, API client, client error classification + link builders, React hooks, components (happy-dom env). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.
 
 ## Documentation
 
@@ -131,12 +133,12 @@ Per-package: `cd <package> && bun run test`.
 - Optional display `location` and `contact` on `Organizer` and `Service`; `Service.*` overrides the organizer's — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/contracts`. Every write path must reject it, including guest booking + cancel, and notifications must never be sent for it — [ADR-010](docs/decisions/010-demo-organizer-account.md). The seed is refreshed daily by a QStash schedule, kept in sync by CI (`apps/web/scripts/ensure-qstash.ts`).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. Scope every cabinet read through `resolveCabinetOrganizerId()` and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `requireGuestIdentity()` in `apps/web/src/server/http.ts` is the only way it enters a write; single-use, so a replayed booking fails.
-- **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via `publishBookingCreated` / `publishBookingCancelled` in `apps/web/src/server/queue.ts`, called from route handlers inside `after()`. The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**.
-- **QStash deliveries arrive at `POST /api/jobs/{queue}`** (`apps/web/src/app/api/jobs/[queue]/route.ts`): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/web/src/server/jobs/run.ts`.
+- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `RequireGuestIdentity()` in the Go API (`apps/api-go/internal/httpx`) is the only way it enters a write; single-use, so a replayed booking fails.
+- **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via the Go publisher (`apps/api-go/internal/queue`), inline after the DB commit (no `after()` on the Go runtime). The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**.
+- **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Go: `apps/api-go/api/jobs/[queue]/index.go`): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/api-go/internal/jobs/run.go`.
 - **Organizer deep links are one-time login links.** The notification job mints `{ organizerId, next }` into Redis (`issueLoginLink` in `src/server/auth/login-link.ts`) and links to `/login/link/{token}`, consumed on **`POST`** (never `GET` — previewers fetch URLs before a human clicks). Single-use, `noindex`, demo id refused.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the delivery with a log instead of retrying — only `429`/`5xx`/network are retried.
-- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in `src/server/db/booking.ts`, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers.
+- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in the Go API, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers. The TS `server/db/booking.ts` reads it for the guest management page but does not generate it.
 - Seats move only through atomic reserve — a single conditional `UPDATE … WHERE bookedCount + :seats <= capacity` inside the booking transaction. Never read `bookedCount`, check in JS, then write back.
 - **i18n (ADR-011):** locale = cookie `NEXT_LOCALE` → `Accept-Language` → `en`, never in URL. Supported set: `LOCALES` (`packages/contracts/src/i18n.ts`); copy in `packages/translations` (`messages/` web, `notifications/` job handlers; en defines the shape). Server `getTranslations`, client `useTranslations`; no hardcoded user-visible strings — ESLint rule `countmein/no-untranslated-strings` enforces it. API errors: `getTranslations('ApiErrors')` in route handlers (error classes keep EN messages for logs); api-client fallbacks are named English constants (documented as such), the display site translates server copy. Job-handler responses carry no body (QStash reads status codes). Notifications: organizer `organizers.language`, guest `bookings.guest_locale`. Times always in the organizer's timezone.
 - **Component props are `type`, never `interface`** (declarations named `*Props`; enforced via `no-restricted-syntax` in `apps/web/eslint.config.js`). Other object shapes are the author's choice; in ambient declarations (`**/*.d.ts`) `interface` is the norm — declaration merging there requires it.

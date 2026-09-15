@@ -117,9 +117,7 @@ export default async function ServicePage({
         offers: {
           '@type': 'Offer',
           url: serviceUrl,
-          availability: isOpen(slot)
-            ? 'https://schema.org/InStock'
-            : 'https://schema.org/SoldOut',
+          availability: isOpen(slot) ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut',
         },
       })),
     ],
@@ -151,7 +149,10 @@ export default async function ServicePage({
               priority
             />
           ) : (
-            <div aria-hidden className="aspect-2/1 w-full bg-linear-to-br from-primary/15 to-primary/5" />
+            <div
+              aria-hidden
+              className="aspect-2/1 w-full bg-linear-to-br from-primary/15 to-primary/5"
+            />
           )}
         </div>
 

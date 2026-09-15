@@ -1,39 +1,19 @@
 /**
- * Server-side reads, writes and DTO mapping for services.
+ * Server-side reads and DTO mapping for services.
  *
- * Cabinet pages are server components that query Postgres directly, while the
- * route handlers return the same shape over HTTP — both go through
- * {@link toServiceRecord} so the client only ever sees one contract.
- *
- * Every write is **owner-scoped**: `organizerId` sits in the `WHERE` clause
- * rather than being checked by a preceding `SELECT`, so a foreign id matches no
- * row and there is no read-then-write gap to exploit.
+ * The write paths (create, update, delete) moved to the Go API
+ * (`apps/api-go/internal/db/service.go`) together with the route
+ * handlers — this module now serves only the pages that read Postgres
+ * directly: the cabinet lists, the public organizer/service pages and
+ * the sitemap.
  */
 
-import type { CreateServiceInput, ServiceRecord, UpdateServiceInput } from '@repo/contracts'
+import type { ServiceRecord } from '@repo/contracts'
 import type { Service } from '@repo/db'
 import { db, organizers, services, timeSlots } from '@repo/db'
 import { and, asc, count, eq, gte, inArray } from 'drizzle-orm'
-import { revalidateTag, unstable_cache } from 'next/cache'
-
-import { pickDefined } from './shared'
 
 import 'server-only'
-
-/** Service columns the cabinet may write. `organizerId` is never among them. */
-const UPDATABLE_FIELDS = [
-  'title',
-  'description',
-  'location',
-  'contact',
-  'defaultPrice',
-  'defaultCapacity',
-  'defaultDurationMinutes',
-  'maxSeatsPerBooking',
-  'options',
-  'optionsSelectMode',
-  'photoUrl',
-] as const
 
 /** Normalize a `services` row into the API/DTO shape (dates → ISO strings). */
 export function toServiceRecord(row: Service): ServiceRecord {
@@ -58,11 +38,9 @@ export function toServiceRecord(row: Service): ServiceRecord {
 /**
  * All services belonging to an organizer, oldest first.
  *
- * Cached: the public organizer page renders this list on every guest visit
- * (the cabinet shares the function, so its writes below revalidate the same
- * tag). The DTO is JSON-safe — `createdAt` is already an ISO string.
+ * Read fresh: writes happen in Go and cannot invalidate the Next.js cache.
  */
-async function queryServicesByOrganizer(organizerId: string): Promise<ServiceRecord[]> {
+export async function listServices(organizerId: string): Promise<ServiceRecord[]> {
   const rows = await db
     .select()
     .from(services)
@@ -71,11 +49,6 @@ async function queryServicesByOrganizer(organizerId: string): Promise<ServiceRec
 
   return rows.map(toServiceRecord)
 }
-
-export const listServices = unstable_cache(queryServicesByOrganizer, ['services-by-organizer'], {
-  revalidate: 300,
-  tags: ['public-services'],
-})
 
 /**
  * Every service with its owner's slug, for `app/sitemap.ts` — the
@@ -100,11 +73,13 @@ export async function getOwnedService(
   organizerId: string,
   serviceId: string,
 ): Promise<ServiceRecord | null> {
-  const [row] = await db.select().from(services).where(eq(services.id, serviceId)).limit(1)
+  const [row] = await db
+    .select()
+    .from(services)
+    .where(and(eq(services.id, serviceId), eq(services.organizerId, organizerId)))
+    .limit(1)
 
-  if (!row || row.organizerId !== organizerId) return null
-
-  return toServiceRecord(row)
+  return row ? toServiceRecord(row) : null
 }
 
 /**
@@ -113,7 +88,7 @@ export async function getOwnedService(
  * to a different organizer. There is no separate public DTO: every column of
  * `serviceRecord` is already shown on the service page.
  */
-async function queryPublicService(
+export async function getPublicService(
   organizerId: string,
   serviceId: string,
 ): Promise<ServiceRecord | null> {
@@ -125,11 +100,6 @@ async function queryPublicService(
 
   return row ? toServiceRecord(row) : null
 }
-
-export const getPublicService = unstable_cache(queryPublicService, ['public-service'], {
-  revalidate: 300,
-  tags: ['public-services'],
-})
 
 /**
  * Number of *upcoming* slots per service id, for the cabinet list.
@@ -146,94 +116,4 @@ export async function countUpcomingSlots(serviceIds: string[]): Promise<Record<s
     .groupBy(timeSlots.serviceId)
 
   return Object.fromEntries(rows.map((row) => [row.serviceId, Number(row.total)]))
-}
-
-/**
- * Create a service owned by `organizerId`.
- * The owner always comes from the caller's session — never from the payload —
- * so a service cannot be created under someone else's account.
- * Optional columns are normalized to `null`: the DTO and the database agree
- * that "absent" is `null`, and leaving `undefined` would make Drizzle fall
- * back to column defaults instead.
- */
-export async function createService(
-  organizerId: string,
-  input: CreateServiceInput,
-): Promise<ServiceRecord | null> {
-  const [created] = await db
-    .insert(services)
-    .values({
-      organizerId,
-      title: input.title,
-      description: input.description ?? null,
-      photoUrl: input.photoUrl ?? null,
-      location: input.location ?? null,
-      contact: input.contact ?? null,
-      defaultPrice: input.defaultPrice,
-      defaultCapacity: input.defaultCapacity,
-      defaultDurationMinutes: input.defaultDurationMinutes,
-      maxSeatsPerBooking: input.maxSeatsPerBooking,
-      options: input.options ?? null,
-      optionsSelectMode: input.optionsSelectMode ?? null,
-    })
-    .returning()
-
-  revalidateTag('public-services', { expire: 0 })
-
-  return created ? toServiceRecord(created) : null
-}
-
-/** Raised when an update payload contains no writable field. */
-export class NoServiceUpdatesError extends Error {
-  constructor() {
-    super('No fields to update')
-    this.name = 'NoServiceUpdatesError'
-  }
-}
-
-/**
- * Update a service **scoped to its owner**.
- * Returns `null` when the id does not exist or belongs to someone else — the
- * caller answers `404` either way. Throws {@link NoServiceUpdatesError} when
- * the payload carries no writable field.
- */
-export async function updateOwnedService(
-  organizerId: string,
-  serviceId: string,
-  input: UpdateServiceInput,
-): Promise<ServiceRecord | null> {
-  const updates = pickDefined(input, UPDATABLE_FIELDS)
-
-  if (Object.keys(updates).length === 0) {
-    throw new NoServiceUpdatesError()
-  }
-
-  const [updated] = await db
-    .update(services)
-    .set(updates)
-    .where(and(eq(services.id, serviceId), eq(services.organizerId, organizerId)))
-    .returning()
-
-  revalidateTag('public-services', { expire: 0 })
-
-  return updated ? toServiceRecord(updated) : null
-}
-
-/**
- * Delete a service **scoped to its owner**, returning its id.
- * Slots and their bookings cascade (see the `services` FK), so this also
- * removes any scheduled sessions. Returns `null` when nothing matched.
- */
-export async function deleteOwnedService(
-  organizerId: string,
-  serviceId: string,
-): Promise<string | null> {
-  const [deleted] = await db
-    .delete(services)
-    .where(and(eq(services.id, serviceId), eq(services.organizerId, organizerId)))
-    .returning({ id: services.id })
-
-  revalidateTag('public-services', { expire: 0 })
-
-  return deleted?.id ?? null
 }

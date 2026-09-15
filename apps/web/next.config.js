@@ -2,14 +2,14 @@ import process from 'node:process'
 import { withSentryConfig } from '@sentry/nextjs'
 import createNextIntlPlugin from 'next-intl/plugin'
 
+import { apiRewrites } from './scripts/api-rewrites.mjs'
+
 /** @type {import('next').NextConfig} */
 
-// i18n request config (ADR-011): locale is cookie/header-driven, not routed.
+// i18n (ADR-011): locale is cookie/header-driven, not routed.
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
-// Allow next/image to optimise images served from the R2 public bucket.
-// R2_PUBLIC_BASE_URL can be either the default *.r2.dev domain or a custom domain
-// (e.g. https://media.countmein.group).
+// R2_PUBLIC_BASE_URL may be the default *.r2.dev domain or a custom domain.
 function buildRemotePatterns() {
   const raw = process.env.R2_PUBLIC_BASE_URL
   if (!raw) {
@@ -29,7 +29,7 @@ function buildRemotePatterns() {
 }
 
 const nextConfig = {
-  transpilePackages: ['@repo/contracts', '@repo/db', '@repo/translations'],
+  transpilePackages: ['@repo/contracts', '@repo/db', '@repo/redis', '@repo/translations'],
   images: {
     remotePatterns: [
       ...buildRemotePatterns(),
@@ -37,6 +37,13 @@ const nextConfig = {
     ],
   },
   allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
+  async rewrites() {
+    return apiRewrites({
+      goApiUrl: process.env.GO_API_URL,
+      production: process.env.NODE_ENV === 'production',
+      appUrl: process.env.APP_URL,
+    })
+  },
   async redirects() {
     return [
       {
@@ -52,17 +59,10 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // API error copy is localized per request (ApiErrors dictionaries), so
-        // shared caches must key responses by language. Note: App Router pages
-        // overwrite `Vary` with Next's internal RSC values — pages rely on
-        // being uncached instead; revisit if a shared HTML cache is added.
-        source: '/api/:path*',
-        headers: [{ key: 'Vary', value: 'Accept-Language' }],
-      },
-      {
-        // Belt-and-braces noindex alongside the meta robots on private pages:
-        // headers hold even when the response is not the page's HTML.
-        source: '/api/:path*',
+        // beforeFiles rewrites proxy all other /api/* to Go (bypassing
+        // headers()); Go sets its own Vary/X-Robots-Tag. Only the Auth.js
+        // route stays on Next.js and needs noindex here.
+        source: '/api/auth/:path*',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
       },
       {

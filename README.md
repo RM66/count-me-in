@@ -18,9 +18,9 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 
 ## Apps
 
-| App           | Role                                                      |
-| ------------- | --------------------------------------------------------- |
-| `apps/web`    | Landing, public booking, organizer cabinet, API, job handlers (Next.js) |
+| App        | Role                                                                    |
+| ---------- | ----------------------------------------------------------------------- |
+| `apps/web` | Landing, public booking, organizer cabinet, API, job handlers (Next.js) |
 
 ## Packages
 
