@@ -12,7 +12,7 @@
 package i18n
 
 import (
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // notifDict — notification copy is two shapes: top-level messages

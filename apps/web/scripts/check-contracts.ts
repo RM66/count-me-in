@@ -1,6 +1,6 @@
 /**
  * Verify shared constants between the TS contracts (`packages/contracts`)
- * and the Go contracts (`apps/web/internal/contracts`) are in sync.
+ * and the Go contracts (`apps/web/pkg/contracts`) are in sync.
  *
  * The two sides are hand-mirrored — there is no code generation — so a
  * constant edited on one side can silently diverge from the other. This
@@ -48,7 +48,7 @@ import {
 
 const scriptsDir = fileURLToPath(import.meta.url)
 const webDir = join(scriptsDir, '..', '..')
-const goContractsDir = join(webDir, 'internal', 'contracts')
+const goContractsDir = join(webDir, 'pkg', 'contracts')
 
 function readGo(name: string): string {
   return readFileSync(join(goContractsDir, name), 'utf8')
@@ -193,6 +193,6 @@ for (const m of mismatches) {
   console.error(`  ${m.name}: TS=${m.ts}  Go=${m.go}`)
 }
 console.error(
-  '\nFix: update the Go constants in apps/web/internal/contracts/ to match packages/contracts.',
+  '\nFix: update the Go constants in apps/web/pkg/contracts/ to match packages/contracts.',
 )
 process.exit(1)

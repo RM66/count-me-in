@@ -3,7 +3,7 @@ package validation
 import (
 	"time"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // How far into the past a slot start may still be accepted: the browser

@@ -7,7 +7,7 @@
 package demo
 
 import (
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // DemoReadOnlyError — the throwing variant for use inside service-layer

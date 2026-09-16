@@ -3,7 +3,7 @@ package validation
 import (
 	"encoding/json"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // ParseCreateBookingInput — port of createBookingInput. Guest identity

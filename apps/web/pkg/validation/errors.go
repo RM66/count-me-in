@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // Errors mirrors z.flattenError's shape.

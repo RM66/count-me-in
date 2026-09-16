@@ -3,8 +3,8 @@ package demo
 import (
 	"net/http"
 
-	"countmein/internal/auth"
-	"countmein/internal/contracts"
+	"countmein/pkg/auth"
+	"countmein/pkg/contracts"
 )
 
 // ResolveCabinetOrganizerID returns the organizer whose data the

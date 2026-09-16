@@ -99,7 +99,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 **One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — the handler refetches at send time, so `manageToken` and login tokens never leave the database boundary. Contracts in `packages/contracts/src/jobs.ts`.
 
-**Publish after commit** (`apps/web/internal/queue`): the Go handler publishes inline once the booking transaction has committed and the response is written (no `after()` on the Vercel Go runtime) — the guest does not wait for QStash, but the function stays alive until the publish completes (bounded context, 3s). QStash delivers to `POST /api/jobs/{queue}` with 5 retries. The accepted loss window is a crash between commit and publish ([ADR-012](decisions/012-queue-upstash-qstash.md)).
+**Publish after commit** (`apps/web/pkg/queue`): the Go handler publishes inline once the booking transaction has committed and the response is written (no `after()` on the Vercel Go runtime) — the guest does not wait for QStash, but the function stays alive until the publish completes (bounded context, 3s). QStash delivers to `POST /api/jobs/{queue}` with 5 retries. The accepted loss window is a crash between commit and publish ([ADR-012](decisions/012-queue-upstash-qstash.md)).
 
 ### Links in messages
 
@@ -141,7 +141,7 @@ Two tools, one job each — Sentry for errors and performance, PostHog for produ
 - **Server init:** [`apps/web/src/instrumentation.ts`](../apps/web/src/instrumentation.ts) — `src/`-root Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
 - **Client init:** [`apps/web/sentry.client.config.ts`](../apps/web/sentry.client.config.ts) — loaded automatically by `@sentry/nextjs` in the browser bundle.
 - **Error boundaries:** [`apps/web/src/app/error.tsx`](../apps/web/src/app/error.tsx) and [`apps/web/src/app/global-error.tsx`](../apps/web/src/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
-- **Job dispatch:** [`apps/web/internal/jobs/run.go`](../apps/web/internal/jobs/run.go) captures unretriable failures (recipient unreachable); handler errors bubble to the route's `500`, captured by Vercel log drains via `internal/logx`. The publisher captures its own failures inline.
+- **Job dispatch:** [`apps/web/pkg/jobs/run.go`](../apps/web/pkg/jobs/run.go) captures unretriable failures (recipient unreachable); handler errors bubble to the route's `500`, captured by Vercel log drains via `internal/logx`. The publisher captures its own failures inline.
 - **Source maps:** `withSentryConfig` in [`apps/web/next.config.js`](../apps/web/next.config.js) uploads source maps during CI builds when `SENTRY_AUTH_TOKEN` is set.
 - **Replay is off** — PostHog session replay covers the "what did the user do" question; enabling Sentry replay too would double the client payload cost.
 

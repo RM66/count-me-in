@@ -5,18 +5,18 @@ import (
 	"io"
 	"net/http"
 
-	"countmein/internal/auth"
-	"countmein/internal/contracts"
-	"countmein/internal/demo"
-	"countmein/internal/i18n"
-	"countmein/internal/logx"
+	"countmein/pkg/auth"
+	"countmein/pkg/contracts"
+	"countmein/pkg/demo"
+	"countmein/pkg/i18n"
+	"countmein/pkg/logx"
 )
 
 // RequireWritableOrganizer — who is allowed to *write* in this request.
 // Anonymous callers are demo-cabinet visitors (/cabinet needs no
 // session, ADR-010), so they get the same DEMO_READ_ONLY refusal as
 // the demo id itself rather than a bare 401. The policy lives in
-// internal/demo; this is its request-level door.
+// pkg/demo; this is its request-level door.
 //
 // Returns ("", non-nil resp) on refusal — resp is already rendered,
 // the caller writes it and returns.

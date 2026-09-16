@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"countmein/internal/contracts"
-	redis "countmein/internal/redis"
+	"countmein/pkg/contracts"
+	redis "countmein/pkg/redis"
 )
 
 // One-time login links: notifications deep-link into the cabinet, but

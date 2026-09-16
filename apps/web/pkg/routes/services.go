@@ -3,13 +3,13 @@ package routes
 import (
 	"net/http"
 
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/demo"
-	"countmein/internal/httpx"
-	"countmein/internal/i18n"
-	"countmein/internal/storage"
-	"countmein/internal/validation"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/demo"
+	"countmein/pkg/httpx"
+	"countmein/pkg/i18n"
+	"countmein/pkg/storage"
+	"countmein/pkg/validation"
 )
 
 // ServicesCollection — GET/POST /api/services. GET lists the services

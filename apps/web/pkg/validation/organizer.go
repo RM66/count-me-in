@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // slugValue validates a slug: trim → lowercase → length/pattern/reserved.

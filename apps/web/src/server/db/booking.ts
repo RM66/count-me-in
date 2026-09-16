@@ -13,7 +13,7 @@ import 'server-only'
  * Server-side reads and DTO mapping for bookings.
  *
  * The write paths (create, cancel by token, cancel by owner) moved to
- * the Go API (`apps/web/internal/db/booking.go`) together with the
+ * the Go API (`apps/web/pkg/db/booking.go`) together with the
  * route handlers — this module now serves only the pages that read
  * Postgres directly: the cabinet tables/analytics and the guest
  * booking management page.

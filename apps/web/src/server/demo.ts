@@ -2,7 +2,7 @@
  * Server-side demo-organizer resolution for pages (ADR-010).
  *
  * The write-side guards (rejectDemoWrite / assertNotDemo) moved to the Go
- * API (`apps/web/internal/demo`) together with the route handlers —
+ * API (`apps/web/pkg/demo`) together with the route handlers —
  * enforcement now lives where the writes happen. What remains here is the
  * read-side question every cabinet page starts with: whose data should this
  * request render?

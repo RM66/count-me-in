@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // Demo organizer seed data (ADR-010), ported from

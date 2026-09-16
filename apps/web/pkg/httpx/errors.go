@@ -3,8 +3,8 @@ package httpx
 import (
 	"net/http"
 
-	"countmein/internal/db"
-	"countmein/internal/demo"
+	"countmein/pkg/db"
+	"countmein/pkg/demo"
 )
 
 // BookingErrorResponse maps booking failure modes onto HTTP responses

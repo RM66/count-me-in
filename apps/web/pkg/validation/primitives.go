@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 
 	// Embedded tz database so time.LoadLocation works on any runtime
 	// (Vercel containers ship no system tzdata).

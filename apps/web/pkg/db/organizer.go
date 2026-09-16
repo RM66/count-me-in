@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 
 	"github.com/jackc/pgx/v5"
 )

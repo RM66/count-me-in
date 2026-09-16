@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/i18n"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/i18n"
 )
 
 // The rendering side of every notification, as Telegram HTML.

@@ -2,7 +2,7 @@ package auth
 
 import (
 	"bytes"
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"

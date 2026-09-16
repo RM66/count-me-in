@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"countmein/internal/contracts"
-	"countmein/internal/logx"
+	"countmein/pkg/contracts"
+	"countmein/pkg/logx"
 
 	"github.com/google/uuid"
 )

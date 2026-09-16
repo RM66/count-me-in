@@ -2,7 +2,7 @@
 // function in api/ — responses, guards, error mapping, recovery.
 // Request-level concerns only: sessions, tickets, body parsing.
 // Mapping *entity* failure modes onto status codes lives in errors.go
-// (the plan's internal/http/errors.go), deliberately split from the
+// (the plan's pkg/http/errors.go), deliberately split from the
 // pure plumbing.
 package httpx
 
@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"countmein/internal/contracts"
-	"countmein/internal/i18n"
-	"countmein/internal/logx"
-	"countmein/internal/validation"
+	"countmein/pkg/contracts"
+	"countmein/pkg/i18n"
+	"countmein/pkg/logx"
+	"countmein/pkg/validation"
 )
 
 // Response is a ready-to-write JSON response. Guards return one

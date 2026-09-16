@@ -1,7 +1,7 @@
 // Package routes holds the actual route logic for every API endpoint.
 // The files under api/ are thin Vercel entry points (one per function,
 // each exporting Handler) that delegate here; cmd/dev mounts the same
-// handlers on a local mux. Keeping the logic in internal/ is what makes
+// handlers on a local mux. Keeping the logic in pkg/ is what makes
 // both possible — the dynamic route dirs (by-id, by-queue) are plain
 // names because Go rejects '[' in import paths, and vercel.json
 // rewrites map :id / :queue to them in production.
@@ -12,11 +12,11 @@ import (
 	"net/http"
 	"time"
 
-	"countmein/internal/auth"
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/httpx"
-	"countmein/internal/i18n"
+	"countmein/pkg/auth"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/httpx"
+	"countmein/pkg/i18n"
 )
 
 // TelegramGuest — POST /api/auth/telegram-guest: the guest half of

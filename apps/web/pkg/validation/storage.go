@@ -3,7 +3,7 @@ package validation
 import (
 	"encoding/json"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 func jsonUnmarshalString(raw json.RawMessage, v *string) error {

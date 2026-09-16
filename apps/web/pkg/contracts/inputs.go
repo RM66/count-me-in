@@ -2,8 +2,8 @@ package contracts
 
 import "time"
 
-// Request input structs — validated shapes produced by internal/validation,
-// consumed by internal/db. Optional fields use Optional[T]; nullable ones
+// Request input structs — validated shapes produced by pkg/validation,
+// consumed by pkg/db. Optional fields use Optional[T]; nullable ones
 // (absent = leave unchanged, null = clear) use Optional with Value=nil.
 
 type CreateBookingInput struct {

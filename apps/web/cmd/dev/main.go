@@ -1,12 +1,12 @@
 // cmd/dev is a local development server for the Go API: it mounts the
-// same route handlers the Vercel functions use (internal/routes) on a
+// same route handlers the Vercel functions use (pkg/routes) on a
 // plain net/http mux, so the API can run next to `next dev` without
 // the Vercel CLI. Production traffic never flows through this binary —
 // Vercel compiles each api/ entry file into its own function.
 //
 // Dynamic route dirs use plain names (by-id, by-queue) because Go
 // rejects '[' in import paths — vercel.json rewrites map :id / :queue
-// to them in production. The route logic lives in internal/routes and
+// to them in production. The route logic lives in pkg/routes and
 // the entry files are thin wrappers.
 package main
 
@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"countmein/internal/httpx"
-	"countmein/internal/routes"
+	"countmein/pkg/httpx"
+	"countmein/pkg/routes"
 )
 
 func main() {
@@ -30,6 +30,7 @@ func main() {
 	mux.HandleFunc("/api/organizers", httpx.Recover(routes.OrganizerRegister))
 	mux.HandleFunc("/api/organizers/me", httpx.Recover(routes.OrganizerMe))
 	mux.HandleFunc("/api/organizers/me/avatar", httpx.Recover(routes.OrganizerAvatar))
+	mux.HandleFunc("/api/organizers/me/language", httpx.Recover(routes.OrganizerMeLanguage))
 	mux.HandleFunc("/api/organizers/me/service-photo", httpx.Recover(routes.OrganizerServicePhoto))
 	mux.HandleFunc("/api/services", httpx.Recover(routes.ServicesCollection))
 	mux.HandleFunc("/api/services/{id}", httpx.Recover(routes.ServiceItem))

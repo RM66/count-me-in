@@ -3,7 +3,7 @@ package i18n
 import (
 	"net/http"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // DetectLocale resolves the viewer's locale the way next-intl does on

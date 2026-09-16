@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"countmein/internal/logx"
+	"countmein/pkg/logx"
 )
 
 // Recover wraps a handler: a panic is logged and answered with a 500

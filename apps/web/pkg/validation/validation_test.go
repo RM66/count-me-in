@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 const (

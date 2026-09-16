@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"countmein/internal/contracts"
-	"countmein/internal/logx"
+	"countmein/pkg/contracts"
+	"countmein/pkg/logx"
 )
 
 // How hard QStash tries before dropping a message: 5 delivery attempts

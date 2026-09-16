@@ -1,5 +1,5 @@
 // Package redis owns the shared Redis connection. Key names and
-// payload shapes are contracts (loginLinkKey in internal/contracts),
+// payload shapes are contracts (loginLinkKey in pkg/contracts),
 // mirroring @repo/contracts / @repo/redis in the TS monorepo.
 package redis
 

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // Key builders and URL mapping, ported from @repo/media-storage/keys.

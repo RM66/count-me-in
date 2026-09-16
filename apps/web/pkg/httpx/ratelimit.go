@@ -13,8 +13,8 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"countmein/internal/i18n"
-	"countmein/internal/redis"
+	"countmein/pkg/i18n"
+	"countmein/pkg/redis"
 )
 
 // RateLimitConfig describes a sliding-window limit: at most Limit

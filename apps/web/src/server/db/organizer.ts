@@ -1,7 +1,7 @@
 /**
  * Server-side reads and DTO mapping for organizers.
  *
- * Profile updates moved to the Go API (`apps/web/internal/db/organizer.go`)
+ * Profile updates moved to the Go API (`apps/web/pkg/db/organizer.go`)
  * together with the route handlers — this module now serves only the pages
  * that read Postgres directly: the cabinet, the public organizer pages and
  * the sitemap.

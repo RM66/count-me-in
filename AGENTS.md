@@ -25,7 +25,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
 - **Validation:** Zod (`packages/contracts`)
 - **Data:** Postgres, Drizzle ORM, Redis
-- **Media:** Cloudflare R2 (signed upload URLs minted by the Go API; `packages/media-storage` deleted — R2 helpers now live in `apps/web/internal/storage`)
+- **Media:** Cloudflare R2 (signed upload URLs minted by the Go API; `packages/media-storage` deleted — R2 helpers now live in `apps/web/pkg/storage`)
 - **Jobs:** Upstash QStash — `apps/web` publishes after commit, `POST /api/jobs/{queue}` consumes ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links in messages
 - **Observability:** PostHog, Sentry (web); structured JSON stdout logs (`internal/logx`) in the Go API
@@ -51,10 +51,10 @@ apps/
       proxy.ts         # Auth.js v5 middleware — src/ root, do not move
       instrumentation.ts # Sentry server-side init
     public/            # Static assets
-    go.mod / go.sum    # module "countmein" — shared by api/ and internal/
-    vercel.json        # Go function memory/maxDuration config
+    go.mod / go.sum    # module "countmein" — shared by api/ and pkg/
+    vercel.json        # Go function memory/maxDuration config + rewrites for dynamic routes
     api/               # Go API — Vercel Functions, one directory per route; each index.go = one serverless function
-    internal/          # contracts, validation, db, auth, i18n, httpx, jobs, queue, storage, demo, logx
+    pkg/               # contracts, validation, db, auth, i18n, httpx, jobs, queue, storage, demo, logx (not internal/ — Vercel compiles api/ under a handler/ module prefix, and Go's internal visibility rule would block it)
     cmd/dev/           # local dev server (never deployed)
     scripts/           # api-rewrites.mjs, check-api-routes.ts, ensure-qstash.ts, generate-i18n-go.ts, build-go.sh
 packages/
@@ -135,9 +135,9 @@ Per-package: `cd <package> && bun run test`.
 - Optional display `location` and `contact` on `Organizer` and `Service`; `Service.*` overrides the organizer's — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/contracts`. Every write path must reject it, including guest booking + cancel, and notifications must never be sent for it — [ADR-010](docs/decisions/010-demo-organizer-account.md). The seed is refreshed daily by a QStash schedule, kept in sync by CI (`apps/web/scripts/ensure-qstash.ts`).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. Scope every cabinet read through `resolveCabinetOrganizerId()` and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `RequireGuestIdentity()` in the Go API (`apps/web/internal/httpx`) is the only way it enters a write; single-use, so a replayed booking fails.
-- **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via the Go publisher (`apps/web/internal/queue`), inline after the DB commit (no `after()` on the Go runtime). The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**.
-- **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Go: `apps/web/api/jobs/by-queue/index.go`, routed via `vercel.json` rewrite): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/web/internal/jobs/run.go`.
+- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `RequireGuestIdentity()` in the Go API (`apps/web/pkg/httpx`) is the only way it enters a write; single-use, so a replayed booking fails.
+- **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via the Go publisher (`apps/web/pkg/queue`), inline after the DB commit (no `after()` on the Go runtime). The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**.
+- **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Go: `apps/web/api/jobs/by-queue/index.go`, routed via `vercel.json` rewrite): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/web/pkg/jobs/run.go`.
 - **Organizer deep links are one-time login links.** The notification job mints `{ organizerId, next }` into Redis (`issueLoginLink` in `src/server/auth/login-link.ts`) and links to `/login/link/{token}`, consumed on **`POST`** (never `GET` — previewers fetch URLs before a human clicks). Single-use, `noindex`, demo id refused.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the delivery with a log instead of retrying — only `429`/`5xx`/network are retried.
 - `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in the Go API, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers. The TS `server/db/booking.ts` reads it for the guest management page but does not generate it.

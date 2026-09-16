@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"countmein/internal/contracts"
-	"countmein/internal/logx"
+	"countmein/pkg/contracts"
+	"countmein/pkg/logx"
 )
 
 // Auth.js session cookie names, https ("__Secure-"-prefixed, prod) first.

@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"countmein/internal/contracts"
-	redis "countmein/internal/redis"
+	"countmein/pkg/contracts"
+	redis "countmein/pkg/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 )

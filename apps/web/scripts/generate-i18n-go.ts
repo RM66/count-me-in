@@ -7,7 +7,7 @@
  *   - all of `notifications/*.json` (Telegram bot copy)
  *
  * This script reads the source-of-truth JSON, extracts those slices, and
- * writes a single Go file (`internal/i18n/translations_gen.go`) with the
+ * writes a single Go file (`pkg/i18n/translations_gen.go`) with the
  * data compiled directly into `map[string]…` literals — no runtime JSON
  * parsing, no embedded copies, no drift. Run via `bun run generate:i18n`.
  *
@@ -24,7 +24,7 @@ const rootDir = join(__dirname, '..', '..', '..')
 const translationsDir = join(rootDir, 'packages', 'translations')
 const messagesDir = join(translationsDir, 'messages')
 const notificationsDir = join(translationsDir, 'notifications')
-const targetFile = join(__dirname, '..', 'internal', 'i18n', 'translations_gen.go')
+const targetFile = join(__dirname, '..', 'pkg', 'i18n', 'translations_gen.go')
 
 /** Escape a string as a Go double-quoted string literal. */
 function goString(str: string): string {

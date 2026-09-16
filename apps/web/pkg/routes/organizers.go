@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"countmein/internal/auth"
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/demo"
-	"countmein/internal/httpx"
-	"countmein/internal/i18n"
-	"countmein/internal/storage"
-	"countmein/internal/validation"
+	"countmein/pkg/auth"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/demo"
+	"countmein/pkg/httpx"
+	"countmein/pkg/i18n"
+	"countmein/pkg/storage"
+	"countmein/pkg/validation"
 )
 
 // OrganizerRegister — POST /api/organizers (ADR-008). The messenger

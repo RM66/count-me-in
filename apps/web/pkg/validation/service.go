@@ -1,7 +1,7 @@
 package validation
 
 import (
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 func optionsSelectModeRule(v string) string {

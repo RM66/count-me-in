@@ -1,6 +1,6 @@
 # План реализации: Кодогенерация Go-словарей переводов из `packages/translations`
 
-В данном документе описан пошаговый план устранения дублирования файлов локализации между `packages/translations` и `apps/web/internal/i18n/translations`.
+В данном документе описан пошаговый план устранения дублирования файлов локализации между `packages/translations` и `apps/web/pkg/i18n/translations`.
 
 ---
 
@@ -9,7 +9,7 @@
 ### Текущее состояние (Проблема)
 - В Git хранятся **16 дублирующихся JSON-файлов** (8 языков для `messages/` и 8 для `notifications/`) в двух местах:
   1. `packages/translations/{messages,notifications}/*.json`
-  2. `apps/web/internal/i18n/translations/{messages,notifications}/*.json`
+  2. `apps/web/pkg/i18n/translations/{messages,notifications}/*.json`
 - Директива Go `//go:embed` не может выходить за пределы своего каталога (`..`), поэтому файлы синхронизируются вручную скриптом `sync-translations.sh` и проверяются в CI через `check-translations.sh`.
 - При этом:
   - Go API из всех файлов `messages/*.json` использует **только маленькую секцию `ApiErrors`** (все остальные сотни строк интерфейса сайта парсятся вхолостую).
@@ -18,9 +18,9 @@
 
 ### Целевое состояние (Решение)
 - `packages/translations` остается **единственным источником правды** для всех локализаций в репозитории.
-- Каталог `apps/web/internal/i18n/translations/` со всеми 16 JSON-файлами **полностью удаляется из репозитория**.
+- Каталог `apps/web/pkg/i18n/translations/` со всеми 16 JSON-файлами **полностью удаляется из репозитория**.
 - Скрипты `sync-translations.sh` и `check-translations.sh` удаляются.
-- Скрипт кодогенерации `apps/web/scripts/generate-i18n-go.ts` читает `packages/translations` и генерирует один Go-файл: `apps/web/internal/i18n/translations_gen.go`.
+- Скрипт кодогенерации `apps/web/scripts/generate-i18n-go.ts` читает `packages/translations` и генерирует один Go-файл: `apps/web/pkg/i18n/translations_gen.go`.
 - Все тексты компилируются непосредственно в структуры Go (`map[string]...`), исключая рантайм-парсинг JSON.
 
 ```mermaid
@@ -179,17 +179,17 @@ generate()
 
 ---
 
-### Шаг 2. Обновление `apps/web/internal/i18n/loader.go`
+### Шаг 2. Обновление `apps/web/pkg/i18n/loader.go`
 
 Из файла удаляются директивы `//go:embed`, вызовы `json.Unmarshal` и работа с файловой системой. Переменные инициализируются напрямую сгенерированными мапами.
 
-**Файл:** `apps/web/internal/i18n/loader.go`
+**Файл:** `apps/web/pkg/i18n/loader.go`
 
 ```go
 package i18n
 
 import (
-	"countmein/internal/contracts"
+	"countmein/pkg/contracts"
 )
 
 // notifDict — notification copy is two shapes: top-level messages
@@ -257,7 +257,7 @@ func Notif(locale, section, key string, params map[string]any) string {
 
 1. Удалить каталог дубликатов:
    ```sh
-   rm -rf apps/web/internal/i18n/translations
+   rm -rf apps/web/pkg/i18n/translations
    ```
 2. Удалить скрипты ручной синхронизации и проверки дрифта:
    ```sh
@@ -313,7 +313,7 @@ sh scripts/check-translations.sh
    "tasks": {
      "generate:i18n": {
        "inputs": ["packages/translations/**/*.json"],
-       "outputs": ["apps/web/internal/i18n/translations_gen.go"]
+       "outputs": ["apps/web/pkg/i18n/translations_gen.go"]
      },
      "build": {
        "dependsOn": ["^build", "generate:i18n"],
@@ -329,7 +329,7 @@ sh scripts/check-translations.sh
      run: bun run apps/web/scripts/generate-i18n-go.ts
 
    - name: Check for uncommitted generated changes
-     run: git diff --exit-code apps/web/internal/i18n/translations_gen.go
+     run: git diff --exit-code apps/web/pkg/i18n/translations_gen.go
    ```
    *Это гарантирует, что если разработчик изменил текст в JSON, он не забыл перегенерировать файл перед коммитом.*
 
@@ -344,7 +344,7 @@ sh scripts/check-translations.sh
 bun run apps/web/scripts/generate-i18n-go.ts
 
 # 2. Проверить компиляцию и тесты Go i18n
-cd apps/web && go test -v ./internal/i18n/...
+cd apps/web && go test -v ./pkg/i18n/...
 
 # 3. Запустить полный билд Go
 sh apps/web/scripts/go/build.sh

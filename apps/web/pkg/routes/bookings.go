@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/httpx"
-	"countmein/internal/i18n"
-	"countmein/internal/queue"
-	"countmein/internal/validation"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/httpx"
+	"countmein/pkg/i18n"
+	"countmein/pkg/queue"
+	"countmein/pkg/validation"
 )
 
 // BookingCreate — POST /api/bookings: a guest reserves seats (ADR-002).

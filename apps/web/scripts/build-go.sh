@@ -1,5 +1,5 @@
 #!/bin/sh
-# Verify the module compiles the way Vercel will build it: internal
+# Verify the module compiles the way Vercel will build it: pkg
 # packages as a whole, api/ entry files one at a time (each .go file
 # becomes its own serverless function compiled individually). Dynamic
 # route dirs use plain names (by-id, by-queue) — vercel.json rewrites
@@ -7,12 +7,18 @@
 # Translation copy is generated from packages/translations by
 # scripts/generate-i18n-go.ts; CI verifies the generated file is
 # current with `git diff --exit-code`.
+#
+# The package tree is pkg/ (not internal/) because Vercel's Go runtime
+# compiles api/ handlers under a handler/ module prefix, and Go's
+# internal-package visibility rule would block handler/api/... from
+# importing countmein/internal/... — a non-internal name has no such
+# restriction.
 set -eu
 cd "$(dirname "$0")/.."
 
-go build ./internal/... ./cmd/...
-go vet ./internal/... ./cmd/...
-go test ./internal/...
+go build ./pkg/... ./cmd/...
+go vet ./pkg/... ./cmd/...
+go test ./pkg/...
 
 status=0
 for f in $(find api -name '*.go' | sort); do

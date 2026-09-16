@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"countmein/internal/contracts"
-	"countmein/internal/demo"
+	"countmein/pkg/contracts"
+	"countmein/pkg/demo"
 
 	"github.com/jackc/pgx/v5"
 )

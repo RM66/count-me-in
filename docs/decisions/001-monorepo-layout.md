@@ -165,7 +165,7 @@ Shared lint/tsconfig come from the Turborepo starter as `eslint-config` + `types
 
 **MVP:** do **not** add `apps/organizer` / Capacitor. Organizer UI is route group(s) inside `apps/web`. See [ADR-006](006-organizer-capacitor.md).
 
-The Go API lives inside `apps/web/` (`api/` + `internal/`), not as a separate `apps/api` — see [ADR-013](013-api-go-rewrite.md).
+The Go API lives inside `apps/web/` (`api/` + `pkg/`), not as a separate `apps/api` — see [ADR-013](013-api-go-rewrite.md).
 
 **Amendment 2026-08-07 — app source moved under `src/`.** All app-owned source
 (`app/`, `lib/`, `hooks/`, `components/`, `types/`) plus the convention files

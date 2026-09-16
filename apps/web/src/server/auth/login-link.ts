@@ -7,7 +7,7 @@
  * who the recipient is, so the link carries that proof — the same argument that
  * makes `manageToken` sufficient for guests (ADR-002).
  *
- * Tokens are **minted by the Go API** (`apps/web/internal/auth/loginlink.go`)
+ * Tokens are **minted by the Go API** (`apps/web/pkg/auth/loginlink.go`)
  * at send time and consumed here on `POST`. The key format, TTL and payload
  * schema are shared through `@repo/contracts` so the two halves cannot drift.
  *

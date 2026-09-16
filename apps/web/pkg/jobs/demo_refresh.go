@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"countmein/internal/db"
-	"countmein/internal/logx"
+	"countmein/pkg/db"
+	"countmein/pkg/logx"
 )
 
 // demo.refresh — recurring refresh of the demo seed (ADR-010), the

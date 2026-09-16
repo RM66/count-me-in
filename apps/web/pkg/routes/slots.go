@@ -3,12 +3,12 @@ package routes
 import (
 	"net/http"
 
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/demo"
-	"countmein/internal/httpx"
-	"countmein/internal/i18n"
-	"countmein/internal/validation"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/demo"
+	"countmein/pkg/httpx"
+	"countmein/pkg/i18n"
+	"countmein/pkg/validation"
 )
 
 // SlotsCollection — GET/POST /api/slots. GET lists slots across every

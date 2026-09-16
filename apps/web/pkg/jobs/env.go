@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"countmein/internal/logx"
+	"countmein/pkg/logx"
 )
 
 // Configuration the job handlers need, read per delivery. Checked when

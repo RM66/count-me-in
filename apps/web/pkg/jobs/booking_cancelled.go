@@ -3,10 +3,10 @@ package jobs
 import (
 	"context"
 
-	"countmein/internal/auth"
-	"countmein/internal/contracts"
-	"countmein/internal/db"
-	"countmein/internal/logx"
+	"countmein/pkg/auth"
+	"countmein/pkg/contracts"
+	"countmein/pkg/db"
+	"countmein/pkg/logx"
 )
 
 // booking.cancelled — tell the *other* party that a booking was
