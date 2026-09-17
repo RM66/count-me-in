@@ -1,13 +1,17 @@
+import { readFileSync } from 'node:fs'
 import process from 'node:process'
 import { withSentryConfig } from '@sentry/nextjs'
 import createNextIntlPlugin from 'next-intl/plugin'
-
-import { apiRewrites } from './scripts/api-rewrites.mjs'
 
 /** @type {import('next').NextConfig} */
 
 // i18n (ADR-011): locale is cookie/header-driven, not routed.
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
+
+// vercel.json is the single source of truth for /api/* routing (ADR-013).
+const vercelConfig = JSON.parse(
+  readFileSync(new URL('./vercel.json', import.meta.url), 'utf8'),
+)
 
 // R2_PUBLIC_BASE_URL may be the default *.r2.dev domain or a custom domain.
 function buildRemotePatterns() {
@@ -38,11 +42,38 @@ const nextConfig = {
   },
   allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
   async rewrites() {
-    return apiRewrites({
-      goApiUrl: process.env.GO_API_URL,
-      production: process.env.NODE_ENV === 'production',
-      appUrl: process.env.APP_URL,
-    })
+    // In production Vercel Edge Router executes rewrites from vercel.json natively
+    // before entering Next.js. No beforeFiles rewrites needed.
+    if (process.env.NODE_ENV === 'production') {
+      return { beforeFiles: [], afterFiles: [], fallback: [] }
+    }
+
+    // Dev: proxy the routes declared in vercel.json to the local Go server (cmd/dev on :3001).
+    const rawOrigin = process.env.GO_API_URL || 'http://127.0.0.1:3001'
+    const origin = new URL(rawOrigin)
+    if (
+      !['http:', 'https:'].includes(origin.protocol) ||
+      origin.username ||
+      origin.password ||
+      origin.search ||
+      origin.hash ||
+      origin.pathname !== '/'
+    ) {
+      throw new Error('GO_API_URL must be an origin without credentials, path, query or fragment')
+    }
+    const appUrl = process.env.APP_URL
+    if (appUrl && origin.origin === new URL(appUrl).origin) {
+      throw new Error('GO_API_URL must differ from APP_URL to avoid a proxy loop')
+    }
+
+    return {
+      beforeFiles: (vercelConfig.rewrites ?? []).map((r) => ({
+        source: r.source,
+        destination: `${origin.origin}${r.source}`,
+      })),
+      afterFiles: [],
+      fallback: [],
+    }
   },
   async redirects() {
     return [

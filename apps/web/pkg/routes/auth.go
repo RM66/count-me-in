@@ -1,10 +1,10 @@
-// Package routes holds the actual route logic for every API endpoint.
-// The files under api/ are thin Vercel entry points (one per function,
-// each exporting Handler) that delegate here; cmd/dev mounts the same
-// handlers on a local mux. Keeping the logic in pkg/ is what makes
-// both possible — the dynamic route dirs (by-id, by-queue) are plain
-// names because Go rejects '[' in import paths, and vercel.json
-// rewrites map :id / :queue to them in production.
+// Package routes holds the actual route logic for every API endpoint and
+// the single shared mux (mux.go) that wires them. The Vercel entry point
+// (api/entry/index.go) and the local dev server (cmd/dev) both mount
+// routes.NewMux, so dev and prod dispatch identically. Keeping the logic
+// in pkg/ is what makes both possible — the single function restores the
+// original path from ?_path and dispatches via the ServeMux patterns
+// (/api/services/{id}, /api/jobs/{queue}, …).
 package routes
 
 import (

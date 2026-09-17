@@ -1,14 +1,39 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/bookings/index.go": { "memory": 1024, "maxDuration": 15 },
-    "api/bookings/cancel/index.go": { "memory": 1024, "maxDuration": 15 },
-    "api/bookings/cancel-by-organizer/index.go": { "memory": 1024, "maxDuration": 15 },
-    "api/**/*.go": { "memory": 1024, "maxDuration": 10 }
+    "api/entry/index.go": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
   },
   "rewrites": [
-    { "source": "/api/services/:id", "destination": "/api/services/by-id" },
-    { "source": "/api/slots/:id", "destination": "/api/slots/by-id" },
-    { "source": "/api/jobs/:queue", "destination": "/api/jobs/by-queue" }
+    {
+      "source": "/api/auth/telegram-guest",
+      "destination": "/api/entry?_path=/api/auth/telegram-guest"
+    },
+    {
+      "source": "/api/auth/telegram-signup",
+      "destination": "/api/entry?_path=/api/auth/telegram-signup"
+    },
+    {
+      "source": "/api/organizers/:path*",
+      "destination": "/api/entry?_path=/api/organizers/:path*"
+    },
+    {
+      "source": "/api/services/:path*",
+      "destination": "/api/entry?_path=/api/services/:path*"
+    },
+    {
+      "source": "/api/slots/:path*",
+      "destination": "/api/entry?_path=/api/slots/:path*"
+    },
+    {
+      "source": "/api/bookings/:path*",
+      "destination": "/api/entry?_path=/api/bookings/:path*"
+    },
+    {
+      "source": "/api/jobs/:path*",
+      "destination": "/api/entry?_path=/api/jobs/:path*"
+    }
   ]
 }

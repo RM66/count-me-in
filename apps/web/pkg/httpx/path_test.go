@@ -24,16 +24,20 @@ func TestPathParam(t *testing.T) {
 		}
 	}
 
-	// Production (Vercel): vercel.json rewrites pass the dynamic segment
-	// as a query parameter; r.URL.Path is the destination (by-id / by-queue).
+	// Production (Vercel): every route is rewritten to the single function
+	// at /api/entry, which restores r.URL.Path from ?_path. Vercel injects
+	// the matched segment as a query parameter (?id / ?queue); PathParam
+	// reads it before falling back to the (restored) path. These cases
+	// model the request as the entry sees it: _path restored to the real
+	// route and the segment also present as a query param.
 	queryCases := []struct {
 		path, query, prefix, queryKey, want string
 	}{
-		{"/api/services/by-id", "id=abc123", "/api/services/", "id", "abc123"},
-		{"/api/services/by-id", "id=demo-yoga", "/api/services/", "id", "demo-yoga"},
-		{"/api/slots/by-id", "id=slot-42", "/api/slots/", "id", "slot-42"},
-		{"/api/jobs/by-queue", "queue=booking.created", "/api/jobs/", "queue", "booking.created"},
-		{"/api/jobs/by-queue", "queue=demo.refresh", "/api/jobs/", "queue", "demo.refresh"},
+		{"/api/services/abc123", "_path=/api/services/abc123&id=abc123", "/api/services/", "id", "abc123"},
+		{"/api/services/demo-yoga", "_path=/api/services/demo-yoga&id=demo-yoga", "/api/services/", "id", "demo-yoga"},
+		{"/api/slots/slot-42", "_path=/api/slots/slot-42&id=slot-42", "/api/slots/", "id", "slot-42"},
+		{"/api/jobs/booking.created", "_path=/api/jobs/booking.created&queue=booking.created", "/api/jobs/", "queue", "booking.created"},
+		{"/api/jobs/demo.refresh", "_path=/api/jobs/demo.refresh&queue=demo.refresh", "/api/jobs/", "queue", "demo.refresh"},
 	}
 	for _, c := range queryCases {
 		r := httptest.NewRequest("POST", c.path+"?"+c.query, nil)

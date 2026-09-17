@@ -50,11 +50,13 @@ func RequireMethod(w http.ResponseWriter, r *http.Request, method string, next f
 
 // PathParam extracts the single dynamic segment of a route.
 //
-// Production (Vercel): vercel.json rewrites map /api/services/:id →
-// /api/services/by-id, and Vercel injects the matched :id as a query
-// parameter (?id=abc123). The Go function's r.URL.Path is the
-// destination (/api/services/by-id), so the real value is in the query
-// string — queryKey names it ("id" for services/slots, "queue" for jobs).
+// Production (Vercel): every /api/* route is rewritten to the single
+// function at /api/entry, which restores r.URL.Path from the ?_path query
+// param vercel.json carries. Vercel also injects the matched segment as
+// a query parameter (?id=abc123 / ?queue=booking.created), so the value
+// is read from the query string first — queryKey names it ("id" for
+// services/slots, "queue" for jobs). The restored path makes the
+// dev-style path branch a working fallback.
 //
 // Dev (cmd/dev): Go 1.22+ http.ServeMux patterns route /api/services/{id}
 // directly, so the segment lives in the path after prefix.
@@ -66,7 +68,8 @@ func PathParam(r *http.Request, prefix, queryKey string) string {
 	if v := r.URL.Query().Get(queryKey); v != "" {
 		return v
 	}
-	// Dev: the segment is in the path after prefix.
+	// Dev (or production after path restoration): the segment is in the
+	// path after prefix.
 	// Strict prefix check: without it a path that merely shares a length
 	// with the prefix would strip the wrong number of bytes and return
 	// garbage as the param.

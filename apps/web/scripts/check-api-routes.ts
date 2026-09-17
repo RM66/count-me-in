@@ -1,69 +1,71 @@
 /**
- * Verify api-rewrites.mjs paths match the Go API handlers under apps/web/api/.
- * One directory per route; each index.go is a Vercel function. Directory → URL:
- *   api/bookings/index.go          → /api/bookings
- *   api/services/by-id/index.go    → /api/services/:id (vercel.json rewrite)
- * Auth.js (/api/auth/[...nextauth]) stays on Next.js — not in the rewrite list.
+ * Verify vercel.json rewrites cover every Go API route registered in
+ * pkg/routes/mux.go. vercel.json is the single source of truth for API
+ * routing (production edge rewrites + dev proxy). Auth.js
+ * (/api/auth/[...nextauth]) stays on Next.js — deliberately omitted from
+ * vercel.json so Next.js handles it.
  */
-import { readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-import { apiRoutePaths } from './api-rewrites.mjs'
+const webDir = join(fileURLToPath(import.meta.url), '..', '..')
+const muxFile = join(webDir, 'pkg', 'routes', 'mux.go')
+const vercelFile = join(webDir, 'vercel.json')
 
-const goApiDir = join(fileURLToPath(import.meta.url), '..', '..', 'api')
-
-// Vercel Go functions cannot use bracket directories ([id], [queue]) —
-// go mod tidy rejects '[' in import paths. Dynamic route dirs use plain
-// names (by-id, by-queue) and vercel.json rewrites map :id / :queue to
-// them. This table restores the :param shape for the dev-mode rewrite
-// list so it matches the URL contract.
-const dynamicSegmentMap: Record<string, string> = {
-  'by-id': ':id',
-  'by-queue': ':queue',
+const muxContent = readFileSync(muxFile, 'utf8')
+const vercelConfig = JSON.parse(readFileSync(vercelFile, 'utf8')) as {
+  rewrites?: Array<{ source: string; destination: string }>
 }
 
-function collectGoRoutes(dir: string, prefix = ''): string[] {
-  const routes: string[] = []
-  for (const entry of readdirSync(dir)) {
-    const fullPath = join(dir, entry)
-    if (statSync(fullPath).isDirectory()) {
-      const segment = dynamicSegmentMap[entry] ?? entry
-      const path = prefix ? `${prefix}/${segment}` : `/${segment}`
-      try {
-        statSync(join(fullPath, 'index.go'))
-        routes.push(path)
-      } catch {
-        // No index.go here — keep descending for nested routes.
-      }
-      routes.push(...collectGoRoutes(fullPath, path))
-    }
-  }
-  return routes
-}
-
-const goRoutes = collectGoRoutes(goApiDir)
-  .map((r) => `/api${r}`)
+// Extract every mux.HandleFunc("/api/...", ...) pattern.
+const goRoutes = [...muxContent.matchAll(/mux\.HandleFunc\("([^"]+)"/g)]
+  .map((m) => m[1])
+  .filter((p): p is string => typeof p === 'string')
   .sort()
-const rewritePaths = [...apiRoutePaths].sort()
 
-const missing = goRoutes.filter((r) => !rewritePaths.includes(r))
-const extra = rewritePaths.filter((r) => !goRoutes.includes(r))
+const rewriteRules = (vercelConfig.rewrites ?? []).map((r) => r.source)
 
-if (missing.length === 0 && extra.length === 0) {
-  console.log(`api-rewrites.mjs in sync with Go API routes (${goRoutes.length} routes)`)
+function patternToRegex(source: string): RegExp {
+  const pattern = source
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\/:[a-zA-Z0-9_]+\*/g, '(?:/.*)?')
+    .replace(/:[a-zA-Z0-9_]+\*/g, '.*')
+    .replace(/:[a-zA-Z0-9_]+/g, '[^/]+')
+  return new RegExp(`^${pattern}$`)
+}
+
+const ruleRegexes = rewriteRules.map((r) => ({
+  source: r,
+  regex: patternToRegex(r),
+}))
+
+// 1. Every Go route in mux.go must match at least one rewrite rule in vercel.json
+const uncoveredRoutes = goRoutes.filter(
+  (route) => !ruleRegexes.some((rule) => rule.regex.test(route)),
+)
+
+// 2. Every rewrite rule in vercel.json must match at least one route in mux.go
+const unusedRules = ruleRegexes
+  .filter((rule) => !goRoutes.some((route) => rule.regex.test(route)))
+  .map((rule) => rule.source)
+
+if (uncoveredRoutes.length === 0 && unusedRules.length === 0) {
+  console.log(
+    `vercel.json rewrites in sync with Go mux routes (${goRoutes.length} routes covered by ${rewriteRules.length} rules)`,
+  )
   process.exit(0)
 }
 
-console.error('api-rewrites.mjs is out of sync with Go API routes:')
-if (missing.length > 0) {
-  console.error('\n  Routes in Go API but missing from api-rewrites.mjs:')
-  for (const r of missing) console.error(`    + ${r}`)
+console.error('vercel.json rewrites are out of sync with Go mux.go:')
+if (uncoveredRoutes.length > 0) {
+  console.error('\n  Routes in Go mux.go not covered by vercel.json:')
+  for (const r of uncoveredRoutes) console.error(`    + ${r}`)
 }
-if (extra.length > 0) {
-  console.error('\n  Routes in api-rewrites.mjs but no Go handler exists:')
-  for (const r of extra) console.error(`    - ${r}`)
+if (unusedRules.length > 0) {
+  console.error('\n  Rewrite rules in vercel.json matching no Go routes:')
+  for (const r of unusedRules) console.error(`    - ${r}`)
 }
-console.error('\nFix: update the apiRoutePaths array in apps/web/scripts/api-rewrites.mjs')
+console.error('\nFix: update rewrites in apps/web/vercel.json or routes in pkg/routes/mux.go')
 process.exit(1)

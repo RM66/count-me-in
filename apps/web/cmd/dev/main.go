@@ -1,13 +1,10 @@
 // cmd/dev is a local development server for the Go API: it mounts the
-// same route handlers the Vercel functions use (pkg/routes) on a
-// plain net/http mux, so the API can run next to `next dev` without
-// the Vercel CLI. Production traffic never flows through this binary —
-// Vercel compiles each api/ entry file into its own function.
-//
-// Dynamic route dirs use plain names (by-id, by-queue) because Go
-// rejects '[' in import paths — vercel.json rewrites map :id / :queue
-// to them in production. The route logic lives in pkg/routes and
-// the entry files are thin wrappers.
+// same shared mux the Vercel entry point uses (pkg/routes.NewMux) on a
+// plain net/http server, so the API runs next to `next dev` without the
+// Vercel CLI. Production traffic flows through the single function at
+// api/entry/index.go; this binary is never deployed. Sharing NewMux
+// guarantees dev and prod dispatch identically — the only difference is
+// how a request reaches the mux (Vercel rewrites vs. ListenAndServe).
 package main
 
 import (
@@ -17,30 +14,13 @@ import (
 	"strings"
 	"time"
 
-	"countmein/pkg/httpx"
 	"countmein/pkg/routes"
 )
 
 func main() {
 	loadDotEnv(".env")
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/auth/telegram-guest", httpx.Recover(routes.TelegramGuest))
-	mux.HandleFunc("/api/auth/telegram-signup", httpx.Recover(routes.TelegramSignup))
-	mux.HandleFunc("/api/organizers", httpx.Recover(routes.OrganizerRegister))
-	mux.HandleFunc("/api/organizers/me", httpx.Recover(routes.OrganizerMe))
-	mux.HandleFunc("/api/organizers/me/avatar", httpx.Recover(routes.OrganizerAvatar))
-	mux.HandleFunc("/api/organizers/me/language", httpx.Recover(routes.OrganizerMeLanguage))
-	mux.HandleFunc("/api/organizers/me/service-photo", httpx.Recover(routes.OrganizerServicePhoto))
-	mux.HandleFunc("/api/services", httpx.Recover(routes.ServicesCollection))
-	mux.HandleFunc("/api/services/{id}", httpx.Recover(routes.ServiceItem))
-	mux.HandleFunc("/api/slots", httpx.Recover(routes.SlotsCollection))
-	mux.HandleFunc("/api/slots/{id}", httpx.Recover(routes.SlotItem))
-	mux.HandleFunc("/api/bookings", httpx.Recover(routes.BookingCreate))
-	mux.HandleFunc("/api/bookings/lookup", httpx.Recover(routes.BookingLookup))
-	mux.HandleFunc("/api/bookings/cancel", httpx.Recover(routes.BookingCancel))
-	mux.HandleFunc("/api/bookings/cancel-by-organizer", httpx.Recover(routes.BookingCancelByOrganizer))
-	mux.HandleFunc("/api/jobs/{queue}", httpx.Recover(routes.JobsReceiver))
+	mux := routes.NewMux()
 
 	addr := ":" + envOr("PORT", "3001")
 	log.Printf("api-go dev server on http://localhost%s (routes: /api/*)", addr)
