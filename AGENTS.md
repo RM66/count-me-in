@@ -103,17 +103,17 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 
 ## Testing
 
-**Vitest** is the test runner; **React Testing Library** covers components and hooks. Tests are **co-located** (`*.test.ts` / `*.test.tsx` beside source). Run all tests via the Turborepo pipeline:
+**Vitest** is the TS test runner; **React Testing Library** covers components and hooks. Go tests use standard `go test`. Tests are **co-located** (`*.test.ts` / `*.test.tsx` / `*_test.go` beside source). Run all tests via the Turborepo pipeline:
 
 ```sh
-bun run test          # all packages
-bun run test:watch    # watch mode
+bun run test          # all packages (TS vitest + Go tests)
+bun run test:watch    # watch mode (vitest)
 ```
 
-Per-package: `cd <package> && bun run test`.
+Per-package: `cd <package> && bun run test`. In `apps/web`: `bun run test:web` (Vitest only) or `bun run test:go` (Go tests only).
 
 - **`packages/contracts`** — Zod schemas, slot/timezone/options logic (node env).
-- **`apps/web`** — helpers, API client, client error classification + link builders, React hooks, components (happy-dom env). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.
+- **`apps/web`** — helpers, API client, client error classification + link builders, React hooks, components (happy-dom env); Go unit tests in `pkg/` (`go test ./pkg/...`). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.
 
 ## Documentation
 

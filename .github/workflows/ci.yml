@@ -33,6 +33,14 @@ jobs:
           # Keep in sync with "packageManager" in package.json.
           bun-version: 1.3.14
 
+      - name: Set up Go
+        if: matrix.task == 'test'
+        uses: actions/setup-go@v5
+        with:
+          # Keep in sync with "go" in apps/web/go.mod.
+          go-version: '1.24'
+          cache-dependency-path: apps/web/go.sum
+
       - name: Cache turbo
         uses: actions/cache@v4
         with:
@@ -75,7 +83,7 @@ jobs:
         run: bun run generate:i18n
 
       - name: Check for uncommitted generated changes
-        run: git diff --exit-code apps/web/internal/i18n/translations_gen.go
+        run: git diff --exit-code apps/web/pkg/i18n/translations_gen.go
 
       - name: Build, vet, test
         working-directory: apps/web

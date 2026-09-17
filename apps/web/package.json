@@ -16,7 +16,9 @@
     "qstash:schedules": "bun scripts/ensure-qstash.ts",
     "check:api-routes": "bun scripts/check-api-routes.ts",
     "check:contracts": "bun scripts/check-contracts.ts",
-    "test": "vitest run",
+    "test": "bun run test:web && bun run test:go",
+    "test:web": "vitest run",
+    "test:go": "go test ./pkg/...",
     "test:watch": "vitest"
   },
   "dependencies": {
