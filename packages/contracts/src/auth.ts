@@ -1,20 +1,45 @@
 import { z } from 'zod'
 
 import { messengerEnum } from './enums'
-import { authTicket, messengerId, uuid } from './primitives'
+import { authTicket, httpUrl, messengerId, uuid } from './primitives'
+
+/**
+ * Auth.js session cookie names, most-secure first. Auth.js itself reads only
+ * the `__Secure-` name on HTTPS; both are listed because local development
+ * serves plain HTTP, and the Go API accepts either.
+ */
+export const SESSION_COOKIE_NAMES = ['__Secure-authjs.session-token', 'authjs.session-token'] as const
+
+/**
+ * Telegram numeric user id. Bounded rather than `.positive()` so the bound is
+ * derivable as a Go int range — an exclusive minimum is not (D10).
+ */
+export const telegramUserId = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER)
+
+/** Unix seconds; the upper bound is 2100-01-01, far past any plausible widget. */
+export const telegramAuthDate = z.number().int().min(1).max(4_102_444_800)
+
+/** Telegram caps names at 64; 256 leaves room without accepting a payload bomb. */
+export const telegramName = z.string().min(1).max(256)
+
+/** Optional name/username fields: present-but-empty is what the widget sends today. */
+export const telegramOptionalName = z.string().max(256)
+
+/** HMAC-SHA256 hex digest. */
+export const telegramHash = z.string().min(64).max(64)
 
 /**
  * Telegram Login Widget payload from the client.
  * Server re-validates the HMAC before trusting any field.
  */
 export const telegramWidgetPayload = z.object({
-  id: z.number().int().positive(),
-  first_name: z.string().min(1),
-  last_name: z.string().optional(),
-  username: z.string().optional(),
-  photo_url: z.string().url().optional(),
-  auth_date: z.number().int().positive(),
-  hash: z.string().length(64),
+  id: telegramUserId,
+  first_name: telegramName,
+  last_name: telegramOptionalName.optional(),
+  username: telegramOptionalName.optional(),
+  photo_url: httpUrl.optional(),
+  auth_date: telegramAuthDate,
+  hash: telegramHash,
 })
 export type TelegramWidgetPayload = z.infer<typeof telegramWidgetPayload>
 

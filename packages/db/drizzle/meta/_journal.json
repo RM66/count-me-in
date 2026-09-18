@@ -50,6 +50,13 @@
       "when": 1787840000000,
       "tag": "0006_slot_delete_restrict",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787926400000,
+      "tag": "0007_text_length_checks",
+      "breakpoints": true
     }
   ]
 }

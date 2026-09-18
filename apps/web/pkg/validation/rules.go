@@ -36,8 +36,11 @@ func charLen(v string) int {
 
 func intRange(min, max int64) func(int64) string {
 	return func(n int64) string {
-		if n < min || n > max {
-			return fmt.Sprintf("Value must be between %d and %d", min, max)
+		if n < min {
+			return fmt.Sprintf("Too small: expected number to be >=%d", min)
+		}
+		if n > max {
+			return fmt.Sprintf("Too big: expected number to be <=%d", max)
 		}
 		return ""
 	}
@@ -57,15 +60,28 @@ func ServiceIDRule(v string) string {
 	return ""
 }
 
-func SlugRule(v string) string {
+// SlugShapeRule validates a slug as a value: length and alphabet only.
+// Reserved names belong to the registration rule below, not to the shape —
+// the demo organizer's own slug is reserved.
+func SlugShapeRule(v string) string {
 	v = strings.ToLower(v)
-	if charLen(v) < 4 || charLen(v) > 40 {
-		return "String must contain between 4 and 40 characters"
+	if charLen(v) < 4 {
+		return "Too small: expected string to have >=4 characters"
+	}
+	if charLen(v) > 40 {
+		return "Too big: expected string to have <=40 characters"
 	}
 	if !slugPattern.MatchString(v) {
 		return "slug must be lowercase letters, digits and single hyphens"
 	}
-	if reservedSlugs[v] {
+	return ""
+}
+
+func SlugRule(v string) string {
+	if msg := SlugShapeRule(v); msg != "" {
+		return msg
+	}
+	if reservedSlugs[strings.ToLower(v)] {
 		return "this slug is reserved for system use — please choose another"
 	}
 	return ""

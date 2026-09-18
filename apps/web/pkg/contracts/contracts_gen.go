@@ -83,6 +83,9 @@ var Locales = []string{"en", "de", "es", "fr", "pt", "ru", "ar", "ja"}
 
 const DefaultLocale = "en"
 
+// Auth.js session cookie names, https ("__Secure-"-prefixed, prod) first.
+var SessionCookieNames = []string{"__Secure-authjs.session-token", "authjs.session-token"}
+
 // ── Request Input Structs ───────────────────────────────────────────────────
 
 type CreateBookingInput struct {
@@ -181,6 +184,16 @@ type CreateAvatarUploadInput struct {
 type CreateServicePhotoUploadInput struct {
 	ContentType string
 	Size        int
+}
+
+type TelegramWidgetPayload struct {
+	ID        int
+	FirstName string
+	LastName  *string
+	Username  *string
+	PhotoURL  *string
+	AuthDate  int
+	Hash      string
 }
 
 // ── Response DTOs & Records ─────────────────────────────────────────────────
@@ -380,3 +393,37 @@ type InvalidIssuesBody struct {
 }
 
 var RecordNames = []string{"OrganizerProfile", "PublicOrganizer", "ServiceRecord", "TimeSlotRecord", "BookingRecord", "GuestBooking", "ImageUploadTarget", "RegisteredOrganizer", "Registered", "AuthTicketPayload", "GuestTicketResponse", "AuthTicketResponse", "LoginLinkPayload", "BookingCreatedJob", "BookingCancelledJob", "ServiceEnvelope", "ServicesEnvelope", "SlotEnvelope", "SlotsEnvelope", "GuestBookingEnvelope", "BookingEnvelope", "GuestBookingsEnvelope", "OrganizerEnvelope", "DeletedServiceEnvelope", "DeletedSlotEnvelope", "ErrorBody", "ValidationErrors", "InvalidBody", "InvalidIssuesBody"}
+
+// ── API route manifest ──────────────────────────────────────────────────────
+
+type RouteSpec struct {
+	OperationID string
+	Method      string
+	Path        string
+}
+
+var APIRoutes = []RouteSpec{
+	{OperationID: "telegramGuest", Method: "POST", Path: "/api/auth/telegram-guest"},
+	{OperationID: "telegramSignup", Method: "POST", Path: "/api/auth/telegram-signup"},
+	{OperationID: "registerOrganizer", Method: "POST", Path: "/api/organizers"},
+	{OperationID: "getMyProfile", Method: "GET", Path: "/api/organizers/me"},
+	{OperationID: "updateMyProfile", Method: "PUT", Path: "/api/organizers/me"},
+	{OperationID: "updateMyLanguage", Method: "PATCH", Path: "/api/organizers/me/language"},
+	{OperationID: "createAvatarUploadTarget", Method: "POST", Path: "/api/organizers/me/avatar"},
+	{OperationID: "createServicePhotoUploadTarget", Method: "POST", Path: "/api/organizers/me/service-photo"},
+	{OperationID: "listServices", Method: "GET", Path: "/api/services"},
+	{OperationID: "createService", Method: "POST", Path: "/api/services"},
+	{OperationID: "getService", Method: "GET", Path: "/api/services/{id}"},
+	{OperationID: "updateService", Method: "PUT", Path: "/api/services/{id}"},
+	{OperationID: "deleteService", Method: "DELETE", Path: "/api/services/{id}"},
+	{OperationID: "listSlots", Method: "GET", Path: "/api/slots"},
+	{OperationID: "createSlot", Method: "POST", Path: "/api/slots"},
+	{OperationID: "getSlot", Method: "GET", Path: "/api/slots/{id}"},
+	{OperationID: "updateSlot", Method: "PUT", Path: "/api/slots/{id}"},
+	{OperationID: "deleteSlot", Method: "DELETE", Path: "/api/slots/{id}"},
+	{OperationID: "createBooking", Method: "POST", Path: "/api/bookings"},
+	{OperationID: "lookupBookings", Method: "POST", Path: "/api/bookings/lookup"},
+	{OperationID: "cancelBookingByToken", Method: "POST", Path: "/api/bookings/cancel"},
+	{OperationID: "cancelBookingByOrganizer", Method: "POST", Path: "/api/bookings/cancel-by-organizer"},
+	{OperationID: "runJob", Method: "POST", Path: "/api/jobs/{queue}"},
+}

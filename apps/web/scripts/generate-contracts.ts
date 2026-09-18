@@ -6,12 +6,13 @@
  * Generated outputs:
  *   1. `apps/web/pkg/contracts/contracts_gen.go` (Go structs, enums, constants, calculations)
  *   2. `apps/web/pkg/validation/validation_gen.go` (Go validation rules and input parsers)
- *   3. `packages/contracts/openapi.yaml` (OpenAPI 3.1 specification)
+ *   3. `apps/web/openapi.yaml` (OpenAPI 3.1 specification)
  *
  * Structs, enums, rules and Parse* bodies are derived from the wire registry
  * (`packages/contracts/src/wire.ts`) rendered through the public
  * z.toJSONSchema API — Go names resolve by $ref, rules by JSON Schema
- * constraints. Anything the emitter cannot derive (transforms, refinements,
+ * constraints. Paths come from `packages/contracts/src/routes.ts`.
+ * Anything the emitter cannot derive (transforms, refinements,
  * temporal checks, domain functions) lives hand-written in rules.go /
  * refine.go / domain.go; the generator emits only calls and verifies the
  * callees exist. `assertOpenApiSpec` rejects a structurally broken spec, and
@@ -22,24 +23,41 @@
  * In CI: verified via `git diff --exit-code`
  */
 import { execSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as contracts from '@repo/contracts'
-import { wire, WIRE_SCHEMAS } from '@repo/contracts/wire'
+import { API_ROUTES, INTERNAL_RECORDS } from '@repo/contracts/routes'
+import { metaOfSchema, wire, WIRE_META, WIRE_SCHEMAS } from '@repo/contracts/wire'
 import yaml from 'yaml'
 import { z } from 'zod'
 
+import { zodMessages } from './messages'
+
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const webDir = join(__dirname, '..')
-const rootDir = join(webDir, '..', '..')
 
 const goContractsFile = join(webDir, 'pkg', 'contracts', 'contracts_gen.go')
 const goValidationFile = join(webDir, 'pkg', 'validation', 'validation_gen.go')
-const openapiFile = join(rootDir, 'packages', 'contracts', 'openapi.yaml')
+const openapiFile = join(webDir, 'openapi.yaml')
 
 function goString(str: string): string {
   return JSON.stringify(str)
+}
+
+// RE2 (Go) is not a superset of the JS regex dialect: a lookaround or
+// backreference compiles in TypeScript and panics inside regexp.MustCompile at
+// Go package init, taking the whole function down on cold start.
+const RE2_UNSUPPORTED = /\(\?=|\(\?!|\(\?<=|\(\?<!|\\[1-9]/
+function goRegexSource(pattern: RegExp, name: string): string {
+  if (RE2_UNSUPPORTED.test(pattern.source)) {
+    throw new Error(`generate-contracts: ${name} uses a construct RE2 does not support (lookaround or backreference) — rewrite it or move the check into a hand-written rule`)
+  }
+  if (pattern.source.includes('`')) {
+    throw new Error(`generate-contracts: ${name} contains a backtick and cannot be emitted as a Go raw string literal`)
+  }
+  return pattern.source
 }
 
 function toPascalCase(str: string): string {
@@ -93,6 +111,16 @@ function targetOf(id: string, where: string): JSchema {
   if (!t) {
     throw new Error(`generate-contracts: $ref "${id}" in ${where} resolves to no registered schema`)
   }
+  // A refined primitive (Slug = SlugShape.refine(policy)) renders as
+  // `{ $ref: SlugShape }`. Follow the ref for the JSON Schema shape; callers
+  // still use the original id with metaOf for the Go rule name.
+  if (typeof t.$ref === 'string') {
+    const refId = t.$ref.split('/').pop() as string
+    if (refId === id) {
+      throw new Error(`generate-contracts: ${where} $ref "${id}" is circular`)
+    }
+    return targetOf(refId, `${where} via ${id}`)
+  }
   return t
 }
 
@@ -104,22 +132,12 @@ function metaOf(id: string, where: string): {
   'x-go-refine'?: string
   'x-go-trim'?: true
   'x-go-enum-consts'?: Record<string, string>
-  'x-go-skip'?: true
 } {
-  const m = wire.get(WIRE_SCHEMAS[id] as never)
+  const m = WIRE_META[id]
   if (!m) {
     throw new Error(`generate-contracts: "${id}" referenced by ${where} is not registered in wire.ts`)
   }
-  return m as {
-    id: string
-    kind: 'primitive' | 'enum' | 'input' | 'update' | 'record'
-    'x-go-type'?: string
-    'x-go-rule'?: string
-    'x-go-refine'?: string
-    'x-go-trim'?: true
-    'x-go-enum-consts'?: Record<string, string>
-    'x-go-skip'?: true
-  }
+  return m
 }
 
 type RefTarget = { id: string | null; nullable: boolean; def: unknown }
@@ -296,10 +314,16 @@ function goStructType(
 function generateStruct(id: string, kind: 'input' | 'update' | 'record'): string {
   const schema = targetOf(id, `struct ${id}`)
   const props = schema.properties ?? {}
+  const goNames = new Map<string, string>()
   let out = `type ${id} struct {\n`
   for (const [k, prop] of Object.entries(props)) {
     guardFieldName(k, `struct ${id}`, kind !== 'record')
     const goName = toPascalCase(k)
+    const clash = goNames.get(goName)
+    if (clash !== undefined) {
+      throw new Error(`generate-contracts: ${id}.${k} and ${id}.${clash} both map to Go field "${goName}"`)
+    }
+    goNames.set(goName, k)
     const goType = goStructType(k, prop, kind, id)
     const optional = !(schema.required ?? []).includes(k)
     const tag = kind === 'record' ? ` \`json:"${k}${optional ? ',omitempty' : ''}"\`` : ''
@@ -320,8 +344,8 @@ function generateGoContracts(): string {
   // Enum types + consts for named Go enums (no x-go-type), in registration
   // order. Names come from x-go-enum-consts, values from the JSON Schema enum.
   const enumBlocks: string[] = []
-  for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-    const meta = wire.get(schema as never)
+  for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+    const meta = WIRE_META[id]
     if (meta?.kind !== 'enum' || meta['x-go-type']) continue
     const values = targetOf(id, `enum ${id}`).enum ?? []
     const consts = meta['x-go-enum-consts'] ?? {}
@@ -338,27 +362,27 @@ function generateGoContracts(): string {
 
   // Dynamic structs from the wire registry (order = registration order in wire.ts, D12).
   const inputParts: string[] = []
-  for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-    const kind = wire.get(schema as never)?.kind
+  for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+    const kind = WIRE_META[id]?.kind
     if (kind !== 'input' && kind !== 'update') continue
     inputParts.push(generateStruct(id, kind))
   }
   const inputStructs = inputParts.join('\n')
 
   const recordStructs = Object.entries(WIRE_SCHEMAS)
-    .filter(([, schema]) => {
-      const meta = wire.get(schema as never)
-      return meta?.kind === 'record' && !meta['x-go-skip']
-    })
+    .filter(([id]) => WIRE_META[id]?.kind === 'record')
     .map(([id]) => generateStruct(id, 'record'))
     .join('\n')
 
   const recordNames = Object.entries(WIRE_SCHEMAS)
-    .filter(([, schema]) => {
-      const meta = wire.get(schema as never)
-      return meta?.kind === 'record' && !meta['x-go-skip']
-    })
+    .filter(([id]) => WIRE_META[id]?.kind === 'record')
     .map(([id]) => id)
+
+  const routeSpecs = API_ROUTES.map(
+    (r) => `\t{OperationID: ${goString(r.operationId)}, Method: ${goString(r.method.toUpperCase())}, Path: ${goString(r.path)}},`,
+  ).join('\n')
+
+  const sessionCookies = contracts.SESSION_COOKIE_NAMES.map(goString).join(', ')
 
   const body = `// ── Shared Constants ────────────────────────────────────────────────────────
 // Only what the Go side actually uses is emitted. Browser-only values (image
@@ -405,6 +429,9 @@ var Locales = []string{${localesSlice}}
 
 const DefaultLocale = ${goString(contracts.DEFAULT_LOCALE)}
 
+// Auth.js session cookie names, https ("__Secure-"-prefixed, prod) first.
+var SessionCookieNames = []string{${sessionCookies}}
+
 // ── Request Input Structs ───────────────────────────────────────────────────
 
 ${inputStructs}
@@ -414,6 +441,18 @@ ${inputStructs}
 ${recordStructs}
 
 var RecordNames = []string{${recordNames.map((n) => goString(n)).join(', ')}}
+
+// ── API route manifest ──────────────────────────────────────────────────────
+
+type RouteSpec struct {
+	OperationID string
+	Method      string
+	Path        string
+}
+
+var APIRoutes = []RouteSpec{
+${routeSpecs}
+}
 `
   // Imports derive from the emitted body: go build fails on a missing or
   // unused import, which is the check.
@@ -444,9 +483,9 @@ function generateRules(): string {
         throw new Error(`generate-contracts: primitive ${id} has format/pattern and no x-go-rule — refinements are hand-written (D10)`)
       }
       if (t.minLength !== undefined && t.maxLength !== undefined) {
-        parts.push(`func ${id}Rule(v string) string {\n\tif charLen(v) < ${t.minLength} || charLen(v) > ${t.maxLength} {\n\t\treturn "String must contain between ${t.minLength} and ${t.maxLength} characters"\n\t}\n\treturn ""\n}\n`)
+        parts.push(`func ${id}Rule(v string) string {\n\tif charLen(v) < ${t.minLength} {\n\t\treturn ${goString(zodMessages.stringTooSmall(t.minLength))}\n\t}\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`)
       } else if (t.maxLength !== undefined) {
-        parts.push(`func ${id}Rule(v string) string {\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn "String must contain at most ${t.maxLength} characters"\n\t}\n\treturn ""\n}\n`)
+        parts.push(`func ${id}Rule(v string) string {\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`)
       } else {
         throw new Error(`generate-contracts: primitive ${id} has no derivable length constraints and no x-go-rule`)
       }
@@ -473,8 +512,8 @@ function generateRules(): string {
 /** Enum rules for enums referenced by any input/update, in registration order. */
 function generateEnumRules(): string {
   const referenced = new Set<string>()
-  for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-    const meta = wire.get(schema as never)
+  for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+    const meta = WIRE_META[id]
     if (meta?.kind !== 'input' && meta?.kind !== 'update') continue
     const s = targetOf(id, `enum refs of ${id}`)
     for (const [k, prop] of Object.entries(s.properties ?? {})) {
@@ -487,12 +526,11 @@ function generateEnumRules(): string {
   }
   const parts: string[] = []
   for (const [id] of Object.entries(WIRE_SCHEMAS)) {
-    const meta = wire.get(WIRE_SCHEMAS[id] as never)
+    const meta = WIRE_META[id]
     if (meta?.kind !== 'enum' || !referenced.has(id)) continue
     const values = targetOf(id, `enum ${id}`).enum ?? []
     const cases = values.map((v) => goString(v)).join(', ')
-    const list = values.join('|')
-    parts.push(`func ${id}Rule(v string) string {\n\tswitch v {\n\tcase ${cases}:\n\t\treturn ""\n\t}\n\treturn "Invalid input: expected one of ${list}"\n}\n`)
+    parts.push(`func ${id}Rule(v string) string {\n\tswitch v {\n\tcase ${cases}:\n\t\treturn ""\n\t}\n\treturn ${goString(zodMessages.enumOneOf(values))}\n}\n`)
   }
   return parts.join('\n')
 }
@@ -505,10 +543,7 @@ function arrayElemRule(t: JSchema, where: string): { elemRule: string; elemTrim:
   if (!t.items) throw new Error(`generate-contracts: ${where} array has no items`)
   const er = refOf(t.items)
   if (er.id === null) {
-    if (t.items.type !== 'string') {
-      throw new Error(`generate-contracts: ${where} is an array of non-strings — only []string fields are ported`)
-    }
-    return { elemRule: 'OptionLabelRule', elemTrim: true, max: mustMaxItems(t, where) }
+    throw new Error(`generate-contracts: ${where} is an array of inline items — array elements must $ref a registered string primitive so the element rule is derivable (D11)`)
   }
   const emeta = metaOf(er.id, `${where} items`)
   const etarget = targetOf(er.id, `${where} items`)
@@ -683,8 +718,8 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
 function generateParsers(): string {
   const parts: string[] = []
   const names: string[] = []
-  for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-    const kind = wire.get(schema as never)?.kind
+  for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+    const kind = WIRE_META[id]?.kind
     if (kind !== 'input' && kind !== 'update') continue
     parts.push(generateParser(id, kind))
     names.push(`\t"${id}": func(b []byte) (any, *Errors) { return Parse${id}(b) },`)
@@ -695,8 +730,8 @@ function generateParsers(): string {
 function generateGoValidation(): string {
   const body = `// ── Patterns & reserved slugs ───────────────────────────────────────────────
 
-var slugPattern = regexp.MustCompile(\`${contracts.SLUG_PATTERN.source}\`)
-var serviceIDPattern = regexp.MustCompile(\`${contracts.SERVICE_ID_PATTERN.source}\`)
+var slugPattern = regexp.MustCompile(\`${goRegexSource(contracts.SLUG_PATTERN, 'SLUG_PATTERN')}\`)
+var serviceIDPattern = regexp.MustCompile(\`${goRegexSource(contracts.SERVICE_ID_PATTERN, 'SERVICE_ID_PATTERN')}\`)
 
 var reservedSlugs = map[string]bool{
 ${contracts.RESERVED_SLUGS.map((s) => `\t${goString(s)}: true,`).join('\n')}
@@ -748,8 +783,8 @@ function assertHandwrittenExists(goFile: string, funcName: string): void {
 
 function assertResidueCallees(): void {
   const refineFile = join(webDir, 'pkg', 'validation', 'refine.go')
-  for (const [, schema] of Object.entries(WIRE_SCHEMAS)) {
-    const meta = wire.get(schema as never)
+  for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+    const meta = WIRE_META[id]
     if (meta?.kind !== 'input' && meta?.kind !== 'update') continue
     const func = meta['x-go-refine']
     if (!func) continue
@@ -761,8 +796,8 @@ function assertResidueCallees(): void {
   }
   // x-go-rule callees live in rules.go.
   const rulesFile = join(webDir, 'pkg', 'validation', 'rules.go')
-  for (const [, schema] of Object.entries(WIRE_SCHEMAS)) {
-    const meta = wire.get(schema as never)
+  for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+    const meta = WIRE_META[id]
     if (meta?.kind !== 'primitive') continue
     const rule = meta['x-go-rule']
     if (rule) assertHandwrittenExists(rulesFile, rule)
@@ -770,55 +805,75 @@ function assertResidueCallees(): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Generate packages/contracts/openapi.yaml
+// 3. Generate apps/web/openapi.yaml
 // ─────────────────────────────────────────────────────────────────────────────
 
-function generateOpenAPISpec(): string {
-  // components.schemas = every registered schema rendered through the public
-  // z.toJSONSchema API with OpenAPI $refs; keys sorted by id (D12).
-  // The override hook carries what JSON Schema cannot: the Slug alphabet and
-  // the documented startsAt wire shapes. Both attach by schema identity and
-  // fail loudly below if the schema ever leaves the registry.
-  const slugSchema = WIRE_SCHEMAS['Slug']
-  const slotStartsAtSchema = WIRE_SCHEMAS['SlotStartsAt']
-  if (!slugSchema || !slotStartsAtSchema) {
-    throw new Error('generate-contracts: schemas "Slug" and "SlotStartsAt" must stay registered in wire.ts — the OpenAPI override attaches to them')
+function schemaRef(schema: unknown, where: string): { $ref: string } {
+  const meta = metaOfSchema(schema as z.ZodType)
+  if (!meta) {
+    throw new Error(`generate-contracts: ${where} references a schema that is not registered in wire.ts`)
   }
-  const apiJSON = z.toJSONSchema(wire, {
-    io: 'input',
-    unrepresentable: 'any',
-    uri: (id: string) => `#/components/schemas/${id}`,
-    override: (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }) => {
-      if ('$ref' in ctx.jsonSchema) return
-      if (ctx.zodSchema === slugSchema) {
-        ctx.jsonSchema.pattern = contracts.SLUG_PATTERN.source
-      }
-      if (ctx.zodSchema === slotStartsAtSchema) {
-        for (const key of Object.keys(ctx.jsonSchema)) delete ctx.jsonSchema[key]
-        Object.assign(ctx.jsonSchema, {
-          oneOf: [
-            { type: 'string', format: 'date-time' },
-            { type: 'integer', description: 'Unix epoch — seconds, or milliseconds when > 1e12.' },
-          ],
-          description: 'Date-only strings are rejected with 400.',
-        })
-      }
-    },
-  }) as unknown as { schemas: Record<string, Record<string, unknown>> }
+  return { $ref: `#/components/schemas/${meta.id}` }
+}
 
-  // Request bodies: Zod strips unknown keys and the Go parsers ignore them,
-  // but z.toJSONSchema emits `additionalProperties: false` — a spec-validating
-  // client would reject bodies the API accepts, so the flag must not ship.
-  // kind input/update — всегда запросы; record-запросы вычисляются обходом
-  // paths ниже (сейчас только TelegramWidgetPayload), а не хардкодом.
-  const REQUEST_SCHEMAS = new Set(
-    Object.entries(WIRE_SCHEMAS)
-      .filter(([, schema]) => {
-        const kind = wire.get(schema as never)?.kind
-        return kind === 'input' || kind === 'update'
-      })
-      .map(([id]) => id),
+function specVersion(schemas: Record<string, unknown>): string {
+  const digest = createHash('sha256').update(JSON.stringify(schemas)).digest('hex')
+  return `1.0.0+${digest.slice(0, 12)}`
+}
+
+function isLiteralEnum(schema: unknown): schema is { enum: readonly string[] } {
+  return (
+    typeof schema === 'object' &&
+    schema !== null &&
+    'enum' in schema &&
+    Array.isArray((schema as { enum: unknown }).enum) &&
+    !('_zod' in schema)
   )
+}
+
+function generateOpenAPISpec(): string {
+  const slugSchema = WIRE_SCHEMAS['Slug']
+  const slugShapeSchema = WIRE_SCHEMAS['SlugShape']
+  const slotStartsAtSchema = WIRE_SCHEMAS['SlotStartsAt']
+  if (!slugSchema || !slugShapeSchema || !slotStartsAtSchema) {
+    throw new Error('generate-contracts: schemas "Slug", "SlugShape" and "SlotStartsAt" must stay registered in wire.ts — the OpenAPI override attaches to them')
+  }
+
+  const openApiOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }) => {
+    if ('$ref' in ctx.jsonSchema) return
+    if (ctx.zodSchema === slugSchema || ctx.zodSchema === slugShapeSchema) {
+      ctx.jsonSchema.pattern = contracts.SLUG_PATTERN.source
+    }
+    if (ctx.zodSchema === slotStartsAtSchema) {
+      for (const key of Object.keys(ctx.jsonSchema)) delete ctx.jsonSchema[key]
+      Object.assign(ctx.jsonSchema, {
+        oneOf: [
+          { type: 'string', format: 'date-time' },
+          { type: 'integer', description: 'Unix epoch — seconds, or milliseconds when > 1e12.' },
+        ],
+        description: 'Date-only strings are rejected with 400.',
+      })
+    }
+  }
+
+  const render = (io: 'input' | 'output') =>
+    (z.toJSONSchema(wire, {
+      io,
+      unrepresentable: 'any',
+      uri: (id: string) => `#/components/schemas/${id}`,
+      override: openApiOverride,
+    }) as unknown as { schemas: Record<string, Record<string, unknown>> }).schemas
+
+  const inputSchemas = render('input')
+  const outputSchemas = render('output')
+
+  // Requests are what a client sends (pre-transform); records are what the API
+  // returns (post-transform). Rendering both from one direction documents one
+  // of them on the wrong side of every pipe.
+  const directionFor = (id: string): Record<string, unknown> => {
+    const kind = metaOf(id, `openapi ${id}`).kind
+    return kind === 'record' ? outputSchemas[id]! : inputSchemas[id]!
+  }
 
   const stripMeta = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(stripMeta)
@@ -834,12 +889,89 @@ function generateOpenAPISpec(): string {
   // Byte-order sort: localeCompare is ICU-dependent and can order the same
   // ids differently on another machine, producing a phantom CI diff.
   const byBytes = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
-  for (const name of Object.keys(apiJSON.schemas).sort(byBytes)) {
-    const clean = stripMeta(apiJSON.schemas[name]) as Record<string, unknown>
+  for (const name of Object.keys(inputSchemas).sort(byBytes)) {
+    const clean = stripMeta(directionFor(name)) as Record<string, unknown>
     schemas[name] = clean
   }
-  for (const name of REQUEST_SCHEMAS) {
-    delete (schemas[name] as Record<string, unknown> | undefined)?.additionalProperties
+
+  // Neither direction is strict on the wire: Zod strips unknown request keys
+  // and the Go parsers ignore them, while responses gain fields without a
+  // version bump. `additionalProperties: false` would make a spec-validating
+  // client reject traffic the API accepts in both directions.
+  let stripped = 0
+  for (const schema of Object.values(schemas) as Array<Record<string, unknown>>) {
+    if (schema.additionalProperties === false) {
+      delete schema.additionalProperties
+      stripped++
+    }
+  }
+  if (stripped === 0) {
+    throw new Error('generate-contracts: no additionalProperties:false was emitted — the strip is now dead code; drop it or fix the render direction')
+  }
+
+  const paths: Record<string, Record<string, unknown>> = {}
+  for (const route of API_ROUTES) {
+    const operation: Record<string, unknown> = {
+      summary: route.summary,
+      operationId: route.operationId,
+    }
+    if (route.auth === 'sessionWritable' || route.auth === 'sessionOrDemoRead') {
+      operation.security = [{ sessionCookie: [] }]
+    }
+    if (route.params?.length) {
+      operation.parameters = route.params.map((p) => ({
+        name: p.name,
+        in: p.in,
+        required: p.required,
+        schema: isLiteralEnum(p.schema)
+          ? { type: 'string', enum: [...p.schema.enum] }
+          : schemaRef(p.schema, `${route.operationId}.${p.name}`),
+        ...(p.description ? { description: p.description } : {}),
+      }))
+    }
+    if (route.request) {
+      operation.requestBody = {
+        required: true,
+        content: { 'application/json': { schema: schemaRef(route.request, `${route.operationId} request`) } },
+      }
+    }
+    operation.responses = Object.fromEntries(
+      route.responses.map((response) => {
+        const body = response.bodyOneOf
+          ? { oneOf: response.bodyOneOf.map((s) => schemaRef(s, `${route.operationId} ${response.status}`)) }
+          : response.body
+            ? schemaRef(response.body, `${route.operationId} ${response.status}`)
+            : undefined
+        return [
+          String(response.status),
+          body
+            ? { description: response.description, content: { 'application/json': { schema: body } } }
+            : { description: response.description },
+        ]
+      }),
+    )
+    paths[route.path] = { ...(paths[route.path] ?? {}), [route.method]: operation }
+  }
+
+  // demo.refresh delivers an empty body, which no Zod schema describes — the
+  // only requestBody in the API that is not a single registered schema.
+  const runJob = paths['/api/jobs/{queue}']?.post as Record<string, unknown> | undefined
+  if (!runJob) {
+    throw new Error('generate-contracts: the jobs receiver is missing from API_ROUTES')
+  }
+  runJob.requestBody = {
+    required: true,
+    content: {
+      'application/json': {
+        schema: {
+          oneOf: [
+            { $ref: '#/components/schemas/BookingCreatedJob' },
+            { $ref: '#/components/schemas/BookingCancelledJob' },
+            { type: 'object', description: 'demo.refresh carries no payload' },
+          ],
+        },
+      },
+    },
   }
 
   const spec = {
@@ -847,489 +979,29 @@ function generateOpenAPISpec(): string {
     info: {
       title: 'CountMeIn API',
       description: 'API for group booking, organizer cabinet management, and notifications.',
-      version: '1.0.0',
+      version: specVersion(schemas),
     },
     servers: [
       { url: 'https://countmein.group', description: 'Production' },
       { url: 'http://localhost:3000', description: 'Local development' },
     ],
-    paths: {
-      '/api/auth/telegram-guest': {
-        post: {
-          summary: 'Verify Telegram login widget data and mint a single-use guest ticket',
-          operationId: 'telegramGuest',
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/TelegramWidgetPayload' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Guest ticket issued',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/GuestTicketResponse' } } },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-      },
-      '/api/auth/telegram-signup': {
-        post: {
-          summary: 'Verify Telegram login widget data and mint an organizer signup ticket',
-          operationId: 'telegramSignup',
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/TelegramWidgetPayload' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Auth ticket issued',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthTicketResponse' } } },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-      },
-      '/api/organizers': {
-        post: {
-          summary: 'Register a new organizer using an auth ticket',
-          operationId: 'registerOrganizer',
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/RegisterOrganizerInput' } } },
-          },
-          responses: {
-            '201': {
-              description: 'Organizer created',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/Registered' } } },
-            },
-            '400': { $ref: '#/components/responses/InvalidIssuesBody' },
-            '409': { description: 'Slug already taken' },
-          },
-        },
-      },
-      '/api/organizers/me': {
-        get: {
-          summary: 'Get authenticated organizer profile',
-          operationId: 'getMyProfile',
-          security: [{ sessionCookie: [] }],
-          responses: {
-            '200': {
-              description: 'Current organizer profile',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/OrganizerEnvelope' },
-                },
-              },
-            },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-        put: {
-          summary: 'Update organizer profile',
-          operationId: 'updateMyProfile',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateOrganizerProfileInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Updated profile',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/OrganizerEnvelope' },
-                },
-              },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-          },
-        },
-      },
-      '/api/organizers/me/language': {
-        patch: {
-          summary: 'Update organizer language preference',
-          operationId: 'updateMyLanguage',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/UpdateOrganizerLanguageInput' } },
-            },
-          },
-          responses: {
-            '204': { description: 'Language updated' },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-      },
-      '/api/organizers/me/avatar': {
-        post: {
-          summary: 'Mint signed upload URL for avatar image',
-          operationId: 'createAvatarUploadTarget',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateAvatarUploadInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Signed upload target',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/ImageUploadTarget' } } },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-      },
-      '/api/organizers/me/service-photo': {
-        post: {
-          summary: 'Mint signed upload URL for service cover photo',
-          operationId: 'createServicePhotoUploadTarget',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateServicePhotoUploadInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Signed upload target',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/ImageUploadTarget' } } },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-      },
-      '/api/services': {
-        post: {
-          summary: 'Create a service',
-          operationId: 'createService',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateServiceInput' } } },
-          },
-          responses: {
-            '201': {
-              description: 'Service created',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/ServiceEnvelope' },
-                },
-              },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-          },
-        },
-      },
-      '/api/services/{id}': {
-        put: {
-          summary: 'Update a service',
-          operationId: 'updateService',
-          security: [{ sessionCookie: [] }],
-          parameters: [{ name: 'id', in: 'path', required: true, schema: { $ref: '#/components/schemas/ServiceID' } }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateServiceInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Service updated',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/ServiceEnvelope' },
-                },
-              },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-            '404': { description: 'Service not found' },
-          },
-        },
-        delete: {
-          summary: 'Delete a service',
-          operationId: 'deleteService',
-          security: [{ sessionCookie: [] }],
-          parameters: [{ name: 'id', in: 'path', required: true, schema: { $ref: '#/components/schemas/ServiceID' } }],
-          responses: {
-            '200': {
-              description: 'Service deleted',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/DeletedServiceEnvelope' },
-                },
-              },
-            },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-            '404': { description: 'Service not found' },
-          },
-        },
-      },
-      '/api/slots': {
-        post: {
-          summary: 'Create a time slot',
-          operationId: 'createSlot',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateTimeSlotInput' } } },
-          },
-          responses: {
-            '201': {
-              description: 'Slot created',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/SlotEnvelope' },
-                },
-              },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-          },
-        },
-      },
-      '/api/slots/{id}': {
-        put: {
-          summary: 'Update a time slot',
-          operationId: 'updateSlot',
-          security: [{ sessionCookie: [] }],
-          parameters: [{ name: 'id', in: 'path', required: true, schema: { $ref: '#/components/schemas/UUID' } }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateTimeSlotInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Slot updated',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/SlotEnvelope' },
-                },
-              },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-          },
-        },
-        delete: {
-          summary: 'Delete a time slot',
-          operationId: 'deleteSlot',
-          security: [{ sessionCookie: [] }],
-          parameters: [{ name: 'id', in: 'path', required: true, schema: { $ref: '#/components/schemas/UUID' } }],
-          responses: {
-            '200': {
-              description: 'Slot deleted',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/DeletedSlotEnvelope' },
-                },
-              },
-            },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-            '404': { description: 'Slot not found' },
-          },
-        },
-      },
-      '/api/bookings': {
-        post: {
-          summary: 'Guest creates a booking (atomic reserve)',
-          operationId: 'createBooking',
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateBookingInput' } } },
-          },
-          responses: {
-            '201': {
-              description: 'Booking confirmed',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/GuestBookingEnvelope' },
-                },
-              },
-            },
-            '400': { $ref: '#/components/responses/InvalidBody' },
-            '403': { description: 'Demo account is read-only' },
-            '409': {
-              description: 'Slot sold out, capacity exceeded, or duplicate booking (one active booking per guest per slot)',
-            },
-          },
-        },
-      },
-      '/api/bookings/lookup': {
-        post: {
-          summary: 'Look up guest bookings with ticket',
-          operationId: 'lookupBookings',
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/LookupBookingsInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Guest bookings list',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/GuestBookingsEnvelope' },
-                },
-              },
-            },
-          },
-        },
-      },
-      '/api/bookings/cancel': {
-        post: {
-          summary: 'Guest cancels booking via manageToken',
-          operationId: 'cancelBookingByToken',
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CancelBookingByTokenInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Booking cancelled',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/GuestBookingEnvelope' },
-                },
-              },
-            },
-            '404': { description: 'Booking not found' },
-          },
-        },
-      },
-      '/api/bookings/cancel-by-organizer': {
-        post: {
-          summary: 'Organizer cancels booking from cabinet',
-          operationId: 'cancelBookingByOrganizer',
-          security: [{ sessionCookie: [] }],
-          requestBody: {
-            required: true,
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/CancelBookingByOrganizerInput' } } },
-          },
-          responses: {
-            '200': {
-              description: 'Booking cancelled',
-              content: {
-                'application/json': {
-                  schema: { $ref: '#/components/schemas/BookingEnvelope' },
-                },
-              },
-            },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-            '403': { description: 'Demo account is read-only' },
-            '404': { description: 'Booking not found' },
-          },
-        },
-      },
-      '/api/jobs/{queue}': {
-        post: {
-          summary: 'Upstash QStash webhook consumer',
-          operationId: 'runJob',
-          parameters: [
-            {
-              name: 'queue',
-              in: 'path',
-              required: true,
-              schema: {
-                type: 'string',
-                enum: [
-                  contracts.QUEUE_BOOKING_CREATED,
-                  contracts.QUEUE_BOOKING_CANCELLED,
-                  contracts.QUEUE_DEMO_REFRESH,
-                ],
-              },
-            },
-          ],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  oneOf: [
-                    { $ref: '#/components/schemas/BookingCreatedJob' },
-                    { $ref: '#/components/schemas/BookingCancelledJob' },
-                    { type: 'object', description: 'demo.refresh carries no payload' },
-                  ],
-                },
-              },
-            },
-          },
-          responses: {
-            '200': { description: 'Job succeeded (including unreachable recipient — no retry)' },
-            '400': { description: 'Invalid payload or signature' },
-            '404': { description: 'Unknown queue' },
-            '500': { description: 'Internal error (triggers QStash retry)' },
-          },
-        },
-      },
-    },
+    paths,
+    // Redis JSON payloads never appear as HTTP bodies; they still travel as
+    // JSON between the API and Redis, so they are part of the wire. Pinning
+    // them here keeps the orphan-schema check honest without inventing fake
+    // HTTP operations.
+    'x-internal': INTERNAL_RECORDS.map((s, i) => schemaRef(s, `internal[${i}]`)),
     components: {
       securitySchemes: {
         sessionCookie: {
           type: 'apiKey',
           in: 'cookie',
-          // Auth.js prefixes the cookie with __Secure- on HTTPS (production);
-          // local dev uses the plain name. The Go API accepts both
-          // (pkg/auth/session.go).
-          name: '__Secure-authjs.session-token',
-          description:
-            'Auth.js session cookie: `__Secure-authjs.session-token` in production, `authjs.session-token` in local development.',
+          name: contracts.SESSION_COOKIE_NAMES[0],
+          description: `Auth.js session cookie: \`${contracts.SESSION_COOKIE_NAMES[0]}\` in production, \`${contracts.SESSION_COOKIE_NAMES[1]}\` in local development.`,
         },
-      },
-      responses: {
-        InvalidBody: {
-          description: 'Validation error',
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/InvalidBody' },
-            },
-          },
-        },
-        InvalidIssuesBody: {
-          description: 'Validation error (field issues)',
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/InvalidIssuesBody' },
-            },
-          },
-        },
-        Unauthorized: { description: 'Authentication required or invalid ticket' },
       },
       schemas,
     },
-  }
-
-  // Records referenced by any requestBody are also request schemas: strip
-  // additionalProperties the same way (computed by walking paths, not hardcoded).
-  const requestBodyRefs = new Set<string>()
-  const collectRequestBodyRefs = (node: unknown, underRequestBody: boolean): void => {
-    if (Array.isArray(node)) {
-      node.forEach((item) => collectRequestBodyRefs(item, underRequestBody))
-      return
-    }
-    if (!node || typeof node !== 'object') return
-    for (const [key, value] of Object.entries(node)) {
-      if (key === '$ref' && typeof value === 'string' && underRequestBody) {
-        const match = /^#\/components\/schemas\/(.+)$/.exec(value)
-        if (match?.[1]) requestBodyRefs.add(match[1])
-      } else {
-        collectRequestBodyRefs(value, underRequestBody || key === 'requestBody')
-      }
-    }
-  }
-  collectRequestBodyRefs((spec as { paths?: unknown }).paths, false)
-  for (const ref of requestBodyRefs) {
-    delete (schemas[ref] as Record<string, unknown> | undefined)?.additionalProperties
   }
 
   assertOpenApiSpec(spec)
@@ -1383,6 +1055,42 @@ function assertOpenApiSpec(spec: unknown): void {
     if (!Object.keys(components[section!] ?? {}).includes(name!)) {
       throw new Error(`generate-contracts: dangling OpenAPI $ref "${ref}" — component is not emitted`)
     }
+  }
+
+
+  // Reverse direction: a component nothing references is a schema that never
+  // reaches the wire — either a path is missing from API_ROUTES or the schema
+  // should not be registered.
+  const referenced = new Set(
+    refs
+      .map((ref) => /^#\/components\/schemas\/(.+)$/.exec(ref)?.[1])
+      .filter((name): name is string => name !== undefined),
+  )
+  const reachable = new Set<string>()
+  const visit = (name: string): void => {
+    if (reachable.has(name)) return
+    reachable.add(name)
+    const nested: string[] = []
+    const collect = (node: unknown): void => {
+      if (Array.isArray(node)) return void node.forEach(collect)
+      if (!node || typeof node !== 'object') return
+      for (const [key, value] of Object.entries(node)) {
+        if (key === '$ref' && typeof value === 'string') {
+          const m = /^#\/components\/schemas\/(.+)$/.exec(value)
+          if (m?.[1]) nested.push(m[1])
+        } else collect(value)
+      }
+    }
+    collect((components.schemas ?? {})[name])
+    nested.forEach(visit)
+  }
+  referenced.forEach(visit)
+
+  const orphans = [...schemaNames].filter((name) => !reachable.has(name)).sort()
+  if (orphans.length > 0) {
+    throw new Error(
+      `generate-contracts: component schemas reachable from no operation: ${orphans.join(', ')} — add the route to packages/contracts/src/routes.ts or unregister the schema`,
+    )
   }
 
   const methods = new Set(['get', 'post', 'put', 'patch', 'delete'])

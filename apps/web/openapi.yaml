@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0
+  version: 1.0.0+506c952d8deb
 servers:
   - url: https://countmein.group
     description: Production
@@ -27,9 +27,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/GuestTicketResponse"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Malformed widget payload or failed HMAC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Telegram bot is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
   /api/auth/telegram-signup:
     post:
       summary: Verify Telegram login widget data and mint an organizer signup ticket
@@ -48,9 +62,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthTicketResponse"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Malformed widget payload or failed HMAC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Telegram bot is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
   /api/organizers:
     post:
       summary: Register a new organizer using an auth ticket
@@ -69,24 +97,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/Registered"
         "400":
-          $ref: "#/components/responses/InvalidIssuesBody"
+          description: Validation error (field issues)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidIssuesBody"
+        "401":
+          description: Auth ticket expired or unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "409":
-          description: Slug already taken
+          description: Slug taken, or an account already exists for this identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/organizers/me:
     get:
-      summary: Get authenticated organizer profile
+      summary: Get the organizer this request may view (demo when anonymous)
       operationId: getMyProfile
       security:
         - sessionCookie: []
       responses:
         "200":
-          description: Current organizer profile
+          description: Organizer profile
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrganizerEnvelope"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Organizer not found, or the demo seed has not run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     put:
       summary: Update organizer profile
       operationId: updateMyProfile
@@ -106,14 +156,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrganizerEnvelope"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/organizers/me/language:
     patch:
-      summary: Update organizer language preference
+      summary: Update organizer notification language
       operationId: updateMyLanguage
       security:
         - sessionCookie: []
@@ -127,12 +191,22 @@ paths:
         "204":
           description: Language updated
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/organizers/me/avatar:
     post:
-      summary: Mint signed upload URL for avatar image
+      summary: Mint a signed upload URL for an avatar image
       operationId: createAvatarUploadTarget
       security:
         - sessionCookie: []
@@ -150,12 +224,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/ImageUploadTarget"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/organizers/me/service-photo:
     post:
-      summary: Mint signed upload URL for service cover photo
+      summary: Mint a signed upload URL for a service cover photo
       operationId: createServicePhotoUploadTarget
       security:
         - sessionCookie: []
@@ -173,10 +263,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/ImageUploadTarget"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/services:
+    get:
+      summary: List the services of the organizer this request may view
+      operationId: listServices
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicesEnvelope"
+        "500":
+          description: Internal error
     post:
       summary: Create a service
       operationId: createService
@@ -196,12 +316,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServiceEnvelope"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error, or photoUrl outside the organizer media prefix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/services/{id}:
+    get:
+      summary: Get one service owned by the organizer this request may view
+      operationId: getService
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+      responses:
+        "200":
+          description: Service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEnvelope"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     put:
       summary: Update a service
       operationId: updateService
@@ -227,15 +381,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServiceEnvelope"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error, nothing to update, or photoUrl outside the
+            organizer media prefix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     delete:
-      summary: Delete a service
+      summary: Delete a service; slots and bookings cascade
       operationId: deleteService
       security:
         - sessionCookie: []
@@ -252,15 +419,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeletedServiceEnvelope"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/slots:
+    get:
+      summary: List slots across every service of the organizer this request may view
+      operationId: listSlots
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: upcoming
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "1"
+          description: When "1", slots that have already started are omitted.
+      responses:
+        "200":
+          description: Slots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotsEnvelope"
+        "500":
+          description: Internal error
     post:
-      summary: Create a time slot
+      summary: Create a time slot under one of the organizer's services
       operationId: createSlot
       security:
         - sessionCookie: []
@@ -278,14 +476,54 @@ paths:
               schema:
                 $ref: "#/components/schemas/SlotEnvelope"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Service not found or not owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/slots/{id}:
+    get:
+      summary: Get one slot owned by the organizer this request may view
+      operationId: getSlot
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotEnvelope"
+        "404":
+          description: Slot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     put:
-      summary: Update a time slot
+      summary: Update a time slot; bookedCount is never writable
       operationId: updateSlot
       security:
         - sessionCookie: []
@@ -309,11 +547,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/SlotEnvelope"
         "400":
-          $ref: "#/components/responses/InvalidBody"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Validation error or nothing to update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Slot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Capacity below the seats already booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     delete:
       summary: Delete a time slot
       operationId: deleteSlot
@@ -332,12 +590,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeletedSlotEnvelope"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Slot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Slot still has confirmed bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/bookings:
     post:
       summary: Guest creates a booking (atomic reserve)
@@ -356,15 +628,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/GuestBookingEnvelope"
         "400":
-          $ref: "#/components/responses/InvalidBody"
+          description: Validation error, invalid option selection, or party over the
+            per-booking cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "401":
+          description: Guest ticket expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Slot or service no longer bookable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "409":
-          description: Slot sold out, capacity exceeded, or duplicate booking (one active
+          description: Sold out, capacity exceeded, or duplicate booking (one active
             booking per guest per slot)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/bookings/lookup:
     post:
-      summary: Look up guest bookings with ticket
+      summary: Look up a guest's bookings with a single-use ticket
       operationId: lookupBookings
       requestBody:
         required: true
@@ -374,14 +679,28 @@ paths:
               $ref: "#/components/schemas/LookupBookingsInput"
       responses:
         "200":
-          description: Guest bookings list
+          description: Guest bookings
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GuestBookingsEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "401":
+          description: Guest ticket expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/bookings/cancel:
     post:
-      summary: Guest cancels booking via manageToken
+      summary: Guest cancels a booking via manageToken
       operationId: cancelBookingByToken
       requestBody:
         required: true
@@ -396,11 +715,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GuestBookingEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
-          description: Booking not found
+          description: Booking not found (also the answer for an unknown token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/bookings/cancel-by-organizer:
     post:
-      summary: Organizer cancels booking from cabinet
+      summary: Organizer cancels a booking on one of their own services
       operationId: cancelBookingByOrganizer
       security:
         - sessionCookie: []
@@ -417,12 +760,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BookingEnvelope"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
         "403":
-          description: Demo account is read-only
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
-          description: Booking not found
+          description: Booking not found or not on a service owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/jobs/{queue}:
     post:
       summary: Upstash QStash webhook consumer
@@ -437,6 +800,17 @@ paths:
               - booking.created
               - booking.cancelled
               - demo.refresh
+      responses:
+        "200":
+          description: Job succeeded (including an unreachable recipient — no retry)
+        "400":
+          description: Malformed payload — retrying would resend the same bytes
+        "401":
+          description: Missing or invalid upstash-signature
+        "404":
+          description: Unknown queue name
+        "500":
+          description: Handler failure (triggers a QStash retry)
       requestBody:
         required: true
         content:
@@ -447,15 +821,9 @@ paths:
                 - $ref: "#/components/schemas/BookingCancelledJob"
                 - type: object
                   description: demo.refresh carries no payload
-      responses:
-        "200":
-          description: Job succeeded (including unreachable recipient — no retry)
-        "400":
-          description: Invalid payload or signature
-        "404":
-          description: Unknown queue
-        "500":
-          description: Internal error (triggers QStash retry)
+x-internal:
+  - $ref: "#/components/schemas/AuthTicketPayload"
+  - $ref: "#/components/schemas/LoginLinkPayload"
 components:
   securitySchemes:
     sessionCookie:
@@ -464,21 +832,6 @@ components:
       name: __Secure-authjs.session-token
       description: "Auth.js session cookie: `__Secure-authjs.session-token` in
         production, `authjs.session-token` in local development."
-  responses:
-    InvalidBody:
-      description: Validation error
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/InvalidBody"
-    InvalidIssuesBody:
-      description: Validation error (field issues)
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/InvalidIssuesBody"
-    Unauthorized:
-      description: Authentication required or invalid ticket
   schemas:
     AppLocale:
       type: string
@@ -950,7 +1303,7 @@ components:
         id:
           $ref: "#/components/schemas/UUID"
         slug:
-          $ref: "#/components/schemas/Slug"
+          $ref: "#/components/schemas/SlugShape"
         name:
           $ref: "#/components/schemas/DisplayName"
         messenger:
@@ -1005,7 +1358,7 @@ components:
         id:
           $ref: "#/components/schemas/UUID"
         slug:
-          $ref: "#/components/schemas/Slug"
+          $ref: "#/components/schemas/SlugShape"
         name:
           $ref: "#/components/schemas/DisplayName"
         timezone:
@@ -1072,7 +1425,7 @@ components:
         id:
           $ref: "#/components/schemas/UUID"
         slug:
-          $ref: "#/components/schemas/Slug"
+          $ref: "#/components/schemas/SlugShape"
       required:
         - id
         - slug
@@ -1195,35 +1548,48 @@ components:
       required:
         - slots
     Slug:
+      $ref: "#/components/schemas/SlugShape"
+    SlugShape:
       type: string
       minLength: 4
       maxLength: 40
       pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+    TelegramAuthDate:
+      type: integer
+      minimum: 1
+      maximum: 4102444800
+    TelegramHash:
+      type: string
+      minLength: 64
+      maxLength: 64
+    TelegramName:
+      type: string
+      minLength: 1
+      maxLength: 256
+    TelegramOptionalName:
+      type: string
+      maxLength: 256
+    TelegramUserID:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
     TelegramWidgetPayload:
       type: object
       properties:
         id:
-          type: integer
-          exclusiveMinimum: 0
-          maximum: 9007199254740991
+          $ref: "#/components/schemas/TelegramUserID"
         first_name:
-          type: string
-          minLength: 1
+          $ref: "#/components/schemas/TelegramName"
         last_name:
-          type: string
+          $ref: "#/components/schemas/TelegramOptionalName"
         username:
-          type: string
+          $ref: "#/components/schemas/TelegramOptionalName"
         photo_url:
-          type: string
-          format: uri
+          $ref: "#/components/schemas/URL"
         auth_date:
-          type: integer
-          exclusiveMinimum: 0
-          maximum: 9007199254740991
+          $ref: "#/components/schemas/TelegramAuthDate"
         hash:
-          type: string
-          minLength: 64
-          maxLength: 64
+          $ref: "#/components/schemas/TelegramHash"
       required:
         - id
         - first_name

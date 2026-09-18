@@ -134,6 +134,19 @@
     {
       "body": {
         "name": "Studio",
+        "slug": "demo",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "slug"
+      ],
+      "name": "reserved slug rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
         "slug": "my-studio",
         "ticket": "whatever-guest-ticket-12345678",
         "timezone": "Mars/Olympus"

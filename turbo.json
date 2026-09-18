@@ -64,9 +64,10 @@
       "inputs": [
         "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
         "scripts/generate-contracts.ts",
+        "scripts/messages.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["pkg/contracts/contracts_gen.go", "pkg/validation/validation_gen.go", "$TURBO_ROOT$/packages/contracts/openapi.yaml"]
+      "outputs": ["pkg/contracts/contracts_gen.go", "pkg/validation/validation_gen.go", "openapi.yaml"]
     },
     "generate:i18n": {
       "inputs": ["packages/translations/**/*.json"],

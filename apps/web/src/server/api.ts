@@ -1,3 +1,4 @@
+import { SESSION_COOKIE_NAMES } from '@repo/contracts'
 import { cookies, headers } from 'next/headers'
 
 import 'server-only'
@@ -35,8 +36,9 @@ async function goApiOrigin(): Promise<string> {
 export async function goApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const origin = await goApiOrigin()
   const cookieStore = await cookies()
-  const sessionCookie =
-    cookieStore.get('__Secure-authjs.session-token') ?? cookieStore.get('authjs.session-token')
+  const sessionCookie = SESSION_COOKIE_NAMES.map((name) => cookieStore.get(name)).find(
+    (c) => c !== undefined,
+  )
   const reqHeaders = new Headers(init.headers)
   if (sessionCookie) {
     reqHeaders.set('Cookie', `${sessionCookie.name}=${sessionCookie.value}`)

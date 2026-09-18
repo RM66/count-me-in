@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { wire, WIRE_SCHEMAS } from './wire'
+import { WIRE_META, WIRE_SCHEMAS } from './wire'
 
 /**
  * Tripwires for the contracts codegen (stage 4): the generator derives Go
@@ -31,7 +31,7 @@ function hasTrimCheck(schema: unknown): boolean {
 describe('generator tripwires', () => {
   it('x-go-trim matches .trim() on every string primitive', () => {
     for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      const meta = wire.get(schema as never)
+      const meta = WIRE_META[id]
       if (meta?.kind !== 'primitive') continue
       expect(hasTrimCheck(schema), `${id} trim`).toBe(meta['x-go-trim'] === true)
     }
@@ -39,7 +39,7 @@ describe('generator tripwires', () => {
 
   it('enum .options order matches x-go-enum-consts key order', () => {
     for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      const meta = wire.get(schema as never)
+      const meta = WIRE_META[id]
       if (meta?.kind !== 'enum' || meta['x-go-type'] === 'string') continue
       const options = (schema as unknown as { options?: readonly string[] }).options ?? []
       expect(Object.keys(meta['x-go-enum-consts'] ?? {}), `${id} const order`).toEqual([...options])

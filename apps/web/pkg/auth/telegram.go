@@ -2,18 +2,19 @@ package auth
 
 import (
 	"bytes"
-	"countmein/pkg/contracts"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"net/url"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"countmein/pkg/contracts"
+	"countmein/pkg/validation"
 )
 
 // Server-side validation of a Telegram Login Widget payload (ADR-008).
@@ -67,6 +68,11 @@ func ValidateTelegramWidget(body []byte) (*TelegramIdentity, error) {
 		return nil, ErrTelegramNotConfigured
 	}
 
+	payload, errs := validation.ParseTelegramWidgetPayload(body)
+	if errs != nil {
+		return nil, ErrTelegramInvalid
+	}
+
 	// Decode with UseNumber so numeric literals keep their on-the-wire
 	// shape for the data-check-string.
 	dec := json.NewDecoder(bytes.NewReader(body))
@@ -76,40 +82,9 @@ func ValidateTelegramWidget(body []byte) (*TelegramIdentity, error) {
 		return nil, ErrTelegramInvalid
 	}
 
-	// Shape check (telegramWidgetPayload port): id/auth_date positive
-	// ints, first_name non-empty, hash exactly 64 chars, optionals
-	// strings and photo_url a URL.
-	id, ok := numberInt64(raw["id"])
-	if !ok || id <= 0 {
-		return nil, ErrTelegramInvalid
-	}
-	firstName, ok := raw["first_name"].(string)
-	if !ok || len(firstName) == 0 {
-		return nil, ErrTelegramInvalid
-	}
-	lastName, hasLastName := optionalString(raw["last_name"])
-	if hasLastName == malformed {
-		return nil, ErrTelegramInvalid
-	}
-	username, hasUsername := optionalString(raw["username"])
-	if hasUsername == malformed {
-		return nil, ErrTelegramInvalid
-	}
-	photoURL, hasPhotoURL := optionalString(raw["photo_url"])
-	if hasPhotoURL == present && !validURL(*photoURL) {
-		return nil, ErrTelegramInvalid
-	}
-	authDate, ok := numberInt64(raw["auth_date"])
-	if !ok || authDate <= 0 {
-		return nil, ErrTelegramInvalid
-	}
-	hash, ok := raw["hash"].(string)
-	if !ok || len(hash) != 64 {
-		return nil, ErrTelegramInvalid
-	}
-
-	// data-check-string: every field except hash, key-sorted,
-	// "key=value" joined with \n — exactly the fields the widget signed.
+	// The data-check-string covers every field the widget sent, including any
+	// the schema does not model — it is computed from the raw body, never from
+	// the parsed struct.
 	keys := make([]string, 0, len(raw))
 	for k := range raw {
 		if k != "hash" {
@@ -132,57 +107,27 @@ func ValidateTelegramWidget(body []byte) (*TelegramIdentity, error) {
 	mac := hmac.New(sha256.New, secret[:])
 	mac.Write([]byte(dcs))
 	expected := hex.EncodeToString(mac.Sum(nil))
-	if !hmac.Equal([]byte(expected), []byte(hash)) {
+	if !hmac.Equal([]byte(expected), []byte(payload.Hash)) {
 		return nil, ErrTelegramValidationFailed
 	}
 
 	// Freshness (hasDataExpired in the TS validator): the HMAC proves
 	// the payload came from Telegram, not that it was sent recently.
-	if time.Now().Unix()-authDate > widgetDataValidAfter {
+	if time.Now().Unix()-int64(payload.AuthDate) > widgetDataValidAfter {
 		return nil, ErrTelegramValidationFailed
 	}
 
 	identity := &TelegramIdentity{
 		Messenger:   "telegram",
-		MessengerID: strconv.FormatInt(id, 10),
-		DisplayName: strings.TrimSpace(strings.TrimSpace(firstName) + " " + derefOr(lastName, "")),
-		PhotoURL:    nilIfEmpty(photoURL),
+		MessengerID: strconv.FormatInt(int64(payload.ID), 10),
+		DisplayName: strings.TrimSpace(strings.TrimSpace(payload.FirstName) + " " + derefOr(payload.LastName, "")),
+		PhotoURL:    nilIfEmpty(payload.PhotoURL),
 	}
-	if username != nil && *username != "" {
-		login := "@" + *username
+	if payload.Username != nil && *payload.Username != "" {
+		login := "@" + *payload.Username
 		identity.MessengerLogin = &login
 	}
 	return identity, nil
-}
-
-const (
-	absent    = 0
-	present   = 1
-	malformed = 2
-)
-
-// optionalString classifies an optional string field.
-func optionalString(v any) (*string, int) {
-	if v == nil {
-		return nil, absent
-	}
-	s, ok := v.(string)
-	if !ok {
-		return nil, malformed
-	}
-	return &s, present
-}
-
-func numberInt64(v any) (int64, bool) {
-	n, ok := v.(json.Number)
-	if !ok {
-		return 0, false
-	}
-	i, err := strconv.ParseInt(n.String(), 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return i, true
 }
 
 // scalarString renders a widget value for the data-check-string:
@@ -195,11 +140,6 @@ func scalarString(v any) (string, bool) {
 		return t.String(), true
 	}
 	return "", false
-}
-
-func validURL(s string) bool {
-	u, err := url.Parse(s)
-	return err == nil && u.Scheme != "" && (u.Host != "" || u.Opaque != "")
 }
 
 func derefOr(s *string, def string) string {

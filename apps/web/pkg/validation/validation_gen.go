@@ -27,71 +27,122 @@ var reservedSlugs = map[string]bool{
 // ── Derived length / int-range rules ────────────────────────────────────────
 
 func DisplayNameRule(v string) string {
-	if charLen(v) < 1 || charLen(v) > 100 {
-		return "String must contain between 1 and 100 characters"
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 100 {
+		return "Too big: expected string to have <=100 characters"
 	}
 	return ""
 }
 
 func PriceTextRule(v string) string {
-	if charLen(v) < 1 || charLen(v) > 50 {
-		return "String must contain between 1 and 50 characters"
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 50 {
+		return "Too big: expected string to have <=50 characters"
 	}
 	return ""
 }
 
 func OrganizerDescriptionRule(v string) string {
 	if charLen(v) > 4000 {
-		return "String must contain at most 4000 characters"
+		return "Too big: expected string to have <=4000 characters"
 	}
 	return ""
 }
 
 func ServiceDescriptionRule(v string) string {
 	if charLen(v) > 2000 {
-		return "String must contain at most 2000 characters"
+		return "Too big: expected string to have <=2000 characters"
 	}
 	return ""
 }
 
 func LocationRule(v string) string {
-	if charLen(v) < 1 || charLen(v) > 300 {
-		return "String must contain between 1 and 300 characters"
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 300 {
+		return "Too big: expected string to have <=300 characters"
 	}
 	return ""
 }
 
 func ContactRule(v string) string {
-	if charLen(v) < 1 || charLen(v) > 300 {
-		return "String must contain between 1 and 300 characters"
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 300 {
+		return "Too big: expected string to have <=300 characters"
 	}
 	return ""
 }
 
 func OptionLabelRule(v string) string {
-	if charLen(v) < 1 || charLen(v) > 100 {
-		return "String must contain between 1 and 100 characters"
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 100 {
+		return "Too big: expected string to have <=100 characters"
 	}
 	return ""
 }
 
 func ManageTokenRule(v string) string {
-	if charLen(v) < 10 || charLen(v) > 200 {
-		return "String must contain between 10 and 200 characters"
+	if charLen(v) < 10 {
+		return "Too small: expected string to have >=10 characters"
+	}
+	if charLen(v) > 200 {
+		return "Too big: expected string to have <=200 characters"
 	}
 	return ""
 }
 
 func MessengerIDRule(v string) string {
-	if charLen(v) < 1 || charLen(v) > 100 {
-		return "String must contain between 1 and 100 characters"
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 100 {
+		return "Too big: expected string to have <=100 characters"
 	}
 	return ""
 }
 
 func AuthTicketRule(v string) string {
-	if charLen(v) < 20 || charLen(v) > 200 {
-		return "String must contain between 20 and 200 characters"
+	if charLen(v) < 20 {
+		return "Too small: expected string to have >=20 characters"
+	}
+	if charLen(v) > 200 {
+		return "Too big: expected string to have <=200 characters"
+	}
+	return ""
+}
+
+func TelegramNameRule(v string) string {
+	if charLen(v) < 1 {
+		return "Too small: expected string to have >=1 characters"
+	}
+	if charLen(v) > 256 {
+		return "Too big: expected string to have <=256 characters"
+	}
+	return ""
+}
+
+func TelegramOptionalNameRule(v string) string {
+	if charLen(v) > 256 {
+		return "Too big: expected string to have <=256 characters"
+	}
+	return ""
+}
+
+func TelegramHashRule(v string) string {
+	if charLen(v) < 64 {
+		return "Too small: expected string to have >=64 characters"
+	}
+	if charLen(v) > 64 {
+		return "Too big: expected string to have <=64 characters"
 	}
 	return ""
 }
@@ -104,6 +155,8 @@ var (
 	maxSeatsPerBookingRangeRule     = intRange(1, 1000)
 	avatarUploadSizeRangeRule       = intRange(1, 1048576)
 	servicePhotoUploadSizeRangeRule = intRange(1, 2097152)
+	telegramUserIDRangeRule         = intRange(1, 9007199254740991)
+	telegramAuthDateRangeRule       = intRange(1, 4102444800)
 )
 
 // ── Derived enum rules (A.2 order) ──────────────────────────────────────────
@@ -113,7 +166,7 @@ func OptionsSelectModeRule(v string) string {
 	case "single", "multi":
 		return ""
 	}
-	return "Invalid input: expected one of single|multi"
+	return "Invalid option: expected one of \"single\"|\"multi\""
 }
 
 func AppLocaleRule(v string) string {
@@ -121,7 +174,7 @@ func AppLocaleRule(v string) string {
 	case "en", "de", "es", "fr", "pt", "ru", "ar", "ja":
 		return ""
 	}
-	return "Invalid input: expected one of en|de|es|fr|pt|ru|ar|ja"
+	return "Invalid option: expected one of \"en\"|\"de\"|\"es\"|\"fr\"|\"pt\"|\"ru\"|\"ar\"|\"ja\""
 }
 
 func ImageContentTypeRule(v string) string {
@@ -129,7 +182,7 @@ func ImageContentTypeRule(v string) string {
 	case "image/jpeg", "image/png", "image/webp":
 		return ""
 	}
-	return "Invalid input: expected one of image/jpeg|image/png|image/webp"
+	return "Invalid option: expected one of \"image/jpeg\"|\"image/png\"|\"image/webp\""
 }
 
 // ── Parsers ─────────────────────────────────────────────────────────────────
@@ -424,6 +477,37 @@ func ParseCreateServicePhotoUploadInput(body []byte) (contracts.CreateServicePho
 	return out, e.Finish()
 }
 
+// ParseTelegramWidgetPayload — port of telegramWidgetPayload.
+func ParseTelegramWidgetPayload(body []byte) (contracts.TelegramWidgetPayload, *Errors) {
+	m, e := rawObject(body)
+	if e != nil {
+		return contracts.TelegramWidgetPayload{}, e
+	}
+	e = NewErrors()
+	var out contracts.TelegramWidgetPayload
+
+	id, _ := intValue(e, m, "id", true, telegramUserIDRangeRule)
+	out.ID = int(id)
+	out.FirstName, _ = strValue(e, m, "first_name", true, false, TelegramNameRule)
+	last_name, last_namePresent := strValue(e, m, "last_name", false, false, TelegramOptionalNameRule)
+	if last_namePresent {
+		out.LastName = &last_name
+	}
+	username, usernamePresent := strValue(e, m, "username", false, false, TelegramOptionalNameRule)
+	if usernamePresent {
+		out.Username = &username
+	}
+	photo_url, photo_urlPresent := strValue(e, m, "photo_url", false, false, URLRule)
+	if photo_urlPresent {
+		out.PhotoURL = &photo_url
+	}
+	auth_date, _ := intValue(e, m, "auth_date", true, telegramAuthDateRangeRule)
+	out.AuthDate = int(auth_date)
+	out.Hash, _ = strValue(e, m, "hash", true, false, TelegramHashRule)
+
+	return out, e.Finish()
+}
+
 var Parsers = map[string]func([]byte) (any, *Errors){
 	"CreateBookingInput":            func(b []byte) (any, *Errors) { return ParseCreateBookingInput(b) },
 	"CancelBookingByTokenInput":     func(b []byte) (any, *Errors) { return ParseCancelBookingByTokenInput(b) },
@@ -438,4 +522,5 @@ var Parsers = map[string]func([]byte) (any, *Errors){
 	"UpdateOrganizerLanguageInput":  func(b []byte) (any, *Errors) { return ParseUpdateOrganizerLanguageInput(b) },
 	"CreateAvatarUploadInput":       func(b []byte) (any, *Errors) { return ParseCreateAvatarUploadInput(b) },
 	"CreateServicePhotoUploadInput": func(b []byte) (any, *Errors) { return ParseCreateServicePhotoUploadInput(b) },
+	"TelegramWidgetPayload":         func(b []byte) (any, *Errors) { return ParseTelegramWidgetPayload(b) },
 }

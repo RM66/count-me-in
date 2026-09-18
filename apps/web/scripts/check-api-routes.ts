@@ -1,8 +1,8 @@
 /**
  * Verify vercel.json rewrites cover every Go API route registered in
- * pkg/routes/mux.go, and that packages/contracts/openapi.yaml documents
- * the same set. vercel.json is the single source of truth for API
- * routing (production edge rewrites + dev proxy). Auth.js
+ * pkg/routes/mux.go, and that apps/web/openapi.yaml documents the same
+ * operations as the route manifest. vercel.json is the single source of
+ * truth for API routing (production edge rewrites + dev proxy). Auth.js
  * (/api/auth/[...nextauth]) stays on Next.js — deliberately omitted from
  * vercel.json so Next.js handles it.
  */
@@ -10,12 +10,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { API_ROUTES } from '@repo/contracts/routes'
 import yaml from 'yaml'
 
 const webDir = join(fileURLToPath(import.meta.url), '..', '..')
 const muxFile = join(webDir, 'pkg', 'routes', 'mux.go')
 const vercelFile = join(webDir, 'vercel.json')
-const openapiFile = join(webDir, '..', '..', 'packages', 'contracts', 'openapi.yaml')
+const openapiFile = join(webDir, 'openapi.yaml')
 
 const muxContent = readFileSync(muxFile, 'utf8')
 const vercelConfig = JSON.parse(readFileSync(vercelFile, 'utf8')) as {
@@ -74,28 +75,35 @@ if (uncoveredRoutes.length === 0 && unusedRules.length === 0) {
   console.error('\nFix: update rewrites in apps/web/vercel.json or routes in pkg/routes/mux.go')
 }
 
-// 3. Every Go mux route must have a matching OpenAPI path (mux uses
-// Go 1.22 {param} segments, OpenAPI uses the same {param} spelling).
-function normalizeMuxRoute(route: string): string {
-  return route.replace(/\{[^}]+\}/g, '{x}')
+// 3. Method-level OpenAPI ↔ manifest parity. Mux ↔ manifest lives in
+// pkg/routes/manifest_test.go; this check owns spec ↔ manifest and
+// vercel.json ↔ mux.
+const openapiDoc = yaml.parse(readFileSync(openapiFile, 'utf8')) as {
+  paths?: Record<string, Record<string, unknown>>
 }
+const METHODS = new Set(['get', 'post', 'put', 'patch', 'delete'])
+const specOperations = new Set(
+  Object.entries(openapiDoc.paths ?? {}).flatMap(([path, item]) =>
+    Object.keys(item)
+      .filter((m) => METHODS.has(m))
+      .map((m) => `${m.toUpperCase()} ${path}`),
+  ),
+)
+const manifestOperations = new Set(
+  API_ROUTES.map((r) => `${r.method.toUpperCase()} ${r.path}`),
+)
 
-const openapiDoc = yaml.parse(readFileSync(openapiFile, 'utf8')) as { paths?: Record<string, unknown> }
-const openapiPaths = Object.keys(openapiDoc.paths ?? {}).sort()
-const normalizedMux = new Set(goRoutes.map(normalizeMuxRoute))
-const normalizedOpenapi = new Set(openapiPaths.map((p) => p.replace(/\{[^}]+\}/g, '{x}')))
-
-const missingInOpenapi = [...normalizedMux].filter((r) => !normalizedOpenapi.has(r))
-const extraInOpenapi = [...normalizedOpenapi].filter((r) => !normalizedMux.has(r))
+const missingInOpenapi = [...manifestOperations].filter((op) => !specOperations.has(op))
+const extraInOpenapi = [...specOperations].filter((op) => !manifestOperations.has(op))
 
 if (missingInOpenapi.length === 0 && extraInOpenapi.length === 0) {
-  console.log(`openapi.yaml paths in sync with Go mux routes (${openapiPaths.length} paths)`)
+  console.log(`openapi.yaml operations in sync with the route manifest (${specOperations.size} operations)`)
 } else {
   failed = true
-  console.error('openapi.yaml paths are out of sync with Go mux.go:')
+  console.error('openapi.yaml operations are out of sync with the route manifest:')
   for (const r of missingInOpenapi) console.error(`    + missing in openapi: ${r}`)
   for (const r of extraInOpenapi) console.error(`    - extra in openapi: ${r}`)
-  console.error('\nFix: regenerate via `bun run generate:contracts` or update pkg/routes/mux.go')
+  console.error('\nFix: regenerate via `bun run generate:contracts` or update packages/contracts/src/routes.ts')
 }
 
 process.exit(failed ? 1 : 0)

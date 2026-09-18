@@ -4,17 +4,17 @@ The single source of truth for the wire contract between the TypeScript client a
 
 CountMeIn has two ends of one wire: a React + React Query frontend ([`apps/web/src/api-client`](../../apps/web/src/api-client)) and a Go API ([`apps/web/api`](../../apps/web/api) + [`apps/web/pkg`](../../apps/web/pkg)). They never import each other — the contract between them is HTTP plus the Zod schemas defined **here**. This package owns those schemas, the shared domain rules both sides must agree on, and the manifest that drives cross-language code generation.
 
-Full design rationale: [ADR-014](../../docs/decisions/014-contracts-wire-registry.md).
+Full design rationale: [ADR-014](../../docs/decisions/014-contracts-wire-registry.md), amended by [ADR-015](../../docs/decisions/015-api-route-manifest.md).
 
 ## How it works
 
 Everything starts as a Zod schema in [`src/`](src). A code generator ([`apps/web/scripts/generate-contracts.ts`](../../apps/web/scripts/generate-contracts.ts), run via `bun run generate:contracts`) renders the registry through the public `z.toJSONSchema()` API and emits three artifacts:
 
-| Artifact      | Path                                                                                           | Contents                                                    |
-| ------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Go contracts  | [`apps/web/pkg/contracts/contracts_gen.go`](../../apps/web/pkg/contracts/contracts_gen.go)     | Structs, enums, constants, `RecordNames`                    |
-| Go validation | [`apps/web/pkg/validation/validation_gen.go`](../../apps/web/pkg/validation/validation_gen.go) | Length/int-range/enum rules, `Parse*` bodies, `Parsers` map |
-| OpenAPI 3.1   | [`openapi.yaml`](openapi.yaml)                                                                 | `components.schemas` + all API paths                        |
+| Artifact      | Path                                                                                           | Contents                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Go contracts  | [`apps/web/pkg/contracts/contracts_gen.go`](../../apps/web/pkg/contracts/contracts_gen.go)     | Structs, enums, constants, `RecordNames`, `APIRoutes`                    |
+| Go validation | [`apps/web/pkg/validation/validation_gen.go`](../../apps/web/pkg/validation/validation_gen.go) | Length/int-range/enum rules, `Parse*` bodies, `Parsers` map              |
+| OpenAPI 3.1   | [`apps/web/openapi.yaml`](../../apps/web/openapi.yaml)                                         | `components.schemas` from `wire.ts`; `paths` from `routes.ts`            |
 
 The generator reads **only** the public JSON Schema output — never Zod internals. Go types and rules resolve by `$ref` name. Anything the generator cannot derive (transforms, refinements, temporal checks, domain functions) lives hand-written in ordinary Go files and is called by name from the generated code; a missing callee fails generation, not the build.
 
@@ -38,6 +38,20 @@ The five kinds:
 
 Registration order is emission order for Go structs, rules, and parsers (D12). OpenAPI `components.schemas` is byte-sorted by id instead, so it never depends on that order.
 
+### The route manifest
+
+[`src/routes.ts`](src/routes.ts) is the HTTP-surface manifest (not re-exported from `index.ts`). Every operation is a data record: method, path, auth, request schema (by identity), responses. OpenAPI `paths` and Go `contracts.APIRoutes` derive from it.
+
+Five invariants, pinned by [`src/routes.test.ts`](src/routes.test.ts):
+
+- operation ids are unique
+- method+path pairs are unique
+- every referenced schema is registered in `wire.ts`
+- a rate-limited route documents 429
+- `sessionWritable` documents 403 and never 401 (ADR-010)
+
+Mux/spec match is enforced in two more places: [`pkg/routes/manifest_test.go`](../../apps/web/pkg/routes/manifest_test.go) (mux ↔ manifest, both directions) and `bun run check:api-routes` (spec ↔ manifest at method level, `vercel.json` ↔ mux at path level). Redis payloads that never appear as HTTP bodies are listed in `INTERNAL_RECORDS` so the orphan-schema check still sees them.
+
 ### `x-go-*` metadata
 
 The registry carries Go-specific hints that JSON Schema cannot express:
@@ -47,7 +61,6 @@ The registry carries Go-specific hints that JSON Schema cannot express:
 - [`x-go-trim`](src/wire.ts) — marks a string primitive that trims, so the Go parser trims too.
 - [`x-go-enum-consts`](src/wire.ts) — maps enum values to named Go constants (must cover every option).
 - [`x-go-type`](src/wire.ts) — overrides the Go type (e.g. `FlexTime` for slot starts).
-- [`x-go-skip`](src/wire.ts) — excludes a record from Go generation (e.g. Telegram widget payload, parsed by Auth.js).
 
 ## What lives where
 
@@ -61,6 +74,7 @@ One file per entity, each holding its input, update, and record schemas built fr
 - [`auth.ts`](src/auth.ts) — ticket and Telegram widget schemas.
 - [`storage.ts`](src/storage.ts) — image upload input/target schemas.
 - [`jobs.ts`](src/jobs.ts) — QStash queue names and job payloads.
+- [`routes.ts`](src/routes.ts) — HTTP surface (method, path, auth, request/response); subpath export, not in `index.ts`.
 - [`envelopes.ts`](src/envelopes.ts) — typed response wrappers (`ServiceEnvelope`, `SlotEnvelope`, …).
 - [`i18n.ts`](src/i18n.ts) — supported locales, `matchLocale`.
 - [`demo.ts`](src/demo.ts) — demo organizer id/slug/constants.
@@ -105,17 +119,19 @@ Go writes golden JSON per record into [`apps/web/pkg/contracts/testdata/golden/`
 ### Tripwires
 
 - [`wire.test.ts`](src/wire.test.ts) — every Zod export is registered or listed in `TS_ONLY`; ids are unique; update schemas accept `{}`; enum consts cover all options.
+- [`routes.test.ts`](src/routes.test.ts) — unique operation ids and method+path pairs; every referenced schema is registered; rate-limited routes document 429; `sessionWritable` documents 403 and never 401.
 - [`generator-parity.test.ts`](src/generator-parity.test.ts) — every string primitive's `.trim()` matches its `x-go-trim` flag; enum option order matches `x-go-enum-consts` key order.
 
 ## Adding a schema
 
-Five steps (from [ADR-014](../../docs/decisions/014-contracts-wire-registry.md)):
+Six steps (from [ADR-014](../../docs/decisions/014-contracts-wire-registry.md) and [ADR-015](../../docs/decisions/015-api-route-manifest.md)):
 
-1. **Build from registered primitives.** Input/update fields must `$ref` a registered primitive or enum — inline schemas fail generation (D11). Records may use inline fields.
+1. **Build from registered primitives.** Input/update fields must `$ref` a registered primitive or enum — inline schemas fail generation (D11). Records may use inline fields. Response DTOs use shape primitives; only request schemas carry policy refinements (reserved slugs, uniqueness).
 2. **`register()` it in [`wire.ts`](src/wire.ts).** Forgetting fails the completeness test in [`wire.test.ts`](src/wire.test.ts).
 3. **Run `bun run generate:contracts`.** A named `x-go-refine` without its hand-written function in [`apps/web/pkg/validation/refine.go`](../../apps/web/pkg/validation/refine.go) fails here.
 4. **Add a validation vector** in [`vectors/validation/{Id}.json`](vectors/validation) (else the coverage test is red).
 5. **For records, add a golden sample** in [`apps/web/pkg/contracts/testdata/golden/{Id}.json`](../../apps/web/pkg/contracts/testdata/golden) (else `TestGoldenCoverage` is red).
+6. **If it crosses the wire, add the operation to [`src/routes.ts`](src/routes.ts)** — otherwise generation fails with an orphan-schema error.
 
 ## Scripts
 

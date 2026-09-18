@@ -14,7 +14,6 @@ import (
 // over HTTPS, but both are tried here — a token minted for one cookie
 // cannot decrypt under the other (the HKDF key is bound to the cookie
 // name), so accepting both is safe and eases local http development.
-var sessionCookieNames = [2]string{"__Secure-authjs.session-token", "authjs.session-token"}
 
 var (
 	warnMissingSecretOnce sync.Once
@@ -45,7 +44,7 @@ func SessionFromRequest(r *http.Request) *Session {
 	// present but none of them decoded — warning per cookie would fire
 	// spuriously when a client sends both and only one is valid.
 	tokenPresent := false
-	for _, cookieName := range sessionCookieNames {
+	for _, cookieName := range contracts.SessionCookieNames {
 		c, err := r.Cookie(cookieName)
 		if err != nil || c.Value == "" {
 			continue

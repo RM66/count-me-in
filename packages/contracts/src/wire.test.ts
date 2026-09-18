@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { serviceFormSchema } from './service-form'
-import { wire, WIRE_SCHEMAS } from './wire'
+import { metaOfSchema, WIRE_META, WIRE_SCHEMAS } from './wire'
 
 // Non-wire Zod schemas: the only consumer is the completeness test below, so
 // the list lives here — not in wire.ts — keeping form schemas out of the
@@ -24,7 +24,7 @@ describe('wire registry completeness', () => {
     const mod = await import('./index')
     for (const [name, value] of Object.entries(mod)) {
       if (!isZodType(value)) continue
-      const registered = wire.get(value) !== undefined
+      const registered = metaOfSchema(value) !== undefined
       const tsOnly = TS_ONLY.some((t) => t.schema === value)
       expect(
         registered || tsOnly,
@@ -39,21 +39,21 @@ describe('wire registry completeness', () => {
   })
 
   it('ids are unique and match WIRE_SCHEMAS keys', () => {
-    for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      expect(wire.get(schema)?.id).toBe(id)
+    for (const [id] of Object.entries(WIRE_SCHEMAS)) {
+      expect(WIRE_META[id]?.id).toBe(id)
     }
   })
 
   it("kind 'update' schemas accept an empty object", () => {
     for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      if (wire.get(schema)?.kind !== 'update') continue
+      if (WIRE_META[id]?.kind !== 'update') continue
       expect((schema as z.ZodType).safeParse({}).success, id).toBe(true)
     }
   })
 
   it("kind 'enum' without x-go-type string covers all options in x-go-enum-consts", () => {
     for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      const meta = wire.get(schema)
+      const meta = WIRE_META[id]
       if (meta?.kind !== 'enum' || meta['x-go-type'] === 'string') continue
       const options = (schema as unknown as { options?: readonly string[] }).options ?? []
       const consts = meta['x-go-enum-consts'] ?? {}

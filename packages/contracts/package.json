@@ -6,7 +6,8 @@
   "sideEffects": ["./src/wire.ts"],
   "exports": {
     ".": "./src/index.ts",
-    "./wire": "./src/wire.ts"
+    "./wire": "./src/wire.ts",
+    "./routes": "./src/routes.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

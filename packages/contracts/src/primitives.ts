@@ -41,8 +41,13 @@ export const BOUNDS = {
   authTicket: { min: 20, max: 200 },
 } as const
 
-/** Organizer public URL segment: lowercase letters, digits, hyphens. Normalized to lowercase. */
-export const slug = z
+/**
+ * Slug as a *value*: what a stored organizer slug may look like.
+ * Reserved names are not part of the shape — the demo organizer's slug is
+ * itself reserved, so a response DTO validated against the registration rule
+ * would reject the API's own output.
+ */
+export const slugShape = z
   .string()
   .trim()
   .min(BOUNDS.slug.min)
@@ -51,9 +56,11 @@ export const slug = z
   .refine((value) => SLUG_PATTERN.test(value), {
     message: 'slug must be lowercase letters, digits and single hyphens',
   })
-  .refine((value) => !RESERVED_SLUG_SET.has(value), {
-    message: 'this slug is reserved for system use — please choose another',
-  })
+
+/** Slug as a *request*: the shape plus the registration policy. */
+export const slug = slugShape.refine((value) => !RESERVED_SLUG_SET.has(value), {
+  message: 'this slug is reserved for system use — please choose another',
+})
 
 /** IANA timezone id (e.g. `Europe/Belgrade`). */
 export const timezone = z.string().refine(

@@ -32,18 +32,20 @@ async function readJson(res: Response): Promise<unknown> {
   return res.json().catch(() => ({}))
 }
 
-// D7: the response is returned as-is — the check only reports a mismatch
-// (throws in tests, logs in dev, Sentry in prod), never throws in the
-// browser, so no narrowing is claimed here.
-function checkContract<S extends z.ZodType>(url: string, schema: S, data: unknown): void {
+// D7: a mismatch is reported (throws in tests, logs in dev, Sentry in prod) and
+// the raw body is handed back, so a contract drift degrades the type rather
+// than the page. The return type is therefore the *input* side of the schema:
+// the value is what the server sent, not what a successful parse would produce.
+function checkContract<S extends z.ZodType>(url: string, schema: S, data: unknown): z.input<S> {
   const parsed = schema.safeParse(data)
   if (!parsed.success) {
     reportContractViolation(url, schemaIdOf(schema), parsed.error)
   }
+  return data as z.input<S>
 }
 
 /** Generic POST helper with error handling. */
-export async function post<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.output<S>> {
+export async function post<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.input<S>> {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -53,23 +55,21 @@ export async function post<S extends z.ZodType>(url: string, body: unknown, sche
     throwApiError(await readJson(res), res.status, POST_ERROR_FALLBACK)
   }
   const data: unknown = await readJson(res)
-  checkContract(url, schema, data)
-  return data as z.output<S>
+  return checkContract(url, schema, data)
 }
 
 /** Generic GET helper with error handling. */
-export async function get<S extends z.ZodType>(url: string, schema: S): Promise<z.output<S>> {
+export async function get<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
   const res = await fetch(url)
   if (!res.ok) {
     throwApiError(await readJson(res), res.status, GET_ERROR_FALLBACK)
   }
   const data: unknown = await readJson(res)
-  checkContract(url, schema, data)
-  return data as z.output<S>
+  return checkContract(url, schema, data)
 }
 
 /** Generic PUT helper with error handling. */
-export async function put<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.output<S>> {
+export async function put<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.input<S>> {
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -79,17 +79,15 @@ export async function put<S extends z.ZodType>(url: string, body: unknown, schem
     throwApiError(await readJson(res), res.status, PUT_ERROR_FALLBACK)
   }
   const data: unknown = await readJson(res)
-  checkContract(url, schema, data)
-  return data as z.output<S>
+  return checkContract(url, schema, data)
 }
 
 /** Generic DELETE helper with error handling. */
-export async function del<S extends z.ZodType>(url: string, schema: S): Promise<z.output<S>> {
+export async function del<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
   const res = await fetch(url, { method: 'DELETE' })
   if (!res.ok) {
     throwApiError(await readJson(res), res.status, DELETE_ERROR_FALLBACK)
   }
   const data: unknown = await readJson(res)
-  checkContract(url, schema, data)
-  return data as z.output<S>
+  return checkContract(url, schema, data)
 }

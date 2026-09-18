@@ -5,6 +5,11 @@ import {
   authTicketResponse,
   guestTicketResponse,
   loginLinkPayload,
+  telegramAuthDate,
+  telegramHash,
+  telegramName,
+  telegramOptionalName,
+  telegramUserId,
   telegramWidgetPayload,
 } from './auth'
 import {
@@ -62,6 +67,7 @@ import {
   serviceDescription,
   serviceId,
   slug,
+  slugShape,
   timezone,
   uuid,
 } from './primitives'
@@ -86,19 +92,36 @@ export type WireMeta = {
   'x-go-refine'?: string
   'x-go-trim'?: true
   'x-go-enum-consts'?: Record<string, string>
-  'x-go-skip'?: true
 }
 
 export const wire = z.registry<WireMeta>()
 
 export const WIRE_SCHEMAS: Record<string, z.ZodType> = {}
+/** Metadata keyed by registry id. Do not use `wire.get(schema)` to recover
+ *  this: Zod walks a refined schema's parent, so `get(slug)` returns
+ *  `slugShape`'s meta (without `id`). */
+export const WIRE_META: Record<string, WireMeta> = {}
 
 export function register(schema: z.ZodType, meta: WireMeta): void {
   if (WIRE_SCHEMAS[meta.id] !== undefined) {
     throw new Error(`wire: duplicate id "${meta.id}"`)
   }
+  // Aliased exports (imageUploadTarget === avatarUploadTarget) are one object;
+  // a second id for it would make identity lookup return the wrong meta.
+  for (const [existingId, existingSchema] of Object.entries(WIRE_SCHEMAS)) {
+    if (existingSchema === schema) {
+      throw new Error(`wire: schema already registered as "${existingId}" — cannot also register it as "${meta.id}"`)
+    }
+  }
   wire.add(schema, meta)
   WIRE_SCHEMAS[meta.id] = schema
+  WIRE_META[meta.id] = meta
+}
+
+/** Meta for a registered schema by object identity, not Zod parent-walk. */
+export function metaOfSchema(schema: z.ZodType): WireMeta | undefined {
+  const id = Object.entries(WIRE_SCHEMAS).find(([, s]) => s === schema)?.[0]
+  return id === undefined ? undefined : WIRE_META[id]
 }
 
 // A.1 Primitives — порядок = порядок выводимых правил в validation_gen.go.
@@ -120,12 +143,18 @@ register(avatarUploadSize, { id: 'AvatarUploadSize', kind: 'primitive' })
 register(servicePhotoUploadSize, { id: 'ServicePhotoUploadSize', kind: 'primitive' })
 register(uuid, { id: 'UUID', kind: 'primitive', 'x-go-rule': 'UUIDRule' })
 register(serviceId, { id: 'ServiceID', kind: 'primitive', 'x-go-rule': 'ServiceIDRule' })
+register(slugShape, { id: 'SlugShape', kind: 'primitive', 'x-go-trim': true, 'x-go-rule': 'SlugShapeRule' })
 register(slug, { id: 'Slug', kind: 'primitive', 'x-go-trim': true, 'x-go-rule': 'SlugRule' })
 register(timezone, { id: 'Timezone', kind: 'primitive', 'x-go-rule': 'TimezoneRule' })
 register(httpUrl, { id: 'URL', kind: 'primitive', 'x-go-rule': 'URLRule' })
 register(slotStartsAt, { id: 'SlotStartsAt', kind: 'primitive', 'x-go-type': 'FlexTime' })
 register(optionsList, { id: 'OptionsList', kind: 'primitive' })
 register(selectedOptionsShape, { id: 'SelectedOptions', kind: 'primitive' })
+register(telegramUserId, { id: 'TelegramUserID', kind: 'primitive' })
+register(telegramAuthDate, { id: 'TelegramAuthDate', kind: 'primitive' })
+register(telegramName, { id: 'TelegramName', kind: 'primitive' })
+register(telegramOptionalName, { id: 'TelegramOptionalName', kind: 'primitive' })
+register(telegramHash, { id: 'TelegramHash', kind: 'primitive' })
 
 // A.2 Enums — порядок = порядок enum-блоков в contracts_gen.go.
 // x-go-enum-consts покрывают все .options (требует тест полноты);
@@ -172,6 +201,7 @@ register(updateOrganizerProfileInput, { id: 'UpdateOrganizerProfileInput', kind:
 register(updateOrganizerLanguageInput, { id: 'UpdateOrganizerLanguageInput', kind: 'input' })
 register(createAvatarUploadInput, { id: 'CreateAvatarUploadInput', kind: 'input' })
 register(createServicePhotoUploadInput, { id: 'CreateServicePhotoUploadInput', kind: 'input' })
+register(telegramWidgetPayload, { id: 'TelegramWidgetPayload', kind: 'input' })
 
 // A.4 Records.
 // imageUploadTarget и avatarUploadTarget — один объект; servicePhotoContentType —
@@ -191,8 +221,6 @@ register(authTicketResponse, { id: 'AuthTicketResponse', kind: 'record' })
 register(loginLinkPayload, { id: 'LoginLinkPayload', kind: 'record' })
 register(bookingCreatedJob, { id: 'BookingCreatedJob', kind: 'record' })
 register(bookingCancelledJob, { id: 'BookingCancelledJob', kind: 'record' })
-// Единственный record-запрос: в OpenAPI это requestBody (см. REQUEST_SCHEMAS в генераторе).
-register(telegramWidgetPayload, { id: 'TelegramWidgetPayload', kind: 'record', 'x-go-skip': true })
 
 // Конверты ответов (этап 5, Приложение G) — в конец записей.
 register(serviceEnvelope, { id: 'ServiceEnvelope', kind: 'record' })

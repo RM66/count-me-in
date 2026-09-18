@@ -41,6 +41,11 @@ export const organizers = pgTable(
   (t) => [
     uniqueIndex('organizers_slug_key').on(t.slug),
     uniqueIndex('organizers_messenger_id_key').on(t.messenger, t.messengerId),
+    check('organizers_slug_length_check', sql`char_length(${t.slug}) <= 40`),
+    check('organizers_name_length_check', sql`char_length(${t.name}) <= 100`),
+    check('organizers_description_length_check', sql`char_length(${t.description}) <= 4000`),
+    check('organizers_location_length_check', sql`char_length(${t.location}) <= 300`),
+    check('organizers_contact_length_check', sql`char_length(${t.contact}) <= 300`),
   ],
 )
 
@@ -78,6 +83,11 @@ export const services = pgTable(
     check('services_default_capacity_check', sql`${t.defaultCapacity} > 0`),
     check('services_default_duration_check', sql`${t.defaultDurationMinutes} > 0`),
     check('services_max_seats_per_booking_check', sql`${t.maxSeatsPerBooking} >= 1`),
+    check('services_title_length_check', sql`char_length(${t.title}) <= 100`),
+    check('services_description_length_check', sql`char_length(${t.description}) <= 2000`),
+    check('services_default_price_length_check', sql`char_length(${t.defaultPrice}) <= 50`),
+    check('services_location_length_check', sql`char_length(${t.location}) <= 300`),
+    check('services_contact_length_check', sql`char_length(${t.contact}) <= 300`),
   ],
 )
 
@@ -107,6 +117,7 @@ export const timeSlots = pgTable(
       'time_slots_booked_count_check',
       sql`${t.bookedCount} >= 0 and ${t.bookedCount} <= ${t.capacity}`,
     ),
+    check('time_slots_price_length_check', sql`char_length(${t.price}) <= 50`),
   ],
 )
 
@@ -148,6 +159,7 @@ export const bookings = pgTable(
       .on(t.timeSlotId, t.guestMessenger, t.guestMessengerId)
       .where(sql`${t.status} = 'confirmed'`),
     check('bookings_seats_check', sql`${t.seats} >= 1`),
+    check('bookings_guest_name_length_check', sql`char_length(${t.guestName}) <= 100`),
   ],
 )
 

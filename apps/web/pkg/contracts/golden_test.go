@@ -156,6 +156,26 @@ func goldenSamples() map[string]any {
 	publicNulls.Location = nil
 	publicNulls.Contact = nil
 
+	demoProfile := organizer
+	demoProfile.ID = DemoOrganizerID
+	demoProfile.Slug = DemoOrganizerSlug
+	demoProfile.IsDemo = true
+
+	demoPublic := public
+	demoPublic.ID = DemoOrganizerID
+	demoPublic.Slug = DemoOrganizerSlug
+	demoPublic.IsDemo = true
+
+	maxProfile := organizer
+	maxProfile.Name = strings.Repeat("я", 100)
+	maxProfile.Description = strptr(strings.Repeat("x", 4000))
+
+	maxService := service
+	maxService.Title = strings.Repeat("я", 100)
+	maxService.Description = strptr(strings.Repeat("x", 2000))
+	maxService.DefaultPrice = strings.Repeat("9", 50)
+	maxService.Options = []string{strings.Repeat("o", 100)}
+
 	payload := AuthTicketPayload{
 		Messenger:      MessengerTelegram,
 		MessengerID:    "123456789",
@@ -173,18 +193,22 @@ func goldenSamples() map[string]any {
 	maxSeats := 6
 
 	return map[string]any{
-		"OrganizerProfile":       organizer,
-		"OrganizerProfile.nulls": organizerNulls,
-		"PublicOrganizer":        public,
-		"PublicOrganizer.nulls":  publicNulls,
-		"ServiceRecord":          service,
-		"ServiceRecord.nulls":    serviceNulls,
-		"TimeSlotRecord":         slot,
-		"TimeSlotRecord.nulls":   slotNulls,
-		"BookingRecord":          booking,
-		"BookingRecord.nulls":    bookingNulls,
-		"GuestBooking":           guest,
-		"GuestBooking.nulls":     guestNulls,
+		"OrganizerProfile":        organizer,
+		"OrganizerProfile.nulls":  organizerNulls,
+		"OrganizerProfile.demo":   demoProfile,
+		"OrganizerProfile.bounds": maxProfile,
+		"PublicOrganizer":         public,
+		"PublicOrganizer.nulls":   publicNulls,
+		"PublicOrganizer.demo":    demoPublic,
+		"ServiceRecord":           service,
+		"ServiceRecord.nulls":     serviceNulls,
+		"ServiceRecord.bounds":    maxService,
+		"TimeSlotRecord":          slot,
+		"TimeSlotRecord.nulls":    slotNulls,
+		"BookingRecord":           booking,
+		"BookingRecord.nulls":     bookingNulls,
+		"GuestBooking":            guest,
+		"GuestBooking.nulls":      guestNulls,
 		"ImageUploadTarget": ImageUploadTarget{
 			UploadURL: "https://upload.example.com/put",
 			PublicURL: "https://example.com/avatar.webp",
@@ -215,6 +239,7 @@ func goldenSamples() map[string]any {
 		"BookingEnvelope":        BookingEnvelope{Booking: booking},
 		"GuestBookingsEnvelope":  GuestBookingsEnvelope{Bookings: []GuestBooking{guest}},
 		"OrganizerEnvelope":      OrganizerEnvelope{Organizer: organizer},
+		"OrganizerEnvelope.demo": OrganizerEnvelope{Organizer: demoProfile},
 		"DeletedServiceEnvelope": DeletedServiceEnvelope{ID: "demo-yoga"},
 		"DeletedSlotEnvelope":    DeletedSlotEnvelope{ID: goldenUUID(2)},
 		"ErrorBody": ErrorBody{
@@ -281,7 +306,9 @@ func TestGoldenCoverage(t *testing.T) {
 	seen := map[string]bool{}
 	for key := range goldenSamples() {
 		base := key
-		if strings.HasSuffix(key, ".nulls") {
+		// Variants ("OrganizerProfile.demo") pin edge shapes; coverage counts
+		// only the base record name.
+		if strings.Contains(key, ".") {
 			continue
 		}
 		if seen[base] {

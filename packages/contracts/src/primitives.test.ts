@@ -10,6 +10,7 @@ import {
   seats,
   serviceId,
   slug,
+  slugShape,
   timezone,
   uuid,
 } from './primitives'
@@ -51,6 +52,10 @@ describe('slug', () => {
 
   it('rejects the demo slug', () => {
     expect(slug.safeParse('demo').success).toBe(false)
+  })
+
+  it('slugShape accepts the reserved demo slug as a stored value', () => {
+    expect(slugShape.safeParse('demo').success).toBe(true)
   })
 
   it('rejects a slug with invalid characters', () => {

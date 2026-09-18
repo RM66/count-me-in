@@ -1,6 +1,6 @@
 /** Contract-violation reporting for api-client responses (stage 5, D7). */
 
-import { wire } from '@repo/contracts/wire'
+import { metaOfSchema } from '@repo/contracts/wire'
 import * as Sentry from '@sentry/nextjs'
 import type { z } from 'zod'
 
@@ -27,5 +27,5 @@ export function reportContractViolation(url: string, schemaId: string, error: z.
 }
 
 export function schemaIdOf(schema: z.ZodType): string {
-  return wire.get(schema)?.id ?? 'unknown'
+  return metaOfSchema(schema)?.id ?? 'unknown'
 }

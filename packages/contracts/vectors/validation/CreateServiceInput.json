@@ -312,6 +312,39 @@
       "fieldErrors": [
         "options"
       ]
+    },
+    {
+      "name": "BOM-padded title trims to valid",
+      "body": {
+        "title": "\uFEFFYoga\uFEFF",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "BOM plus max-length title trims to valid",
+      "body": {
+        "title": "\uFEFFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1
+      },
+      "valid": true
+    },
+    {
+      "name": "NEL-padded title is not trimmed and stays valid",
+      "body": {
+        "title": "\u0085Yoga",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1
+      },
+      "valid": true
     }
   ],
   "schema": "CreateServiceInput"

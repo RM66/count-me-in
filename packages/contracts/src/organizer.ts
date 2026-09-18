@@ -10,6 +10,7 @@ import {
   location,
   organizerDescription,
   slug,
+  slugShape,
   timezone,
   uuid,
 } from './primitives'
@@ -34,7 +35,7 @@ export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
 
 export const registeredOrganizer = z.object({
   id: uuid,
-  slug,
+  slug: slugShape,
 })
 export type RegisteredOrganizer = z.infer<typeof registeredOrganizer>
 
@@ -46,7 +47,7 @@ export type Registered = z.infer<typeof registered>
 /** Organizer profile as returned by the API (cabinet). Dates are ISO strings. */
 export const organizerProfile = z.object({
   id: uuid,
-  slug,
+  slug: slugShape,
   name: displayName,
   messenger: messengerEnum,
   messengerId: z.string(),
@@ -76,7 +77,7 @@ export type OrganizerProfile = z.infer<typeof organizerProfile>
  */
 export const publicOrganizer = z.object({
   id: uuid,
-  slug,
+  slug: slugShape,
   name: displayName,
   timezone,
   description: z.string().nullable(),

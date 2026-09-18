@@ -11,7 +11,7 @@ import { cancelNotificationRecipient } from './jobs'
 import { buildSelectedOptionsSchema } from './options'
 import { effectiveContact, effectiveLocation } from './service'
 import { seatsLeft, slotPrice } from './time-slot'
-import { wire, WIRE_SCHEMAS } from './wire'
+import { WIRE_META, WIRE_SCHEMAS } from './wire'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const validationDir = join(here, '..', 'vectors', 'validation')
@@ -100,7 +100,7 @@ describe('validation vectors', () => {
       filesBySchema.set(schema, cases)
     }
     for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      const kind = wire.get(schema)?.kind
+      const kind = WIRE_META[id]?.kind
       if (kind !== 'input' && kind !== 'update') continue
       const cases = filesBySchema.get(id)
       expect(cases, `missing vectors file for schema ${id}`).toBeDefined()

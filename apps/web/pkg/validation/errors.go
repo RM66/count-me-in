@@ -83,6 +83,20 @@ func rawObject(body []byte) (map[string]json.RawMessage, *Errors) {
 	return m, nil
 }
 
+// jsTrim matches JavaScript String.prototype.trim(), which Zod's .trim() calls:
+// the Unicode WhiteSpace set plus line terminators plus U+FEFF, and *not*
+// U+0085 — strings.TrimSpace differs at both ends of that list.
+func jsTrim(v string) string {
+	return strings.TrimFunc(v, func(r rune) bool {
+		switch r {
+		case '\t', '\n', '\v', '\f', '\r', ' ', 0x00A0, 0xFEFF,
+			0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000:
+			return true
+		}
+		return r >= 0x2000 && r <= 0x200A
+	})
+}
+
 func kindOf(raw json.RawMessage) string {
 	s := strings.TrimSpace(string(raw))
 	if s == "" {
@@ -127,7 +141,7 @@ func strValue(e *Errors, m map[string]json.RawMessage, name string, required, tr
 		return "", true
 	}
 	if trim {
-		v = strings.TrimSpace(v)
+		v = jsTrim(v)
 	}
 	if rule != nil {
 		if msg := rule(v); msg != "" {
@@ -142,6 +156,10 @@ func strValue(e *Errors, m map[string]json.RawMessage, name string, required, tr
 // (which loses precision past 2^53). "1.0" is accepted like Zod's .int()
 // (1.0 === 1 in JS); "1.5" and non-numeric JSON are rejected.
 func parseJSONInt(raw json.RawMessage) (int64, bool) {
+	s := strings.TrimSpace(string(raw))
+	if s == "" || s[0] == '"' {
+		return 0, false
+	}
 	var num json.Number
 	if err := json.Unmarshal(raw, &num); err != nil {
 		return 0, false
@@ -212,7 +230,7 @@ func strArrValue(e *Errors, m map[string]json.RawMessage, name string, required,
 		return nil, true
 	}
 	if len(items) > max {
-		e.Add(name, fmt.Sprintf("array must contain at most %d element(s)", max))
+		e.Add(name, fmt.Sprintf("Too big: expected array to have <=%d items", max))
 		return nil, true
 	}
 	out := make([]string, 0, len(items))
@@ -223,7 +241,7 @@ func strArrValue(e *Errors, m map[string]json.RawMessage, name string, required,
 			return nil, true
 		}
 		if trim {
-			v = strings.TrimSpace(v)
+			v = jsTrim(v)
 		}
 		if elemRule != nil {
 			if msg := elemRule(v); msg != "" {
@@ -284,7 +302,7 @@ func optStr(e *Errors, m map[string]json.RawMessage, name string, trim, nullable
 		return contracts.Optional[string]{}
 	}
 	if trim {
-		v = strings.TrimSpace(v)
+		v = jsTrim(v)
 	}
 	if rule != nil {
 		if msg := rule(v); msg != "" {
@@ -375,7 +393,7 @@ func optStrArr(e *Errors, m map[string]json.RawMessage, name string, nullable bo
 		return contracts.Optional[[]string]{}
 	}
 	if len(items) > max {
-		e.Add(name, fmt.Sprintf("array must contain at most %d element(s)", max))
+		e.Add(name, fmt.Sprintf("Too big: expected array to have <=%d items", max))
 		return contracts.Optional[[]string]{}
 	}
 	out := make([]string, 0, len(items))
@@ -385,7 +403,7 @@ func optStrArr(e *Errors, m map[string]json.RawMessage, name string, nullable bo
 			e.Add(name, "Invalid input: expected string, received "+kindOf(item))
 			return contracts.Optional[[]string]{}
 		}
-		v = strings.TrimSpace(v)
+		v = jsTrim(v)
 		if elemRule != nil {
 			if msg := elemRule(v); msg != "" {
 				e.Add(name, msg)

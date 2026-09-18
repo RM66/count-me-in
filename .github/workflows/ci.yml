@@ -92,7 +92,7 @@ jobs:
         run: bun run generate:contracts
 
       - name: Check for uncommitted generated changes
-        run: git diff --exit-code apps/web/pkg/i18n/translations_gen.go apps/web/pkg/contracts/contracts_gen.go apps/web/pkg/validation/validation_gen.go packages/contracts/openapi.yaml
+        run: git diff --exit-code apps/web/pkg/i18n/translations_gen.go apps/web/pkg/contracts/contracts_gen.go apps/web/pkg/validation/validation_gen.go apps/web/openapi.yaml
 
       - name: Build, vet, test
         working-directory: apps/web

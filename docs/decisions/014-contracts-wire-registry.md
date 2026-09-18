@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-09-18
 - **Amends:** ADR-013 §3 ("guard, don't derive" → derive from a registry; guards remain for what cannot be derived)
+- **Amended by:** [ADR-015](015-api-route-manifest.md) (HTTP surface is `routes.ts`; records vs inputs use shape vs policy primitives; OpenAPI lives in `apps/web/openapi.yaml`)
 
 ## Context
 
@@ -31,8 +32,8 @@
 
 ## Consequences
 
-- **Adding a schema** is five steps: export the `z.object` from registered primitives (else the generator fails, D11); `register()` it in `wire.ts` (else `wire.test.ts` is red); run `generate:contracts` (a named `x-go-refine` without its function fails); add a validation vector file (else the coverage test is red); for records, add a golden sample (else `TestGoldenCoverage` is red).
+- **Adding a schema** is five steps here, plus a sixth in ADR-015: export the `z.object` from registered primitives (else the generator fails, D11); `register()` it in `wire.ts` (else `wire.test.ts` is red); run `generate:contracts` (a named `x-go-refine` without its function fails); add a validation vector file (else the coverage test is red); for records, add a golden sample (else `TestGoldenCoverage` is red); if it crosses the wire, add the operation to `routes.ts` (else generation fails with an orphan-schema error).
 - **What is hand-written and where:** `domain.go` (locale/seat/price/option/contact/login-key/demo predicates), `data.go` (`CreateBookingData`), `rules.go` (char length, int ranges, UUID/service/slug/timezone/URL rules, slot-start check), `refine.go` (six input refinements). Guarded by existence checks, vectors, and goldens.
-- **What the generator derives:** constants, enum types + consts, `Locales`, structs, `RecordNames`, patterns/reserved sets, length/int/enum rules, `Parse*` + `{k}OrDefault` + `Parsers`, and `openapi.yaml` components (sorted by id, `x-go-*` stripped, `Slug.pattern` patched in and `SlotStartsAt` replaced by its documented wire shape after rendering).
+- **What the generator derives:** constants, enum types + consts, `Locales`, structs, `RecordNames`, patterns/reserved sets, length/int/enum rules, `Parse*` + `{k}OrDefault` + `Parsers`, and `apps/web/openapi.yaml` components (sorted by id, `x-go-*` stripped, `Slug.pattern` patched in and `SlotStartsAt` replaced by its documented wire shape after rendering). Paths and `APIRoutes` are ADR-015.
 - **Known, documented divergences:** Go `FlexTime` rejects date-only strings that `z.coerce.date()` accepts (pinned by `skip.go` vector cases); `z.url()` trims surrounding whitespace at runtime while Go's `URLRule` validates the value verbatim, so a padded URL is accepted client-side and rejected with 400 server-side (unpinned, pre-existing — the `x-go-trim` tripwire tracks explicit `.trim()` only).
 - **Upgrade risk:** a Zod upgrade that changes JSON Schema output shows up as a generator diff; vectors and goldens show whether behaviour changed.

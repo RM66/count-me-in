@@ -20,7 +20,7 @@ import (
 func refineCreateServiceInput(e *Errors, out *contracts.CreateServiceInput) {
 	if out.Options != nil {
 		if len(out.Options) == 0 {
-			e.Add("options", "array must contain at least 1 element(s)")
+			e.Add("options", "Too small: expected array to have >=1 items")
 		}
 		seenOptions := make(map[string]bool, len(out.Options))
 		for _, option := range out.Options {
@@ -45,7 +45,7 @@ func refineUpdateServiceInput(e *Errors, out *contracts.UpdateServiceInput) {
 	if out.Options.Set && out.Options.Value != nil {
 		opts := *out.Options.Value
 		if len(opts) == 0 {
-			e.Add("options", "array must contain at least 1 element(s)")
+			e.Add("options", "Too small: expected array to have >=1 items")
 		}
 		seenOptions := make(map[string]bool, len(opts))
 		for _, option := range opts {
