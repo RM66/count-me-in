@@ -2,19 +2,19 @@
 
 The single source of truth for the wire contract between the TypeScript client and the Go API.
 
-CountMeIn has two ends of one wire: a React + React Query frontend ([`apps/web/src/api-client`](../web/src/api-client)) and a Go API ([`apps/web/api`](../web/api) + [`apps/web/pkg`](../web/pkg)). They never import each other — the contract between them is HTTP plus the Zod schemas defined **here**. This package owns those schemas, the shared domain rules both sides must agree on, and the manifest that drives cross-language code generation.
+CountMeIn has two ends of one wire: a React + React Query frontend ([`apps/web/src/api-client`](../../apps/web/src/api-client)) and a Go API ([`apps/web/api`](../../apps/web/api) + [`apps/web/pkg`](../../apps/web/pkg)). They never import each other — the contract between them is HTTP plus the Zod schemas defined **here**. This package owns those schemas, the shared domain rules both sides must agree on, and the manifest that drives cross-language code generation.
 
 Full design rationale: [ADR-014](../../docs/decisions/014-contracts-wire-registry.md).
 
 ## How it works
 
-Everything starts as a Zod schema in [`src/`](src). A code generator ([`../web/scripts/generate-contracts.ts`](../web/scripts/generate-contracts.ts), run via `bun run generate:contracts`) renders the registry through the public `z.toJSONSchema()` API and emits three artifacts:
+Everything starts as a Zod schema in [`src/`](src). A code generator ([`apps/web/scripts/generate-contracts.ts`](../../apps/web/scripts/generate-contracts.ts), run via `bun run generate:contracts`) renders the registry through the public `z.toJSONSchema()` API and emits three artifacts:
 
-| Artifact      | Path                                                                                 | Contents                                                    |
-| ------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| Go contracts  | [`../web/pkg/contracts/contracts_gen.go`](../web/pkg/contracts/contracts_gen.go)     | Structs, enums, constants, `RecordNames`                    |
-| Go validation | [`../web/pkg/validation/validation_gen.go`](../web/pkg/validation/validation_gen.go) | Length/int-range/enum rules, `Parse*` bodies, `Parsers` map |
-| OpenAPI 3.1   | [`openapi.yaml`](openapi.yaml)                                                       | `components.schemas` + all API paths                        |
+| Artifact      | Path                                                                                           | Contents                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Go contracts  | [`apps/web/pkg/contracts/contracts_gen.go`](../../apps/web/pkg/contracts/contracts_gen.go)     | Structs, enums, constants, `RecordNames`                    |
+| Go validation | [`apps/web/pkg/validation/validation_gen.go`](../../apps/web/pkg/validation/validation_gen.go) | Length/int-range/enum rules, `Parse*` bodies, `Parsers` map |
+| OpenAPI 3.1   | [`openapi.yaml`](openapi.yaml)                                                                 | `components.schemas` + all API paths                        |
 
 The generator reads **only** the public JSON Schema output — never Zod internals. Go types and rules resolve by `$ref` name. Anything the generator cannot derive (transforms, refinements, temporal checks, domain functions) lives hand-written in ordinary Go files and is called by name from the generated code; a missing callee fails generation, not the build.
 
@@ -81,7 +81,7 @@ Rules that are **isomorphic** — the public page, the cabinet, and the notifica
 Form schemas are **not** wire schemas. A controlled input holds a `string` (including `''` mid-edit), while the API takes numbers and `null`. Each entity has a `*-form.ts` beside its wire schema, built with shared adapters from [`form-fields.ts`](src/form-fields.ts):
 
 - [`optionalText()`](src/form-fields.ts:13) — `''` → `null`.
-- [`numericText()`](src/numericText.ts:21) — string → number, rejecting empty as "required" instead of coercing to `0`.
+- [`numericText()`](src/form-fields.ts:21) — string → number, rejecting empty as "required" instead of coercing to `0`.
 
 Form schemas are excluded from the wire registry (listed in `TS_ONLY` in [`wire.test.ts`](src/wire.test.ts)) so they stay out of the client bundle's codegen path.
 
@@ -100,7 +100,7 @@ A coverage test in [`vectors.test.ts`](src/vectors.test.ts) fails if any input/u
 
 ### Golden samples
 
-Go writes golden JSON per record into [`../web/pkg/contracts/testdata/golden/`](../web/pkg/contracts/testdata/golden). Vitest parses each with its Zod schema, proving a marshalled Go record is valid on the TS side (the response direction). A missing golden for any record fails `TestGoldenCoverage`.
+Go writes golden JSON per record into [`apps/web/pkg/contracts/testdata/golden/`](../../apps/web/pkg/contracts/testdata/golden). Vitest parses each with its Zod schema, proving a marshalled Go record is valid on the TS side (the response direction). A missing golden for any record fails `TestGoldenCoverage`.
 
 ### Tripwires
 
@@ -113,9 +113,9 @@ Five steps (from [ADR-014](../../docs/decisions/014-contracts-wire-registry.md))
 
 1. **Build from registered primitives.** Input/update fields must `$ref` a registered primitive or enum — inline schemas fail generation (D11). Records may use inline fields.
 2. **`register()` it in [`wire.ts`](src/wire.ts).** Forgetting fails the completeness test in [`wire.test.ts`](src/wire.test.ts).
-3. **Run `bun run generate:contracts`.** A named `x-go-refine` without its hand-written function in [`../web/pkg/validation/refine.go`](../web/pkg/validation/refine.go) fails here.
+3. **Run `bun run generate:contracts`.** A named `x-go-refine` without its hand-written function in [`apps/web/pkg/validation/refine.go`](../../apps/web/pkg/validation/refine.go) fails here.
 4. **Add a validation vector** in [`vectors/validation/{Id}.json`](vectors/validation) (else the coverage test is red).
-5. **For records, add a golden sample** in [`../web/pkg/contracts/testdata/golden/{Id}.json`](../web/pkg/contracts/testdata/golden) (else `TestGoldenCoverage` is red).
+5. **For records, add a golden sample** in [`apps/web/pkg/contracts/testdata/golden/{Id}.json`](../../apps/web/pkg/contracts/testdata/golden) (else `TestGoldenCoverage` is red).
 
 ## Scripts
 
@@ -124,4 +124,4 @@ bun run test              # vitest (this package)
 bun run generate:contracts  # regenerate Go + OpenAPI artifacts (run from repo root)
 ```
 
-The generator is defined in [`apps/web`](../web/package.json) and orchestrated by Turborepo from the repo root. It computes all artifacts before writing any, so a failure leaves the tree untouched.
+The generator is defined in [`apps/web`](../../apps/web/package.json) and orchestrated by Turborepo from the repo root. It computes all artifacts before writing any, so a failure leaves the tree untouched.
