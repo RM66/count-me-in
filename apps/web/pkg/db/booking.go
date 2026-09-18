@@ -193,10 +193,10 @@ func ToBookingRecord(b BookingRow) contracts.BookingRecord {
 	return contracts.BookingRecord{
 		ID:                  b.ID,
 		TimeSlotID:          b.TimeSlotID,
-		Status:              b.Status,
+		Status:              contracts.BookingStatus(b.Status),
 		Seats:               b.Seats,
 		GuestName:           b.GuestName,
-		GuestMessenger:      b.GuestMessenger,
+		GuestMessenger:      contracts.Messenger(b.GuestMessenger),
 		GuestMessengerID:    b.GuestMessengerID,
 		GuestMessengerLogin: b.GuestMessengerLogin,
 		SelectedOptions:     b.SelectedOptions,
@@ -207,7 +207,7 @@ func ToBookingRecord(b BookingRow) contracts.BookingRecord {
 func ToGuestBooking(b BookingRow, slot TimeSlotRow, service ServiceRow, organizer OrganizerRow) contracts.GuestBooking {
 	return contracts.GuestBooking{
 		ID:              b.ID,
-		Status:          b.Status,
+		Status:          contracts.BookingStatus(b.Status),
 		Seats:           b.Seats,
 		GuestName:       b.GuestName,
 		SelectedOptions: b.SelectedOptions,
@@ -334,7 +334,7 @@ func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (
 		VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11)
 		RETURNING `+bookingColumns,
 		newID(), claimed.ID, "confirmed", data.Seats, data.GuestName,
-		data.Guest.Messenger, data.Guest.MessengerID, data.Guest.MessengerLogin,
+		string(data.Guest.Messenger), data.Guest.MessengerID, data.Guest.MessengerLogin,
 		data.GuestLocale, newManageToken(), nullableSlice(selected)))
 	if err != nil {
 		// Duplicate booking — the transaction rolls back, releasing the

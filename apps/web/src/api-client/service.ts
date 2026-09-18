@@ -1,10 +1,10 @@
 'use client'
 
-import type {
-  CreateServiceInput,
-  ImageUploadTarget,
-  ServiceRecord,
-  UpdateServiceInput,
+import type { CreateServiceInput, UpdateServiceInput } from '@repo/contracts'
+import {
+  deletedServiceEnvelope,
+  imageUploadTarget,
+  serviceEnvelope,
 } from '@repo/contracts'
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
@@ -33,7 +33,7 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 export function useCreateService() {
   return useMutation({
     mutationFn: (input: CreateServiceInput) =>
-      post<{ service: ServiceRecord }>('/api/services', input),
+      post('/api/services', input, serviceEnvelope),
   })
 }
 
@@ -41,14 +41,14 @@ export function useCreateService() {
 export function useUpdateService(serviceId: string) {
   return useMutation({
     mutationFn: (input: UpdateServiceInput) =>
-      put<{ service: ServiceRecord }>(`/api/services/${serviceId}`, input),
+      put(`/api/services/${serviceId}`, input, serviceEnvelope),
   })
 }
 
 /** Delete one service. Slots and bookings cascade server-side. */
 export function useDeleteService(serviceId: string) {
   return useMutation({
-    mutationFn: () => del<{ id: string }>(`/api/services/${serviceId}`),
+    mutationFn: () => del(`/api/services/${serviceId}`, deletedServiceEnvelope),
   })
 }
 
@@ -70,10 +70,14 @@ export function useUploadServicePhoto() {
         throw new ApiError(COMPRESS_ERROR_FALLBACK, 413)
       }
 
-      const target = await post<ImageUploadTarget>('/api/organizers/me/service-photo', {
-        contentType: image.type,
-        size: image.size,
-      })
+      const target = await post(
+        '/api/organizers/me/service-photo',
+        {
+          contentType: image.type,
+          size: image.size,
+        },
+        imageUploadTarget,
+      )
 
       const r2Response = await fetch(target.uploadUrl, {
         method: 'PUT',

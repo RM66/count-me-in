@@ -1,0 +1,23 @@
+{
+  "cases": [
+    {
+      "expected": "Service Hall",
+      "name": "service wins",
+      "organizer": "Organizer Hall",
+      "service": "Service Hall"
+    },
+    {
+      "expected": "Organizer Hall",
+      "name": "nil service inherits",
+      "organizer": "Organizer Hall",
+      "service": null
+    },
+    {
+      "expected": null,
+      "name": "neither set",
+      "organizer": null,
+      "service": null
+    }
+  ],
+  "fn": "effectiveLocation"
+}

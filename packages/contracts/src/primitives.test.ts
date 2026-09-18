@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import {
   capacity,
+  displayName,
   durationMinutes,
   manageToken,
+  optionLabel,
+  priceText,
   seats,
   serviceId,
   slug,
@@ -67,6 +70,39 @@ describe('timezone', () => {
 
   it('rejects an invalid timezone', () => {
     expect(timezone.safeParse('Not/AZone').success).toBe(false)
+  })
+
+  // Parity vector with pkg/validation TestTimezoneRuleCaseInsensitive: IANA ids
+  // are case-insensitive, and "Local" is a Go-only name neither side accepts.
+  it('accepts case-insensitive IANA ids like the Go API', () => {
+    expect(timezone.safeParse('europe/belgrade').success).toBe(true)
+    expect(timezone.safeParse('america/new_york').success).toBe(true)
+    expect(timezone.safeParse('Local').success).toBe(false)
+    expect(timezone.safeParse('Europe/Belgrade/Extra').success).toBe(false)
+  })
+})
+
+/**
+ * Parity with `charLen` in pkg/validation/validation_gen.go: length bounds are
+ * UTF-16 code units (JS String.length), not bytes. These vectors keep the Go
+ * port from drifting back to byte length for multi-byte text.
+ */
+describe('UTF-16 length bounds', () => {
+  it('measures multi-byte text in code units, not bytes', () => {
+    expect(displayName.safeParse('я'.repeat(100)).success).toBe(true)
+    expect(displayName.safeParse('я'.repeat(101)).success).toBe(false)
+  })
+
+  it('counts a non-BMP rune as two code units', () => {
+    expect(displayName.safeParse('😀'.repeat(50)).success).toBe(true)
+    expect(displayName.safeParse('😀'.repeat(51)).success).toBe(false)
+  })
+
+  it('applies the same rule to option labels and price text', () => {
+    expect(optionLabel.safeParse('я'.repeat(100)).success).toBe(true)
+    expect(optionLabel.safeParse('я'.repeat(101)).success).toBe(false)
+    expect(priceText.safeParse('я'.repeat(50)).success).toBe(true)
+    expect(priceText.safeParse('я'.repeat(51)).success).toBe(false)
   })
 })
 

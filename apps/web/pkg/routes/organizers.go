@@ -100,9 +100,7 @@ func organizerMeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusOK, map[string]any{
-		"organizer": db.ToOrganizerProfile(*row, isDemo),
-	}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, isDemo)}).Write(w)
 }
 
 func organizerMePut(w http.ResponseWriter, r *http.Request) {
@@ -143,9 +141,7 @@ func organizerMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusOK, map[string]any{
-		"organizer": db.ToOrganizerProfile(*row, false),
-	}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, false)}).Write(w)
 }
 
 // OrganizerMeLanguage — PATCH /api/organizers/me/language (ADR-011).
@@ -170,13 +166,13 @@ func OrganizerMeLanguage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	language, errs := validation.ParseUpdateOrganizerLanguageInput(body)
+	input, errs := validation.ParseUpdateOrganizerLanguageInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
 	}
 
-	if err := db.UpdateOrganizerLanguage(r.Context(), organizerID, language); err != nil {
+	if err := db.UpdateOrganizerLanguage(r.Context(), organizerID, input.Language); err != nil {
 		httpx.Internal(err).Write(w)
 		return
 	}

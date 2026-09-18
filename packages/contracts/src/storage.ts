@@ -23,6 +23,9 @@ export const AVATAR_WEBP_QUALITY = 0.85
 /** Image types the organizer may pick in the file dialog. */
 export const avatarContentType = z.enum(['image/jpeg', 'image/png', 'image/webp'])
 
+/** Resized avatar payload size accepted by the API / signed PUT. */
+export const avatarUploadSize = z.number().int().min(1).max(AVATAR_UPLOAD_MAX_BYTES)
+
 /**
  * Type actually stored in R2 — the browser always re-encodes to WebP.
  * Kept separate from `avatarContentType` (what may be picked) on purpose.
@@ -31,7 +34,7 @@ export const AVATAR_OUTPUT_CONTENT_TYPE = 'image/webp' as const
 
 export const createAvatarUploadInput = z.object({
   contentType: avatarContentType,
-  size: z.number().int().positive().max(AVATAR_UPLOAD_MAX_BYTES),
+  size: avatarUploadSize,
 })
 export type CreateAvatarUploadInput = z.infer<typeof createAvatarUploadInput>
 
@@ -68,9 +71,12 @@ export const servicePhotoContentType = avatarContentType
 /** Type actually stored in R2 — the browser always re-encodes to WebP. */
 export const SERVICE_PHOTO_OUTPUT_CONTENT_TYPE = 'image/webp' as const
 
+/** Resized cover payload size accepted by the API / signed PUT. */
+export const servicePhotoUploadSize = z.number().int().min(1).max(SERVICE_PHOTO_UPLOAD_MAX_BYTES)
+
 export const createServicePhotoUploadInput = z.object({
   contentType: servicePhotoContentType,
-  size: z.number().int().positive().max(SERVICE_PHOTO_UPLOAD_MAX_BYTES),
+  size: servicePhotoUploadSize,
 })
 export type CreateServicePhotoUploadInput = z.infer<typeof createServicePhotoUploadInput>
 

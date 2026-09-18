@@ -56,7 +56,7 @@ apps/
     api/               # Go API — a single Vercel Function: api/entry/index.go dispatches via pkg/routes.NewMux (one "fat lambda", not one function per route)
     pkg/               # contracts, validation, db, auth, i18n, httpx, jobs, queue, storage, demo, logx, routes (not internal/ — Vercel compiles api/ under a handler/ module prefix, and Go's internal visibility rule would block it)
     cmd/dev/           # local dev server (never deployed)
-    scripts/           # check-api-routes.ts, ensure-qstash.ts, generate-i18n-go.ts, build-go.sh
+    scripts/           # build-go.sh, check-api-routes.ts, ensure-qstash.ts, generate-contracts.ts, generate-i18n-go.ts
 packages/
   db/                  # Drizzle schema, migrations
   redis/               # ioredis singleton (tickets, login links, rate limits)
@@ -98,6 +98,8 @@ docs/
 **What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/contracts`.
 
 **Query keys live in `api-client/keys.ts`.** Never write a `queryKey` array literal inline — duplicated literals break invalidation silently. Keys are hierarchical, so `queryKeys.services.all` invalidates every service query beneath it.
+
+**Contracts codegen.** `packages/contracts/src/wire.ts` is the manifest: every wire schema registers with its Go name and kind (`primitive` | `enum` | `input` | `update` | `record`); registration order is emission order. `bun run generate:contracts` derives Go structs, validation rules, `Parse*` + `Parsers`, `RecordNames`, and `openapi.yaml` from one `z.toJSONSchema(wire)` call. Hand-written code lives outside `*_gen.go` by rule: domain logic in `pkg/contracts/domain.go` / `data.go`, validation rules in `pkg/validation/rules.go`, input refinements in `pkg/validation/refine.go`. Never edit `*_gen.go` by hand. To add a schema: (1) build it from registered primitives (inputs cannot be inline), (2) `register()` it in `wire.ts`, (3) run `generate:contracts` (a named `x-go-refine` without its function fails), (4) add `packages/contracts/vectors/validation/{Id}.json`, (5) for records add a golden sample (else `TestGoldenCoverage` is red). See [ADR-014](docs/decisions/014-contracts-wire-registry.md).
 
 See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/007-cloudflare-r2.md).
 

@@ -8,31 +8,14 @@ import (
 // Optional distinguishes an absent JSON key from an explicit null —
 // Zod's `optional()` vs `nullable()` distinction. Set=false: absent;
 // Set=true, Value=nil: explicit null; Set=true, Value!=nil: value.
+//
+// Built only by the validation package's opt* helpers, which derive Set/Value
+// from the raw request body while applying the same rules as Zod. There is
+// deliberately no UnmarshalJSON: decoding straight into an update struct would
+// bypass validation, and the update structs carry no json tags.
 type Optional[T any] struct {
 	Set   bool
 	Value *T
-}
-
-func (o *Optional[T]) UnmarshalJSON(b []byte) error {
-	o.Set = true
-	if string(b) == "null" {
-		o.Value = nil
-		return nil
-	}
-	var v T
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	o.Value = &v
-	return nil
-}
-
-// ValueOr returns the value, or def when absent or null.
-func ValueOr[T any](o Optional[T], def T) T {
-	if o.Value != nil {
-		return *o.Value
-	}
-	return def
 }
 
 // ISODate renders t like JS Date.toISOString(): always UTC, always

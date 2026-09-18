@@ -54,6 +54,11 @@ func scanService(row pgx.Row) (*ServiceRow, error) {
 }
 
 func ToServiceRecord(s ServiceRow) contracts.ServiceRecord {
+	var mode *contracts.OptionsSelectMode
+	if s.OptionsSelectMode != nil {
+		m := contracts.OptionsSelectMode(*s.OptionsSelectMode)
+		mode = &m
+	}
 	return contracts.ServiceRecord{
 		ID:                     s.ID,
 		OrganizerID:            s.OrganizerID,
@@ -67,7 +72,7 @@ func ToServiceRecord(s ServiceRow) contracts.ServiceRecord {
 		DefaultDurationMinutes: s.DefaultDurationMinutes,
 		MaxSeatsPerBooking:     s.MaxSeatsPerBooking,
 		Options:                s.Options,
-		OptionsSelectMode:      s.OptionsSelectMode,
+		OptionsSelectMode:      mode,
 		CreatedAt:              contracts.ISODate(s.CreatedAt),
 	}
 }
@@ -106,6 +111,11 @@ func GetOwnedService(ctx context.Context, organizerID, serviceID string) (*Servi
 // payload; optional columns are normalized to null.
 func CreateService(ctx context.Context, organizerID string, input contracts.CreateServiceInput) (*ServiceRow, error) {
 	id := newServiceID()
+	var modeStr *string
+	if input.OptionsSelectMode != nil {
+		s := string(*input.OptionsSelectMode)
+		modeStr = &s
+	}
 	row := Pool().QueryRow(ctx, `
 		INSERT INTO services (id, organizer_id, title, description, photo_url, location, contact,
 			default_price, default_capacity, default_duration_minutes, max_seats_per_booking,
@@ -114,7 +124,7 @@ func CreateService(ctx context.Context, organizerID string, input contracts.Crea
 		RETURNING `+serviceColumns,
 		id, organizerID, input.Title, input.Description, input.PhotoURL, input.Location, input.Contact,
 		input.DefaultPrice, input.DefaultCapacity, input.DefaultDurationMinutes, input.MaxSeatsPerBooking,
-		nullableSlice(input.Options), input.OptionsSelectMode)
+		nullableSlice(input.Options), modeStr)
 	return scanService(row)
 }
 
@@ -183,7 +193,7 @@ func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, inpu
 	if input.OptionsSelectMode.Set {
 		if input.OptionsSelectMode.Value != nil {
 			sets = append(sets, fmt.Sprintf("options_select_mode = $%d::options_select_mode", n))
-			args = append(args, *input.OptionsSelectMode.Value)
+			args = append(args, string(*input.OptionsSelectMode.Value))
 			n++
 		} else {
 			setNull("options_select_mode")

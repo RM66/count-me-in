@@ -1,6 +1,7 @@
 'use client'
 
-import type { CreateTimeSlotInput, TimeSlotRecord, UpdateTimeSlotInput } from '@repo/contracts'
+import type { CreateTimeSlotInput, UpdateTimeSlotInput } from '@repo/contracts'
+import { deletedSlotEnvelope, slotEnvelope } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
 import { del, post, put } from './client'
@@ -16,7 +17,7 @@ import { del, post, put } from './client'
 /** Create a slot under one of the signed-in organizer's services. */
 export function useCreateSlot() {
   return useMutation({
-    mutationFn: (input: CreateTimeSlotInput) => post<{ slot: TimeSlotRecord }>('/api/slots', input),
+    mutationFn: (input: CreateTimeSlotInput) => post('/api/slots', input, slotEnvelope),
   })
 }
 
@@ -24,7 +25,7 @@ export function useCreateSlot() {
 export function useUpdateSlot(slotId: string) {
   return useMutation({
     mutationFn: (input: UpdateTimeSlotInput) =>
-      put<{ slot: TimeSlotRecord }>(`/api/slots/${slotId}`, input),
+      put(`/api/slots/${slotId}`, input, slotEnvelope),
   })
 }
 
@@ -34,6 +35,6 @@ export function useUpdateSlot(slotId: string) {
  */
 export function useDeleteSlot(slotId: string) {
   return useMutation({
-    mutationFn: () => del<{ id: string }>(`/api/slots/${slotId}`),
+    mutationFn: () => del(`/api/slots/${slotId}`, deletedSlotEnvelope),
   })
 }

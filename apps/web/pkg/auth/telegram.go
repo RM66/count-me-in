@@ -41,7 +41,7 @@ type TelegramIdentity struct {
 // ToTicketPayload converts the validated identity into the ticket shape.
 func (t TelegramIdentity) ToTicketPayload() contracts.AuthTicketPayload {
 	return contracts.AuthTicketPayload{
-		Messenger:      t.Messenger,
+		Messenger:      contracts.Messenger(t.Messenger),
 		MessengerID:    t.MessengerID,
 		DisplayName:    t.DisplayName,
 		PhotoURL:       t.PhotoURL,

@@ -1,0 +1,49 @@
+{
+  "id": "01930000-0000-7000-8000-000000000003",
+  "status": "confirmed",
+  "seats": 2,
+  "guestName": "Mila Petrović",
+  "selectedOptions": null,
+  "createdAt": "2026-01-02T03:04:05.000Z",
+  "manageToken": "manage-token-1234567890",
+  "slot": {
+    "id": "01930000-0000-7000-8000-000000000002",
+    "serviceId": "demo-yoga",
+    "startsAt": "2026-01-02T03:04:05.000Z",
+    "durationMinutes": 60,
+    "capacity": 10,
+    "bookedCount": 3,
+    "price": "15",
+    "createdAt": "2026-01-02T03:04:05.000Z"
+  },
+  "service": {
+    "id": "demo-yoga",
+    "organizerId": "01930000-0000-7000-8000-000000000001",
+    "title": "Yoga",
+    "description": "Morning flow",
+    "photoUrl": "https://example.com/photo.webp",
+    "location": "Hall A",
+    "contact": "+123456",
+    "defaultPrice": "10",
+    "defaultCapacity": 5,
+    "defaultDurationMinutes": 60,
+    "maxSeatsPerBooking": 1,
+    "options": [
+      "Beginner",
+      "Intermediate"
+    ],
+    "optionsSelectMode": "single",
+    "createdAt": "2026-01-02T03:04:05.000Z"
+  },
+  "organizer": {
+    "id": "01930000-0000-7000-8000-000000000001",
+    "slug": "my-studio",
+    "name": "Studio",
+    "timezone": "Europe/Belgrade",
+    "description": "Morning practice",
+    "photoUrl": "https://example.com/avatar.webp",
+    "location": "Hall A",
+    "contact": "+123456",
+    "isDemo": false
+  }
+}

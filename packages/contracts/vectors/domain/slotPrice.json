@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "expected": "$20",
+      "name": "override wins",
+      "serviceDefault": "$15",
+      "slotPrice": "$20"
+    },
+    {
+      "expected": "$15",
+      "name": "absent override falls back",
+      "serviceDefault": "$15",
+      "slotPrice": null
+    },
+    {
+      "expected": "",
+      "name": "empty override is a value",
+      "serviceDefault": "$15",
+      "slotPrice": ""
+    },
+    {
+      "expected": "",
+      "name": "neither set",
+      "serviceDefault": null,
+      "slotPrice": null
+    }
+  ],
+  "fn": "slotPrice"
+}

@@ -1,0 +1,38 @@
+{
+  "cases": [
+    {
+      "body": {
+        "language": "de"
+      },
+      "name": "valid",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "language": 123
+      },
+      "fieldErrors": [
+        "language"
+      ],
+      "name": "language wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "language": "xx"
+      },
+      "fieldErrors": [
+        "language"
+      ],
+      "name": "language invalid locale",
+      "valid": false
+    }
+  ],
+  "schema": "UpdateOrganizerLanguageInput"
+}

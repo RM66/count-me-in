@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "body": {
+        "guestTicket": "whatever-guest-ticket-12345678"
+      },
+      "name": "valid",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestTicket": 123
+      },
+      "fieldErrors": [
+        "guestTicket"
+      ],
+      "name": "guestTicket wrong type",
+      "valid": false
+    }
+  ],
+  "schema": "LookupBookingsInput"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "demo-yoga",
+  "organizerId": "01930000-0000-7000-8000-000000000001",
+  "title": "Yoga",
+  "description": "Morning flow",
+  "photoUrl": "https://example.com/photo.webp",
+  "location": "Hall A",
+  "contact": "+123456",
+  "defaultPrice": "10",
+  "defaultCapacity": 5,
+  "defaultDurationMinutes": 60,
+  "maxSeatsPerBooking": 1,
+  "options": [
+    "Beginner",
+    "Intermediate"
+  ],
+  "optionsSelectMode": "single",
+  "createdAt": "2026-01-02T03:04:05.000Z"
+}

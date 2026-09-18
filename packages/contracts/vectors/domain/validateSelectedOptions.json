@@ -1,0 +1,140 @@
+{
+  "cases": [
+    {
+      "expectedSelected": null,
+      "name": "no options no selection",
+      "selectMode": null,
+      "selected": null,
+      "serviceOptions": null,
+      "valid": true
+    },
+    {
+      "expectedSelected": null,
+      "name": "no options empty array",
+      "selectMode": null,
+      "selected": [],
+      "serviceOptions": null,
+      "valid": true
+    },
+    {
+      "name": "selection without service options",
+      "selected": [
+        "Yoga mat"
+      ],
+      "selectMode": null,
+      "serviceOptions": null,
+      "valid": false
+    },
+    {
+      "expectedSelected": [
+        "Beginner"
+      ],
+      "name": "single valid",
+      "selectMode": "single",
+      "selected": [
+        "Beginner"
+      ],
+      "serviceOptions": [
+        "Beginner",
+        "Intermediate"
+      ],
+      "valid": true
+    },
+    {
+      "name": "single too many",
+      "selectMode": "single",
+      "selected": [
+        "Beginner",
+        "Intermediate"
+      ],
+      "serviceOptions": [
+        "Beginner",
+        "Intermediate"
+      ],
+      "valid": false
+    },
+    {
+      "expectedSelected": [
+        "A",
+        "C"
+      ],
+      "name": "multi subset",
+      "selectMode": "multi",
+      "selected": [
+        "A",
+        "C"
+      ],
+      "serviceOptions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "valid": true
+    },
+    {
+      "expectedSelected": null,
+      "name": "multi empty normalizes",
+      "selectMode": "multi",
+      "selected": [],
+      "serviceOptions": [
+        "A",
+        "B"
+      ],
+      "valid": true
+    },
+    {
+      "name": "null selection with options",
+      "serviceOptions": [
+        "A",
+        "B"
+      ],
+      "selectMode": "multi",
+      "selected": null,
+      "valid": true,
+      "expectedSelected": null
+    },
+    {
+      "name": "duplicates",
+      "selectMode": "multi",
+      "selected": [
+        "A",
+        "A"
+      ],
+      "serviceOptions": [
+        "A",
+        "B"
+      ],
+      "valid": false
+    },
+    {
+      "name": "unknown option",
+      "selectMode": "multi",
+      "selected": [
+        "C"
+      ],
+      "serviceOptions": [
+        "A",
+        "B"
+      ],
+      "valid": false
+    },
+    {
+      "name": "null mode skips single check",
+      "serviceOptions": [
+        "A",
+        "B"
+      ],
+      "selectMode": null,
+      "selected": [
+        "A",
+        "B"
+      ],
+      "valid": true,
+      "expectedSelected": [
+        "A",
+        "B"
+      ]
+    }
+  ],
+  "fn": "validateSelectedOptions"
+}

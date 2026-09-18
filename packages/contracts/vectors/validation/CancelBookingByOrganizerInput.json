@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "body": {
+        "bookingId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "name": "valid",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "bookingId": 123
+      },
+      "fieldErrors": [
+        "bookingId"
+      ],
+      "name": "bookingId wrong type",
+      "valid": false
+    }
+  ],
+  "schema": "CancelBookingByOrganizerInput"
+}

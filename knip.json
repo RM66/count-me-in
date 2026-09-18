@@ -3,5 +3,5 @@
   "ignoreExportsUsedInFile": true,
   "ignore": ["apps/web/src/components/ui/**"],
   "ignoreDependencies": ["next"],
-  "ignoreBinaries": ["go"]
+  "ignoreBinaries": ["go", "gofmt"]
 }

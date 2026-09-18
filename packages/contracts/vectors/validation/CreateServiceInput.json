@@ -1,0 +1,318 @@
+{
+  "cases": [
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "name": "valid minimal",
+      "valid": true
+    },
+    {
+      "body": {
+        "contact": "+123456",
+        "defaultCapacity": 10,
+        "defaultDurationMinutes": 90,
+        "defaultPrice": "20",
+        "description": "Morning flow",
+        "location": "Hall A",
+        "maxSeatsPerBooking": 4,
+        "options": [
+          "A",
+          "B"
+        ],
+        "optionsSelectMode": "single",
+        "photoUrl": "https://example.com/photo.webp",
+        "title": "Yoga"
+      },
+      "name": "valid full",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "title": 123
+      },
+      "fieldErrors": [
+        "title"
+      ],
+      "name": "title wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "description": 123,
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "description"
+      ],
+      "name": "description wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "location": 123,
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "location"
+      ],
+      "name": "location wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "contact": 123,
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "contact"
+      ],
+      "name": "contact wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": 123,
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "defaultPrice"
+      ],
+      "name": "defaultPrice wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": "x",
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "defaultCapacity"
+      ],
+      "name": "defaultCapacity wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": "x",
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "defaultDurationMinutes"
+      ],
+      "name": "defaultDurationMinutes wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": "x",
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "maxSeatsPerBooking"
+      ],
+      "name": "maxSeatsPerBooking wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "options": {},
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "options"
+      ],
+      "name": "options wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "optionsSelectMode": 123,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "optionsSelectMode"
+      ],
+      "name": "optionsSelectMode wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "photoUrl": 123,
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "photoUrl"
+      ],
+      "name": "photoUrl wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "options": [
+          "A"
+        ],
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "optionsSelectMode"
+      ],
+      "name": "options without mode",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "optionsSelectMode": "single",
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "optionsSelectMode"
+      ],
+      "name": "mode without options",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "defaultPrice": "10",
+        "maxSeatsPerBooking": 1,
+        "options": [
+          "A",
+          "A"
+        ],
+        "optionsSelectMode": "multi",
+        "title": "Yoga"
+      },
+      "fieldErrors": [
+        "options"
+      ],
+      "name": "options duplicates",
+      "valid": false
+    },
+    {
+      "name": "options empty array",
+      "body": {
+        "title": "Yoga",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1,
+        "options": []
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options"
+      ]
+    },
+    {
+      "name": "options empty array with mode",
+      "body": {
+        "title": "Yoga",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1,
+        "options": [],
+        "optionsSelectMode": "single"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options",
+        "optionsSelectMode"
+      ]
+    },
+    {
+      "name": "options with invalid mode value",
+      "body": {
+        "title": "Yoga",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1,
+        "options": [
+          "A"
+        ],
+        "optionsSelectMode": "x"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "optionsSelectMode"
+      ]
+    },
+    {
+      "name": "options null rejected",
+      "body": {
+        "title": "Yoga",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1,
+        "options": null
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options"
+      ]
+    }
+  ],
+  "schema": "CreateServiceInput"
+}

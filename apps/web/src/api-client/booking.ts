@@ -1,6 +1,11 @@
 'use client'
 
-import type { BookingRecord, CreateBookingInput, GuestBooking, Messenger } from '@repo/contracts'
+import type { CreateBookingInput, Messenger } from '@repo/contracts'
+import {
+  bookingEnvelope,
+  guestBookingEnvelope,
+  guestBookingsEnvelope,
+} from '@repo/contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { post } from './client'
@@ -26,7 +31,7 @@ import { queryKeys } from './keys'
 export function useCreateBooking() {
   return useMutation({
     mutationFn: (input: CreateBookingInput) =>
-      post<{ booking: GuestBooking }>('/api/bookings', input),
+      post('/api/bookings', input, guestBookingEnvelope),
     retry: false,
   })
 }
@@ -39,7 +44,7 @@ export function useCreateBooking() {
 export function useCancelBooking() {
   return useMutation({
     mutationFn: (manageToken: string) =>
-      post<{ booking: GuestBooking }>('/api/bookings/cancel', { manageToken }),
+      post('/api/bookings/cancel', { manageToken }, guestBookingEnvelope),
   })
 }
 
@@ -54,7 +59,7 @@ export function useCancelBooking() {
 export function useCancelBookingByOrganizer() {
   return useMutation({
     mutationFn: (bookingId: string) =>
-      post<{ booking: BookingRecord }>('/api/bookings/cancel-by-organizer', { bookingId }),
+      post('/api/bookings/cancel-by-organizer', { bookingId }, bookingEnvelope),
   })
 }
 
@@ -68,9 +73,13 @@ export function useLookupBookings() {
 
   return useMutation({
     mutationFn: async (identity: { ticket: string; messenger: Messenger; messengerId: string }) => {
-      const data = await post<{ bookings: GuestBooking[] }>('/api/bookings/lookup', {
-        guestTicket: identity.ticket,
-      })
+      const data = await post(
+        '/api/bookings/lookup',
+        {
+          guestTicket: identity.ticket,
+        },
+        guestBookingsEnvelope,
+      )
 
       queryClient.setQueryData(queryKeys.bookings.guest(identity.messengerId), data.bookings)
 

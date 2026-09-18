@@ -50,46 +50,49 @@ func Internal(err error) *Response {
 	return Empty(http.StatusInternalServerError)
 }
 
+// ptr allocates a copy for ErrorBody's pointer extras.
+func ptr[T any](v T) *T { return &v }
+
 // Error renders {error: <localized message>} — the body carries the
 // caller's locale (ADR-011); machine-readable extras travel alongside.
 func Error(status int, locale, key string) *Response {
-	return &Response{Status: status, Body: map[string]any{
-		"error": i18n.ApiError(locale, key, nil),
+	return &Response{Status: status, Body: contracts.ErrorBody{
+		Error: i18n.ApiError(locale, key, nil),
 	}}
 }
 
 func ErrorParams(status int, locale, key string, params map[string]any) *Response {
-	return &Response{Status: status, Body: map[string]any{
-		"error": i18n.ApiError(locale, key, params),
+	return &Response{Status: status, Body: contracts.ErrorBody{
+		Error: i18n.ApiError(locale, key, params),
 	}}
 }
 
-func ErrorExtras(status int, locale, key string, params map[string]any, extras map[string]any) *Response {
-	body := map[string]any{"error": i18n.ApiError(locale, key, params)}
-	for k, v := range extras {
-		body[k] = v
-	}
-	return &Response{Status: status, Body: body}
+func ErrorExtras(status int, locale, key string, params map[string]any, extras contracts.ErrorBody) *Response {
+	extras.Error = i18n.ApiError(locale, key, params)
+	return &Response{Status: status, Body: extras}
 }
 
 // DemoReadOnly — the 403 every write path answers for the demo
 // account or anonymous visitors (ADR-010).
 func DemoReadOnly(locale string) *Response {
 	return ErrorExtras(http.StatusForbidden, locale, "demoReadOnly", nil,
-		map[string]any{"code": contracts.DemoReadOnlyCode})
+		contracts.ErrorBody{Code: ptr(contracts.DemoReadOnlyCode)})
 }
 
 // WriteInvalidBody — parseJsonBody's 400: a localized generic as the
 // top-level error, Zod-style details for logs/devtools only.
 func WriteInvalidBody(w http.ResponseWriter, locale string, errs *validation.Errors) {
 	if errs == nil {
-		errs = &validation.Errors{}
+		errs = validation.NewErrors()
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"error":   i18n.ApiError(locale, "invalidInput", nil),
-		"details": errs,
+	_ = json.NewEncoder(w).Encode(contracts.InvalidBody{
+		Error: i18n.ApiError(locale, "invalidInput", nil),
+		Details: contracts.ValidationErrors{
+			FormErrors:  errs.Form,
+			FieldErrors: errs.Fields,
+		},
 	})
 }
 
@@ -102,8 +105,8 @@ func WriteInvalidIssues(w http.ResponseWriter, locale string, errs *validation.E
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"error":  i18n.ApiError(locale, "invalidInput", nil),
-		"issues": fields,
+	_ = json.NewEncoder(w).Encode(contracts.InvalidIssuesBody{
+		Error:  i18n.ApiError(locale, "invalidInput", nil),
+		Issues: fields,
 	})
 }

@@ -58,7 +58,7 @@ func ToOrganizerProfile(o OrganizerRow, isDemo bool) contracts.OrganizerProfile 
 		ID:          o.ID,
 		Slug:        o.Slug,
 		Name:        o.Name,
-		Messenger:   o.Messenger,
+		Messenger:   contracts.Messenger(o.Messenger),
 		MessengerID: o.MessengerID,
 		Timezone:    o.Timezone,
 		Description: o.Description,

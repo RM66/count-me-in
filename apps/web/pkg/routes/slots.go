@@ -42,7 +42,7 @@ func slotsList(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		slots = append(slots, db.ToTimeSlotRecord(row))
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"slots": slots}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.SlotsEnvelope{Slots: slots}).Write(w)
 }
 
 func slotsCreate(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +69,7 @@ func slotsCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusCreated, map[string]any{"slot": db.ToTimeSlotRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusCreated, contracts.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
 }
 
 // SlotItem — GET/PUT/DELETE /api/slots/{id}, scoped to the signed-in
@@ -106,7 +106,7 @@ func slotGet(w http.ResponseWriter, r *http.Request, slotID string) {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"slot": db.ToTimeSlotRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
 }
 
 func slotPut(w http.ResponseWriter, r *http.Request, slotID string) {
@@ -139,7 +139,7 @@ func slotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"slot": db.ToTimeSlotRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
 }
 
 func slotDelete(w http.ResponseWriter, r *http.Request, slotID string) {
@@ -163,5 +163,5 @@ func slotDelete(w http.ResponseWriter, r *http.Request, slotID string) {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"id": deletedID}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.DeletedSlotEnvelope{ID: deletedID}).Write(w)
 }

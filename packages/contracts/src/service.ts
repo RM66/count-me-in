@@ -7,6 +7,7 @@ import {
   contact,
   displayName,
   durationMinutes,
+  httpUrl,
   location,
   maxSeatsPerBooking,
   priceText,
@@ -60,7 +61,7 @@ function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
 export const createServiceInput = refineOptionsConsistency(
   z.object({
     ...serviceFields,
-    photoUrl: z.url().optional(),
+    photoUrl: httpUrl.optional(),
   }),
 )
 export type CreateServiceInput = z.infer<typeof createServiceInput>
@@ -83,7 +84,7 @@ export const updateServiceInput = refineOptionsConsistency(
       maxSeatsPerBooking,
       options: optionsList.nullable(),
       optionsSelectMode: optionsSelectModeEnum.nullable(),
-      photoUrl: z.url().nullable(), // null = remove cover photo
+      photoUrl: httpUrl.nullable(), // null = remove cover photo
     })
     .partial(),
 )

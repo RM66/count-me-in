@@ -334,6 +334,8 @@ flowchart TD
 
 #### Шаг 3.3. Автоматический тест синхронизации контрактов в CI
 
+> Реализовано иначе (сентябрь 2026, ADR-014): вместо отдельного `scripts/check-contracts.ts` — wire-реестр (`packages/contracts/src/wire.ts`) как манифест, guards внутри `scripts/generate-contracts.ts`, кросс-языковые векторы (`packages/contracts/vectors/`) и golden-тесты, плюс проверка свежести через `git diff --exit-code` в CI.
+
 - **Задача:** Предотвратить рассинхронизацию TypeScript Zod-схем и Go-структур валидации.
 - **Действия:**
   1. Написать скрипт `scripts/check-contracts.ts`, проверяющий совпадение имен полей и правил валидации между `packages/contracts` и `apps/web/internal/contracts`.

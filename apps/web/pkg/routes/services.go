@@ -41,7 +41,7 @@ func servicesList(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		services = append(services, db.ToServiceRecord(row))
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"services": services}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.ServicesEnvelope{Services: services}).Write(w)
 }
 
 func servicesCreate(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +80,7 @@ func servicesCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusCreated, map[string]any{"service": db.ToServiceRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusCreated, contracts.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
 }
 
 // ServiceItem — GET/PUT/DELETE /api/services/{id}, scoped to the
@@ -116,7 +116,7 @@ func serviceGet(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"service": db.ToServiceRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
 }
 
 func servicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
@@ -153,7 +153,7 @@ func servicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"service": db.ToServiceRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
 }
 
 func serviceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
@@ -173,5 +173,5 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"id": deletedID}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.DeletedServiceEnvelope{ID: deletedID}).Write(w)
 }

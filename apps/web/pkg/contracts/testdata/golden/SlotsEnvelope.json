@@ -1,0 +1,14 @@
+{
+  "slots": [
+    {
+      "id": "01930000-0000-7000-8000-000000000002",
+      "serviceId": "demo-yoga",
+      "startsAt": "2026-01-02T03:04:05.000Z",
+      "durationMinutes": 60,
+      "capacity": 10,
+      "bookedCount": 3,
+      "price": "15",
+      "createdAt": "2026-01-02T03:04:05.000Z"
+    }
+  ]
+}

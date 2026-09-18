@@ -29,6 +29,16 @@ export const authTicketResponse = z.object({
 })
 export type AuthTicketResponse = z.infer<typeof authTicketResponse>
 
+/** Identity payload cached in Redis behind an auth ticket (ADR-008). */
+export const authTicketPayload = z.object({
+  messenger: messengerEnum,
+  messengerId,
+  displayName: z.string(),
+  photoUrl: z.string().url().optional(),
+  messengerLogin: z.string().optional(),
+})
+export type AuthTicketPayload = z.infer<typeof authTicketPayload>
+
 /**
  * POST /api/auth/telegram-guest — same widget validation but issues a guest
  * ticket for the booking flow instead of an organizer session.
@@ -59,8 +69,16 @@ export type GuestTicketResponse = z.infer<typeof guestTicketResponse>
  */
 export const LOGIN_LINK_TTL_S = 30 * 24 * 60 * 60
 
+/**
+ * Redis key prefix for login links. Exported separately from
+ * {@link loginLinkKey} because the Go API is code-generated from this file:
+ * the generator interpolates the prefix into `contracts.LoginLinkKey`, so the
+ * two sides cannot drift.
+ */
+export const LOGIN_LINK_KEY_PREFIX = 'auth:login-link:'
+
 export function loginLinkKey(token: string): string {
-  return `auth:login-link:${token}`
+  return `${LOGIN_LINK_KEY_PREFIX}${token}`
 }
 
 /**

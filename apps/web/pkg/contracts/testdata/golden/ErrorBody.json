@@ -1,0 +1,6 @@
+{
+  "error": "Only 4 seats left",
+  "code": "seats_left",
+  "seatsLeft": 4,
+  "maxSeats": 6
+}

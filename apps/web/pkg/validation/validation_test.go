@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -232,5 +233,80 @@ func TestParseStorageInputs(t *testing.T) {
 	_, errs = ParseCreateAvatarUploadInput([]byte(`{"contentType":"image/webp","size":5000000}`))
 	if errs == nil || len(errs.Fields["size"]) == 0 {
 		t.Fatalf("oversized avatar must be rejected, got %+v", errs)
+	}
+}
+
+// Length bounds count UTF-16 code units, like JavaScript String.length and
+// therefore Zod. Counting bytes would reject text the web form accepts.
+func TestStringLengthCountsUTF16CodeUnits(t *testing.T) {
+	cyrillic := strings.Repeat("я", 100) // 200 bytes, 100 code units
+	if msg := DisplayNameRule(cyrillic); msg != "" {
+		t.Fatalf("100-char Cyrillic display name must pass, got %q", msg)
+	}
+	if msg := DisplayNameRule(strings.Repeat("я", 101)); msg == "" {
+		t.Fatal("101-char display name must fail")
+	}
+	// A non-BMP rune is two UTF-16 code units, exactly as in JS.
+	if msg := DisplayNameRule(strings.Repeat("😀", 50)); msg != "" {
+		t.Fatalf("50 emoji (100 code units) must pass, got %q", msg)
+	}
+	if msg := DisplayNameRule(strings.Repeat("😀", 51)); msg == "" {
+		t.Fatal("51 emoji (102 code units) must fail")
+	}
+	if msg := ServiceDescriptionRule(strings.Repeat("я", 2000)); msg != "" {
+		t.Fatalf("2000-char description must pass, got %q", msg)
+	}
+	if msg := ServiceDescriptionRule(strings.Repeat("я", 2001)); msg == "" {
+		t.Fatal("2001-char description must fail")
+	}
+}
+
+func TestParseCreateServiceInputMultibyteBounds(t *testing.T) {
+	title := strings.Repeat("я", 100)
+	description := strings.Repeat("я", 1500) // 3000 bytes, within the 2000-char bound
+	body := `{"title":"` + title + `","description":"` + description +
+		`","defaultPrice":"€20","defaultCapacity":8,"defaultDurationMinutes":60,"maxSeatsPerBooking":2}`
+	out, errs := ParseCreateServiceInput([]byte(body))
+	if errs != nil {
+		t.Fatalf("multi-byte text within the code-unit bounds must parse: %+v", errs)
+	}
+	if out.Title != title || out.Description == nil || *out.Description != description {
+		t.Fatalf("multi-byte text must survive parsing unchanged")
+	}
+
+	tooLong := strings.Repeat("я", 2001)
+	body = `{"title":"ok","description":"` + tooLong +
+		`","defaultPrice":"€20","defaultCapacity":8,"defaultDurationMinutes":60,"maxSeatsPerBooking":2}`
+	if _, errs := ParseCreateServiceInput([]byte(body)); errs == nil || len(errs.Fields["description"]) == 0 {
+		t.Fatalf("over-long description must be rejected, got %+v", errs)
+	}
+}
+
+// Go must accept the same timezone ids as Intl.DateTimeFormat: IANA lookup is
+// case-insensitive, while "Local" is a Go-only name the web side rejects.
+func TestTimezoneRuleCaseInsensitive(t *testing.T) {
+	for _, ok := range []string{"Europe/Belgrade", "europe/belgrade", "UTC", "America/New_York", "america/new_york"} {
+		if msg := TimezoneRule(ok); msg != "" {
+			t.Errorf("timezone %q must be accepted, got %q", ok, msg)
+		}
+	}
+	for _, bad := range []string{"", "Local", "local", "Not/AZone", "Europe/Belgrade/Extra"} {
+		if msg := TimezoneRule(bad); msg == "" {
+			t.Errorf("timezone %q must be rejected", bad)
+		}
+	}
+}
+
+// Pinned to Zod: z.number().int() reports a non-number as "expected number" and
+// a fractional number as "expected int".
+func TestIntTypeErrorWording(t *testing.T) {
+	if got := intTypeError(json.RawMessage(`"two"`)); got != "Invalid input: expected number, received string" {
+		t.Fatalf("string → %q", got)
+	}
+	if got := intTypeError(json.RawMessage(`1.5`)); got != "Invalid input: expected int, received number" {
+		t.Fatalf("fraction → %q", got)
+	}
+	if got := intTypeError(json.RawMessage(`true`)); got != "Invalid input: expected number, received boolean" {
+		t.Fatalf("boolean → %q", got)
 	}
 }

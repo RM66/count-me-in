@@ -6,6 +6,7 @@ import {
   authTicket,
   contact,
   displayName,
+  httpUrl,
   location,
   organizerDescription,
   slug,
@@ -30,6 +31,17 @@ export const registerOrganizerInput = z.object({
   language: appLocaleEnum.optional().default(DEFAULT_LOCALE),
 })
 export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
+
+export const registeredOrganizer = z.object({
+  id: uuid,
+  slug,
+})
+export type RegisteredOrganizer = z.infer<typeof registeredOrganizer>
+
+export const registered = z.object({
+  organizer: registeredOrganizer,
+})
+export type Registered = z.infer<typeof registered>
 
 /** Organizer profile as returned by the API (cabinet). Dates are ISO strings. */
 export const organizerProfile = z.object({
@@ -92,6 +104,16 @@ export const updateOrganizerProfileInput = z.object({
   description: organizerDescription.nullable().optional(),
   location: location.nullable().optional(),
   contact: contact.nullable().optional(),
-  photoUrl: z.url().nullable().optional(), // null = remove avatar
+  photoUrl: httpUrl.nullable().optional(), // null = remove avatar
 })
 export type UpdateOrganizerProfileInput = z.infer<typeof updateOrganizerProfileInput>
+
+/**
+ * Language switcher payload (PATCH /api/organizers/me/language, ADR-011).
+ * Deliberately not part of {@link updateOrganizerProfileInput}: the switcher
+ * owns the `language` column and persists it while signed in.
+ */
+export const updateOrganizerLanguageInput = z.object({
+  language: appLocaleEnum,
+})
+export type UpdateOrganizerLanguageInput = z.infer<typeof updateOrganizerLanguageInput>

@@ -75,7 +75,7 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	// The response is flushed to the socket before the publish so the
 	// guest sees the 201 immediately; the function then stays alive to
 	// finish the (bounded) publish.
-	httpx.JSON(http.StatusCreated, map[string]any{"booking": created}).Write(w)
+	httpx.JSON(http.StatusCreated, contracts.GuestBookingEnvelope{Booking: *created}).Write(w)
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
@@ -112,7 +112,7 @@ func BookingLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bookings, err := db.ListGuestBookings(r.Context(), identity.Messenger, identity.MessengerID)
+	bookings, err := db.ListGuestBookings(r.Context(), string(identity.Messenger), identity.MessengerID)
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
@@ -120,7 +120,7 @@ func BookingLookup(w http.ResponseWriter, r *http.Request) {
 	if bookings == nil {
 		bookings = []contracts.GuestBooking{}
 	}
-	httpx.JSON(http.StatusOK, map[string]any{"bookings": bookings}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.GuestBookingsEnvelope{Bookings: bookings}).Write(w)
 }
 
 // BookingCancel — POST /api/bookings/cancel: the guest cancels via
@@ -168,7 +168,7 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	// publish runs inline after the response is written and before
 	// Handler returns under a bounded context — the guest does not
 	// wait for QStash.
-	httpx.JSON(http.StatusOK, map[string]any{"booking": booking}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.GuestBookingEnvelope{Booking: *booking}).Write(w)
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
@@ -232,7 +232,7 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	// after the response is written and before Handler returns — the
 	// organizer does not wait for QStash. The response is flushed first
 	// so the organizer sees the 200 immediately.
-	httpx.JSON(http.StatusOK, map[string]any{"booking": booking}).Write(w)
+	httpx.JSON(http.StatusOK, contracts.BookingEnvelope{Booking: *booking}).Write(w)
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}

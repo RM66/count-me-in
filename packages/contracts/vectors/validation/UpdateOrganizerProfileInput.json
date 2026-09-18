@@ -1,0 +1,117 @@
+{
+  "cases": [
+    {
+      "body": {},
+      "name": "valid empty",
+      "valid": true
+    },
+    {
+      "body": {
+        "description": null
+      },
+      "name": "valid clear description",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": 123
+      },
+      "fieldErrors": [
+        "name"
+      ],
+      "name": "name wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "slug": 123
+      },
+      "fieldErrors": [
+        "slug"
+      ],
+      "name": "slug wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "timezone": 123
+      },
+      "fieldErrors": [
+        "timezone"
+      ],
+      "name": "timezone wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "description": 123
+      },
+      "fieldErrors": [
+        "description"
+      ],
+      "name": "description wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "location": 123
+      },
+      "fieldErrors": [
+        "location"
+      ],
+      "name": "location wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "contact": 123
+      },
+      "fieldErrors": [
+        "contact"
+      ],
+      "name": "contact wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "photoUrl": 123
+      },
+      "fieldErrors": [
+        "photoUrl"
+      ],
+      "name": "photoUrl wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "location": null
+      },
+      "name": "null location valid",
+      "valid": true
+    },
+    {
+      "body": {
+        "name": null
+      },
+      "fieldErrors": [
+        "name"
+      ],
+      "name": "null name rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "slug": "My-Studio"
+      },
+      "name": "slug uppercase normalizes",
+      "valid": true
+    }
+  ],
+  "schema": "UpdateOrganizerProfileInput"
+}

@@ -4,6 +4,12 @@
 // ({formErrors, fieldErrors}) and are never shown to users verbatim —
 // the API responds with a localized generic plus these details for
 // logs/devtools.
+//
+// Message text tracks Zod's wording where it names a type ("expected
+// number, received string"), so the two sides' logs read the same. One
+// deliberate deviation: an absent required field reports "Required" instead of
+// Zod's "received undefined" — there is no undefined on the wire, and the
+// stable word keeps the Go tests readable.
 package validation
 
 import (
@@ -20,8 +26,10 @@ type Errors struct {
 	Fields map[string][]string `json:"fieldErrors"`
 }
 
+// NewErrors initializes both collections so JSON marshaling matches
+// z.flattenError exactly — "formErrors":[] rather than null.
 func NewErrors() *Errors {
-	return &Errors{Fields: map[string][]string{}}
+	return &Errors{Form: []string{}, Fields: map[string][]string{}}
 }
 
 func (e *Errors) Add(field, msg string) {
@@ -62,6 +70,11 @@ func rawObject(body []byte) (map[string]json.RawMessage, *Errors) {
 	}
 	m := map[string]json.RawMessage{}
 	if err := json.Unmarshal(body, &m); err != nil {
+		// Valid JSON of another kind names the kind, like Zod's safeParse;
+		// only malformed JSON is "Invalid JSON".
+		if json.Valid(body) {
+			return nil, FormErrors("Invalid input: expected object, received " + kindOf(body))
+		}
 		return nil, FormErrors("Invalid JSON")
 	}
 	if m == nil {
@@ -125,6 +138,36 @@ func strValue(e *Errors, m map[string]json.RawMessage, name string, required, tr
 	return v, present
 }
 
+// parseJSONInt accepts integer JSON numbers without routing through float64
+// (which loses precision past 2^53). "1.0" is accepted like Zod's .int()
+// (1.0 === 1 in JS); "1.5" and non-numeric JSON are rejected.
+func parseJSONInt(raw json.RawMessage) (int64, bool) {
+	var num json.Number
+	if err := json.Unmarshal(raw, &num); err != nil {
+		return 0, false
+	}
+	if n, err := num.Int64(); err == nil {
+		return n, true
+	}
+	var f float64
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return 0, false
+	}
+	if f != float64(int64(f)) {
+		return 0, false
+	}
+	return int64(f), true
+}
+
+// intTypeError names the received kind the way Zod's .int() does: a non-number
+// fails the number check, a fractional number fails the int check.
+func intTypeError(raw json.RawMessage) string {
+	if kindOf(raw) == "number" {
+		return "Invalid input: expected int, received number"
+	}
+	return "Invalid input: expected number, received " + kindOf(raw)
+}
+
 func intValue(e *Errors, m map[string]json.RawMessage, name string, required bool, rule func(int64) string) (int64, bool) {
 	raw, present := m[name]
 	if !present {
@@ -137,12 +180,11 @@ func intValue(e *Errors, m map[string]json.RawMessage, name string, required boo
 		e.Add(name, "Invalid input: expected number, received null")
 		return 0, true
 	}
-	var f float64
-	if err := json.Unmarshal(raw, &f); err != nil || f != float64(int64(f)) {
-		e.Add(name, "Invalid input: expected int, received "+kindOf(raw))
+	n, ok := parseJSONInt(raw)
+	if !ok {
+		e.Add(name, intTypeError(raw))
 		return 0, true
 	}
-	n := int64(f)
 	if rule != nil {
 		if msg := rule(n); msg != "" {
 			e.Add(name, msg)
@@ -268,12 +310,11 @@ func optInt(e *Errors, m map[string]json.RawMessage, name string, nullable bool,
 		}
 		return o
 	}
-	var f float64
-	if err := json.Unmarshal(raw, &f); err != nil || f != float64(int64(f)) {
-		e.Add(name, "Invalid input: expected int, received "+kindOf(raw))
+	n, ok := parseJSONInt(raw)
+	if !ok {
+		e.Add(name, intTypeError(raw))
 		return contracts.Optional[int]{}
 	}
-	n := int64(f)
 	if rule != nil {
 		if msg := rule(n); msg != "" {
 			e.Add(name, msg)

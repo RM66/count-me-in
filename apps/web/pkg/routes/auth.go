@@ -61,7 +61,7 @@ func TelegramGuest(w http.ResponseWriter, r *http.Request) {
 
 	httpx.JSON(http.StatusOK, contracts.GuestTicketResponse{
 		Ticket:      ticket,
-		Messenger:   identity.Messenger,
+		Messenger:   contracts.Messenger(identity.Messenger),
 		MessengerID: identity.MessengerID,
 		DisplayName: identity.DisplayName,
 	}).Write(w)

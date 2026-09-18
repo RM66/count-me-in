@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": ["./src/wire.ts"],
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./wire": "./src/wire.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "body": {
+        "manageToken": "manage-token-1234567890"
+      },
+      "name": "valid",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "manageToken": 123
+      },
+      "fieldErrors": [
+        "manageToken"
+      ],
+      "name": "manageToken wrong type",
+      "valid": false
+    }
+  ],
+  "schema": "CancelBookingByTokenInput"
+}
