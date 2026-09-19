@@ -1,12 +1,11 @@
+import { fillRate } from '@repo/contracts'
 import { TicketIcon, TrendingUpIcon, UsersIcon, XCircleIcon } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
-import { computeAnalytics } from '@/app/cabinet/analytics/compute-analytics'
-import { listBookings } from '@/server/db/booking'
-import { listServices } from '@/server/db/service'
+import { getAnalyticsSummary } from '@/server/db/booking'
 import { listSlots } from '@/server/db/time-slot'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
@@ -47,18 +46,29 @@ export default async function AnalyticsPage() {
   const t = await getTranslations('Cabinet.analytics')
   const tcrumbs = await getTranslations('Cabinet.crumbs')
 
-  // Analytics reads the same three lists as the overview and bookings pages —
-  // the cabinet's data wire is one shape, and `computeAnalytics` is a pure
-  // function over those records (ADR-001). Slots are fetched in full rather
-  // than `upcomingOnly` because a booking may sit on a past session and still
-  // has to resolve Booking → TimeSlot → Service to name its service.
-  const [services, slots, bookings] = await Promise.all([
-    listServices(organizerId),
+  // The booking-derived metrics are aggregated in Postgres (Phase 2.2) rather
+  // than loaded into JS memory; slots are still needed for the fill rate,
+  // which reads off the atomic-reserve `bookedCount` column.
+  const [slots, summary] = await Promise.all([
     listSlots(organizerId),
-    listBookings(organizerId),
+    getAnalyticsSummary(organizerId),
   ])
 
-  const summary = computeAnalytics(bookings, slots, services)
+  const now = Date.now()
+  const upcoming = slots.filter((slot) => new Date(slot.startsAt).getTime() >= now)
+  const fillRateValue = fillRate(upcoming)
+  const totalBookingsDelta =
+    summary.prevTotalBookings === 0
+      ? null
+      : (summary.totalBookings - summary.prevTotalBookings) / summary.prevTotalBookings
+  const seatsSoldDelta =
+    summary.prevSeatsSold === 0
+      ? null
+      : (summary.seatsSold - summary.prevSeatsSold) / summary.prevSeatsSold
+  const cancellationRate =
+    summary.windowBookings === 0
+      ? null
+      : Math.round((summary.cancelledInWindow / summary.windowBookings) * 100)
 
   return (
     <>
@@ -75,26 +85,26 @@ export default async function AnalyticsPage() {
           <StatCard
             title={t('totalBookings')}
             value={String(summary.totalBookings)}
-            delta={formatDelta(summary.totalBookingsDelta)}
+            delta={formatDelta(totalBookingsDelta)}
             hint={t('confirmedLast30')}
             icon={TicketIcon}
           />
           <StatCard
             title={t('seatsSold')}
             value={String(summary.seatsSold)}
-            delta={formatDelta(summary.seatsSoldDelta)}
+            delta={formatDelta(seatsSoldDelta)}
             hint={t('confirmedLast30')}
             icon={UsersIcon}
           />
           <StatCard
             title={t('avgFillRate')}
-            value={summary.fillRate === null ? '—' : `${summary.fillRate}%`}
-            hint={t('upcomingSlotsCount', { count: summary.upcomingSlots })}
+            value={fillRateValue === null ? '—' : `${fillRateValue}%`}
+            hint={t('upcomingSlotsCount', { count: upcoming.length })}
             icon={TrendingUpIcon}
           />
           <StatCard
             title={t('cancellations')}
-            value={summary.cancellationRate === null ? '—' : `${summary.cancellationRate}%`}
+            value={cancellationRate === null ? '—' : `${cancellationRate}%`}
             hint={t('bookingsInWindow', { count: summary.windowBookings })}
             icon={XCircleIcon}
           />

@@ -1,9 +1,10 @@
 /** Shared HTTP client utilities for API calls. */
 
-import { ApiError } from './error'
+import { errorBody } from '@repo/contracts'
+import { z } from 'zod'
 
-/** The error-carrier envelope every `4xx` body may have. */
-type ErrorBody = { error?: string; code?: string } & Record<string, unknown>
+import { reportContractViolation, schemaIdOf } from './contract'
+import { ApiError } from './error'
 
 /**
  * Last-resort English fallbacks for responses that carry no server message
@@ -19,50 +20,74 @@ const GET_ERROR_FALLBACK = 'Failed to fetch data'
 const PUT_ERROR_FALLBACK = 'Update failed — try again'
 const DELETE_ERROR_FALLBACK = 'Delete failed — try again'
 
+function throwApiError(data: unknown, status: number, fallback: string): never {
+  const parsed = errorBody.safeParse(data)
+  if (parsed.success) {
+    throw new ApiError(parsed.data.error || fallback, status, parsed.data.code, data as Record<string, unknown>)
+  }
+  throw new ApiError(fallback, status, undefined, data as Record<string, unknown>)
+}
+
+async function readJson(res: Response): Promise<unknown> {
+  return res.json().catch(() => ({}))
+}
+
+// D7: a mismatch is reported (throws in tests, logs in dev, Sentry in prod) and
+// the raw body is handed back, so a contract drift degrades the type rather
+// than the page. The return type is therefore the *input* side of the schema:
+// the value is what the server sent, not what a successful parse would produce.
+function checkContract<S extends z.ZodType>(url: string, schema: S, data: unknown): z.input<S> {
+  const parsed = schema.safeParse(data)
+  if (!parsed.success) {
+    reportContractViolation(url, schemaIdOf(schema), parsed.error)
+  }
+  return data as z.input<S>
+}
+
 /** Generic POST helper with error handling. */
-export async function post<T>(url: string, body: unknown): Promise<T> {
+export async function post<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.input<S>> {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? POST_ERROR_FALLBACK, res.status, data.code, data)
+    throwApiError(await readJson(res), res.status, POST_ERROR_FALLBACK)
   }
-  return data
+  const data: unknown = await readJson(res)
+  return checkContract(url, schema, data)
 }
 
 /** Generic GET helper with error handling. */
-export async function get<T>(url: string): Promise<T> {
+export async function get<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
   const res = await fetch(url)
-  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? GET_ERROR_FALLBACK, res.status, data.code, data)
+    throwApiError(await readJson(res), res.status, GET_ERROR_FALLBACK)
   }
-  return data
+  const data: unknown = await readJson(res)
+  return checkContract(url, schema, data)
 }
 
 /** Generic PUT helper with error handling. */
-export async function put<T>(url: string, body: unknown): Promise<T> {
+export async function put<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.input<S>> {
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? PUT_ERROR_FALLBACK, res.status, data.code, data)
+    throwApiError(await readJson(res), res.status, PUT_ERROR_FALLBACK)
   }
-  return data
+  const data: unknown = await readJson(res)
+  return checkContract(url, schema, data)
 }
 
 /** Generic DELETE helper with error handling. */
-export async function del<T>(url: string): Promise<T> {
+export async function del<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
   const res = await fetch(url, { method: 'DELETE' })
-  const data = (await res.json().catch(() => ({}))) as ErrorBody & T
   if (!res.ok) {
-    throw new ApiError(data.error ?? DELETE_ERROR_FALLBACK, res.status, data.code, data)
+    throwApiError(await readJson(res), res.status, DELETE_ERROR_FALLBACK)
   }
-  return data
+  const data: unknown = await readJson(res)
+  return checkContract(url, schema, data)
 }

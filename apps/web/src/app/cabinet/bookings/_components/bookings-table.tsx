@@ -2,6 +2,7 @@
 
 import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon, SearchIcon } from 'lucide-react'
+import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 
@@ -41,6 +42,10 @@ type BookingsTableProps = {
   activeSlotLabel?: string
   /** Read-only demo account (ADR-010). */
   isReadOnly: boolean
+  /** Current page (1-based) for the pagination controls. */
+  page: number
+  /** Rows per page — the server already sliced `bookings` to this window. */
+  pageSize: number
 }
 
 /**
@@ -60,6 +65,8 @@ export function BookingsTable({
   activeSlotId,
   activeSlotLabel,
   isReadOnly,
+  page,
+  pageSize,
 }: BookingsTableProps) {
   const [selected, setSelected] = useState<BookingRecord | null>(null)
   const t = useTranslations('Cabinet.bookings')
@@ -260,6 +267,30 @@ export function BookingsTable({
         isReadOnly={isReadOnly}
         onOpenChange={(open) => !open && setSelected(null)}
       />
+
+      {/* Pagination (Phase 2.2): the page number lives in the URL so back/forward
+          and deep links keep working. "Next" is shown when this page is full —
+          a full page may still be the last one, so the next click just lands on
+          an empty page, which the table renders as "no bookings found". */}
+      {bookings.length > 0 && (
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="sm" asChild disabled={page <= 1}>
+            <Link href={pageHref(page - 1)}>{t('prevPage')}</Link>
+          </Button>
+          <span className="text-sm text-muted-foreground">{t('pageLabel', { page })}</span>
+          <Button variant="outline" size="sm" asChild disabled={bookings.length < pageSize}>
+            <Link href={pageHref(page + 1)}>{t('nextPage')}</Link>
+          </Button>
+        </div>
+      )}
     </>
   )
+}
+
+/** Build the bookings URL for a given page, preserving the active filters. */
+function pageHref(page: number): string {
+  const params = new URLSearchParams()
+  if (page > 1) params.set('page', String(page))
+  const qs = params.toString()
+  return qs ? `/cabinet/bookings?${qs}` : '/cabinet/bookings'
 }

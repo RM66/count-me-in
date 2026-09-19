@@ -737,7 +737,10 @@
       "bookingsAppear": "Les réservations apparaissent ici dès qu’une personne réserve une place.",
       "noBookingsOnDay": "Aucune réservation le {day}",
       "forServiceSuffix": " pour {service}",
-      "tryFilters": "Essaie de modifier les filtres ou la recherche."
+      "tryFilters": "Essaie de modifier les filtres ou la recherche.",
+      "prevPage": "Précédent",
+      "nextPage": "Suivant",
+      "pageLabel": "Page {page}"
     },
     "analytics": {
       "title": "Statistiques",
@@ -799,6 +802,8 @@
     "partyTooLarge": "Tu peux réserver au maximum {maxSeats, plural, =1 {# place} other {# places}} en une seule réservation",
     "duplicateBooking": "Tu as déjà une réservation pour cette séance",
     "alreadyCancelled": "Cette réservation a déjà été annulée",
-    "slotGone": "Cette séance n’est plus disponible"
+    "slotGone": "Cette séance n’est plus disponible",
+    "tooManyRequests": "Trop de requêtes — réessayez dans un instant",
+    "slotHasActiveBookings": "Cette séance a encore des réservations confirmées — annulez-les avant de la supprimer"
   }
 }

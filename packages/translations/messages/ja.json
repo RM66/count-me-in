@@ -737,7 +737,10 @@
       "bookingsAppear": "参加者が予約すると、すぐにここへ表示されます。",
       "noBookingsOnDay": "{day}に予約はありません",
       "forServiceSuffix": "（{service}）",
-      "tryFilters": "絞り込み条件または検索語を変更してみてください。"
+      "tryFilters": "絞り込み条件または検索語を変更してみてください。",
+      "prevPage": "前へ",
+      "nextPage": "次へ",
+      "pageLabel": "{page}ページ"
     },
     "analytics": {
       "title": "分析",
@@ -799,6 +802,8 @@
     "partyTooLarge": "1回の予約で申し込めるのは最大{maxSeats, plural, =1 {#名} other {#名}}です",
     "duplicateBooking": "この回はすでに予約済みです",
     "alreadyCancelled": "この予約はすでにキャンセルされています",
-    "slotGone": "この回は現在予約できません"
+    "slotGone": "この回は現在予約できません",
+    "tooManyRequests": "リクエストが多すぎます — しばらくしてからもう一度お試しください",
+    "slotHasActiveBookings": "この回にはまだ確定予約があります — 削除する前にキャンセルしてください"
   }
 }

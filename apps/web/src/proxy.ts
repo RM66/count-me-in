@@ -10,20 +10,76 @@
  * root-file convention.
  */
 
-import { auth as proxy } from '@/server/auth'
+import { type NextRequest, NextResponse } from 'next/server'
 
-export { proxy }
+import { auth } from '@/server/auth'
+import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
 
 /**
- * Only the auth pages need middleware: they redirect an already signed-in
- * organizer to the cabinet.
+ * Middleware entry point.
+ *
+ * Two responsibilities:
+ *
+ * 1. **Auth pages** (`/login`, `/signup`): redirect an already signed-in
+ *    organizer to the cabinet. This is the original purpose of this
+ *    middleware.
+ *
+ * 2. **API routes** (`/api/*`, except the Auth.js routes that stay on
+ *    Next.js): mint a short-lived HS256 JWT into the `X-Organizer-Auth`
+ *    header so the Go API can identify the signed-in organizer **without
+ *    decrypting the Auth.js session cookie** (architecture review fix #1).
+ *    The Go API used to hand-roll `@auth/core`'s internal JWE format — a
+ *    coupling that a minor Auth.js upgrade could break silently. This
+ *    middleware already runs on every matched request and already reads
+ *    Auth.js sessions, so it is the natural place to translate the
+ *    session into a stable, self-controlled token.
  *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
- * visitors get the read-only demo, ADR-010), so running the middleware there
- * would decode the JWT on every request just to allow it. Cabinet pages read
- * the session themselves via `auth()` / `resolveCabinetOrganizerId()`, and
- * writes are guarded in the API layer.
+ * visitors get the read-only demo, ADR-010), so running the middleware
+ * there would decode the session on every request just to allow it.
+ * Cabinet pages read the session themselves via `auth()` /
+ * `resolveCabinetOrganizerId()`, and writes are guarded in the API layer.
+ */
+export async function proxy(request: NextRequest): Promise<NextResponse | void> {
+  const { pathname } = request.nextUrl
+
+  // Auth pages: redirect signed-in organizers to the cabinet.
+  if (pathname === '/login' || pathname === '/signup') {
+    const session = await auth()
+    if (session?.user) {
+      return NextResponse.redirect(new URL('/cabinet', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  // API routes: mint the organizer-auth header for the Go API.
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
+    const response = NextResponse.next()
+    const session = await auth()
+    if (session?.user?.id) {
+      const token = await mintOrganizerAuth(session.user.id, session.user.slug)
+      if (token) {
+        response.headers.set(ORGANIZER_AUTH_HEADER, token)
+      }
+    }
+    return response
+  }
+
+  return NextResponse.next()
+}
+
+/**
+ * Match the auth pages (redirect) and the Go-owned API routes (header
+ * minting). The Auth.js routes (`/api/auth/*`) stay on Next.js and need no
+ * organizer-auth header — they are excluded so the middleware does not
+ * run on them.
+ *
+ * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
+ * visitors get the read-only demo, ADR-010), so running the middleware
+ * there would decode the session on every request just to allow it.
+ * Cabinet pages read the session themselves via `auth()` /
+ * `resolveCabinetOrganizerId()`, and writes are guarded in the API layer.
  */
 export const config = {
-  matcher: ['/login', '/signup'],
+  matcher: ['/login', '/signup', '/api/((?!auth/).*)'],
 }

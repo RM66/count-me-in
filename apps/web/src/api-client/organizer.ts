@@ -1,10 +1,7 @@
 'use client'
 
-import type {
-  AvatarUploadTarget,
-  OrganizerProfile,
-  UpdateOrganizerProfileInput,
-} from '@repo/contracts'
+import type { UpdateOrganizerProfileInput } from '@repo/contracts'
+import { imageUploadTarget, organizerEnvelope } from '@repo/contracts'
 import { AVATAR_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -34,7 +31,7 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 export function useCurrentOrganizer() {
   return useQuery({
     queryKey: queryKeys.organizer.me,
-    queryFn: () => get<{ organizer: OrganizerProfile }>('/api/organizers/me'),
+    queryFn: () => get('/api/organizers/me', organizerEnvelope),
     select: (data) => data.organizer,
   })
 }
@@ -59,7 +56,7 @@ export function useUpdateOrganizerProfile() {
 
   return useMutation({
     mutationFn: (input: UpdateOrganizerProfileInput) =>
-      put<{ organizer: OrganizerProfile }>('/api/organizers/me', input),
+      put('/api/organizers/me', input, organizerEnvelope),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.organizer.me, data)
     },
@@ -82,10 +79,14 @@ export function useUploadAvatar() {
         throw new ApiError(COMPRESS_ERROR_FALLBACK, 413)
       }
 
-      const target = await post<AvatarUploadTarget>('/api/organizers/me/avatar', {
-        contentType: image.type,
-        size: image.size,
-      })
+      const target = await post(
+        '/api/organizers/me/avatar',
+        {
+          contentType: image.type,
+          size: image.size,
+        },
+        imageUploadTarget,
+      )
 
       const r2Response = await fetch(target.uploadUrl, {
         method: 'PUT',
@@ -97,9 +98,13 @@ export function useUploadAvatar() {
         throw new ApiError(UPLOAD_ERROR_FALLBACK, r2Response.status)
       }
 
-      return put<{ organizer: OrganizerProfile }>('/api/organizers/me', {
-        photoUrl: target.publicUrl,
-      })
+      return put(
+        '/api/organizers/me',
+        {
+          photoUrl: target.publicUrl,
+        },
+        organizerEnvelope,
+      )
     },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.organizer.me, data)

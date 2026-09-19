@@ -1,11 +1,8 @@
-import { randomBytes } from 'node:crypto'
-import type { AppLocale, BookingRecord, GuestBooking, Messenger } from '@repo/contracts'
-import { buildSelectedOptionsSchema } from '@repo/contracts'
+import type { BookingRecord, GuestBooking } from '@repo/contracts'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { bookings, db, organizers, services, timeSlots } from '@repo/db'
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
 
-import { assertNotDemo } from '../demo'
 import { toPublicOrganizer } from './organizer'
 import { toServiceRecord } from './service'
 import { toTimeSlotRecord } from './time-slot'
@@ -13,43 +10,19 @@ import { toTimeSlotRecord } from './time-slot'
 import 'server-only'
 
 /**
- * Postgres SQLSTATE for a unique constraint violation — the code the
- * `postgres` driver puts on the error when a unique index rejects an insert.
- */
-const UNIQUE_VIOLATION = '23505'
-
-/**
- * Narrow to a Postgres unique violation (`23505`). The `postgres` driver can
- * surface it directly or wrapped in a generic `Error` with the real error in
- * `cause` — both are checked.
- */
-function isUniqueViolation(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false
-
-  if ('code' in error && (error as { code: unknown }).code === UNIQUE_VIOLATION) {
-    return true
-  }
-
-  const cause = (error as { cause?: unknown }).cause
-  return (
-    cause !== null &&
-    typeof cause === 'object' &&
-    'code' in cause &&
-    (cause as { code: unknown }).code === UNIQUE_VIOLATION
-  )
-}
-
-/**
- * Server-side reads, writes and DTO mapping for bookings.
+ * Server-side reads and DTO mapping for bookings.
  *
- * Cabinet pages are server components that query Postgres directly, while the
- * route handlers return the same shape over HTTP — both go through
- * {@link toBookingRecord} so the client only ever sees one contract.
+ * The write paths (create, cancel by token, cancel by owner) moved to
+ * the Go API (`apps/web/pkg/db/booking.go`) together with the
+ * route handlers — this module now serves only the pages that read
+ * Postgres directly: the cabinet tables/analytics and the guest
+ * booking management page.
  *
- * **Ownership is transitive.** There is no `organizerId` on `bookings`: a
- * booking belongs to a slot, the slot to a service, and the service to an
- * organizer (docs/domain.md). Every read here therefore scopes through the
- * parent chain with {@link ownedSlotIds} in the `WHERE` clause.
+ * **Ownership is transitive.** There is no `organizerId` on `bookings`:
+ * a booking belongs to a slot, the slot to a service, and the service
+ * to an organizer (docs/domain.md). Every read here therefore scopes
+ * through the parent chain with {@link ownedSlotIds} in the `WHERE`
+ * clause.
  *
  * **Two audiences, two DTOs.** {@link toBookingRecord} is the organizer's view
  * and drops `manageToken`; {@link toGuestBooking} is the guest's own booking
@@ -92,7 +65,7 @@ export function toBookingRecord(row: Booking): BookingRecord {
 /**
  * Normalize a booking and its parent chain into the **guest's** DTO.
  * Keeps `manageToken` — this shape is only ever returned to the guest who owns
- * the booking, identified either by that token or by a server-validated ticket.
+ * the booking, identified by that token.
  */
 export function toGuestBooking(row: {
   booking: Booking
@@ -138,13 +111,24 @@ function guestBookingQuery() {
  * Cancelled bookings are included — the cabinet table filters by status
  * client-side, and hiding them here would make a guest's cancellation look
  * like data loss.
+ *
+ * Paginated: `limit` (default 50) rows per page, `offset` for the page. The
+ * cabinet table renders one page at a time rather than loading the whole
+ * history into memory (Phase 2.2).
  */
-export async function listBookings(organizerId: string): Promise<BookingRecord[]> {
+export async function listBookings(
+  organizerId: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<BookingRecord[]> {
+  const limit = options.limit ?? 50
+  const offset = options.offset ?? 0
   const rows = await db
     .select()
     .from(bookings)
     .where(inArray(bookings.timeSlotId, ownedSlotIds(organizerId)))
     .orderBy(desc(bookings.createdAt))
+    .limit(limit)
+    .offset(offset)
 
   return rows.map(toBookingRecord)
 }
@@ -169,8 +153,6 @@ export async function countConfirmedBookings(
   return Object.fromEntries(rows.map((row) => [row.serviceId, Number(row.total)]))
 }
 
-// ── Guest-facing reads ───────────────────────────────────────────────────────
-
 /**
  * One booking by its `manageToken` — the deep link in the messenger message
  * (ADR-002, entry path 1). The token *is* the authorization: it was delivered
@@ -184,336 +166,128 @@ export async function getGuestBookingByToken(token: string): Promise<GuestBookin
 }
 
 /**
- * Every booking of one messenger identity, newest first (ADR-002, entry path 2).
- * The identity comes from a server-validated ticket, never from client input
- * (invariant 8). Cancelled bookings are included: a guest looking for "my
- * bookings" is often checking whether a cancellation went through.
+ * The raw analytics aggregates the cabinet page needs, computed in Postgres
+ * rather than in JS memory (Phase 2.2). All windows are rolling relative to
+ * `now` so the page stays correct at any hour of any day.
+ *
+ * Ownership is enforced by the same `ownedSlotIds` subquery as every other
+ * read here — a booking reaches its service transitively, so the aggregate
+ * joins through the slot.
  */
-export async function listGuestBookings(
-  messenger: Messenger,
-  messengerId: string,
-): Promise<GuestBooking[]> {
-  const rows = await guestBookingQuery()
-    .where(and(eq(bookings.guestMessenger, messenger), eq(bookings.guestMessengerId, messengerId)))
-    .orderBy(desc(bookings.createdAt))
-
-  return rows.map(toGuestBooking)
+export interface AnalyticsAggregates {
+  /** Confirmed bookings created in the last 30 days. */
+  totalBookings: number
+  /** Confirmed bookings created in the previous 30-day window. */
+  prevTotalBookings: number
+  /** Seats from confirmed bookings created in the last 30 days. */
+  seatsSold: number
+  /** Seats from confirmed bookings created in the previous 30-day window. */
+  prevSeatsSold: number
+  /** Total bookings (any status) in the last 30 days. */
+  windowBookings: number
+  /** Cancelled bookings in the last 30 days. */
+  cancelledInWindow: number
+  /** Per-day confirmed bookings/seats for the last 7 days (UTC date key). */
+  trend: { day: string; bookings: number; seats: number }[]
+  /** Per-service confirmed bookings in the window (service title → count). */
+  byService: { service: string; bookings: number }[]
 }
 
-// ── Guest-facing writes ──────────────────────────────────────────────────────
-//
-// **Notifications are enqueued inside these transactions**, never after them:
-// a job published post-commit can be lost if the process dies in between, and
-// one published pre-commit on its own connection can notify about a booking
-// that then rolls back. `lib/server/queue.ts` routes the insert through the
-// caller's `tx` so the job and the row share a fate (ADR-004).
-//
-// Demo bookings never reach the queue: `assertNotDemo` runs before the write in
-// every path below (ADR-010).
-
-/** Raised when the slot no longer has room for the requested seats. */
-export class SlotSoldOutError extends Error {
-  constructor(readonly seatsLeft: number) {
-    super(
-      seatsLeft === 0
-        ? 'This session is fully booked'
-        : `Only ${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left on this session`,
-    )
-    this.name = 'SlotSoldOutError'
-  }
-}
-
-/** Raised when the requested slot does not exist, or not under the given service. */
-export class SlotNotBookableError extends Error {
-  constructor(message = 'This session is no longer available') {
-    super(message)
-    this.name = 'SlotNotBookableError'
-  }
-}
-
-/** Raised when `selectedOptions` is not a valid selection for the service (invariant 6). */
-export class InvalidOptionSelectionError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'InvalidOptionSelectionError'
-  }
-}
+const WINDOW_DAYS = 30
+const TREND_DAYS = 7
 
 /**
- * Raised when a booking requests more seats than the service allows one guest
- * to claim at once (`services.maxSeatsPerBooking`). This is the organizer's
- * per-booking cap — distinct from {@link SlotSoldOutError}, which is about the
- * slot running out of room. Checked server-side so a crafted request cannot
- * bypass the stepper's client-side limit.
+ * Aggregate an organizer's bookings in Postgres. The headline counts and the
+ * per-service breakdown are one grouped query; the 7-day trend is a second
+ * grouped query. Both scope through `ownedSlotIds`, so an organizer can only
+ * ever see their own data.
  */
-export class PartyTooLargeError extends Error {
-  constructor(readonly maxSeats: number) {
-    super(
-      `You can book at most ${maxSeats} ${maxSeats === 1 ? 'seat' : 'seats'} in a single booking`,
-    )
-    this.name = 'PartyTooLargeError'
-  }
-}
+export async function getAnalyticsSummary(
+  organizerId: string,
+  now: Date = new Date(),
+): Promise<AnalyticsAggregates> {
+  const windowStart = new Date(now.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const prevWindowStart = new Date(now.getTime() - 2 * WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const trendStart = new Date(now.getTime() - TREND_DAYS * 24 * 60 * 60 * 1000)
 
-/** Raised when a booking is already `cancelled` and cancel is called again. */
-export class BookingAlreadyCancelledError extends Error {
-  constructor() {
-    super('This booking has already been cancelled')
-    this.name = 'BookingAlreadyCancelledError'
-  }
-}
+  const owned = ownedSlotIds(organizerId)
 
-/**
- * Raised when the guest already has a `confirmed` booking on the same slot.
- * The partial unique index (`WHERE status = 'confirmed'`) rejects the second
- * INSERT with a `23505`; this class lets the route handler answer `409`.
- * Cancelling and re-booking is allowed — only a second active booking is refused.
- */
-export class DuplicateBookingError extends Error {
-  constructor() {
-    super('You already have a booking for this session')
-    this.name = 'DuplicateBookingError'
-  }
-}
-
-/**
- * Bytes of entropy behind a `manageToken`.
- * The token is the only credential guarding `/booking/{manageToken}`, so it is
- * sized to be unguessable rather than short — it is never typed by hand.
- */
-const MANAGE_TOKEN_BYTES = 32
-
-/**
- * Fresh `manageToken` for a new booking.
- * Generated here rather than accepted as a parameter: a caller that forgot it,
- * or derived it from something predictable, would hand out the ability to cancel
- * someone else's booking.
- *
- * MVP stores it as-is, matching the demo seed (`packages/db/src/seed/demo.ts`);
- * docs/domain.md calls for hashing at rest, which is a follow-up.
- */
-function newManageToken(): string {
-  return randomBytes(MANAGE_TOKEN_BYTES).toString('base64url')
-}
-
-/**
- * Reserve seats and insert the `confirmed` booking — the guest booking flow's
- * one write (invariant 2 in docs/domain.md).
- *
- * The seat claim is a **single conditional UPDATE**:
- *
- * ```sql
- * UPDATE time_slots SET booked_count = booked_count + :seats
- * WHERE id = :id AND booked_count + :seats <= capacity
- * ```
- *
- * Postgres evaluates the predicate against the row it locks, so two concurrent
- * bookings for the last seat cannot both succeed — one updates no row and is
- * refused. Reading `bookedCount`, comparing it in JS and writing it back would
- * reopen exactly that race.
- *
- * The booking row is inserted **only** if that statement affected a row, and
- * both live in one transaction: a claimed seat with no booking would be capacity
- * lost forever, and a booking with no claim is an overbooking.
- *
- * A duplicate (same guest, same slot, already `confirmed`) is caught at the
- * INSERT by the partial unique index (invariant 4). The transaction rolls back,
- * releasing the claimed seat, and the `23505` is rethrown as a
- * {@link DuplicateBookingError} for a `409`.
- */
-export async function createGuestBooking(input: {
-  serviceId: string
-  timeSlotId: string
-  seats: number
-  guestName: string
-  selectedOptions?: string[]
-  /** The locale the guest's confirmation message is rendered in (ADR-011). */
-  guestLocale: AppLocale
-  guest: { messenger: Messenger; messengerId: string; messengerLogin?: string }
-}): Promise<GuestBooking> {
-  return db.transaction(async (tx) => {
-    const [target] = await tx
-      .select({ slot: timeSlots, service: services, organizer: organizers })
-      .from(timeSlots)
-      .innerJoin(services, eq(timeSlots.serviceId, services.id))
-      .innerJoin(organizers, eq(services.organizerId, organizers.id))
-      .where(and(eq(timeSlots.id, input.timeSlotId), eq(services.id, input.serviceId)))
-      .limit(1)
-
-    if (!target) {
-      throw new SlotNotBookableError()
-    }
-
-    assertNotDemo(target.organizer.id)
-
-    const options = buildSelectedOptionsSchema(target.service).safeParse(input.selectedOptions)
-    if (!options.success) {
-      throw new InvalidOptionSelectionError(
-        options.error.issues[0]?.message ?? 'Invalid option selection',
-      )
-    }
-
-    // Organizer's per-booking cap. Enforced before the atomic reserve so an
-    // oversized party is refused outright rather than competing for seats.
-    // `seatsLeft` (below) still governs whether an allowed party actually fits.
-    if (input.seats > target.service.maxSeatsPerBooking) {
-      throw new PartyTooLargeError(target.service.maxSeatsPerBooking)
-    }
-
-    const [claimed] = await tx
-      .update(timeSlots)
-      .set({ bookedCount: sql`${timeSlots.bookedCount} + ${input.seats}` })
-      .where(
-        and(
-          eq(timeSlots.id, input.timeSlotId),
-          sql`${timeSlots.bookedCount} + ${input.seats} <= ${timeSlots.capacity}`,
-        ),
-      )
-      .returning()
-
-    if (!claimed) {
-      throw new SlotSoldOutError(Math.max(0, target.slot.capacity - target.slot.bookedCount))
-    }
-
-    let created: typeof bookings.$inferSelect
-    try {
-      const [row] = await tx
-        .insert(bookings)
-        .values({
-          timeSlotId: claimed.id,
-          status: 'confirmed',
-          seats: input.seats,
-          guestName: input.guestName,
-          guestMessenger: input.guest.messenger,
-          guestMessengerId: input.guest.messengerId,
-          guestMessengerLogin: input.guest.messengerLogin ?? null,
-          guestLocale: input.guestLocale,
-          manageToken: newManageToken(),
-          selectedOptions: options.data,
-        })
-        .returning()
-
-      if (!row) {
-        throw new SlotNotBookableError('Could not create the booking — try again')
-      }
-      created = row
-    } catch (error) {
-      // Duplicate booking — the transaction rolls back, releasing the claimed seat.
-      if (isUniqueViolation(error)) {
-        throw new DuplicateBookingError()
-      }
-      throw error
-    }
-
-    return toGuestBooking({
-      booking: created,
-      slot: claimed,
-      service: target.service,
-      organizer: target.organizer,
-    })
-  })
-}
-
-/**
- * Cancel a booking by its `manageToken` and release its seats (ADR-002).
- * Status flip and `bookedCount` decrement happen in one transaction — invariant
- * 1 says the counter equals the seats held by `confirmed` bookings, so a
- * cancellation that updated only one of the two would break it.
- *
- * The `status = 'confirmed'` predicate is what makes this idempotent under a
- * double-tap: the second call updates no row and is reported as already
- * cancelled instead of decrementing the counter twice.
- *
- * Returns `null` for an unknown token, so the caller answers `404` without
- * confirming whether the token exists.
- */
-export async function cancelGuestBookingByToken(token: string): Promise<GuestBooking | null> {
-  return db.transaction(async (tx) => {
-    const [target] = await tx
-      .select({ booking: bookings, slot: timeSlots, service: services, organizer: organizers })
+  // Headline counts + per-service breakdown in one pass over the window.
+  const [headline, byServiceRows, trendRows] = await Promise.all([
+    db
+      .select({
+        totalBookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${windowStart})`,
+        prevTotalBookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${prevWindowStart} and ${bookings.createdAt} < ${windowStart})`,
+        seatsSold: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${windowStart}), 0)`,
+        prevSeatsSold: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${prevWindowStart} and ${bookings.createdAt} < ${windowStart}), 0)`,
+        windowBookings: sql<number>`count(*) filter (where ${bookings.createdAt} >= ${windowStart})`,
+        cancelledInWindow: sql<number>`count(*) filter (where ${bookings.status} = 'cancelled' and ${bookings.createdAt} >= ${windowStart})`,
+      })
+      .from(bookings)
+      .where(inArray(bookings.timeSlotId, owned)),
+    db
+      .select({
+        service: services.title,
+        bookings: sql<number>`count(*)`,
+      })
       .from(bookings)
       .innerJoin(timeSlots, eq(bookings.timeSlotId, timeSlots.id))
       .innerJoin(services, eq(timeSlots.serviceId, services.id))
-      .innerJoin(organizers, eq(services.organizerId, organizers.id))
-      .where(eq(bookings.manageToken, token))
-      .limit(1)
-
-    if (!target) return null
-
-    assertNotDemo(target.organizer.id)
-
-    const [cancelled] = await tx
-      .update(bookings)
-      .set({ status: 'cancelled' })
-      .where(and(eq(bookings.id, target.booking.id), eq(bookings.status, 'confirmed')))
-      .returning()
-
-    if (!cancelled) {
-      throw new BookingAlreadyCancelledError()
-    }
-
-    const [released] = await tx
-      .update(timeSlots)
-      .set({
-        bookedCount: sql`greatest(0, ${timeSlots.bookedCount} - ${cancelled.seats})`,
-      })
-      .where(eq(timeSlots.id, cancelled.timeSlotId))
-      .returning()
-
-    return toGuestBooking({
-      booking: cancelled,
-      slot: released ?? target.slot,
-      service: target.service,
-      organizer: target.organizer,
-    })
-  })
-}
-
-// ── Organizer-facing writes ──────────────────────────────────────────────────
-
-/**
- * Cancel a booking **scoped to its owner** and release its seats.
- * The cabinet counterpart of {@link cancelGuestBookingByToken}: same state
- * transition and the same seat release, reached by a different credential. The
- * guest proves ownership with a `manageToken`; the organizer proves it by
- * owning the service the booking hangs off, so the id is scoped through
- * {@link ownedSlotIds} in the `WHERE` clause.
- *
- * Returns the organizer's DTO, not the guest's: {@link toBookingRecord} drops
- * `manageToken`, which the cabinet must never receive even as a side effect.
- */
-export async function cancelOwnedBooking(
-  organizerId: string,
-  bookingId: string,
-): Promise<BookingRecord | null> {
-  assertNotDemo(organizerId)
-
-  return db.transaction(async (tx) => {
-    const [target] = await tx
-      .select()
-      .from(bookings)
       .where(
-        and(eq(bookings.id, bookingId), inArray(bookings.timeSlotId, ownedSlotIds(organizerId))),
+        and(
+          inArray(bookings.timeSlotId, owned),
+          eq(bookings.status, 'confirmed'),
+          sql`${bookings.createdAt} >= ${windowStart}`,
+        ),
       )
-      .limit(1)
+      .groupBy(services.title),
+    db
+      .select({
+        day: sql<string>`to_char(${bookings.createdAt}, 'YYYY-MM-DD')`,
+        bookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed')`,
+        seats: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed'), 0)`,
+      })
+      .from(bookings)
+      .where(and(inArray(bookings.timeSlotId, owned), sql`${bookings.createdAt} >= ${trendStart}`))
+      .groupBy(sql`to_char(${bookings.createdAt}, 'YYYY-MM-DD')`),
+  ])
 
-    if (!target) return null
+  const byService = byServiceRows
+    .map((row) => ({ service: row.service, bookings: Number(row.bookings) }))
+    .sort((a, b) => b.bookings - a.bookings)
 
-    const [cancelled] = await tx
-      .update(bookings)
-      .set({ status: 'cancelled' })
-      .where(and(eq(bookings.id, target.id), eq(bookings.status, 'confirmed')))
-      .returning()
+  // Fill the 7-day trend with zeroed buckets so the chart always has a point
+  // per day even when nothing was booked.
+  const byDay = new Map(trendRows.map((row) => [row.day, row]))
+  const trend: AnalyticsAggregates['trend'] = []
+  for (let i = TREND_DAYS - 1; i >= 0; i--) {
+    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+    const key = date.toISOString().slice(0, 10)
+    const row = byDay.get(key)
+    trend.push({
+      day: date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+      bookings: row ? Number(row.bookings) : 0,
+      seats: row ? Number(row.seats) : 0,
+    })
+  }
 
-    if (!cancelled) {
-      throw new BookingAlreadyCancelledError()
-    }
+  const h = headline[0] ?? {
+    totalBookings: 0,
+    prevTotalBookings: 0,
+    seatsSold: 0,
+    prevSeatsSold: 0,
+    windowBookings: 0,
+    cancelledInWindow: 0,
+  }
 
-    await tx
-      .update(timeSlots)
-      .set({ bookedCount: sql`greatest(0, ${timeSlots.bookedCount} - ${cancelled.seats})` })
-      .where(eq(timeSlots.id, cancelled.timeSlotId))
-
-    return toBookingRecord(cancelled)
-  })
+  return {
+    totalBookings: Number(h.totalBookings),
+    prevTotalBookings: Number(h.prevTotalBookings),
+    seatsSold: Number(h.seatsSold),
+    prevSeatsSold: Number(h.prevSeatsSold),
+    windowBookings: Number(h.windowBookings),
+    cancelledInWindow: Number(h.cancelledInWindow),
+    trend,
+    byService,
+  }
 }

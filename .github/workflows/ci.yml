@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, check-types, test]
+        task: [lint, check-types, test, check:api-routes]
     steps:
       - uses: actions/checkout@v5
 
@@ -32,6 +32,14 @@ jobs:
         with:
           # Keep in sync with "packageManager" in package.json.
           bun-version: 1.3.14
+
+      - name: Set up Go
+        if: matrix.task == 'test'
+        uses: actions/setup-go@v5
+        with:
+          # Keep in sync with "go" in apps/web/go.mod.
+          go-version: '1.24'
+          cache-dependency-path: apps/web/go.sum
 
       - name: Cache turbo
         uses: actions/cache@v4
@@ -44,6 +52,51 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - run: bun run ${{ matrix.task }}
+
+  # The Go API is a separate module with its own toolchain. scripts/build.sh
+  # runs the whole verification set: build + vet + unit tests, per-file builds
+  # of the Vercel entry points (bracket route dirs cannot appear in a ./...
+  # pattern), and gofmt. Translation copy is generated from
+  # packages/translations by scripts/generate-i18n-go.ts; the step below
+  # regenerates it and fails if the committed copy is stale.
+  go-api:
+    name: Go API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Keep in sync with "go" in apps/go.mod.
+          go-version: '1.24'
+          cache-dependency-path: apps/web/go.sum
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Keep in sync with "packageManager" in package.json.
+          bun-version: 1.3.14
+
+      - name: Install JS dependencies
+        # generate:contracts imports zod/yaml/@repo/contracts — node_modules
+        # must exist explicitly, not via Bun's implicit auto-install.
+        run: bun install --frozen-lockfile
+
+      - name: Generate Go translations
+        working-directory: apps/web
+        run: bun run generate:i18n
+
+      - name: Generate Go contracts & OpenAPI
+        working-directory: apps/web
+        run: bun run generate:contracts
+
+      - name: Check for uncommitted generated changes
+        run: git diff --exit-code apps/web/pkg/i18n/translations_gen.go apps/web/pkg/contracts/contracts_gen.go apps/web/pkg/validation/validation_gen.go apps/web/openapi.yaml
+
+      - name: Build, vet, test
+        working-directory: apps/web
+        run: sh scripts/build-go.sh
 
   # Apply DB migrations only on the production deploy trigger (push to main),
   # after all checks pass. Running them in the Vercel build command would be

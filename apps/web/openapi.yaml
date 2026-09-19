@@ -1,0 +1,1739 @@
+openapi: 3.1.0
+info:
+  title: CountMeIn API
+  description: API for group booking, organizer cabinet management, and notifications.
+  version: 1.0.0+506c952d8deb
+servers:
+  - url: https://countmein.group
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /api/auth/telegram-guest:
+    post:
+      summary: Verify Telegram login widget data and mint a single-use guest ticket
+      operationId: telegramGuest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramWidgetPayload"
+      responses:
+        "200":
+          description: Guest ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestTicketResponse"
+        "400":
+          description: Malformed widget payload or failed HMAC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Telegram bot is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/auth/telegram-signup:
+    post:
+      summary: Verify Telegram login widget data and mint an organizer signup ticket
+      operationId: telegramSignup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramWidgetPayload"
+      responses:
+        "200":
+          description: Auth ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTicketResponse"
+        "400":
+          description: Malformed widget payload or failed HMAC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Telegram bot is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /api/organizers:
+    post:
+      summary: Register a new organizer using an auth ticket
+      operationId: registerOrganizer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterOrganizerInput"
+      responses:
+        "201":
+          description: Organizer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registered"
+        "400":
+          description: Validation error (field issues)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidIssuesBody"
+        "401":
+          description: Auth ticket expired or unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Slug taken, or an account already exists for this identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/organizers/me:
+    get:
+      summary: Get the organizer this request may view (demo when anonymous)
+      operationId: getMyProfile
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Organizer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEnvelope"
+        "404":
+          description: Organizer not found, or the demo seed has not run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+    put:
+      summary: Update organizer profile
+      operationId: updateMyProfile
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizerProfileInput"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/organizers/me/language:
+    patch:
+      summary: Update organizer notification language
+      operationId: updateMyLanguage
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizerLanguageInput"
+      responses:
+        "204":
+          description: Language updated
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/organizers/me/avatar:
+    post:
+      summary: Mint a signed upload URL for an avatar image
+      operationId: createAvatarUploadTarget
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAvatarUploadInput"
+      responses:
+        "200":
+          description: Signed upload target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadTarget"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/organizers/me/service-photo:
+    post:
+      summary: Mint a signed upload URL for a service cover photo
+      operationId: createServicePhotoUploadTarget
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServicePhotoUploadInput"
+      responses:
+        "200":
+          description: Signed upload target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadTarget"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/services:
+    get:
+      summary: List the services of the organizer this request may view
+      operationId: listServices
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicesEnvelope"
+        "500":
+          description: Internal error
+    post:
+      summary: Create a service
+      operationId: createService
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceInput"
+      responses:
+        "201":
+          description: Service created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEnvelope"
+        "400":
+          description: Validation error, or photoUrl outside the organizer media prefix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/services/{id}:
+    get:
+      summary: Get one service owned by the organizer this request may view
+      operationId: getService
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+      responses:
+        "200":
+          description: Service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEnvelope"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+    put:
+      summary: Update a service
+      operationId: updateService
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServiceInput"
+      responses:
+        "200":
+          description: Service updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceEnvelope"
+        "400":
+          description: Validation error, nothing to update, or photoUrl outside the
+            organizer media prefix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+    delete:
+      summary: Delete a service; slots and bookings cascade
+      operationId: deleteService
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+      responses:
+        "200":
+          description: Service deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedServiceEnvelope"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/slots:
+    get:
+      summary: List slots across every service of the organizer this request may view
+      operationId: listSlots
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: upcoming
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - "1"
+          description: When "1", slots that have already started are omitted.
+      responses:
+        "200":
+          description: Slots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotsEnvelope"
+        "500":
+          description: Internal error
+    post:
+      summary: Create a time slot under one of the organizer's services
+      operationId: createSlot
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTimeSlotInput"
+      responses:
+        "201":
+          description: Slot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Service not found or not owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/slots/{id}:
+    get:
+      summary: Get one slot owned by the organizer this request may view
+      operationId: getSlot
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotEnvelope"
+        "404":
+          description: Slot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+    put:
+      summary: Update a time slot; bookedCount is never writable
+      operationId: updateSlot
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTimeSlotInput"
+      responses:
+        "200":
+          description: Slot updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotEnvelope"
+        "400":
+          description: Validation error or nothing to update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Slot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Capacity below the seats already booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+    delete:
+      summary: Delete a time slot
+      operationId: deleteSlot
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Slot deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedSlotEnvelope"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Slot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Slot still has confirmed bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/bookings:
+    post:
+      summary: Guest creates a booking (atomic reserve)
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingInput"
+      responses:
+        "201":
+          description: Booking confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBookingEnvelope"
+        "400":
+          description: Validation error, invalid option selection, or party over the
+            per-booking cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "401":
+          description: Guest ticket expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Slot or service no longer bookable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Sold out, capacity exceeded, or duplicate booking (one active
+            booking per guest per slot)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/bookings/lookup:
+    post:
+      summary: Look up a guest's bookings with a single-use ticket
+      operationId: lookupBookings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupBookingsInput"
+      responses:
+        "200":
+          description: Guest bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBookingsEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "401":
+          description: Guest ticket expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/bookings/cancel:
+    post:
+      summary: Guest cancels a booking via manageToken
+      operationId: cancelBookingByToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelBookingByTokenInput"
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBookingEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Booking not found (also the answer for an unknown token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/bookings/cancel-by-organizer:
+    post:
+      summary: Organizer cancels a booking on one of their own services
+      operationId: cancelBookingByOrganizer
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelBookingByOrganizerInput"
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "403":
+          description: Demo account is read-only, or the caller has no session (ADR-010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Booking not found or not on a service owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/jobs/{queue}:
+    post:
+      summary: Upstash QStash webhook consumer
+      operationId: runJob
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - booking.created
+              - booking.cancelled
+              - demo.refresh
+              - notification.outbox.sweep
+      responses:
+        "200":
+          description: Job succeeded (including an unreachable recipient — no retry)
+        "400":
+          description: Malformed payload — retrying would resend the same bytes
+        "401":
+          description: Missing or invalid upstash-signature
+        "404":
+          description: Unknown queue name
+        "500":
+          description: Handler failure (triggers a QStash retry)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/BookingCreatedJob"
+                - $ref: "#/components/schemas/BookingCancelledJob"
+                - type: object
+                  description: demo.refresh carries no payload
+x-internal:
+  - $ref: "#/components/schemas/AuthTicketPayload"
+  - $ref: "#/components/schemas/LoginLinkPayload"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Secure-authjs.session-token
+      description: "Auth.js session cookie: `__Secure-authjs.session-token` in
+        production, `authjs.session-token` in local development."
+  schemas:
+    AppLocale:
+      type: string
+      enum:
+        - en
+        - de
+        - es
+        - fr
+        - pt
+        - ru
+        - ar
+        - ja
+    AuthTicket:
+      type: string
+      minLength: 20
+      maxLength: 200
+    AuthTicketPayload:
+      type: object
+      properties:
+        messenger:
+          $ref: "#/components/schemas/Messenger"
+        messengerId:
+          $ref: "#/components/schemas/MessengerID"
+        displayName:
+          type: string
+        photoUrl:
+          type: string
+          format: uri
+        messengerLogin:
+          type: string
+      required:
+        - messenger
+        - messengerId
+        - displayName
+    AuthTicketResponse:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/AuthTicket"
+        organizerExists:
+          type: boolean
+      required:
+        - ticket
+        - organizerExists
+    AvatarUploadSize:
+      type: integer
+      minimum: 1
+      maximum: 1048576
+    BookingCancelledJob:
+      type: object
+      properties:
+        bookingId:
+          $ref: "#/components/schemas/UUID"
+        cancelledBy:
+          $ref: "#/components/schemas/CancelActor"
+      required:
+        - bookingId
+        - cancelledBy
+    BookingCreatedJob:
+      type: object
+      properties:
+        bookingId:
+          $ref: "#/components/schemas/UUID"
+        recipient:
+          $ref: "#/components/schemas/NotificationRecipient"
+      required:
+        - bookingId
+        - recipient
+    BookingEnvelope:
+      type: object
+      properties:
+        booking:
+          $ref: "#/components/schemas/BookingRecord"
+      required:
+        - booking
+    BookingRecord:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        timeSlotId:
+          $ref: "#/components/schemas/UUID"
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+        seats:
+          $ref: "#/components/schemas/Seats"
+        guestName:
+          $ref: "#/components/schemas/DisplayName"
+        guestMessenger:
+          $ref: "#/components/schemas/Messenger"
+        guestMessengerId:
+          type: string
+        guestMessengerLogin:
+          anyOf:
+            - type: string
+            - type: "null"
+        selectedOptions:
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
+        createdAt:
+          type: string
+      required:
+        - id
+        - timeSlotId
+        - status
+        - seats
+        - guestName
+        - guestMessenger
+        - guestMessengerId
+        - guestMessengerLogin
+        - selectedOptions
+        - createdAt
+    BookingStatus:
+      type: string
+      enum:
+        - confirmed
+        - cancelled
+    CancelActor:
+      type: string
+      enum:
+        - guest
+        - organizer
+    CancelBookingByOrganizerInput:
+      type: object
+      properties:
+        bookingId:
+          $ref: "#/components/schemas/UUID"
+      required:
+        - bookingId
+    CancelBookingByTokenInput:
+      type: object
+      properties:
+        manageToken:
+          $ref: "#/components/schemas/ManageToken"
+      required:
+        - manageToken
+    Capacity:
+      type: integer
+      minimum: 1
+      maximum: 100000
+    Contact:
+      type: string
+      minLength: 1
+      maxLength: 300
+    CreateAvatarUploadInput:
+      type: object
+      properties:
+        contentType:
+          $ref: "#/components/schemas/ImageContentType"
+        size:
+          $ref: "#/components/schemas/AvatarUploadSize"
+      required:
+        - contentType
+        - size
+    CreateBookingInput:
+      type: object
+      properties:
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+        timeSlotId:
+          $ref: "#/components/schemas/UUID"
+        seats:
+          $ref: "#/components/schemas/Seats"
+        guestName:
+          $ref: "#/components/schemas/DisplayName"
+        guestTicket:
+          $ref: "#/components/schemas/AuthTicket"
+        selectedOptions:
+          $ref: "#/components/schemas/SelectedOptions"
+        guestLocale:
+          default: en
+          $ref: "#/components/schemas/AppLocale"
+      required:
+        - serviceId
+        - timeSlotId
+        - seats
+        - guestName
+        - guestTicket
+    CreateServiceInput:
+      type: object
+      properties:
+        title:
+          $ref: "#/components/schemas/DisplayName"
+        description:
+          $ref: "#/components/schemas/ServiceDescription"
+        location:
+          $ref: "#/components/schemas/Location"
+        contact:
+          $ref: "#/components/schemas/Contact"
+        defaultPrice:
+          $ref: "#/components/schemas/PriceText"
+        defaultCapacity:
+          $ref: "#/components/schemas/Capacity"
+        defaultDurationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        maxSeatsPerBooking:
+          $ref: "#/components/schemas/MaxSeatsPerBooking"
+        options:
+          $ref: "#/components/schemas/OptionsList"
+        optionsSelectMode:
+          $ref: "#/components/schemas/OptionsSelectMode"
+        photoUrl:
+          $ref: "#/components/schemas/URL"
+      required:
+        - title
+        - defaultPrice
+        - defaultCapacity
+        - defaultDurationMinutes
+        - maxSeatsPerBooking
+    CreateServicePhotoUploadInput:
+      type: object
+      properties:
+        contentType:
+          $ref: "#/components/schemas/ImageContentType"
+        size:
+          $ref: "#/components/schemas/ServicePhotoUploadSize"
+      required:
+        - contentType
+        - size
+    CreateTimeSlotInput:
+      type: object
+      properties:
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+        startsAt:
+          $ref: "#/components/schemas/SlotStartsAt"
+        durationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        capacity:
+          $ref: "#/components/schemas/Capacity"
+        price:
+          $ref: "#/components/schemas/PriceText"
+      required:
+        - serviceId
+        - startsAt
+        - durationMinutes
+        - capacity
+    DeletedServiceEnvelope:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ServiceID"
+      required:
+        - id
+    DeletedSlotEnvelope:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+      required:
+        - id
+    DisplayName:
+      type: string
+      minLength: 1
+      maxLength: 100
+    DurationMinutes:
+      type: integer
+      minimum: 1
+      maximum: 1440
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        seatsLeft:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        maxSeats:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - error
+      additionalProperties: {}
+    GuestBooking:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+        seats:
+          $ref: "#/components/schemas/Seats"
+        guestName:
+          $ref: "#/components/schemas/DisplayName"
+        selectedOptions:
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
+        createdAt:
+          type: string
+        manageToken:
+          $ref: "#/components/schemas/ManageToken"
+        slot:
+          $ref: "#/components/schemas/TimeSlotRecord"
+        service:
+          $ref: "#/components/schemas/ServiceRecord"
+        organizer:
+          $ref: "#/components/schemas/PublicOrganizer"
+      required:
+        - id
+        - status
+        - seats
+        - guestName
+        - selectedOptions
+        - createdAt
+        - manageToken
+        - slot
+        - service
+        - organizer
+    GuestBookingEnvelope:
+      type: object
+      properties:
+        booking:
+          $ref: "#/components/schemas/GuestBooking"
+      required:
+        - booking
+    GuestBookingsEnvelope:
+      type: object
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuestBooking"
+      required:
+        - bookings
+    GuestTicketResponse:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/AuthTicket"
+        messenger:
+          $ref: "#/components/schemas/Messenger"
+        messengerId:
+          $ref: "#/components/schemas/MessengerID"
+        displayName:
+          type: string
+      required:
+        - ticket
+        - messenger
+        - messengerId
+        - displayName
+    ImageContentType:
+      type: string
+      enum:
+        - image/jpeg
+        - image/png
+        - image/webp
+    ImageUploadTarget:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+        publicUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+      required:
+        - uploadUrl
+        - publicUrl
+        - expiresAt
+    InvalidBody:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          $ref: "#/components/schemas/ValidationErrors"
+      required:
+        - error
+        - details
+    InvalidIssuesBody:
+      type: object
+      properties:
+        error:
+          type: string
+        issues:
+          type: object
+          propertyNames:
+            type: string
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required:
+        - error
+        - issues
+    Location:
+      type: string
+      minLength: 1
+      maxLength: 300
+    LoginLinkPayload:
+      type: object
+      properties:
+        organizerId:
+          $ref: "#/components/schemas/UUID"
+        next:
+          type: string
+          pattern: ^\/.*
+      required:
+        - organizerId
+        - next
+    LookupBookingsInput:
+      type: object
+      properties:
+        guestTicket:
+          $ref: "#/components/schemas/AuthTicket"
+      required:
+        - guestTicket
+    ManageToken:
+      type: string
+      minLength: 10
+      maxLength: 200
+    MaxSeatsPerBooking:
+      type: integer
+      minimum: 1
+      maximum: 1000
+    Messenger:
+      type: string
+      enum:
+        - telegram
+    MessengerID:
+      type: string
+      minLength: 1
+      maxLength: 100
+    NotificationRecipient:
+      type: string
+      enum:
+        - organizer
+        - guest
+    OptionLabel:
+      type: string
+      minLength: 1
+      maxLength: 100
+    OptionsList:
+      minItems: 1
+      maxItems: 50
+      type: array
+      items:
+        $ref: "#/components/schemas/OptionLabel"
+    OptionsSelectMode:
+      type: string
+      enum:
+        - single
+        - multi
+    OrganizerDescription:
+      type: string
+      maxLength: 4000
+    OrganizerEnvelope:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/OrganizerProfile"
+      required:
+        - organizer
+    OrganizerProfile:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+        name:
+          $ref: "#/components/schemas/DisplayName"
+        messenger:
+          $ref: "#/components/schemas/Messenger"
+        messengerId:
+          type: string
+        timezone:
+          $ref: "#/components/schemas/Timezone"
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+        photoUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        location:
+          anyOf:
+            - type: string
+            - type: "null"
+        contact:
+          anyOf:
+            - type: string
+            - type: "null"
+        language:
+          $ref: "#/components/schemas/AppLocale"
+        createdAt:
+          type: string
+        isDemo:
+          type: boolean
+      required:
+        - id
+        - slug
+        - name
+        - messenger
+        - messengerId
+        - timezone
+        - description
+        - photoUrl
+        - location
+        - contact
+        - language
+        - createdAt
+        - isDemo
+    PriceText:
+      type: string
+      minLength: 1
+      maxLength: 50
+    PublicOrganizer:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+        name:
+          $ref: "#/components/schemas/DisplayName"
+        timezone:
+          $ref: "#/components/schemas/Timezone"
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+        photoUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        location:
+          anyOf:
+            - type: string
+            - type: "null"
+        contact:
+          anyOf:
+            - type: string
+            - type: "null"
+        isDemo:
+          type: boolean
+      required:
+        - id
+        - slug
+        - name
+        - timezone
+        - description
+        - photoUrl
+        - location
+        - contact
+        - isDemo
+    RegisterOrganizerInput:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/AuthTicket"
+        slug:
+          $ref: "#/components/schemas/Slug"
+        name:
+          $ref: "#/components/schemas/DisplayName"
+        timezone:
+          $ref: "#/components/schemas/Timezone"
+        contact:
+          $ref: "#/components/schemas/Contact"
+        language:
+          default: en
+          $ref: "#/components/schemas/AppLocale"
+      required:
+        - ticket
+        - slug
+        - name
+        - timezone
+    Registered:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/RegisteredOrganizer"
+      required:
+        - organizer
+    RegisteredOrganizer:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+      required:
+        - id
+        - slug
+    Seats:
+      type: integer
+      minimum: 1
+      maximum: 1000
+    SelectedOptions:
+      maxItems: 50
+      type: array
+      items:
+        $ref: "#/components/schemas/OptionLabel"
+    ServiceDescription:
+      type: string
+      maxLength: 2000
+    ServiceEnvelope:
+      type: object
+      properties:
+        service:
+          $ref: "#/components/schemas/ServiceRecord"
+      required:
+        - service
+    ServiceID:
+      type: string
+      pattern: ^[A-Za-z0-9_-]{6,32}$
+    ServicePhotoUploadSize:
+      type: integer
+      minimum: 1
+      maximum: 2097152
+    ServiceRecord:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ServiceID"
+        organizerId:
+          $ref: "#/components/schemas/UUID"
+        title:
+          $ref: "#/components/schemas/DisplayName"
+        description:
+          anyOf:
+            - type: string
+            - type: "null"
+        photoUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+        location:
+          anyOf:
+            - type: string
+            - type: "null"
+        contact:
+          anyOf:
+            - type: string
+            - type: "null"
+        defaultPrice:
+          $ref: "#/components/schemas/PriceText"
+        defaultCapacity:
+          $ref: "#/components/schemas/Capacity"
+        defaultDurationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        maxSeatsPerBooking:
+          $ref: "#/components/schemas/MaxSeatsPerBooking"
+        options:
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
+        optionsSelectMode:
+          anyOf:
+            - $ref: "#/components/schemas/OptionsSelectMode"
+            - type: "null"
+        createdAt:
+          type: string
+      required:
+        - id
+        - organizerId
+        - title
+        - description
+        - photoUrl
+        - location
+        - contact
+        - defaultPrice
+        - defaultCapacity
+        - defaultDurationMinutes
+        - maxSeatsPerBooking
+        - options
+        - optionsSelectMode
+        - createdAt
+    ServicesEnvelope:
+      type: object
+      properties:
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRecord"
+      required:
+        - services
+    SlotEnvelope:
+      type: object
+      properties:
+        slot:
+          $ref: "#/components/schemas/TimeSlotRecord"
+      required:
+        - slot
+    SlotStartsAt:
+      oneOf:
+        - type: string
+          format: date-time
+        - type: integer
+          description: Unix epoch — seconds, or milliseconds when > 1e12.
+      description: Date-only strings are rejected with 400.
+    SlotsEnvelope:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlotRecord"
+      required:
+        - slots
+    Slug:
+      $ref: "#/components/schemas/SlugShape"
+    SlugShape:
+      type: string
+      minLength: 4
+      maxLength: 40
+      pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+    TelegramAuthDate:
+      type: integer
+      minimum: 1
+      maximum: 4102444800
+    TelegramHash:
+      type: string
+      minLength: 64
+      maxLength: 64
+    TelegramName:
+      type: string
+      minLength: 1
+      maxLength: 256
+    TelegramOptionalName:
+      type: string
+      maxLength: 256
+    TelegramUserID:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    TelegramWidgetPayload:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/TelegramUserID"
+        first_name:
+          $ref: "#/components/schemas/TelegramName"
+        last_name:
+          $ref: "#/components/schemas/TelegramOptionalName"
+        username:
+          $ref: "#/components/schemas/TelegramOptionalName"
+        photo_url:
+          $ref: "#/components/schemas/URL"
+        auth_date:
+          $ref: "#/components/schemas/TelegramAuthDate"
+        hash:
+          $ref: "#/components/schemas/TelegramHash"
+      required:
+        - id
+        - first_name
+        - auth_date
+        - hash
+    TimeSlotRecord:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+        startsAt:
+          type: string
+        durationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        capacity:
+          $ref: "#/components/schemas/Capacity"
+        bookedCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        price:
+          anyOf:
+            - type: string
+            - type: "null"
+        createdAt:
+          type: string
+      required:
+        - id
+        - serviceId
+        - startsAt
+        - durationMinutes
+        - capacity
+        - bookedCount
+        - price
+        - createdAt
+    Timezone:
+      type: string
+    URL:
+      type: string
+      format: uri
+    UUID:
+      type: string
+      format: uuid
+      pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+    UpdateOrganizerLanguageInput:
+      type: object
+      properties:
+        language:
+          $ref: "#/components/schemas/AppLocale"
+      required:
+        - language
+    UpdateOrganizerProfileInput:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/DisplayName"
+        slug:
+          $ref: "#/components/schemas/Slug"
+        timezone:
+          $ref: "#/components/schemas/Timezone"
+        description:
+          anyOf:
+            - $ref: "#/components/schemas/OrganizerDescription"
+            - type: "null"
+        location:
+          anyOf:
+            - $ref: "#/components/schemas/Location"
+            - type: "null"
+        contact:
+          anyOf:
+            - $ref: "#/components/schemas/Contact"
+            - type: "null"
+        photoUrl:
+          anyOf:
+            - $ref: "#/components/schemas/URL"
+            - type: "null"
+    UpdateServiceInput:
+      type: object
+      properties:
+        title:
+          $ref: "#/components/schemas/DisplayName"
+        description:
+          anyOf:
+            - $ref: "#/components/schemas/ServiceDescription"
+            - type: "null"
+        location:
+          anyOf:
+            - $ref: "#/components/schemas/Location"
+            - type: "null"
+        contact:
+          anyOf:
+            - $ref: "#/components/schemas/Contact"
+            - type: "null"
+        defaultPrice:
+          $ref: "#/components/schemas/PriceText"
+        defaultCapacity:
+          $ref: "#/components/schemas/Capacity"
+        defaultDurationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        maxSeatsPerBooking:
+          $ref: "#/components/schemas/MaxSeatsPerBooking"
+        options:
+          anyOf:
+            - $ref: "#/components/schemas/OptionsList"
+            - type: "null"
+        optionsSelectMode:
+          anyOf:
+            - $ref: "#/components/schemas/OptionsSelectMode"
+            - type: "null"
+        photoUrl:
+          anyOf:
+            - $ref: "#/components/schemas/URL"
+            - type: "null"
+    UpdateTimeSlotInput:
+      type: object
+      properties:
+        startsAt:
+          $ref: "#/components/schemas/SlotStartsAt"
+        durationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        capacity:
+          $ref: "#/components/schemas/Capacity"
+        price:
+          anyOf:
+            - $ref: "#/components/schemas/PriceText"
+            - type: "null"
+    ValidationErrors:
+      type: object
+      properties:
+        formErrors:
+          type: array
+          items:
+            type: string
+        fieldErrors:
+          type: object
+          propertyNames:
+            type: string
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required:
+        - formErrors
+        - fieldErrors

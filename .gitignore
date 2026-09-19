@@ -19,6 +19,9 @@ dist/
 # turbo
 .turbo
 
+# kilo agent scratch (plans); shared config (.kilo/command, .kilo/agent) stays tracked
+.kilo/plans/
+
 # misc
 .DS_Store
 *.pem

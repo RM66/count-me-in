@@ -11,7 +11,8 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint --max-warnings 0",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "generate:go": "bun run ../../apps/web/scripts/generate-i18n-go.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

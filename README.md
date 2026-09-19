@@ -18,29 +18,32 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 
 ## Apps
 
-| App           | Role                                                      |
-| ------------- | --------------------------------------------------------- |
-| `apps/web`    | Landing, public booking, organizer cabinet, API, job handlers (Next.js) |
+| App        | Role                                                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| `apps/web` | Landing, public booking, organizer cabinet, Go API + job handlers (Next.js + Go, one Vercel project) |
 
 ## Packages
 
-| Package                   | Role                                                    |
-| ------------------------- | ------------------------------------------------------- |
-| `@repo/db`                | Drizzle schema & client                                 |
-| `@repo/redis`             | ioredis singleton (sessions, auth tickets, rate limits) |
-| `@repo/contracts`         | Shared Zod / API types                                  |
-| `@repo/media-storage`     | Cloudflare R2 helpers                                   |
-| `@repo/eslint-config`     | ESLint configs                                          |
-| `@repo/typescript-config` | TypeScript configs                                      |
+| Package                   | Role                                                  |
+| ------------------------- | ----------------------------------------------------- |
+| `@repo/db`                | Drizzle schema & migrations                           |
+| `@repo/redis`             | ioredis singleton (tickets, login links, rate limits) |
+| `@repo/contracts`         | Shared Zod schemas, wire registry, API route manifest |
+| `@repo/translations`      | Web + notification copy (ICU messages per locale)     |
+| `@repo/eslint-config`     | ESLint configs                                        |
+| `@repo/typescript-config` | TypeScript configs                                    |
+| `@repo/vitest-config`     | Shared Vitest configs                                 |
 
 ## Stack
 
 - **Runtime / monorepo:** Bun, Turborepo
 - **App:** Next.js (`apps/web`)
+- **API:** Go, `net/http` only — Vercel Functions ([ADR-013](docs/decisions/013-api-go-rewrite.md))
 - **UI:** React, Tailwind, shadcn/ui (Radix)
 - **State:** TanStack Query (server)
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget)
-- **Validation:** Zod (`packages/contracts`)
+- **Validation:** Zod (`packages/contracts`), codegen'd to Go structs + OpenAPI ([ADR-014](docs/decisions/014-contracts-wire-registry.md))
+- **i18n:** next-intl, ICU messages per locale ([ADR-011](docs/decisions/011-i18n.md))
 - **Data:** Postgres, Drizzle ORM, Redis
 - **Media:** Cloudflare R2
 - **Jobs:** Upstash QStash ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
@@ -59,17 +62,21 @@ bun run --filter @repo/db db:migrate   # apply migrations
 bun run dev
 ```
 
-Package manager: **Bun** (see `.vscode/settings.json`).
+Package manager: **Bun** (see `.vscode/settings.json`); Go toolchain required for the local API dev server (`apps/web/cmd/dev`).
 
 ### Database
 
 Drizzle schema and migrations in [`packages/db`](packages/db):
 
 ```sh
-bun run db:generate   # create a migration from schema changes
-bun run db:migrate    # apply pending migrations
-bun run db:studio     # open Drizzle Studio
+bun run --filter @repo/db db:generate   # create a migration from schema changes
+bun run --filter @repo/db db:migrate    # apply pending migrations
+bun run --filter @repo/db db:studio     # open Drizzle Studio
 ```
+
+### Contracts codegen
+
+`bun run generate:contracts` derives Go structs, validation, and `openapi.yaml` from the Zod wire registry ([ADR-014](docs/decisions/014-contracts-wire-registry.md), [ADR-015](docs/decisions/015-api-route-manifest.md)). Never edit `*_gen.go` by hand.
 
 ### Demo organizer
 
@@ -77,14 +84,16 @@ A read-only demo organizer is seeded at `/demo`. All write paths reject it; noti
 
 ### Testing
 
-Tests use **Vitest** + **React Testing Library**, co-located beside source (`*.test.ts` / `*.test.tsx`):
+Tests are co-located beside source (`*.test.ts` / `*.test.tsx` / `*_test.go`): **Vitest** + **React Testing Library** for TS, `go test` for Go.
 
 ```sh
-bun run test          # all packages (Turborepo)
-bun run test:watch    # watch mode
+bun run test          # all packages (Turborepo: Vitest + Go)
+bun run test:watch    # watch mode (vitest)
 ```
 
-Coverage spans Zod schemas (`packages/contracts`), helpers, API client, server guards, React hooks, components, and Telegram templates/client (`apps/web`).
+In `apps/web`: `bun run test:web` (Vitest) or `bun run test:go` (`go test ./pkg/...`).
+
+Coverage spans Zod schemas and slot/timezone logic (`packages/contracts`), helpers, API client, React hooks and components, and Go validation/routes (`apps/web/pkg`).
 
 ## Key conventions
 
@@ -95,5 +104,6 @@ Coverage spans Zod schemas (`packages/contracts`), helpers, API client, server g
 - **`/cabinet` requires no session** — anonymous visitors see read-only demo ([ADR-010](docs/decisions/010-demo-organizer-account.md)).
 - **Notifications published after commit** — jobs carry ids only; the handler refetches at send time ([ADR-012](docs/decisions/012-queue-upstash-qstash.md)).
 - **Organizer deep links** are one-time login links consumed via `POST`.
+- **i18n** — locale from cookie / `Accept-Language`, never in URL; no hardcoded user-visible strings ([ADR-011](docs/decisions/011-i18n.md)).
 
 See [`AGENTS.md`](AGENTS.md) for full conventions and monorepo layout.

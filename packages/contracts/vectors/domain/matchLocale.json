@@ -1,0 +1,135 @@
+{
+  "cases": [
+    {
+      "expected": "ru",
+      "input": "ru",
+      "name": "bare ru"
+    },
+    {
+      "expected": "en",
+      "input": "en",
+      "name": "bare en"
+    },
+    {
+      "expected": "ru",
+      "input": "ru-RU",
+      "name": "regional ru-RU"
+    },
+    {
+      "expected": "en",
+      "input": "en-US",
+      "name": "regional en-US"
+    },
+    {
+      "expected": "pt",
+      "input": "pt-BR",
+      "name": "regional pt-BR"
+    },
+    {
+      "expected": "ar",
+      "input": "ar-SA",
+      "name": "regional ar-SA"
+    },
+    {
+      "name": "regional es-ES",
+      "input": "es-ES",
+      "expected": "es"
+    },
+    {
+      "name": "regional de-DE",
+      "input": "de-DE",
+      "expected": "de"
+    },
+    {
+      "name": "regional fr-FR",
+      "input": "fr-FR",
+      "expected": "fr"
+    },
+    {
+      "name": "regional ja-JP",
+      "input": "ja-JP",
+      "expected": "ja"
+    },
+    {
+      "expected": "ru",
+      "input": "nl-NL,nl;q=0.9,ru;q=0.8",
+      "name": "fallthrough quality"
+    },
+    {
+      "expected": "ru",
+      "input": "it,ru-RU;q=0.5",
+      "name": "fallthrough single"
+    },
+    {
+      "expected": "ru",
+      "input": "en;q=0.4,ru;q=0.6",
+      "name": "higher q wins"
+    },
+    {
+      "expected": "ru",
+      "input": "ru;q=0.6,en;q=0.4",
+      "name": "higher q wins reversed"
+    },
+    {
+      "expected": "en",
+      "input": "en,ru",
+      "name": "tie list order en first"
+    },
+    {
+      "expected": "ru",
+      "input": "ru,en",
+      "name": "tie list order ru first"
+    },
+    {
+      "expected": "en",
+      "input": "ru;q=0,en",
+      "name": "q=0 unacceptable"
+    },
+    {
+      "expected": null,
+      "input": "ru;q=0",
+      "name": "q=0 only"
+    },
+    {
+      "expected": "ru",
+      "input": "ru;q=oops,en",
+      "name": "malformed q full preference"
+    },
+    {
+      "expected": "en",
+      "input": "ru;q=0.5;q=1,en",
+      "name": "first q wins"
+    },
+    {
+      "expected": "ru",
+      "input": "ru,en;q=0.1",
+      "name": "low q last"
+    },
+    {
+      "expected": "ru",
+      "input": " RU-ru , en",
+      "name": "case and spacing"
+    },
+    {
+      "expected": null,
+      "input": "nl-NL,it",
+      "name": "no match"
+    },
+    {
+      "expected": null,
+      "input": "",
+      "name": "empty"
+    },
+    {
+      "expected": null,
+      "input": null,
+      "name": "null input"
+    },
+    {
+      "expected": "en",
+      "input": "ru;q=0.5,en;q=0.9abc",
+      "name": "prefix-float parity"
+    }
+  ],
+  "fn": "matchLocale"
+}

@@ -1,0 +1,15 @@
+{
+  "cases": [
+    {
+      "expected": "auth:login-link:abc",
+      "name": "token",
+      "token": "abc"
+    },
+    {
+      "expected": "auth:login-link:",
+      "name": "empty token",
+      "token": ""
+    }
+  ],
+  "fn": "loginLinkKey"
+}

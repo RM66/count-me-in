@@ -6,7 +6,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 ## MVP
 
-- Turborepo: `apps/web`, packages (`db`, `contracts`, `translations`, `media-storage`, `eslint-config`, `typescript-config`).
+- Turborepo: `apps/web`, packages (`db`, `contracts`, `translations`, `eslint-config`, `typescript-config`).
 - `apps/web`: landing + public booking + **organizer cabinet** + HTTP API + job handlers.
 - Organizer flow: messenger login widget → notifications → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.

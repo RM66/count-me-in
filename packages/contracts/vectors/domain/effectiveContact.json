@@ -1,0 +1,23 @@
+{
+  "cases": [
+    {
+      "expected": "Service",
+      "name": "service wins",
+      "organizer": "Organizer",
+      "service": "Service"
+    },
+    {
+      "expected": "Organizer",
+      "name": "nil service inherits",
+      "organizer": "Organizer",
+      "service": null
+    },
+    {
+      "expected": null,
+      "name": "neither set",
+      "organizer": null,
+      "service": null
+    }
+  ],
+  "fn": "effectiveContact"
+}

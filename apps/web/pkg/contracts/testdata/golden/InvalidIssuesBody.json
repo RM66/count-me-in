@@ -1,0 +1,8 @@
+{
+  "error": "Invalid input",
+  "issues": {
+    "slug": [
+      "this slug is reserved for system use — please choose another"
+    ]
+  }
+}

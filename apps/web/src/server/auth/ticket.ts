@@ -40,12 +40,6 @@ export async function issueTicket(payload: AuthTicketPayload): Promise<string> {
   return token
 }
 
-/** Read a ticket without consuming it (used while registration form is in flight). */
-export async function peekTicket(token: string): Promise<AuthTicketPayload | null> {
-  const raw = await getRedis().get(`auth:ticket:${token}`)
-  return raw ? (JSON.parse(raw) as AuthTicketPayload) : null
-}
-
 /** Atomically read + delete a ticket (used when establishing a session). */
 export async function consumeTicket(token: string): Promise<AuthTicketPayload | null> {
   const raw = await getRedis().getdel(`auth:ticket:${token}`)

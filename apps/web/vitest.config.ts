@@ -14,7 +14,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts'],
     exclude: ['node_modules', '.next', 'dist'],
     setupFiles: ['./vitest.setup.ts'],
   },
@@ -25,7 +25,6 @@ export default defineConfig({
       '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
       '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
       '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
-      '@repo/media-storage': path.resolve(__dirname, '../../packages/media-storage/src'),
     },
   },
 })
