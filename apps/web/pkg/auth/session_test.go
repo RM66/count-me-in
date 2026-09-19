@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,10 +13,11 @@ import (
 	"time"
 )
 
-const testSecret = "test-organizer-auth-secret"
+const testSecret = "test-golden-secret"
 
 // mintTestToken produces an HS256 compact JWT matching the format
-// mintOrganizerAuth in organizer-token.ts.
+// mintOrganizerAuth in organizer-token.ts, signing with the same
+// HKDF-derived key.
 func mintTestToken(secret, sub, slug string, exp int64) string {
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
 	payload, _ := json.Marshal(map[string]any{
@@ -26,10 +28,27 @@ func mintTestToken(secret, sub, slug string, exp int64) string {
 	})
 	payloadEncoded := base64.RawURLEncoding.EncodeToString(payload)
 	signingInput := header + "." + payloadEncoded
-	mac := hmac.New(sha256.New, []byte(secret))
+	mac := hmac.New(sha256.New, derivedSigningKey(secret))
 	mac.Write([]byte(signingInput))
 	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return signingInput + "." + sig
+}
+
+// TestDerivedSigningKeyGolden pins the HKDF derivation to Node's
+// crypto.hkdfSync('sha256', secret, 'countmein',
+// 'CountMeIn Organizer API Token Key v1', 32) — the cross-language
+// anchor. If this test fails after touching either side's derivation
+// parameters, the TS and Go keys have drifted and every signed-in
+// organizer silently becomes anonymous.
+func TestDerivedSigningKeyGolden(t *testing.T) {
+	want, err := hex.DecodeString("6d1ed228ced7fcfff1fc563e2f14f95c2e542a579d0eb2896e27ee93d0dd4318")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := derivedSigningKey(testSecret)
+	if !hmac.Equal(got, want) {
+		t.Fatalf("HKDF derivation mismatch:\n got %x\nwant %x", got, want)
+	}
 }
 
 func TestVerifyOrganizerAuthValid(t *testing.T) {
@@ -79,7 +98,7 @@ func TestVerifyOrganizerAuthWrongAlg(t *testing.T) {
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`))
 	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"x","exp":9999999999}`))
 	signingInput := header + "." + payload
-	mac := hmac.New(sha256.New, []byte(testSecret))
+	mac := hmac.New(sha256.New, derivedSigningKey(testSecret))
 	mac.Write([]byte(signingInput))
 	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	token := signingInput + "." + sig
@@ -96,7 +115,7 @@ func TestVerifyOrganizerAuthEmptySub(t *testing.T) {
 }
 
 func TestSessionFromRequestNoHeader(t *testing.T) {
-	t.Setenv("API_TOKEN_SECRET", testSecret)
+	t.Setenv("AUTH_SECRET", testSecret)
 	req := httptest.NewRequest(http.MethodPost, "/api/bookings", strings.NewReader("{}"))
 	if s := SessionFromRequest(req); s != nil {
 		t.Fatal("request without header must return nil session")
@@ -104,7 +123,7 @@ func TestSessionFromRequestNoHeader(t *testing.T) {
 }
 
 func TestSessionFromRequestValidHeader(t *testing.T) {
-	t.Setenv("API_TOKEN_SECRET", testSecret)
+	t.Setenv("AUTH_SECRET", testSecret)
 	token := mintTestToken(testSecret, "01930000-0000-7000-8000-0000000000ff", "yoga",
 		time.Now().Add(time.Minute).Unix())
 	req := httptest.NewRequest(http.MethodPost, "/api/bookings", strings.NewReader("{}"))
@@ -119,11 +138,11 @@ func TestSessionFromRequestValidHeader(t *testing.T) {
 }
 
 func TestSessionFromRequestNoSecret(t *testing.T) {
-	t.Setenv("API_TOKEN_SECRET", "")
+	t.Setenv("AUTH_SECRET", "")
 	token := mintTestToken("whatever", "sub", "slug", time.Now().Add(time.Minute).Unix())
 	req := httptest.NewRequest(http.MethodPost, "/api/bookings", strings.NewReader("{}"))
 	req.Header.Set(OrganizerAuthHeader, token)
 	if s := SessionFromRequest(req); s != nil {
-		t.Fatal("missing API_TOKEN_SECRET must return nil session")
+		t.Fatal("missing AUTH_SECRET must return nil session")
 	}
 }

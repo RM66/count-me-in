@@ -10,7 +10,7 @@
  * root-file convention.
  */
 
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 import { auth } from '@/server/auth'
 import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'

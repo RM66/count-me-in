@@ -55,7 +55,14 @@
     },
     "test:go": {
       "dependsOn": ["generate:i18n", "generate:contracts"],
-      "inputs": ["pkg/**", "api/**", "go.mod", "go.sum", "scripts/**", "$TURBO_ROOT$/packages/contracts/vectors/**"]
+      "inputs": [
+        "pkg/**",
+        "api/**",
+        "go.mod",
+        "go.sum",
+        "scripts/**",
+        "$TURBO_ROOT$/packages/contracts/vectors/**"
+      ]
     },
     "check:api-routes": {
       "dependsOn": ["^build"]
@@ -67,7 +74,11 @@
         "scripts/messages.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["pkg/contracts/contracts_gen.go", "pkg/validation/validation_gen.go", "openapi.yaml"]
+      "outputs": [
+        "pkg/contracts/contracts_gen.go",
+        "pkg/validation/validation_gen.go",
+        "openapi.yaml"
+      ]
     },
     "generate:i18n": {
       "inputs": ["packages/translations/**/*.json"],

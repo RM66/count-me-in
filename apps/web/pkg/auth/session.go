@@ -26,11 +26,25 @@ import (
 // could change silently.
 //
 // The token: HS256, compact JWT, claims { sub, slug, iat, exp }, 60s
-// TTL, signed with API_TOKEN_SECRET (shared with the Next.js side).
-// Verified here with stdlib crypto only — no jose dependency.
+// TTL. **No separate secret**: the signing key is derived from the
+// existing AUTH_SECRET via HKDF-SHA256 (RFC 5869) with a purpose-bound
+// info string — the same key-separation pattern Auth.js itself uses.
+// Deriving (rather than reusing the raw secret) keeps the two protocols
+// independent; rotating AUTH_SECRET rotates both at once. The derivation
+// parameters must match src/server/auth/organizer-token.ts exactly;
+// parity is pinned by the golden vector in session_test.go.
+//
+// Verified with stdlib crypto only — no jose dependency.
 
 // OrganizerAuthHeader is the HTTP header carrying the organizer-auth JWT.
 const OrganizerAuthHeader = "X-Organizer-Auth"
+
+// HKDF derivation parameters — must match organizer-token.ts exactly.
+const (
+	hkdfSalt = "countmein"
+	hkdfInfo = "CountMeIn Organizer API Token Key v1"
+	hkdfLen  = 32
+)
 
 var (
 	warnMissingSecretOnce sync.Once
@@ -48,10 +62,10 @@ type Session struct {
 // JWT. Returns nil when there is no session (anonymous → demo cabinet
 // visitor, ADR-010) or when the token cannot be verified.
 func SessionFromRequest(r *http.Request) *Session {
-	secret := os.Getenv("API_TOKEN_SECRET")
+	secret := os.Getenv("AUTH_SECRET")
 	if secret == "" {
 		warnMissingSecretOnce.Do(func() {
-			logx.Info("API_TOKEN_SECRET is not set — every request is anonymous", nil)
+			logx.Info("AUTH_SECRET is not set — every request is anonymous", nil)
 		})
 		return nil
 	}
@@ -64,7 +78,7 @@ func SessionFromRequest(r *http.Request) *Session {
 	claims, err := verifyOrganizerAuth(token, secret)
 	if err != nil {
 		warnBrokenTokenOnce.Do(func() {
-			logx.Info("organizer-auth token present but invalid (API_TOKEN_SECRET mismatch or expiry)", nil)
+			logx.Info("organizer-auth token present but invalid (AUTH_SECRET mismatch or expiry)", nil)
 		})
 		return nil
 	}
@@ -109,7 +123,7 @@ func verifyOrganizerAuth(token, secret string) (*organizerClaims, error) {
 	}
 
 	// Verify the signature before trusting any claim.
-	mac := hmac.New(sha256.New, []byte(secret))
+	mac := hmac.New(sha256.New, derivedSigningKey(secret))
 	mac.Write([]byte(parts[0] + "." + parts[1]))
 	expectedSig := b64.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(expectedSig), []byte(parts[2])) {
@@ -150,4 +164,21 @@ func verifyOrganizerAuth(token, secret string) (*organizerClaims, error) {
 		return nil, errBadToken
 	}
 	return &claims, nil
+}
+
+// derivedSigningKey derives the HMAC-SHA256 signing key from AUTH_SECRET
+// via HKDF-SHA256 (RFC 5869), extract-then-expand. Mirrors Node's
+// crypto.hkdfSync('sha256', secret, salt, info, 32) — parity pinned by
+// the golden vector in session_test.go.
+func derivedSigningKey(secret string) []byte {
+	// Extract: PRK = HMAC-SHA256(salt, IKM).
+	h := hmac.New(sha256.New, []byte(hkdfSalt))
+	h.Write([]byte(secret))
+	prk := h.Sum(nil)
+
+	// Expand: T(1) = HMAC-SHA256(PRK, info || 0x01); 32 bytes = one block.
+	h = hmac.New(sha256.New, prk)
+	h.Write([]byte(hkdfInfo))
+	h.Write([]byte{1})
+	return h.Sum(nil)[:hkdfLen]
 }
