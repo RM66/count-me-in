@@ -1,7 +1,10 @@
 'use client'
 
 import type { GuestTicketResponse } from '@repo/contracts'
+import { authTicketResponse, guestTicketResponse } from '@repo/contracts'
 import { useEffect, useRef } from 'react'
+
+import { post } from '@/api-client/client'
 
 interface TelegramUser {
   id: number
@@ -111,14 +114,9 @@ export function TelegramLoginButton({
 
       if (mode === 'guest') {
         try {
-          const response = await fetch('/api/auth/telegram-guest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(user),
-          })
-          const data = (await response.json()) as GuestTicketResponse & { error?: string }
-          if (!response.ok || !data.ticket) {
-            console.error('[TelegramLoginButton] Guest ticket error:', data.error)
+          const data = await post('/api/auth/telegram-guest', user, guestTicketResponse)
+          if (!data.ticket) {
+            console.error('[TelegramLoginButton] Guest ticket error: missing ticket')
             return
           }
           onGuestTicketRef.current?.(data)
@@ -127,18 +125,9 @@ export function TelegramLoginButton({
         }
       } else if (mode === 'signup') {
         try {
-          const response = await fetch('/api/auth/telegram-signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(user),
-          })
-          const data = (await response.json()) as {
-            ticket?: string
-            organizerExists?: boolean
-            error?: string
-          }
-          if (!response.ok || !data.ticket) {
-            console.error('[TelegramLoginButton] Signup ticket error:', data.error)
+          const data = await post('/api/auth/telegram-signup', user, authTicketResponse)
+          if (!data.ticket) {
+            console.error('[TelegramLoginButton] Signup ticket error: missing ticket')
             return
           }
           onTicketIssuedRef.current?.(data.ticket, data.organizerExists ?? false)
@@ -147,19 +136,10 @@ export function TelegramLoginButton({
         }
       } else {
         try {
-          const response = await fetch('/api/auth/telegram-signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(user),
-          })
-          const data = (await response.json()) as {
-            ticket?: string
-            organizerExists?: boolean
-            error?: string
-          }
+          const data = await post('/api/auth/telegram-signup', user, authTicketResponse)
 
-          if (!response.ok || !data.ticket) {
-            console.error('[TelegramLoginButton] Login validation error:', data.error)
+          if (!data.ticket) {
+            console.error('[TelegramLoginButton] Login validation error: missing ticket')
             return
           }
 

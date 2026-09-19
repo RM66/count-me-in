@@ -1,0 +1,106 @@
+{
+  "schema": "TelegramWidgetPayload",
+  "cases": [
+    {
+      "name": "minimal valid",
+      "body": {
+        "id": 123456789,
+        "first_name": "Mila",
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": true
+    },
+    {
+      "name": "full valid",
+      "body": {
+        "id": 123456789,
+        "first_name": "Mila",
+        "last_name": "Petrović",
+        "username": "milap",
+        "photo_url": "https://t.me/i/userpic/1.jpg",
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": true
+    },
+    {
+      "name": "id must be positive",
+      "body": {
+        "id": 0,
+        "first_name": "Mila",
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": false,
+      "fieldErrors": ["id"]
+    },
+    {
+      "name": "first_name required",
+      "body": {
+        "id": 1,
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": false,
+      "fieldErrors": ["first_name"]
+    },
+    {
+      "name": "last_name too long",
+      "body": {
+        "id": 1,
+        "first_name": "Mila",
+        "last_name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": false,
+      "fieldErrors": ["last_name"]
+    },
+    {
+      "name": "username too long",
+      "body": {
+        "id": 1,
+        "first_name": "Mila",
+        "username": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": false,
+      "fieldErrors": ["username"]
+    },
+    {
+      "name": "photo_url not a url",
+      "body": {
+        "id": 1,
+        "first_name": "Mila",
+        "photo_url": "nope",
+        "auth_date": 1700000000,
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": false,
+      "fieldErrors": ["photo_url"]
+    },
+    {
+      "name": "auth_date required",
+      "body": {
+        "id": 1,
+        "first_name": "Mila",
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "valid": false,
+      "fieldErrors": ["auth_date"]
+    },
+    {
+      "name": "hash wrong length",
+      "body": {
+        "id": 1,
+        "first_name": "Mila",
+        "auth_date": 1700000000,
+        "hash": "abc"
+      },
+      "valid": false,
+      "fieldErrors": ["hash"]
+    }
+  ]
+}

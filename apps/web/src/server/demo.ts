@@ -1,32 +1,18 @@
 /**
- * Server-side read-only enforcement for the demo organizer (ADR-010).
+ * Server-side demo-organizer resolution for pages (ADR-010).
  *
- * Disabled inputs in the cabinet are UX, not enforcement — anyone can call the
- * API directly. Every write path must go through a guard here.
+ * The write-side guards (rejectDemoWrite / assertNotDemo) moved to the Go
+ * API (`apps/web/pkg/demo`) together with the route handlers —
+ * enforcement now lives where the writes happen. What remains here is the
+ * read-side question every cabinet page starts with: whose data should this
+ * request render?
  *
  * **Two ways to be "demo":** an anonymous visitor (no session — `/cabinet` is
  * open to everyone and shows the demo) *or* a session that somehow carries the
- * demo id. Both must be treated identically, so guards accept the resolved
- * organizer id and callers use {@link resolveCabinetOrganizerId} to get it.
- *
- * Coverage checklist (keep in sync as endpoints land):
- * - cabinet: profile update, avatar upload, service CRUD, service cover upload,
- *   slot CRUD, organizer-side booking cancel
- * - guest: create booking, cancel booking by `manageToken` — both go through
- *   {@link assertNotDemo} *inside* the booking transaction rather than a route
- *   guard, because they carry no session: the organizer is only known once the
- *   slot has been joined to its service.
- * - jobs: skip notification jobs entirely (see `isDemoOrganizerId`)
+ * demo id. Both are treated identically.
  */
 
-import {
-  DEMO_ORGANIZER_ID,
-  DEMO_READ_ONLY_CODE,
-  DEMO_READ_ONLY_MESSAGE,
-  isDemoOrganizerId,
-} from '@repo/contracts'
-import { NextResponse } from 'next/server'
-import { getTranslations } from 'next-intl/server'
+import { DEMO_ORGANIZER_ID, isDemoOrganizerId } from '@repo/contracts'
 
 import { auth } from './auth'
 
@@ -61,44 +47,4 @@ export async function resolveCabinetOrganizerId(): Promise<{
 export async function isDemoSession(): Promise<boolean> {
   const { isDemo } = await resolveCabinetOrganizerId()
   return isDemo
-}
-
-/**
- * Returns a localized `403 DEMO_READ_ONLY` response when `organizerId` is the
- * demo account or absent — anonymous callers are demo-cabinet visitors and get
- * the same refusal (ADR-010) — otherwise `null`. Intended for early-return use
- * in route handlers. Error *classes* keep English messages for logs; the copy
- * in the response body follows the viewer's locale (ADR-011).
- */
-export async function rejectDemoWrite(
-  organizerId: string | null | undefined,
-): Promise<NextResponse | null> {
-  if (organizerId && !isDemoOrganizerId(organizerId)) return null
-
-  const t = await getTranslations('ApiErrors')
-  return NextResponse.json({ error: t('demoReadOnly'), code: DEMO_READ_ONLY_CODE }, { status: 403 })
-}
-
-/**
- * Throwing variant for use inside service-layer functions and transactions,
- * where returning a response object is not possible.
- */
-export class DemoReadOnlyError extends Error {
-  readonly code = DEMO_READ_ONLY_CODE
-  readonly status = 403
-
-  constructor() {
-    super(DEMO_READ_ONLY_MESSAGE)
-    this.name = 'DemoReadOnlyError'
-  }
-}
-
-/**
- * Throws {@link DemoReadOnlyError} when `organizerId` is the demo account or
- * absent (anonymous — i.e. a demo cabinet visitor).
- */
-export function assertNotDemo(organizerId: string | null | undefined): void {
-  if (!organizerId || isDemoOrganizerId(organizerId)) {
-    throw new DemoReadOnlyError()
-  }
 }

@@ -25,10 +25,13 @@ export function isAcceptableSlotStart(startsAt: Date, now: Date = new Date()): b
   return startsAt.getTime() > now.getTime() - SLOT_START_TOLERANCE_MS
 }
 
+/** Slot start instant (ISO string or epoch); FlexTime on the Go side. */
+export const slotStartsAt = z.coerce.date()
+
 export const createTimeSlotInput = z
   .object({
     serviceId,
-    startsAt: z.coerce.date(),
+    startsAt: slotStartsAt,
     durationMinutes,
     capacity,
     price: priceText.optional(),
@@ -42,7 +45,7 @@ export type CreateTimeSlotInput = z.infer<typeof createTimeSlotInput>
 /** Slot edits; a slot cannot be moved to a different service. */
 export const updateTimeSlotInput = z
   .object({
-    startsAt: z.coerce.date().optional(),
+    startsAt: slotStartsAt.optional(),
     durationMinutes: durationMinutes.optional(),
     capacity: capacity.optional(),
     price: priceText.nullable().optional(),

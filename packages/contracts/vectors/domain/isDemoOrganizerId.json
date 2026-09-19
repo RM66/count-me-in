@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "expected": true,
+      "name": "demo id",
+      "organizerId": "01930000-0000-7000-8000-0000000000de"
+    },
+    {
+      "expected": false,
+      "name": "other id",
+      "organizerId": "01930000-0000-7000-8000-0000000000ff"
+    },
+    {
+      "expected": false,
+      "name": "null",
+      "organizerId": null
+    },
+    {
+      "expected": false,
+      "name": "empty",
+      "organizerId": ""
+    }
+  ],
+  "fn": "isDemoOrganizerId"
+}

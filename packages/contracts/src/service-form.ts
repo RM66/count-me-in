@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { optionsSelectModeEnum } from './enums'
 import { numericText, optionalText } from './form-fields'
+import { OPTIONS_MAX } from './options'
 import {
   capacity,
   contact,
@@ -46,7 +47,7 @@ const serviceFormFields = {
    */
   options: z
     .array(optionLabel)
-    .max(50)
+    .max(OPTIONS_MAX)
     .refine((values) => new Set(values).size === values.length, {
       message: 'options must be unique',
     }),

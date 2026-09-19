@@ -3,17 +3,28 @@ import { z } from 'zod'
 import type { OptionsSelectMode } from './enums'
 import { optionLabel } from './primitives'
 
+/** Max options a single service may offer. */
+export const OPTIONS_MAX = 50
+
+/**
+ * Shape-level cap on a booking's `selectedOptions`. The semantic check
+ * (`buildSelectedOptionsSchema` / `ValidateSelectedOptions`) bounds a real
+ * selection to the service's own list; this only rejects absurd payloads
+ * before the service is loaded.
+ */
+export const SELECTED_OPTIONS_MAX = 50
+
 /** Allowed option labels on a service: unique, non-empty list. */
 export const optionsList = z
   .array(optionLabel)
   .min(1)
-  .max(50)
+  .max(OPTIONS_MAX)
   .refine((values) => new Set(values).size === values.length, {
     message: 'options must be unique',
   })
 
 /** Shape-only schema for a booking's chosen options (semantic check needs the service). */
-export const selectedOptionsShape = z.array(optionLabel).max(50)
+export const selectedOptionsShape = z.array(optionLabel).max(SELECTED_OPTIONS_MAX)
 
 interface ServiceOptionsConfig {
   options?: string[] | null

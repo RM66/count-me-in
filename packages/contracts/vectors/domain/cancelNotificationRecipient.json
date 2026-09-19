@@ -1,0 +1,15 @@
+{
+  "cases": [
+    {
+      "cancelledBy": "guest",
+      "expected": "organizer",
+      "name": "guest cancels"
+    },
+    {
+      "cancelledBy": "organizer",
+      "expected": "guest",
+      "name": "organizer cancels"
+    }
+  ],
+  "fn": "cancelNotificationRecipient"
+}

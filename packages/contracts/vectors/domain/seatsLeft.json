@@ -1,0 +1,23 @@
+{
+  "cases": [
+    {
+      "bookedCount": 3,
+      "capacity": 10,
+      "expected": 7,
+      "name": "partial"
+    },
+    {
+      "bookedCount": 10,
+      "capacity": 10,
+      "expected": 0,
+      "name": "full"
+    },
+    {
+      "bookedCount": 12,
+      "capacity": 10,
+      "expected": 0,
+      "name": "overbooked floors at zero"
+    }
+  ],
+  "fn": "seatsLeft"
+}

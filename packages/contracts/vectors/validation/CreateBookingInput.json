@@ -1,0 +1,165 @@
+{
+  "cases": [
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "name": "valid minimal",
+      "valid": true
+    },
+    {
+      "body": {
+        "guestLocale": "ru",
+        "guestName": "Mila Petrović",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 2,
+        "selectedOptions": [
+          "Riverside studio"
+        ],
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "name": "valid full",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "serviceId": 123,
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "serviceId"
+      ],
+      "name": "serviceId wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "serviceId": "demo-yoga",
+        "timeSlotId": 123
+      },
+      "fieldErrors": [
+        "timeSlotId"
+      ],
+      "name": "timeSlotId wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": "x",
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "seats"
+      ],
+      "name": "seats wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": 123,
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "guestName"
+      ],
+      "name": "guestName wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": 123,
+        "seats": 1,
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "guestTicket"
+      ],
+      "name": "guestTicket wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "selectedOptions": {},
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "selectedOptions"
+      ],
+      "name": "selectedOptions wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestLocale": 123,
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "guestLocale"
+      ],
+      "name": "guestLocale wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "seats": 1,
+        "selectedOptions": null,
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "selectedOptions"
+      ],
+      "name": "selectedOptions null rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "guestName": "Noah",
+        "guestTicket": "whatever-guest-ticket-12345678",
+        "serviceId": "demo-yoga",
+        "timeSlotId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "fieldErrors": [
+        "seats"
+      ],
+      "name": "missing seats",
+      "valid": false
+    }
+  ],
+  "schema": "CreateBookingInput"
+}

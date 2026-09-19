@@ -1,6 +1,7 @@
 'use client'
 
-import type { BookingRecord, CreateBookingInput, GuestBooking, Messenger } from '@repo/contracts'
+import type { CreateBookingInput, Messenger } from '@repo/contracts'
+import { bookingEnvelope, guestBookingEnvelope, guestBookingsEnvelope } from '@repo/contracts'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { post } from './client'
@@ -22,11 +23,19 @@ import { queryKeys } from './keys'
  * Reserve seats on a slot. The response includes `manageToken` for the
  * success screen. `retry: false` — the booking spends a single-use guest
  * ticket, so a retry always hits a 401 that overwrites the real result.
+ *
+ * Idempotency (architecture review fix #9): there is no explicit
+ * idempotency key. The single-use ticket prevents replay, and the
+ * partial unique index (one active booking per guest per slot) prevents
+ * a duplicate on a same-slot manual retry. The residual edge case is a
+ * network timeout after commit but before the response — the user sees
+ * a failure and may re-authenticate to book a *different* slot, which
+ * succeeds. This is acceptable for MVP; a formal idempotency key (the
+ * ticket itself) can be added if "response lost" recovery matters.
  */
 export function useCreateBooking() {
   return useMutation({
-    mutationFn: (input: CreateBookingInput) =>
-      post<{ booking: GuestBooking }>('/api/bookings', input),
+    mutationFn: (input: CreateBookingInput) => post('/api/bookings', input, guestBookingEnvelope),
     retry: false,
   })
 }
@@ -37,12 +46,9 @@ export function useCreateBooking() {
  * strings end up in logs and `Referer` headers.
  */
 export function useCancelBooking() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (manageToken: string) =>
-      post<{ booking: GuestBooking }>('/api/bookings/cancel', { manageToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
+      post('/api/bookings/cancel', { manageToken }, guestBookingEnvelope),
   })
 }
 
@@ -51,21 +57,13 @@ export function useCancelBooking() {
  * Separate hook from {@link useCancelBooking} because it uses a different
  * credential (session + ownership) against a different endpoint, and resolves
  * to a `BookingRecord` (no `manageToken`).
- * Invalidating `bookings.all` is not enough on its own: the cabinet lists are
- * server-rendered, so the caller follows this with `router.refresh()`.
+ * The cabinet lists are server-rendered, so the caller follows this with
+ * `router.refresh()` (Phase 2.3 — no client cache to invalidate).
  */
 export function useCancelBookingByOrganizer() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (bookingId: string) =>
-      post<{ booking: BookingRecord }>('/api/bookings/cancel-by-organizer', { bookingId }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.bookings.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.slots.all }),
-      ])
-    },
+      post('/api/bookings/cancel-by-organizer', { bookingId }, bookingEnvelope),
   })
 }
 
@@ -79,9 +77,13 @@ export function useLookupBookings() {
 
   return useMutation({
     mutationFn: async (identity: { ticket: string; messenger: Messenger; messengerId: string }) => {
-      const data = await post<{ bookings: GuestBooking[] }>('/api/bookings/lookup', {
-        guestTicket: identity.ticket,
-      })
+      const data = await post(
+        '/api/bookings/lookup',
+        {
+          guestTicket: identity.ticket,
+        },
+        guestBookingsEnvelope,
+      )
 
       queryClient.setQueryData(queryKeys.bookings.guest(identity.messengerId), data.bookings)
 

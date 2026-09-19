@@ -1,0 +1,117 @@
+{
+  "cases": [
+    {
+      "body": {},
+      "name": "valid empty",
+      "valid": true
+    },
+    {
+      "body": {
+        "durationMinutes": 90
+      },
+      "name": "valid partial",
+      "valid": true
+    },
+    {
+      "body": {
+        "price": null
+      },
+      "name": "valid clear price",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "startsAt": {}
+      },
+      "fieldErrors": [
+        "startsAt"
+      ],
+      "name": "startsAt wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "durationMinutes": "x"
+      },
+      "fieldErrors": [
+        "durationMinutes"
+      ],
+      "name": "durationMinutes wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": "x"
+      },
+      "fieldErrors": [
+        "capacity"
+      ],
+      "name": "capacity wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "price": 123
+      },
+      "fieldErrors": [
+        "price"
+      ],
+      "name": "price wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "price": null
+      },
+      "name": "null price valid",
+      "valid": true
+    },
+    {
+      "body": {
+        "durationMinutes": null
+      },
+      "fieldErrors": [
+        "durationMinutes"
+      ],
+      "name": "null durationMinutes rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "startsAt": null
+      },
+      "fieldErrors": [
+        "startsAt"
+      ],
+      "name": "null startsAt rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "startsAt": "$now-1d"
+      },
+      "fieldErrors": [
+        "startsAt"
+      ],
+      "name": "startsAt in past",
+      "valid": false
+    },
+    {
+      "body": {
+        "startsAt": "2030-06-15"
+      },
+      "name": "date-only startsAt",
+      "skip": {
+        "go": "FlexTime rejects date-only by design (optional.go:27-35)"
+      },
+      "valid": true
+    }
+  ],
+  "schema": "UpdateTimeSlotInput"
+}

@@ -1,0 +1,162 @@
+{
+  "cases": [
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "name": "valid minimal",
+      "valid": true
+    },
+    {
+      "body": {
+        "contact": "+123456",
+        "language": "de",
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "name": "valid full",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": 123,
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "ticket"
+      ],
+      "name": "ticket wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": 123,
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "slug"
+      ],
+      "name": "slug wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": 123,
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "name"
+      ],
+      "name": "name wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": 123
+      },
+      "fieldErrors": [
+        "timezone"
+      ],
+      "name": "timezone wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "contact": 123,
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "contact"
+      ],
+      "name": "contact wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "language": 123,
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "language"
+      ],
+      "name": "language wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "My-Studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "name": "slug uppercase normalizes",
+      "valid": true
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "api",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "slug"
+      ],
+      "name": "reserved slug",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "demo",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Europe/Belgrade"
+      },
+      "fieldErrors": [
+        "slug"
+      ],
+      "name": "reserved slug rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "name": "Studio",
+        "slug": "my-studio",
+        "ticket": "whatever-guest-ticket-12345678",
+        "timezone": "Mars/Olympus"
+      },
+      "fieldErrors": [
+        "timezone"
+      ],
+      "name": "invalid timezone",
+      "valid": false
+    }
+  ],
+  "schema": "RegisterOrganizerInput"
+}

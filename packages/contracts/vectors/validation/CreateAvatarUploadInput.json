@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "body": {
+        "contentType": "image/jpeg",
+        "size": 1000
+      },
+      "name": "valid",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "contentType": 123,
+        "size": 1000
+      },
+      "fieldErrors": [
+        "contentType"
+      ],
+      "name": "contentType wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "contentType": "image/jpeg",
+        "size": "x"
+      },
+      "fieldErrors": [
+        "size"
+      ],
+      "name": "size wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "contentType": "image/gif",
+        "size": 1000
+      },
+      "fieldErrors": [
+        "contentType"
+      ],
+      "name": "contentType invalid",
+      "valid": false
+    },
+    {
+      "body": {
+        "contentType": "image/jpeg",
+        "size": 99999999
+      },
+      "fieldErrors": [
+        "size"
+      ],
+      "name": "size too big",
+      "valid": false
+    },
+    {
+      "body": {
+        "contentType": "image/jpeg",
+        "size": 0
+      },
+      "fieldErrors": [
+        "size"
+      ],
+      "name": "size zero",
+      "valid": false
+    }
+  ],
+  "schema": "CreateAvatarUploadInput"
+}

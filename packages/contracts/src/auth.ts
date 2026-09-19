@@ -1,20 +1,45 @@
 import { z } from 'zod'
 
 import { messengerEnum } from './enums'
-import { authTicket, messengerId, uuid } from './primitives'
+import { authTicket, httpUrl, messengerId, uuid } from './primitives'
+
+/**
+ * Auth.js session cookie names, most-secure first. Auth.js itself reads only
+ * the `__Secure-` name on HTTPS; both are listed because local development
+ * serves plain HTTP, and the Go API accepts either.
+ */
+export const SESSION_COOKIE_NAMES = ['__Secure-authjs.session-token', 'authjs.session-token'] as const
+
+/**
+ * Telegram numeric user id. Bounded rather than `.positive()` so the bound is
+ * derivable as a Go int range — an exclusive minimum is not (D10).
+ */
+export const telegramUserId = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER)
+
+/** Unix seconds; the upper bound is 2100-01-01, far past any plausible widget. */
+export const telegramAuthDate = z.number().int().min(1).max(4_102_444_800)
+
+/** Telegram caps names at 64; 256 leaves room without accepting a payload bomb. */
+export const telegramName = z.string().min(1).max(256)
+
+/** Optional name/username fields: present-but-empty is what the widget sends today. */
+export const telegramOptionalName = z.string().max(256)
+
+/** HMAC-SHA256 hex digest. */
+export const telegramHash = z.string().min(64).max(64)
 
 /**
  * Telegram Login Widget payload from the client.
  * Server re-validates the HMAC before trusting any field.
  */
 export const telegramWidgetPayload = z.object({
-  id: z.number().int().positive(),
-  first_name: z.string().min(1),
-  last_name: z.string().optional(),
-  username: z.string().optional(),
-  photo_url: z.string().url().optional(),
-  auth_date: z.number().int().positive(),
-  hash: z.string().length(64),
+  id: telegramUserId,
+  first_name: telegramName,
+  last_name: telegramOptionalName.optional(),
+  username: telegramOptionalName.optional(),
+  photo_url: httpUrl.optional(),
+  auth_date: telegramAuthDate,
+  hash: telegramHash,
 })
 export type TelegramWidgetPayload = z.infer<typeof telegramWidgetPayload>
 
@@ -28,6 +53,16 @@ export const authTicketResponse = z.object({
   organizerExists: z.boolean(),
 })
 export type AuthTicketResponse = z.infer<typeof authTicketResponse>
+
+/** Identity payload cached in Redis behind an auth ticket (ADR-008). */
+export const authTicketPayload = z.object({
+  messenger: messengerEnum,
+  messengerId,
+  displayName: z.string(),
+  photoUrl: z.string().url().optional(),
+  messengerLogin: z.string().optional(),
+})
+export type AuthTicketPayload = z.infer<typeof authTicketPayload>
 
 /**
  * POST /api/auth/telegram-guest — same widget validation but issues a guest
@@ -59,8 +94,16 @@ export type GuestTicketResponse = z.infer<typeof guestTicketResponse>
  */
 export const LOGIN_LINK_TTL_S = 30 * 24 * 60 * 60
 
+/**
+ * Redis key prefix for login links. Exported separately from
+ * {@link loginLinkKey} because the Go API is code-generated from this file:
+ * the generator interpolates the prefix into `contracts.LoginLinkKey`, so the
+ * two sides cannot drift.
+ */
+export const LOGIN_LINK_KEY_PREFIX = 'auth:login-link:'
+
 export function loginLinkKey(token: string): string {
-  return `auth:login-link:${token}`
+  return `${LOGIN_LINK_KEY_PREFIX}${token}`
 }
 
 /**

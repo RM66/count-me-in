@@ -25,7 +25,8 @@
     "SENTRY_AUTH_TOKEN",
     "NEXT_PUBLIC_POSTHOG_KEY",
     "NEXT_PUBLIC_POSTHOG_HOST",
-    "POSTHOG_KEY"
+    "POSTHOG_KEY",
+    "GO_API_URL"
   ],
   "tasks": {
     "build": {
@@ -44,8 +45,33 @@
       "persistent": true
     },
     "test": {
+      "dependsOn": ["^build", "generate:i18n", "generate:contracts"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/contracts/vectors/**"],
+      "outputs": ["coverage/**"]
+    },
+    "test:web": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
+    },
+    "test:go": {
+      "dependsOn": ["generate:i18n", "generate:contracts"],
+      "inputs": ["pkg/**", "api/**", "go.mod", "go.sum", "scripts/**", "$TURBO_ROOT$/packages/contracts/vectors/**"]
+    },
+    "check:api-routes": {
+      "dependsOn": ["^build"]
+    },
+    "generate:contracts": {
+      "inputs": [
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
+        "scripts/generate-contracts.ts",
+        "scripts/messages.ts",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": ["pkg/contracts/contracts_gen.go", "pkg/validation/validation_gen.go", "openapi.yaml"]
+    },
+    "generate:i18n": {
+      "inputs": ["packages/translations/**/*.json"],
+      "outputs": ["pkg/i18n/translations_gen.go"]
     },
     "test:watch": {
       "cache": false,

@@ -1,0 +1,5 @@
+{
+  "uploadUrl": "https://upload.example.com/put",
+  "publicUrl": "https://example.com/avatar.webp",
+  "expiresAt": "2026-01-02T03:04:05.000Z"
+}

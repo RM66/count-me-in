@@ -1,0 +1,124 @@
+{
+  "cases": [
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "serviceId": "demo-yoga",
+        "startsAt": "$now+1d"
+      },
+      "name": "valid minimal",
+      "valid": true
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "price": "15",
+        "serviceId": "demo-yoga",
+        "startsAt": "$now+1d"
+      },
+      "name": "valid with price",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "serviceId": 123,
+        "startsAt": "$now+1d"
+      },
+      "fieldErrors": [
+        "serviceId"
+      ],
+      "name": "serviceId wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "serviceId": "demo-yoga",
+        "startsAt": {}
+      },
+      "fieldErrors": [
+        "startsAt"
+      ],
+      "name": "startsAt wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": "x",
+        "serviceId": "demo-yoga",
+        "startsAt": "$now+1d"
+      },
+      "fieldErrors": [
+        "durationMinutes"
+      ],
+      "name": "durationMinutes wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": "x",
+        "durationMinutes": 60,
+        "serviceId": "demo-yoga",
+        "startsAt": "$now+1d"
+      },
+      "fieldErrors": [
+        "capacity"
+      ],
+      "name": "capacity wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "price": 123,
+        "serviceId": "demo-yoga",
+        "startsAt": "$now+1d"
+      },
+      "fieldErrors": [
+        "price"
+      ],
+      "name": "price wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "serviceId": "demo-yoga",
+        "startsAt": "$now-1d"
+      },
+      "fieldErrors": [
+        "startsAt"
+      ],
+      "name": "startsAt in past",
+      "valid": false
+    },
+    {
+      "body": {
+        "capacity": 10,
+        "durationMinutes": 60,
+        "serviceId": "demo-yoga",
+        "startsAt": "2030-06-15"
+      },
+      "name": "date-only startsAt",
+      "skip": {
+        "go": "FlexTime rejects date-only by design (optional.go:27-35)"
+      },
+      "valid": true
+    }
+  ],
+  "schema": "CreateTimeSlotInput"
+}

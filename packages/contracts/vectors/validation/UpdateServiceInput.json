@@ -1,0 +1,252 @@
+{
+  "cases": [
+    {
+      "body": {},
+      "name": "valid empty",
+      "valid": true
+    },
+    {
+      "body": {
+        "description": null,
+        "title": "New title"
+      },
+      "name": "valid partial null",
+      "valid": true
+    },
+    {
+      "body": {
+        "options": [
+          "A"
+        ],
+        "optionsSelectMode": "single"
+      },
+      "name": "valid options with mode",
+      "valid": true
+    },
+    {
+      "body": {
+        "options": null,
+        "optionsSelectMode": null
+      },
+      "name": "valid clearing both",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "title": 123
+      },
+      "fieldErrors": [
+        "title"
+      ],
+      "name": "title wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "description": 123
+      },
+      "fieldErrors": [
+        "description"
+      ],
+      "name": "description wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "location": 123
+      },
+      "fieldErrors": [
+        "location"
+      ],
+      "name": "location wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "contact": 123
+      },
+      "fieldErrors": [
+        "contact"
+      ],
+      "name": "contact wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultPrice": 123
+      },
+      "fieldErrors": [
+        "defaultPrice"
+      ],
+      "name": "defaultPrice wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": "x"
+      },
+      "fieldErrors": [
+        "defaultCapacity"
+      ],
+      "name": "defaultCapacity wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultDurationMinutes": "x"
+      },
+      "fieldErrors": [
+        "defaultDurationMinutes"
+      ],
+      "name": "defaultDurationMinutes wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "maxSeatsPerBooking": "x"
+      },
+      "fieldErrors": [
+        "maxSeatsPerBooking"
+      ],
+      "name": "maxSeatsPerBooking wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "options": {}
+      },
+      "fieldErrors": [
+        "options"
+      ],
+      "name": "options wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "optionsSelectMode": 123
+      },
+      "fieldErrors": [
+        "optionsSelectMode"
+      ],
+      "name": "optionsSelectMode wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "photoUrl": 123
+      },
+      "fieldErrors": [
+        "photoUrl"
+      ],
+      "name": "photoUrl wrong type",
+      "valid": false
+    },
+    {
+      "body": {
+        "description": null
+      },
+      "name": "null nullable valid",
+      "valid": true
+    },
+    {
+      "body": {
+        "location": null
+      },
+      "name": "null location valid",
+      "valid": true
+    },
+    {
+      "body": {
+        "title": null
+      },
+      "fieldErrors": [
+        "title"
+      ],
+      "name": "null title rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "defaultCapacity": null
+      },
+      "fieldErrors": [
+        "defaultCapacity"
+      ],
+      "name": "null defaultCapacity rejected",
+      "valid": false
+    },
+    {
+      "body": {
+        "options": [
+          "A",
+          "B"
+        ],
+        "optionsSelectMode": null
+      },
+      "fieldErrors": [
+        "optionsSelectMode"
+      ],
+      "name": "options set with null mode",
+      "valid": false
+    },
+    {
+      "body": {
+        "optionsSelectMode": "multi"
+      },
+      "fieldErrors": [
+        "optionsSelectMode"
+      ],
+      "name": "mode without options",
+      "valid": false
+    },
+    {
+      "name": "options empty array",
+      "body": {
+        "options": []
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options"
+      ]
+    },
+    {
+      "name": "options empty array with mode",
+      "body": {
+        "options": [],
+        "optionsSelectMode": "multi"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options",
+        "optionsSelectMode"
+      ]
+    },
+    {
+      "name": "options with invalid mode value",
+      "body": {
+        "options": [
+          "A"
+        ],
+        "optionsSelectMode": "x"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "optionsSelectMode"
+      ]
+    },
+    {
+      "name": "options null alone clears options",
+      "body": {
+        "options": null
+      },
+      "valid": true
+    }
+  ],
+  "schema": "UpdateServiceInput"
+}

@@ -35,6 +35,18 @@ export const QUEUE_BOOKING_CANCELLED = 'booking.cancelled'
 export const QUEUE_DEMO_REFRESH = 'demo.refresh'
 
 /**
+ * Queue: outbox sweep (architecture review fix #3). A QStash **schedule**
+ * (cron) that reads `pending` rows from `notification_outbox` past a grace
+ * period and re-publishes them, closing the loss window between a booking
+ * commit and the inline QStash publish. Not published by any request
+ * handler — a schedule is its only producer.
+ */
+export const QUEUE_OUTBOX_SWEEP = 'notification.outbox.sweep'
+
+/** How often the outbox sweeper runs: every 2 minutes. */
+export const OUTBOX_SWEEP_CRON = '*/2 * * * *'
+
+/**
  * How often the demo seed refreshes: daily, shortly after midnight UTC.
  * Off the hour to stay out of the crowd of cron jobs that fire at :00, and
  * daily because the seed lays out slots across the coming days — anything
