@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -121,4 +122,12 @@ func hmacForAlg(alg, key, msg string) (sig string, ok bool) {
 		return base64.RawURLEncoding.EncodeToString(m.Sum(nil)), true
 	}
 	return "", false
+}
+
+// TraceIDFromRequest reads the trace-id header forwarded by QStash
+// (architecture review fix #5). The publisher sets Upstash-Trace-Id on
+// the publish request; QStash forwards Upstash-* headers to the
+// destination. Returns "" when absent (sweeper re-publish, legacy).
+func TraceIDFromRequest(r *http.Request) string {
+	return r.Header.Get("Upstash-Trace-Id")
 }

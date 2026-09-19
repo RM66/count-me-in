@@ -76,8 +76,10 @@ func slotsCreate(w http.ResponseWriter, r *http.Request) {
 // organizer through the parent service. PUT cannot move a slot to
 // another service and never touches bookedCount (seats change only
 // through the booking flow's atomic reserve); shrinking capacity below
-// the seats already sold answers 409. DELETE cascades bookings (the
-// time_slots FK); guests are not notified from here.
+// the seats already sold answers 409. DELETE refuses a slot that still
+// has confirmed bookings (409 — the organizer must cancel them first);
+// the time_slots FK is RESTRICT, so the database would reject the
+// delete anyway. Guests are not notified from here.
 func SlotItem(w http.ResponseWriter, r *http.Request) {
 	id := httpx.PathParam(r, "/api/slots/", "id")
 	switch r.Method {

@@ -22,11 +22,12 @@ const (
 	DemoServiceBreathwork = "demo-breathwork"
 )
 
-// QStash queues (ADR-012).
+// QStash queues (ADR-012, architecture review fix #3).
 const (
 	QueueBookingCreated   = "booking.created"
 	QueueBookingCancelled = "booking.cancelled"
 	QueueDemoRefresh      = "demo.refresh"
+	QueueOutboxSweep      = "notification.outbox.sweep"
 )
 
 // One-time login links. The prefix is generated from the TS constant, so the

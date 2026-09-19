@@ -89,6 +89,13 @@ func RateLimited(w http.ResponseWriter, r *http.Request, key string, cfg RateLim
 // ClientIP returns the caller's IP. Vercel sets x-vercel-forwarded-for
 // (and x-forwarded-for); the first value is the original client, the
 // rest are the proxy chain. Falls back to RemoteAddr in dev.
+//
+// Trust assumption (architecture review fix #8): on Vercel the edge
+// overwrites these headers, so they are trustworthy. If the function
+// is ever reached without going through the edge (a misconfigured
+// internal call, a non-Vercel deployment), a spoofed X-Forwarded-For
+// would let an attacker rotate rate-limit keys. This is acceptable for
+// the current Vercel-only deployment; revisit if the topology changes.
 func ClientIP(r *http.Request) string {
 	for _, header := range []string{"x-vercel-forwarded-for", "x-forwarded-for"} {
 		if fwd := r.Header.Get(header); fwd != "" {

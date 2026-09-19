@@ -70,7 +70,8 @@ func JobsReceiver(w http.ResponseWriter, r *http.Request) {
 		payload = body
 	}
 
-	if err := jobs.RunJob(r.Context(), queue, payload); err != nil {
+	traceID := jobs.TraceIDFromRequest(r)
+	if err := jobs.RunJob(r.Context(), queue, payload, traceID); err != nil {
 		switch err.(type) {
 		case *jobs.UnknownJobQueueError:
 			w.WriteHeader(http.StatusNotFound)
@@ -79,7 +80,11 @@ func JobsReceiver(w http.ResponseWriter, r *http.Request) {
 		default:
 			// Anything else is a handler failure — a 500 so QStash
 			// retries the delivery.
-			logx.Error(err, map[string]any{"queue": queue})
+			fields := map[string]any{"queue": queue}
+			if traceID != "" {
+				fields["traceId"] = traceID
+			}
+			logx.Error(err, fields)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		return

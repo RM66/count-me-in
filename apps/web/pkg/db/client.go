@@ -1,6 +1,17 @@
 // Package db is the server end of the data wire: Postgres reads and
 // writes via pgx, one file per entity, DTO mapping included. Route
 // handlers must not run SQL inline (AGENTS.md).
+//
+// Schema knowledge is duplicated across two access patterns
+// (architecture review fix #10): this package hand-writes SQL with
+// explicit column lists and manual Scan order, while the TS side
+// (packages/db) uses Drizzle's type-safe schema. A column add/rename
+// requires updating both. The scan-order risk (a reordered SELECT with
+// a matching reordered Scan compiles fine but corrupts data) is real
+// but bounded — the lists are small and stable. Generating the Go
+// column constants and scan bindings from the Drizzle schema (the
+// contracts codegen pipeline proves the team can do codegen) is the
+// long-term fix; not urgent for MVP.
 package db
 
 import (

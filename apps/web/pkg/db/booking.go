@@ -35,10 +35,13 @@ type BookingRow struct {
 	ManageToken         string
 	SelectedOptions     []string
 	CreatedAt           time.Time
+	// When the manageToken stops being usable for cancellation
+	// (architecture review fix #4). nil = non-expiring (legacy rows).
+	ManageTokenExpiresAt *time.Time
 }
 
 // array_to_json projections make NULL arrays explicit.
-const bookingColumns = `id, time_slot_id, status::text, seats, guest_name, guest_messenger::text, guest_messenger_id, guest_messenger_login, guest_locale, manage_token, array_to_json(selected_options), created_at`
+const bookingColumns = `id, time_slot_id, status::text, seats, guest_name, guest_messenger::text, guest_messenger_id, guest_messenger_login, guest_locale, manage_token, array_to_json(selected_options), created_at, manage_token_expires_at`
 
 // ── Failure modes (English messages for logs; the response body gets
 // localized copy + machine-readable extras — ADR-011). ─────────────────
@@ -97,13 +100,28 @@ type DuplicateBookingError struct{}
 
 func (DuplicateBookingError) Error() string { return "You already have a booking for this session" }
 
+// ManageTokenExpiredError — the manageToken is past its expiry
+// (architecture review fix #4). A past event's booking no longer needs
+// cancel access; the token is answered like an unknown one (404) so
+// the endpoint cannot be used to test whether a token exists.
+type ManageTokenExpiredError struct{}
+
+func (ManageTokenExpiredError) Error() string { return "This booking can no longer be cancelled" }
+
+// manageTokenGracePeriod — how long after the slot starts the token stays
+// usable. A guest may need to cancel shortly after the session begins
+// (ran late, wrong day); 24h covers that without making the token
+// permanent.
+const manageTokenGracePeriod = 24 * time.Hour
+
 // ── Scans and chain queries ─────────────────────────────────────────────────
 
 func scanBooking(row pgx.Row) (*BookingRow, error) {
 	var b BookingRow
 	var optionsJSON *string
 	err := row.Scan(&b.ID, &b.TimeSlotID, &b.Status, &b.Seats, &b.GuestName, &b.GuestMessenger,
-		&b.GuestMessengerID, &b.GuestMessengerLogin, &b.GuestLocale, &b.ManageToken, &optionsJSON, &b.CreatedAt)
+		&b.GuestMessengerID, &b.GuestMessengerLogin, &b.GuestLocale, &b.ManageToken, &optionsJSON,
+		&b.CreatedAt, &b.ManageTokenExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -131,7 +149,7 @@ JOIN organizers o ON s.organizer_id = o.id
 // chain in one statement: every guest-facing read needs all four.
 const bookingChainSelect = `
 SELECT
-  b.id, b.time_slot_id, b.status::text, b.seats, b.guest_name, b.guest_messenger::text, b.guest_messenger_id, b.guest_messenger_login, b.guest_locale, b.manage_token, array_to_json(b.selected_options), b.created_at,
+  b.id, b.time_slot_id, b.status::text, b.seats, b.guest_name, b.guest_messenger::text, b.guest_messenger_id, b.guest_messenger_login, b.guest_locale, b.manage_token, array_to_json(b.selected_options), b.created_at, b.manage_token_expires_at,
   ts.id, ts.service_id, ts.starts_at, ts.duration_minutes, ts.capacity, ts.booked_count, ts.price, ts.created_at,
   s.id, s.organizer_id, s.title, s.description, s.photo_url, s.location, s.contact, s.default_price,
   s.default_capacity, s.default_duration_minutes, s.max_seats_per_booking, array_to_json(s.options), s.options_select_mode::text, s.created_at,
@@ -171,7 +189,7 @@ func scanBookingChain(row pgx.Row) (*BookingRow, *TimeSlotRow, *ServiceRow, *Org
 	var organizer OrganizerRow
 	var bOptions, sOptions *string
 	err := row.Scan(
-		&b.ID, &b.TimeSlotID, &b.Status, &b.Seats, &b.GuestName, &b.GuestMessenger, &b.GuestMessengerID, &b.GuestMessengerLogin, &b.GuestLocale, &b.ManageToken, &bOptions, &b.CreatedAt,
+		&b.ID, &b.TimeSlotID, &b.Status, &b.Seats, &b.GuestName, &b.GuestMessenger, &b.GuestMessengerID, &b.GuestMessengerLogin, &b.GuestLocale, &b.ManageToken, &bOptions, &b.CreatedAt, &b.ManageTokenExpiresAt,
 		&slot.ID, &slot.ServiceID, &slot.StartsAt, &slot.DurationMinutes, &slot.Capacity, &slot.BookedCount, &slot.Price, &slot.CreatedAt,
 		&service.ID, &service.OrganizerID, &service.Title, &service.Description, &service.PhotoURL, &service.Location, &service.Contact, &service.DefaultPrice,
 		&service.DefaultCapacity, &service.DefaultDurationMinutes, &service.MaxSeatsPerBooking, &sOptions, &service.OptionsSelectMode, &service.CreatedAt,
@@ -328,14 +346,18 @@ func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (
 		return nil, err
 	}
 
+	// manageToken expiry (fix #4): the token is usable until the slot
+	// starts plus a grace period — a past event's booking does not need
+	// cancel access.
+	expiresAt := claimed.StartsAt.Add(manageTokenGracePeriod)
 	created, err := scanBooking(tx.QueryRow(ctx, `
 		INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
-			guest_messenger_login, guest_locale, manage_token, selected_options)
-		VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11)
+			guest_messenger_login, guest_locale, manage_token, selected_options, manage_token_expires_at)
+		VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11, $12)
 		RETURNING `+bookingColumns,
 		newID(), claimed.ID, "confirmed", data.Seats, data.GuestName,
 		string(data.Guest.Messenger), data.Guest.MessengerID, data.Guest.MessengerLogin,
-		data.GuestLocale, newManageToken(), nullableSlice(selected)))
+		data.GuestLocale, newManageToken(), nullableSlice(selected), expiresAt))
 	if err != nil {
 		// Duplicate booking — the transaction rolls back, releasing the
 		// claimed seat (partial unique index, invariant 4).
@@ -346,6 +368,21 @@ func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (
 	}
 	if created == nil {
 		return nil, SlotNotBookableError{}
+	}
+
+	// Transactional outbox (architecture review fix #3): write one
+	// outbox row per recipient in the same transaction, so a crash
+	// between commit and the inline publish does not lose the
+	// notification — the sweeper re-publishes pending rows.
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
+		BookingID: created.ID, Recipient: contracts.RecipientOrganizer,
+	}); err != nil {
+		return nil, err
+	}
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
+		BookingID: created.ID, Recipient: contracts.RecipientGuest,
+	}); err != nil {
+		return nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -383,6 +420,14 @@ func CancelGuestBookingByToken(ctx context.Context, token string) (*contracts.Gu
 		return nil, err
 	}
 
+	// manageToken expiry (architecture review fix #4): a token past its
+	// expiry is answered like an unknown one (nil → 404) so the endpoint
+	// cannot be used to test whether a token exists. nil = non-expiring
+	// (legacy rows created before the column was added).
+	if b.ManageTokenExpiresAt != nil && time.Now().After(*b.ManageTokenExpiresAt) {
+		return nil, ManageTokenExpiredError{}
+	}
+
 	cancelled, err := scanBooking(tx.QueryRow(ctx, `
 		UPDATE bookings SET status = 'cancelled'
 		WHERE id = $1::uuid AND status = 'confirmed'
@@ -403,6 +448,15 @@ func CancelGuestBookingByToken(ctx context.Context, token string) (*contracts.Gu
 	}
 	if released == nil {
 		released = slot // released can't vanish while the booking points at it
+	}
+
+	// Transactional outbox (architecture review fix #3): the organizer
+	// is notified of the guest's cancellation. One row — the counterparty
+	// only (ADR-012).
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
+		BookingID: cancelled.ID, CancelledBy: contracts.ActorGuest,
+	}); err != nil {
+		return nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -463,6 +517,15 @@ func CancelOwnedBooking(ctx context.Context, organizerID, bookingID string) (*co
 	if _, err := tx.Exec(ctx, `
 		UPDATE time_slots SET booked_count = greatest(0, booked_count - $1)
 		WHERE id = $2::uuid`, cancelled.Seats, cancelled.TimeSlotID); err != nil {
+		return nil, err
+	}
+
+	// Transactional outbox (architecture review fix #3): the guest is
+	// notified of the organizer's cancellation. One row — the
+	// counterparty only (ADR-012).
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
+		BookingID: cancelled.ID, CancelledBy: contracts.ActorOrganizer,
+	}); err != nil {
 		return nil, err
 	}
 

@@ -9,6 +9,8 @@
 package logx
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -41,4 +43,20 @@ func Error(err error, fields map[string]any) {
 		return
 	}
 	write("error", err.Error(), fields)
+}
+
+// NewTraceID generates a short random hex id for correlating a request
+// across the async pipeline (architecture review fix #5). The id travels
+// in the QStash job payload and is emitted in every log line in both the
+// API handler and the job handler, so debugging "I booked but didn't get
+// a message" becomes a grep for one id instead of archaeology across
+// separate invocations.
+func NewTraceID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand should never fail on a healthy system; fall back
+		// to a timestamp so the field is never empty.
+		return fmt.Sprintf("t%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }

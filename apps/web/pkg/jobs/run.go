@@ -50,7 +50,7 @@ func (e *InvalidJobPayloadError) Error() string {
 // foreign queue name and InvalidJobPayloadError for a malformed
 // payload; any other error is a handler failure the route answers 500
 // with, which is what makes QStash retry.
-func RunJob(ctx context.Context, queue string, body json.RawMessage) error {
+func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID string) error {
 	switch queue {
 	case contracts.QueueBookingCreated:
 		var job contracts.BookingCreatedJob
@@ -67,8 +67,8 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage) error {
 		if err != nil {
 			return err
 		}
-		return withRetryPolicy(queue, func() error {
-			return HandleBookingCreated(ctx, env, job)
+		return withRetryPolicy(queue, traceID, func() error {
+			return HandleBookingCreated(ctx, env, job, traceID)
 		})
 	case contracts.QueueBookingCancelled:
 		var job contracts.BookingCancelledJob
@@ -83,13 +83,22 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage) error {
 		if err != nil {
 			return err
 		}
-		return withRetryPolicy(queue, func() error {
-			return HandleBookingCancelled(ctx, env, job)
+		return withRetryPolicy(queue, traceID, func() error {
+			return HandleBookingCancelled(ctx, env, job, traceID)
 		})
 	case contracts.QueueDemoRefresh:
 		// A failure escapes as a 500 so QStash retries (Sentry in the
 		// TS version; structured log here).
 		if err := HandleDemoRefresh(ctx); err != nil {
+			logx.Error(err, map[string]any{"queue": queue})
+			return err
+		}
+		return nil
+	case contracts.QueueOutboxSweep:
+		// Outbox sweeper (architecture review fix #3): re-publishes
+		// pending notification rows that the inline publish missed.
+		// A failure escapes as a 500 so QStash retries the sweep.
+		if err := HandleOutboxSweep(ctx); err != nil {
 			logx.Error(err, map[string]any{"queue": queue})
 			return err
 		}
@@ -104,17 +113,21 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage) error {
 // dropped message that reads like an outage. The guest's on-screen
 // success page, which already carries the management link, is the
 // designed fallback.
-func withRetryPolicy(queue string, run func() error) error {
+func withRetryPolicy(queue, traceID string, run func() error) error {
 	err := run()
 	if err == nil {
 		return nil
 	}
 	var unreachable *TelegramUnreachableError
 	if errors.As(err, &unreachable) {
-		logx.Info("recipient unreachable — completing without retry", map[string]any{
+		fields := map[string]any{
 			"queue": queue,
 			"error": err.Error(),
-		})
+		}
+		if traceID != "" {
+			fields["traceId"] = traceID
+		}
+		logx.Info("recipient unreachable — completing without retry", fields)
 		return nil
 	}
 	return err

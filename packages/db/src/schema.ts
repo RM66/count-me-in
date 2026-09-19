@@ -18,6 +18,15 @@ export const optionsSelectMode = pgEnum('options_select_mode', ['single', 'multi
 export const bookingStatus = pgEnum('booking_status', ['confirmed', 'cancelled'])
 export const messengerKind = pgEnum('messenger_kind', ['telegram'])
 
+/**
+ * Outbox job status (architecture review fix #3 — transactional outbox).
+ * A row starts `pending`, moves to `sent` once the QStash publish succeeds.
+ * The sweeper job reads `pending` rows older than a short grace period
+ * and re-publishes them, closing the loss window between commit and
+ * the inline publish.
+ */
+export const outboxStatus = pgEnum('outbox_status', ['pending', 'sent'])
+
 /** The organizer is the Auth.js account itself; `id` is the user subject. */
 export const organizers = pgTable(
   'organizers',
@@ -142,6 +151,13 @@ export const bookings = pgTable(
     manageToken: text('manage_token').notNull(),
     selectedOptions: text('selected_options').array(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * When the manageToken stops being usable for cancellation (architecture
+     * review fix #4). Set to the slot's start time plus a grace period — a
+     * past event's booking does not need cancel access. `null` for rows
+     * created before this column existed (treated as non-expiring).
+     */
+    manageTokenExpiresAt: timestamp('manage_token_expires_at', { withTimezone: true }),
   },
   (t) => [
     index('bookings_time_slot_id_idx').on(t.timeSlotId),
@@ -182,6 +198,40 @@ export const timeSlotsRelations = relations(timeSlots, ({ one, many }) => ({
   }),
   bookings: many(bookings),
 }))
+
+/**
+ * Transactional outbox for notification publishing (architecture review
+ * fix #3). A row is written in the same transaction as the booking
+ * commit, carrying the queue name and the job payload (ids only). The
+ * inline publish runs after commit as before; if it fails (function
+ * killed, network drop), the sweeper job (`notification.outbox.sweep`)
+ * reads `pending` rows past a grace period and re-publishes them,
+ * marking them `sent` on success. This closes the loss window between
+ * commit and publish — a committed booking always eventually notifies.
+ *
+ * `attempts` counts publish tries so the sweeper can give up after a
+ * bounded number of failures (logged, not retried forever).
+ */
+export const notificationOutbox = pgTable(
+  'notification_outbox',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    /** QStash queue name (booking.created, booking.cancelled). */
+    queue: text('queue').notNull(),
+    /** JSON payload — the job body (ids only, no secrets). */
+    payload: text('payload').notNull(),
+    status: outboxStatus('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('notification_outbox_status_idx').on(t.status, t.createdAt),
+    check('notification_outbox_attempts_check', sql`${t.attempts} >= 0`),
+  ],
+)
 
 export const bookingsRelations = relations(bookings, ({ one }) => ({
   timeSlot: one(timeSlots, {

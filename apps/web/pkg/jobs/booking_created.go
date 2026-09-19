@@ -18,7 +18,7 @@ import (
 // HandleBookingCreated notifies one recipient about a fresh booking.
 // PostHog captures from the TS handler are not ported (no SDK in the
 // dependency set); delivery logging covers the remainder.
-func HandleBookingCreated(ctx context.Context, env Env, job contracts.BookingCreatedJob) error {
+func HandleBookingCreated(ctx context.Context, env Env, job contracts.BookingCreatedJob, traceID string) error {
 	booking, slot, service, organizer, err := db.GetBookingChain(ctx, job.BookingID)
 	if err != nil {
 		return err
@@ -27,18 +27,26 @@ func HandleBookingCreated(ctx context.Context, env Env, job contracts.BookingCre
 	// retry backoff must render the booking as it is now, not as it was
 	// when the transaction committed.
 	if booking == nil {
-		logx.Info("booking no longer exists — skipping", map[string]any{
+		fields := map[string]any{
 			"queue": contracts.QueueBookingCreated, "bookingId": job.BookingID,
-		})
+		}
+		if traceID != "" {
+			fields["traceId"] = traceID
+		}
+		logx.Info("booking no longer exists — skipping", fields)
 		return nil
 	}
 	view := BookingView{Booking: *booking, Slot: *slot, Service: *service, Organizer: *organizer}
 
 	// Demo bookings never reach a chat (ADR-010).
 	if contracts.IsDemoOrganizerID(organizer.ID) {
-		logx.Info("refusing to notify the demo organizer", map[string]any{
+		fields := map[string]any{
 			"queue": contracts.QueueBookingCreated, "bookingId": job.BookingID,
-		})
+		}
+		if traceID != "" {
+			fields["traceId"] = traceID
+		}
+		logx.Info("refusing to notify the demo organizer", fields)
 		return nil
 	}
 

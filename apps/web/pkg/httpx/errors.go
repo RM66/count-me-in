@@ -40,6 +40,11 @@ func BookingErrorResponse(err error, locale string) *Response {
 			contracts.ErrorBody{Code: ptr("duplicate_booking")})
 	case db.BookingAlreadyCancelledError:
 		return Error(http.StatusConflict, locale, "alreadyCancelled")
+	case db.ManageTokenExpiredError:
+		// Answered like an unknown token (404) so the endpoint cannot
+		// be used to test whether a token exists (architecture review
+		// fix #4).
+		return Error(http.StatusNotFound, locale, "bookingNotFound")
 	case db.InvalidOptionSelectionError:
 		// The class message carries the English validation detail for
 		// logs; the body gets the machine-readable code plus localized

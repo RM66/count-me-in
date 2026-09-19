@@ -9,6 +9,7 @@ import (
 	"countmein/pkg/db"
 	"countmein/pkg/httpx"
 	"countmein/pkg/i18n"
+	"countmein/pkg/logx"
 	"countmein/pkg/queue"
 	"countmein/pkg/validation"
 )
@@ -45,6 +46,13 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trace id (architecture review fix #5): correlates this request
+	// across the async pipeline — the id travels in the QStash message
+	// header and is emitted in every log line in both the API handler
+	// and the job handler, so debugging "I booked but didn't get a
+	// message" becomes a grep for one id.
+	traceID := logx.NewTraceID()
+
 	created, err := db.CreateGuestBooking(r.Context(), contracts.CreateBookingData{
 		ServiceID:       input.ServiceID,
 		TimeSlotID:      input.TimeSlotID,
@@ -55,6 +63,7 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 		Guest:           *identity,
 	})
 	if err != nil {
+		logx.Error(err, map[string]any{"traceId": traceID, "scope": "booking-create"})
 		// Sold out, gone, demo, bad options — all already have a status
 		// code; anything else is a 500.
 		if resp := httpx.BookingErrorResponse(err, locale); resp != nil {
@@ -64,6 +73,11 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Internal(err).Write(w)
 		return
 	}
+
+	logx.Info("booking created", map[string]any{
+		"traceId":   traceID,
+		"bookingId": created.ID,
+	})
 
 	// After-commit publish (ADR-012). No after()-hook exists on the
 	// Vercel Go runtime, so the QStash round trip runs inline after the
@@ -81,7 +95,7 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCreated(publishCtx, created.ID)
+	queue.PublishBookingCreated(publishCtx, created.ID, traceID)
 }
 
 // BookingLookup — POST /api/bookings/lookup: "find my bookings"
@@ -139,6 +153,8 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	traceID := logx.NewTraceID()
+
 	body, _ := httpx.ReadBody(r)
 	input, errs := validation.ParseCancelBookingByTokenInput(body)
 	if errs != nil {
@@ -162,6 +178,11 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logx.Info("booking cancelled by guest", map[string]any{
+		"traceId":   traceID,
+		"bookingId": booking.ID,
+	})
+
 	// After-commit notification (ADR-012): the organizer is told by
 	// QStash delivery once the cancellation is durable; the publisher
 	// never throws. No after()-hook exists on this runtime, so the
@@ -174,7 +195,7 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCancelled(publishCtx, booking.ID, contracts.ActorGuest)
+	queue.PublishBookingCancelled(publishCtx, booking.ID, contracts.ActorGuest, traceID)
 }
 
 // BookingCancelByOrganizer — POST /api/bookings/cancel-by-organizer:
@@ -193,6 +214,8 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	traceID := logx.NewTraceID()
 
 	// Also refuses the demo account and anonymous cabinet visitors,
 	// since /cabinet needs no session (ADR-010) — a route under it does
@@ -227,6 +250,11 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logx.Info("booking cancelled by organizer", map[string]any{
+		"traceId":   traceID,
+		"bookingId": booking.ID,
+	})
+
 	// After-commit notification (ADR-012): the guest is told via QStash
 	// delivery once the cancellation is durable. The publish runs inline
 	// after the response is written and before Handler returns — the
@@ -238,5 +266,5 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCancelled(publishCtx, booking.ID, contracts.ActorOrganizer)
+	queue.PublishBookingCancelled(publishCtx, booking.ID, contracts.ActorOrganizer, traceID)
 }

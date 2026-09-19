@@ -1,13 +1,21 @@
-import { SESSION_COOKIE_NAMES } from '@repo/contracts'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
+
+import { auth } from '@/server/auth'
+import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
 
 import 'server-only'
 
 /**
  * Server-side fetch to the Go API — the write-side counterpart of the
  * browser `api-client/`. Server actions call mutating endpoints here;
- * the Go API authenticates via the Auth.js session cookie, which this
- * helper forwards so the Go side can resolve the organizer.
+ * the Go API authenticates via the organizer-auth header (architecture
+ * review fix #1), which this helper mints from the Auth.js session and
+ * forwards so the Go side can resolve the organizer.
+ *
+ * Browser-direct calls (the `api-client/` hooks) go through `proxy.ts`,
+ * which mints the same header in the edge middleware. Server actions
+ * bypass the middleware (they run after it, in the same request), so they
+ * mint the header here.
  *
  * In production, Go functions live at the same origin (Vercel filesystem
  * routing); the incoming request's Host header supplies the origin. In
@@ -29,19 +37,25 @@ async function goApiOrigin(): Promise<string> {
 }
 
 /**
- * Fetch a Go API path with the session cookie forwarded. The caller
+ * Fetch a Go API path with the organizer-auth header forwarded. The caller
  * sets method, body and any non-cookie headers; this helper adds the
- * origin and the `Cookie` header for Auth.js session authentication.
+ * origin and the `X-Organizer-Auth` header for organizer authentication.
+ *
+ * The Auth.js session cookie is no longer forwarded to the Go API — the
+ * Go side no longer decrypts it (architecture review fix #1). The
+ * organizer-auth JWT is the credential now.
  */
 export async function goApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const origin = await goApiOrigin()
-  const cookieStore = await cookies()
-  const sessionCookie = SESSION_COOKIE_NAMES.map((name) => cookieStore.get(name)).find(
-    (c) => c !== undefined,
-  )
   const reqHeaders = new Headers(init.headers)
-  if (sessionCookie) {
-    reqHeaders.set('Cookie', `${sessionCookie.name}=${sessionCookie.value}`)
+
+  const session = await auth()
+  if (session?.user?.id) {
+    const token = await mintOrganizerAuth(session.user.id, session.user.slug)
+    if (token) {
+      reqHeaders.set(ORGANIZER_AUTH_HEADER, token)
+    }
   }
+
   return fetch(`${origin}${path}`, { ...init, headers: reqHeaders })
 }

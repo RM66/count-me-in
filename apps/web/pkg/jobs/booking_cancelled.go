@@ -14,23 +14,31 @@ import (
 // counterparty is notified; the job records who cancelled and the
 // recipient is derived from it.
 
-func HandleBookingCancelled(ctx context.Context, env Env, job contracts.BookingCancelledJob) error {
+func HandleBookingCancelled(ctx context.Context, env Env, job contracts.BookingCancelledJob, traceID string) error {
 	booking, slot, service, organizer, err := db.GetBookingChain(ctx, job.BookingID)
 	if err != nil {
 		return err
 	}
 	if booking == nil {
-		logx.Info("booking no longer exists — skipping", map[string]any{
+		fields := map[string]any{
 			"queue": contracts.QueueBookingCancelled, "bookingId": job.BookingID,
-		})
+		}
+		if traceID != "" {
+			fields["traceId"] = traceID
+		}
+		logx.Info("booking no longer exists — skipping", fields)
 		return nil
 	}
 	view := BookingView{Booking: *booking, Slot: *slot, Service: *service, Organizer: *organizer}
 
 	if contracts.IsDemoOrganizerID(organizer.ID) {
-		logx.Info("refusing to notify the demo organizer", map[string]any{
+		fields := map[string]any{
 			"queue": contracts.QueueBookingCancelled, "bookingId": job.BookingID,
-		})
+		}
+		if traceID != "" {
+			fields["traceId"] = traceID
+		}
+		logx.Info("refusing to notify the demo organizer", fields)
 		return nil
 	}
 

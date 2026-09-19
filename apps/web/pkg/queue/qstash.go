@@ -52,22 +52,26 @@ var (
 // The two publishes run concurrently: they are independent HTTPS calls
 // and serializing them would add the second round trip's latency to the
 // guest's response for no benefit. Each publish absorbs its own errors.
-func PublishBookingCreated(ctx context.Context, bookingID string) {
+//
+// traceID (architecture review fix #5) travels as a QStash message
+// header so the job handler can emit it in its logs, correlating the
+// async pipeline.
+func PublishBookingCreated(ctx context.Context, bookingID, traceID string) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		publish(ctx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
+		publishWithTrace(ctx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
 			BookingID: bookingID,
 			Recipient: contracts.RecipientOrganizer,
-		})
+		}, traceID)
 	}()
 	go func() {
 		defer wg.Done()
-		publish(ctx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
+		publishWithTrace(ctx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
 			BookingID: bookingID,
 			Recipient: contracts.RecipientGuest,
-		})
+		}, traceID)
 	}()
 	wg.Wait()
 }
@@ -75,14 +79,18 @@ func PublishBookingCreated(ctx context.Context, bookingID string) {
 // PublishBookingCancelled publishes the booking.cancelled job for a
 // cancelled booking. Only the actor is recorded; the receiver notifies
 // the counterparty.
-func PublishBookingCancelled(ctx context.Context, bookingID string, cancelledBy contracts.CancelActor) {
-	publish(ctx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
+func PublishBookingCancelled(ctx context.Context, bookingID string, cancelledBy contracts.CancelActor, traceID string) {
+	publishWithTrace(ctx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
 		BookingID:   bookingID,
 		CancelledBy: cancelledBy,
-	})
+	}, traceID)
 }
 
 func publish(ctx context.Context, queue string, job any) {
+	publishWithTrace(ctx, queue, job, "")
+}
+
+func publishWithTrace(ctx context.Context, queue string, job any, traceID string) {
 	err := func() error {
 		token := os.Getenv("QSTASH_TOKEN")
 		if token == "" {
@@ -111,31 +119,71 @@ func publish(ctx context.Context, queue string, job any) {
 		if err != nil {
 			return err
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-			base+"/v2/publish/"+destination, bytes.NewReader(body))
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Upstash-Retries", fmt.Sprintf("%d", jobRetries))
-
-		res, err := httpClient.Do(req)
-		if err != nil {
-			return err
-		}
-		defer res.Body.Close()
-		_, _ = io.Copy(io.Discard, res.Body)
-		if res.StatusCode >= 300 {
-			return fmt.Errorf("qstash publish %s: HTTP %d", queue, res.StatusCode)
-		}
-		return nil
+		return publishBody(ctx, token, base, destination, queue, body, traceID)
 	}()
 	if err != nil {
 		// Absorbed: committed bookings must not fail over a
 		// notification (Sentry in the TS version; structured log here).
-		logx.Error(err, map[string]any{"queue": queue, "source": "qstash-publish"})
+		fields := map[string]any{"queue": queue, "source": "qstash-publish"}
+		if traceID != "" {
+			fields["traceId"] = traceID
+		}
+		logx.Error(err, fields)
 	}
+}
+
+// PublishRaw publishes a pre-serialized JSON body to a queue. Used by
+// the outbox sweeper, which re-publishes the raw payload stored in the
+// outbox row. Unlike publish, the error is returned (not absorbed) so
+// the sweeper can decide whether to retry or abandon the row.
+func PublishRaw(ctx context.Context, queue string, body json.RawMessage) error {
+	token := os.Getenv("QSTASH_TOKEN")
+	if token == "" {
+		if isProduction() {
+			return fmt.Errorf("QSTASH_TOKEN is not set")
+		}
+		return nil // dev: skip silently
+	}
+	base := strings.TrimRight(os.Getenv("QSTASH_URL"), "/")
+	if base == "" {
+		base = defaultQStashURL
+	}
+	destination, err := destination(queue)
+	if err != nil {
+		return err
+	}
+	return publishBody(ctx, token, base, destination, queue, body, "")
+}
+
+// publishBody is the shared HTTP POST to QStash's publish endpoint.
+// traceID (architecture review fix #5) is forwarded as a QStash header
+// so the job handler can emit it in its logs, correlating the async
+// pipeline. Empty traceID = no header (sweeper re-publish, legacy).
+func publishBody(ctx context.Context, token, base, destination, queue string, body []byte, traceID string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		base+"/v2/publish/"+destination, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Upstash-Retries", fmt.Sprintf("%d", jobRetries))
+	if traceID != "" {
+		// QStash forwards Upstash-* headers to the destination, so the
+		// job handler reads this from the incoming request headers.
+		req.Header.Set("Upstash-Trace-Id", traceID)
+	}
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	_, _ = io.Copy(io.Discard, res.Body)
+	if res.StatusCode >= 300 {
+		return fmt.Errorf("qstash publish %s: HTTP %d", queue, res.StatusCode)
+	}
+	return nil
 }
 
 // destination — the QStash destination for a queue: this deployment's

@@ -55,9 +55,24 @@ const unusedRules = ruleRegexes
   .filter((rule) => !goRoutes.some((route) => rule.regex.test(route)))
   .map((rule) => rule.source)
 
+// 2b. Every manifest route must be covered by a vercel.json rewrite
+// (architecture review fix #6). The mux ↔ manifest agreement is
+// checked in pkg/routes/manifest_test.go, and vercel.json ↔ mux is
+// checked above — but a route added to the manifest and the mux but
+// missing from vercel.json would pass both and 404 in production. This
+// direct check closes that gap.
+const manifestPaths = API_ROUTES.map((r) => r.path)
+const uncoveredManifestRoutes = manifestPaths.filter(
+  (path) => !ruleRegexes.some((rule) => rule.regex.test(path)),
+)
+
 let failed = false
 
-if (uncoveredRoutes.length === 0 && unusedRules.length === 0) {
+if (
+  uncoveredRoutes.length === 0 &&
+  unusedRules.length === 0 &&
+  uncoveredManifestRoutes.length === 0
+) {
   console.log(
     `vercel.json rewrites in sync with Go mux routes (${goRoutes.length} routes covered by ${rewriteRules.length} rules)`,
   )
@@ -71,6 +86,10 @@ if (uncoveredRoutes.length === 0 && unusedRules.length === 0) {
   if (unusedRules.length > 0) {
     console.error('\n  Rewrite rules in vercel.json matching no Go routes:')
     for (const r of unusedRules) console.error(`    - ${r}`)
+  }
+  if (uncoveredManifestRoutes.length > 0) {
+    console.error('\n  Manifest routes not covered by vercel.json:')
+    for (const r of uncoveredManifestRoutes) console.error(`    + ${r}`)
   }
   console.error('\nFix: update rewrites in apps/web/vercel.json or routes in pkg/routes/mux.go')
 }
@@ -89,21 +108,23 @@ const specOperations = new Set(
       .map((m) => `${m.toUpperCase()} ${path}`),
   ),
 )
-const manifestOperations = new Set(
-  API_ROUTES.map((r) => `${r.method.toUpperCase()} ${r.path}`),
-)
+const manifestOperations = new Set(API_ROUTES.map((r) => `${r.method.toUpperCase()} ${r.path}`))
 
 const missingInOpenapi = [...manifestOperations].filter((op) => !specOperations.has(op))
 const extraInOpenapi = [...specOperations].filter((op) => !manifestOperations.has(op))
 
 if (missingInOpenapi.length === 0 && extraInOpenapi.length === 0) {
-  console.log(`openapi.yaml operations in sync with the route manifest (${specOperations.size} operations)`)
+  console.log(
+    `openapi.yaml operations in sync with the route manifest (${specOperations.size} operations)`,
+  )
 } else {
   failed = true
   console.error('openapi.yaml operations are out of sync with the route manifest:')
   for (const r of missingInOpenapi) console.error(`    + missing in openapi: ${r}`)
   for (const r of extraInOpenapi) console.error(`    - extra in openapi: ${r}`)
-  console.error('\nFix: regenerate via `bun run generate:contracts` or update packages/contracts/src/routes.ts')
+  console.error(
+    '\nFix: regenerate via `bun run generate:contracts` or update packages/contracts/src/routes.ts',
+  )
 }
 
 process.exit(failed ? 1 : 0)

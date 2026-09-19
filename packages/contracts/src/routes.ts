@@ -43,7 +43,12 @@ import {
   slotEnvelope,
   slotsEnvelope,
 } from './envelopes'
-import { QUEUE_BOOKING_CANCELLED, QUEUE_BOOKING_CREATED, QUEUE_DEMO_REFRESH } from './jobs'
+import {
+  QUEUE_BOOKING_CANCELLED,
+  QUEUE_BOOKING_CREATED,
+  QUEUE_DEMO_REFRESH,
+  QUEUE_OUTBOX_SWEEP,
+} from './jobs'
 import {
   registered,
   registerOrganizerInput,
@@ -172,7 +177,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 201, description: 'Organizer created', body: registered },
       { status: 400, description: 'Validation error (field issues)', body: invalidIssuesBody },
       { status: 401, description: 'Auth ticket expired or unknown', body: errorBody },
-      { status: 409, description: 'Slug taken, or an account already exists for this identity', body: errorBody },
+      {
+        status: 409,
+        description: 'Slug taken, or an account already exists for this identity',
+        body: errorBody,
+      },
       INTERNAL,
     ],
   },
@@ -184,7 +193,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
     auth: 'sessionOrDemoRead',
     responses: [
       { status: 200, description: 'Organizer profile', body: organizerEnvelope },
-      { status: 404, description: 'Organizer not found, or the demo seed has not run', body: errorBody },
+      {
+        status: 404,
+        description: 'Organizer not found, or the demo seed has not run',
+        body: errorBody,
+      },
       INTERNAL,
     ],
   },
@@ -257,10 +270,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     path: '/api/services',
     summary: 'List the services of the organizer this request may view',
     auth: 'sessionOrDemoRead',
-    responses: [
-      { status: 200, description: 'Services', body: servicesEnvelope },
-      INTERNAL,
-    ],
+    responses: [{ status: 200, description: 'Services', body: servicesEnvelope }, INTERNAL],
   },
   {
     operationId: 'createService',
@@ -271,7 +281,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
     request: createServiceInput,
     responses: [
       { status: 201, description: 'Service created', body: serviceEnvelope },
-      { status: 400, description: 'Validation error, or photoUrl outside the organizer media prefix', body: invalidBody },
+      {
+        status: 400,
+        description: 'Validation error, or photoUrl outside the organizer media prefix',
+        body: invalidBody,
+      },
       DEMO_FORBIDDEN,
       INTERNAL,
     ],
@@ -299,7 +313,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
     request: updateServiceInput,
     responses: [
       { status: 200, description: 'Service updated', body: serviceEnvelope },
-      { status: 400, description: 'Validation error, nothing to update, or photoUrl outside the organizer media prefix', body: invalidBody },
+      {
+        status: 400,
+        description:
+          'Validation error, nothing to update, or photoUrl outside the organizer media prefix',
+        body: invalidBody,
+      },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Service not found', body: errorBody },
       INTERNAL,
@@ -336,10 +355,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
         description: 'When "1", slots that have already started are omitted.',
       },
     ],
-    responses: [
-      { status: 200, description: 'Slots', body: slotsEnvelope },
-      INTERNAL,
-    ],
+    responses: [{ status: 200, description: 'Slots', body: slotsEnvelope }, INTERNAL],
   },
   {
     operationId: 'createSlot',
@@ -413,11 +429,21 @@ export const API_ROUTES: readonly ApiRoute[] = [
     rateLimit: { limit: 5, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 201, description: 'Booking confirmed', body: guestBookingEnvelope },
-      { status: 400, description: 'Validation error, invalid option selection, or party over the per-booking cap', body: invalidBody },
+      {
+        status: 400,
+        description:
+          'Validation error, invalid option selection, or party over the per-booking cap',
+        body: invalidBody,
+      },
       { status: 401, description: 'Guest ticket expired or already used', body: errorBody },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Slot or service no longer bookable', body: errorBody },
-      { status: 409, description: 'Sold out, capacity exceeded, or duplicate booking (one active booking per guest per slot)', body: errorBody },
+      {
+        status: 409,
+        description:
+          'Sold out, capacity exceeded, or duplicate booking (one active booking per guest per slot)',
+        body: errorBody,
+      },
       TOO_MANY,
       INTERNAL,
     ],
@@ -447,7 +473,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 200, description: 'Booking cancelled', body: guestBookingEnvelope },
       INVALID_BODY,
       DEMO_FORBIDDEN,
-      { status: 404, description: 'Booking not found (also the answer for an unknown token)', body: errorBody },
+      {
+        status: 404,
+        description: 'Booking not found (also the answer for an unknown token)',
+        body: errorBody,
+      },
       { status: 409, description: 'Booking already cancelled', body: errorBody },
       INTERNAL,
     ],
@@ -463,7 +493,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 200, description: 'Booking cancelled', body: bookingEnvelope },
       INVALID_BODY,
       DEMO_FORBIDDEN,
-      { status: 404, description: 'Booking not found or not on a service owned by the caller', body: errorBody },
+      {
+        status: 404,
+        description: 'Booking not found or not on a service owned by the caller',
+        body: errorBody,
+      },
       { status: 409, description: 'Booking already cancelled', body: errorBody },
       INTERNAL,
     ],
@@ -481,7 +515,14 @@ export const API_ROUTES: readonly ApiRoute[] = [
         name: 'queue',
         in: 'path',
         required: true,
-        schema: { enum: [QUEUE_BOOKING_CREATED, QUEUE_BOOKING_CANCELLED, QUEUE_DEMO_REFRESH] },
+        schema: {
+          enum: [
+            QUEUE_BOOKING_CREATED,
+            QUEUE_BOOKING_CANCELLED,
+            QUEUE_DEMO_REFRESH,
+            QUEUE_OUTBOX_SWEEP,
+          ],
+        },
       },
     ],
     responses: [

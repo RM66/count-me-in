@@ -800,6 +800,7 @@ paths:
               - booking.created
               - booking.cancelled
               - demo.refresh
+              - notification.outbox.sweep
       responses:
         "200":
           description: Job succeeded (including an unreachable recipient — no retry)

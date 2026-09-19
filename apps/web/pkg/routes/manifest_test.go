@@ -23,7 +23,7 @@ var allMethods = []string{
 func samplePath(pattern string) string {
 	r := strings.NewReplacer(
 		"{id}", "01930000-0000-7000-8000-000000000001",
-		"{queue}", contracts.QueueDemoRefresh,
+		"{queue}", contracts.QueueOutboxSweep,
 	)
 	out := r.Replace(pattern)
 	if strings.Contains(out, "{") {

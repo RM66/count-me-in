@@ -52,10 +52,14 @@ function goString(str: string): string {
 const RE2_UNSUPPORTED = /\(\?=|\(\?!|\(\?<=|\(\?<!|\\[1-9]/
 function goRegexSource(pattern: RegExp, name: string): string {
   if (RE2_UNSUPPORTED.test(pattern.source)) {
-    throw new Error(`generate-contracts: ${name} uses a construct RE2 does not support (lookaround or backreference) — rewrite it or move the check into a hand-written rule`)
+    throw new Error(
+      `generate-contracts: ${name} uses a construct RE2 does not support (lookaround or backreference) — rewrite it or move the check into a hand-written rule`,
+    )
   }
   if (pattern.source.includes('`')) {
-    throw new Error(`generate-contracts: ${name} contains a backtick and cannot be emitted as a Go raw string literal`)
+    throw new Error(
+      `generate-contracts: ${name} contains a backtick and cannot be emitted as a Go raw string literal`,
+    )
   }
   return pattern.source
 }
@@ -124,7 +128,10 @@ function targetOf(id: string, where: string): JSchema {
   return t
 }
 
-function metaOf(id: string, where: string): {
+function metaOf(
+  id: string,
+  where: string,
+): {
   id: string
   kind: 'primitive' | 'enum' | 'input' | 'update' | 'record'
   'x-go-type'?: string
@@ -135,7 +142,9 @@ function metaOf(id: string, where: string): {
 } {
   const m = WIRE_META[id]
   if (!m) {
-    throw new Error(`generate-contracts: "${id}" referenced by ${where} is not registered in wire.ts`)
+    throw new Error(
+      `generate-contracts: "${id}" referenced by ${where} is not registered in wire.ts`,
+    )
   }
   return m
 }
@@ -172,24 +181,92 @@ function refOf(prop: JSchema): RefTarget {
 }
 
 const GO_KEYWORDS = new Set([
-  'break', 'case', 'chan', 'const', 'continue', 'default', 'defer', 'else', 'fallthrough',
-  'for', 'func', 'go', 'goto', 'if', 'import', 'interface', 'map', 'package', 'range',
-  'return', 'select', 'struct', 'switch', 'type', 'var',
+  'break',
+  'case',
+  'chan',
+  'const',
+  'continue',
+  'default',
+  'defer',
+  'else',
+  'fallthrough',
+  'for',
+  'func',
+  'go',
+  'goto',
+  'if',
+  'import',
+  'interface',
+  'map',
+  'package',
+  'range',
+  'return',
+  'select',
+  'struct',
+  'switch',
+  'type',
+  'var',
 ])
 const GO_PREDECLARED = new Set([
-  'append', 'bool', 'byte', 'cap', 'close', 'complex', 'complex64', 'complex128', 'copy',
-  'delete', 'error', 'false', 'float32', 'float64', 'imag', 'int', 'int8', 'int16', 'int32',
-  'int64', 'iota', 'len', 'make', 'new', 'nil', 'panic', 'print', 'println', 'real', 'recover',
-  'rune', 'string', 'true', 'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr', 'any',
-  'comparable', 'clear', 'max', 'min',
+  'append',
+  'bool',
+  'byte',
+  'cap',
+  'close',
+  'complex',
+  'complex64',
+  'complex128',
+  'copy',
+  'delete',
+  'error',
+  'false',
+  'float32',
+  'float64',
+  'imag',
+  'int',
+  'int8',
+  'int16',
+  'int32',
+  'int64',
+  'iota',
+  'len',
+  'make',
+  'new',
+  'nil',
+  'panic',
+  'print',
+  'println',
+  'real',
+  'recover',
+  'rune',
+  'string',
+  'true',
+  'uint',
+  'uint8',
+  'uint16',
+  'uint32',
+  'uint64',
+  'uintptr',
+  'any',
+  'comparable',
+  'clear',
+  'max',
+  'min',
 ])
 
 function guardFieldName(k: string, where: string, locals = true): void {
   // Parser bodies declare locals named after input/update keys; a key like
   // `out` or `range` would break compilation silently. Record keys only feed
   // PascalCase struct fields and json tags, so keywords are harmless there.
-  if (k === 'e' || k === 'm' || k === 'out' || (locals && (GO_KEYWORDS.has(k) || GO_PREDECLARED.has(k)))) {
-    throw new Error(`generate-contracts: field "${k}" in ${where} collides with a Go keyword, predeclared identifier, or parser local`)
+  if (
+    k === 'e' ||
+    k === 'm' ||
+    k === 'out' ||
+    (locals && (GO_KEYWORDS.has(k) || GO_PREDECLARED.has(k)))
+  ) {
+    throw new Error(
+      `generate-contracts: field "${k}" in ${where} collides with a Go keyword, predeclared identifier, or parser local`,
+    )
   }
 }
 
@@ -202,7 +279,12 @@ function lowerFirst(s: string): string {
  * set; FlexTime is time.Time on input (Optional[FlexTime] on update, string
  * on records); arrays are []string only.
  */
-function goRefType(r: { id: string }, kind: 'input' | 'update' | 'record', k: string, where: string): string {
+function goRefType(
+  r: { id: string },
+  kind: 'input' | 'update' | 'record',
+  k: string,
+  where: string,
+): string {
   const t = targetOf(r.id, where)
   const meta = metaOf(r.id, where)
   if (meta.kind === 'record') return r.id
@@ -223,26 +305,36 @@ function goRefType(r: { id: string }, kind: 'input' | 'update' | 'record', k: st
       if (elemMeta.kind === 'record') return `[]${elemId}`
       const elemTarget = targetOf(elemId, `${where} items`)
       if (elemTarget.type === 'string' && elemMeta.kind === 'primitive') return '[]string'
-      throw new Error(`generate-contracts: ${where} is an array of ${elemId} — only []string and []Record fields are ported`)
+      throw new Error(
+        `generate-contracts: ${where} is an array of ${elemId} — only []string and []Record fields are ported`,
+      )
     }
     const items = t.items ? refOf(t.items) : { id: null }
     if (items.id !== null) {
       const elemMeta = metaOf(items.id, `${where} items`)
       const elemTarget = targetOf(items.id, `${where} items`)
       if (elemTarget.type !== 'string' || elemMeta.kind !== 'primitive') {
-        throw new Error(`generate-contracts: ${where} is an array of ${items.id} — only []string and []Record fields are ported`)
+        throw new Error(
+          `generate-contracts: ${where} is an array of ${items.id} — only []string and []Record fields are ported`,
+        )
       }
     } else if (t.items?.type !== 'string') {
-      throw new Error(`generate-contracts: ${where} is an array of non-strings — only []string and []Record fields are ported`)
+      throw new Error(
+        `generate-contracts: ${where} is an array of non-strings — only []string and []Record fields are ported`,
+      )
     }
     return '[]string'
   }
   if (t.type === 'object' && t.additionalProperties && typeof t.additionalProperties === 'object') {
     const ap = t.additionalProperties as JSchema
     if (ap.type === 'array' && ap.items?.type === 'string') return 'map[string][]string'
-    throw new Error(`generate-contracts: ${where} is a map of non-[]string — only map[string][]string is ported`)
+    throw new Error(
+      `generate-contracts: ${where} is a map of non-[]string — only map[string][]string is ported`,
+    )
   }
-  throw new Error(`generate-contracts: field "${k}" in ${where} has unsupported JSON Schema shape — teach goRefType about it instead of silently defaulting to string`)
+  throw new Error(
+    `generate-contracts: field "${k}" in ${where} has unsupported JSON Schema shape — teach goRefType about it instead of silently defaulting to string`,
+  )
 }
 
 function inlineBaseType(prop: JSchema, where: string): string {
@@ -259,17 +351,27 @@ function inlineBaseType(prop: JSchema, where: string): string {
       if (targetOf(elemId, `${where} items`).type === 'string' && elemMeta.kind === 'primitive') {
         return '[]string'
       }
-      throw new Error(`generate-contracts: ${where} is an array of ${elemId} — only []string and []Record fields are ported`)
+      throw new Error(
+        `generate-contracts: ${where} is an array of ${elemId} — only []string and []Record fields are ported`,
+      )
     }
     if (prop.items && prop.items.type !== 'string') {
-      throw new Error(`generate-contracts: ${where} is an array of non-strings — only []string and []Record fields are ported`)
+      throw new Error(
+        `generate-contracts: ${where} is an array of non-strings — only []string and []Record fields are ported`,
+      )
     }
     return '[]string'
   }
-  if (prop.type === 'object' && prop.additionalProperties && typeof prop.additionalProperties === 'object') {
+  if (
+    prop.type === 'object' &&
+    prop.additionalProperties &&
+    typeof prop.additionalProperties === 'object'
+  ) {
     const ap = prop.additionalProperties as JSchema
     if (ap.type === 'array' && ap.items?.type === 'string') return 'map[string][]string'
-    throw new Error(`generate-contracts: ${where} is a map of non-[]string — only map[string][]string is ported`)
+    throw new Error(
+      `generate-contracts: ${where} is a map of non-[]string — only map[string][]string is ported`,
+    )
   }
   for (const key of ['anyOf', 'oneOf'] as const) {
     const branches = prop[key]
@@ -292,7 +394,9 @@ function goStructType(
   if (r.id === null) {
     // Inline schemas are records-only (D11).
     if (kind !== 'record') {
-      throw new Error(`generate-contracts: ${where} is inline — inputs must $ref a registered primitive/enum (D11)`)
+      throw new Error(
+        `generate-contracts: ${where} is inline — inputs must $ref a registered primitive/enum (D11)`,
+      )
     }
     const base = inlineBaseType(prop, where)
     if ((r.nullable || !required.has(k)) && !base.startsWith('[]')) return `*${base}`
@@ -321,7 +425,9 @@ function generateStruct(id: string, kind: 'input' | 'update' | 'record'): string
     const goName = toPascalCase(k)
     const clash = goNames.get(goName)
     if (clash !== undefined) {
-      throw new Error(`generate-contracts: ${id}.${k} and ${id}.${clash} both map to Go field "${goName}"`)
+      throw new Error(
+        `generate-contracts: ${id}.${k} and ${id}.${clash} both map to Go field "${goName}"`,
+      )
     }
     goNames.set(goName, k)
     const goType = goStructType(k, prop, kind, id)
@@ -332,7 +438,6 @@ function generateStruct(id: string, kind: 'input' | 'update' | 'record'): string
   out += '}\n'
   return out
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Generate apps/web/pkg/contracts/contracts_gen.go
@@ -352,7 +457,9 @@ function generateGoContracts(): string {
     const lines = values.map((v) => {
       const constName = consts[v]
       if (!constName) {
-        throw new Error(`generate-contracts: enum ${id} value "${v}" has no x-go-enum-consts entry in wire.ts`)
+        throw new Error(
+          `generate-contracts: enum ${id} value "${v}" has no x-go-enum-consts entry in wire.ts`,
+        )
       }
       return `\t${constName} ${id} = ${goString(v)}`
     })
@@ -379,7 +486,8 @@ function generateGoContracts(): string {
     .map(([id]) => id)
 
   const routeSpecs = API_ROUTES.map(
-    (r) => `\t{OperationID: ${goString(r.operationId)}, Method: ${goString(r.method.toUpperCase())}, Path: ${goString(r.path)}},`,
+    (r) =>
+      `\t{OperationID: ${goString(r.operationId)}, Method: ${goString(r.method.toUpperCase())}, Path: ${goString(r.path)}},`,
   ).join('\n')
 
   const sessionCookies = contracts.SESSION_COOKIE_NAMES.map(goString).join(', ')
@@ -401,11 +509,12 @@ const (
 	DemoServiceBreathwork = ${goString(contracts.DEMO_SERVICE_IDS.breathwork)}
 )
 
-// QStash queues (ADR-012).
+// QStash queues (ADR-012, architecture review fix #3).
 const (
 	QueueBookingCreated   = ${goString(contracts.QUEUE_BOOKING_CREATED)}
 	QueueBookingCancelled = ${goString(contracts.QUEUE_BOOKING_CANCELLED)}
 	QueueDemoRefresh      = ${goString(contracts.QUEUE_DEMO_REFRESH)}
+	QueueOutboxSweep      = ${goString(contracts.QUEUE_OUTBOX_SWEEP)}
 )
 
 // One-time login links. The prefix is generated from the TS constant, so the
@@ -466,7 +575,6 @@ ${imports})
 ${body}`
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Generate apps/web/pkg/validation/validation_gen.go
 // ─────────────────────────────────────────────────────────────────────────────
@@ -480,14 +588,22 @@ function generateRules(): string {
     const t = targetOf(id, `rule ${id}`)
     if (t.type === 'string') {
       if (t.format !== undefined || t.pattern !== undefined) {
-        throw new Error(`generate-contracts: primitive ${id} has format/pattern and no x-go-rule — refinements are hand-written (D10)`)
+        throw new Error(
+          `generate-contracts: primitive ${id} has format/pattern and no x-go-rule — refinements are hand-written (D10)`,
+        )
       }
       if (t.minLength !== undefined && t.maxLength !== undefined) {
-        parts.push(`func ${id}Rule(v string) string {\n\tif charLen(v) < ${t.minLength} {\n\t\treturn ${goString(zodMessages.stringTooSmall(t.minLength))}\n\t}\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`)
+        parts.push(
+          `func ${id}Rule(v string) string {\n\tif charLen(v) < ${t.minLength} {\n\t\treturn ${goString(zodMessages.stringTooSmall(t.minLength))}\n\t}\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`,
+        )
       } else if (t.maxLength !== undefined) {
-        parts.push(`func ${id}Rule(v string) string {\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`)
+        parts.push(
+          `func ${id}Rule(v string) string {\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`,
+        )
       } else {
-        throw new Error(`generate-contracts: primitive ${id} has no derivable length constraints and no x-go-rule`)
+        throw new Error(
+          `generate-contracts: primitive ${id} has no derivable length constraints and no x-go-rule`,
+        )
       }
     }
   }
@@ -498,14 +614,20 @@ function generateRules(): string {
     const t = targetOf(id, `rule ${id}`)
     if (t.type !== 'integer') continue
     if (t.exclusiveMinimum !== undefined || t.exclusiveMaximum !== undefined) {
-      throw new Error(`generate-contracts: primitive ${id} has exclusive bounds and no x-go-rule (D10)`)
+      throw new Error(
+        `generate-contracts: primitive ${id} has exclusive bounds and no x-go-rule (D10)`,
+      )
     }
     if (t.minimum === undefined || t.maximum === undefined) {
-      throw new Error(`generate-contracts: primitive ${id} has no derivable int bounds and no x-go-rule`)
+      throw new Error(
+        `generate-contracts: primitive ${id} has no derivable int bounds and no x-go-rule`,
+      )
     }
     rangeVars.push(`\t${lowerFirst(id)}RangeRule = intRange(${t.minimum}, ${t.maximum})`)
   }
-  parts.push(`// Pre-allocated range rules to eliminate per-request closure heap allocations.\nvar (\n${rangeVars.join('\n')}\n)\n`)
+  parts.push(
+    `// Pre-allocated range rules to eliminate per-request closure heap allocations.\nvar (\n${rangeVars.join('\n')}\n)\n`,
+  )
   return parts.join('\n')
 }
 
@@ -530,7 +652,9 @@ function generateEnumRules(): string {
     if (meta?.kind !== 'enum' || !referenced.has(id)) continue
     const values = targetOf(id, `enum ${id}`).enum ?? []
     const cases = values.map((v) => goString(v)).join(', ')
-    parts.push(`func ${id}Rule(v string) string {\n\tswitch v {\n\tcase ${cases}:\n\t\treturn ""\n\t}\n\treturn ${goString(zodMessages.enumOneOf(values))}\n}\n`)
+    parts.push(
+      `func ${id}Rule(v string) string {\n\tswitch v {\n\tcase ${cases}:\n\t\treturn ""\n\t}\n\treturn ${goString(zodMessages.enumOneOf(values))}\n}\n`,
+    )
   }
   return parts.join('\n')
 }
@@ -539,16 +663,23 @@ function orDefaultBlock(k: string, rule: string, def: unknown): string {
   return `func ${k}OrDefault(e *Errors, m map[string]json.RawMessage) string {\n\t${k}, _ := strValue(e, m, "${k}", false, false, ${rule})\n\tif ${k} == "" {\n\t\treturn ${goString(def as string)}\n\t}\n\treturn ${k}\n}\n`
 }
 
-function arrayElemRule(t: JSchema, where: string): { elemRule: string; elemTrim: boolean; max: number } {
+function arrayElemRule(
+  t: JSchema,
+  where: string,
+): { elemRule: string; elemTrim: boolean; max: number } {
   if (!t.items) throw new Error(`generate-contracts: ${where} array has no items`)
   const er = refOf(t.items)
   if (er.id === null) {
-    throw new Error(`generate-contracts: ${where} is an array of inline items — array elements must $ref a registered string primitive so the element rule is derivable (D11)`)
+    throw new Error(
+      `generate-contracts: ${where} is an array of inline items — array elements must $ref a registered string primitive so the element rule is derivable (D11)`,
+    )
   }
   const emeta = metaOf(er.id, `${where} items`)
   const etarget = targetOf(er.id, `${where} items`)
   if (etarget.type !== 'string' || emeta.kind !== 'primitive') {
-    throw new Error(`generate-contracts: ${where} is an array of ${er.id} — only []string fields are ported`)
+    throw new Error(
+      `generate-contracts: ${where} is an array of ${er.id} — only []string fields are ported`,
+    )
   }
   return {
     elemRule: emeta['x-go-rule'] ?? `${er.id}Rule`,
@@ -558,7 +689,8 @@ function arrayElemRule(t: JSchema, where: string): { elemRule: string; elemTrim:
 }
 
 function mustMaxItems(t: JSchema, where: string): number {
-  if (t.maxItems === undefined) throw new Error(`generate-contracts: ${where} array has no maxItems`)
+  if (t.maxItems === undefined)
+    throw new Error(`generate-contracts: ${where} array has no maxItems`)
   return t.maxItems
 }
 
@@ -566,7 +698,9 @@ function stringRuleFor(refId: string, t: JSchema, where: string): { rule: string
   const meta = metaOf(refId, where)
   if (t.format !== undefined || t.pattern !== undefined) {
     if (!meta['x-go-rule']) {
-      throw new Error(`generate-contracts: primitive ${refId} in ${where} has format/pattern and no x-go-rule — refinements are hand-written (D10)`)
+      throw new Error(
+        `generate-contracts: primitive ${refId} in ${where} has format/pattern and no x-go-rule — refinements are hand-written (D10)`,
+      )
     }
   }
   return { rule: meta['x-go-rule'] ?? `${refId}Rule`, trim: meta['x-go-trim'] === true }
@@ -593,12 +727,16 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
     const Go = toPascalCase(k)
     const r = refOf(prop)
     if (r.id === null) {
-      throw new Error(`generate-contracts: ${id}.${k} is inline — inputs must $ref a registered primitive/enum (D11)`)
+      throw new Error(
+        `generate-contracts: ${id}.${k} is inline — inputs must $ref a registered primitive/enum (D11)`,
+      )
     }
     const t = targetOf(r.id, `${id}.${k}`)
     const meta = metaOf(r.id, `${id}.${k}`)
     if (meta.kind === 'record') {
-      throw new Error(`generate-contracts: ${id}.${k} references record ${r.id} — inputs cannot nest records`)
+      throw new Error(
+        `generate-contracts: ${id}.${k} references record ${r.id} — inputs cannot nest records`,
+      )
     }
     const req = required.has(k)
     if (kind === 'update') {
@@ -617,18 +755,27 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
         L.push(`\tout.${Go} = optStr(e, m, "${k}", ${trim}, ${r.nullable}, ${rule})`)
       } else if (t.type === 'integer') {
         if (t.exclusiveMinimum !== undefined || t.exclusiveMaximum !== undefined) {
-          if (!meta['x-go-rule']) throw new Error(`generate-contracts: ${id}.${k} has exclusive bounds and no x-go-rule (D10)`)
+          if (!meta['x-go-rule'])
+            throw new Error(
+              `generate-contracts: ${id}.${k} has exclusive bounds and no x-go-rule (D10)`,
+            )
         }
-        L.push(`\tout.${Go} = optInt(e, m, "${k}", ${r.nullable}, ${meta['x-go-rule'] ?? `${lowerFirst(r.id)}RangeRule`})`)
+        L.push(
+          `\tout.${Go} = optInt(e, m, "${k}", ${r.nullable}, ${meta['x-go-rule'] ?? `${lowerFirst(r.id)}RangeRule`})`,
+        )
       } else if (t.type === 'array') {
         const { elemRule, elemTrim, max } = arrayElemRule(t, `${id}.${k}`)
         if (!elemTrim) {
-          throw new Error(`generate-contracts: ${id}.${k} uses optStrArr which trims every element, but the element schema does not — use strArrValue or restore .trim()`)
+          throw new Error(
+            `generate-contracts: ${id}.${k} uses optStrArr which trims every element, but the element schema does not — use strArrValue or restore .trim()`,
+          )
         }
         if (t.minItems !== undefined) {
           const parentMeta = metaOf(id, `parser ${id}`)
           if (!parentMeta['x-go-refine']) {
-            throw new Error(`generate-contracts: ${id}.${k} array has minItems but ${id} has no x-go-refine — uniqueness/minimum live in refine.go`)
+            throw new Error(
+              `generate-contracts: ${id}.${k} array has minItems but ${id} has no x-go-refine — uniqueness/minimum live in refine.go`,
+            )
           }
         }
         L.push(`\tout.${Go} = optStrArr(e, m, "${k}", ${r.nullable}, ${elemRule}, ${max})`)
@@ -648,7 +795,9 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
         helpers.push(orDefaultBlock(k, rule, r.def))
       } else if (req) {
         if (enumGo !== 'string') {
-          throw new Error(`generate-contracts: ${id}.${k} is a required named enum — no canonical form, add one consciously`)
+          throw new Error(
+            `generate-contracts: ${id}.${k} is a required named enum — no canonical form, add one consciously`,
+          )
         }
         L.push(`\tout.${Go}, _ = strValue(e, m, "${k}", true, false, ${rule})`)
       } else {
@@ -684,9 +833,15 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
     }
     if (t.type === 'integer') {
       if (t.exclusiveMinimum !== undefined || t.exclusiveMaximum !== undefined) {
-        if (!meta['x-go-rule']) throw new Error(`generate-contracts: ${id}.${k} has exclusive bounds and no x-go-rule (D10)`)
+        if (!meta['x-go-rule'])
+          throw new Error(
+            `generate-contracts: ${id}.${k} has exclusive bounds and no x-go-rule (D10)`,
+          )
       }
-      if (!req) throw new Error(`generate-contracts: ${id}.${k} is an optional input int — no canonical form, add one consciously`)
+      if (!req)
+        throw new Error(
+          `generate-contracts: ${id}.${k} is an optional input int — no canonical form, add one consciously`,
+        )
       const rule = meta['x-go-rule'] ?? `${lowerFirst(r.id)}RangeRule`
       L.push(`\t${k}, _ := intValue(e, m, "${k}", true, ${rule})`)
       L.push(`\tout.${Go} = int(${k})`)
@@ -697,7 +852,9 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
       if (t.minItems !== undefined) {
         const parentMeta = metaOf(id, `parser ${id}`)
         if (!parentMeta['x-go-refine']) {
-          throw new Error(`generate-contracts: ${id}.${k} array has minItems but ${id} has no x-go-refine — uniqueness/minimum live in refine.go`)
+          throw new Error(
+            `generate-contracts: ${id}.${k} array has minItems but ${id} has no x-go-refine — uniqueness/minimum live in refine.go`,
+          )
         }
       }
       L.push(`\tout.${Go}, _ = strArrValue(e, m, "${k}", ${req}, ${elemTrim}, ${elemRule}, ${max})`)
@@ -724,7 +881,10 @@ function generateParsers(): string {
     parts.push(generateParser(id, kind))
     names.push(`\t"${id}": func(b []byte) (any, *Errors) { return Parse${id}(b) },`)
   }
-  return parts.join('\n') + `\nvar Parsers = map[string]func([]byte) (any, *Errors){\n${names.join('\n')}\n}\n`
+  return (
+    parts.join('\n') +
+    `\nvar Parsers = map[string]func([]byte) (any, *Errors){\n${names.join('\n')}\n}\n`
+  )
 }
 
 function generateGoValidation(): string {
@@ -768,7 +928,6 @@ ${importBlock}
 ${body}`
 }
 
-
 // Hand-written residue lives in ordinary Go files (rules.go / refine.go /
 // domain.go), never in *_gen.go. The generator emits only calls and verifies
 // the callee exists — a missing function fails generation, not the Go build.
@@ -811,7 +970,9 @@ function assertResidueCallees(): void {
 function schemaRef(schema: unknown, where: string): { $ref: string } {
   const meta = metaOfSchema(schema as z.ZodType)
   if (!meta) {
-    throw new Error(`generate-contracts: ${where} references a schema that is not registered in wire.ts`)
+    throw new Error(
+      `generate-contracts: ${where} references a schema that is not registered in wire.ts`,
+    )
   }
   return { $ref: `#/components/schemas/${meta.id}` }
 }
@@ -836,7 +997,9 @@ function generateOpenAPISpec(): string {
   const slugShapeSchema = WIRE_SCHEMAS['SlugShape']
   const slotStartsAtSchema = WIRE_SCHEMAS['SlotStartsAt']
   if (!slugSchema || !slugShapeSchema || !slotStartsAtSchema) {
-    throw new Error('generate-contracts: schemas "Slug", "SlugShape" and "SlotStartsAt" must stay registered in wire.ts — the OpenAPI override attaches to them')
+    throw new Error(
+      'generate-contracts: schemas "Slug", "SlugShape" and "SlotStartsAt" must stay registered in wire.ts — the OpenAPI override attaches to them',
+    )
   }
 
   const openApiOverride = (ctx: { zodSchema: unknown; jsonSchema: Record<string, unknown> }) => {
@@ -857,12 +1020,14 @@ function generateOpenAPISpec(): string {
   }
 
   const render = (io: 'input' | 'output') =>
-    (z.toJSONSchema(wire, {
-      io,
-      unrepresentable: 'any',
-      uri: (id: string) => `#/components/schemas/${id}`,
-      override: openApiOverride,
-    }) as unknown as { schemas: Record<string, Record<string, unknown>> }).schemas
+    (
+      z.toJSONSchema(wire, {
+        io,
+        unrepresentable: 'any',
+        uri: (id: string) => `#/components/schemas/${id}`,
+        override: openApiOverride,
+      }) as unknown as { schemas: Record<string, Record<string, unknown>> }
+    ).schemas
 
   const inputSchemas = render('input')
   const outputSchemas = render('output')
@@ -906,7 +1071,9 @@ function generateOpenAPISpec(): string {
     }
   }
   if (stripped === 0) {
-    throw new Error('generate-contracts: no additionalProperties:false was emitted — the strip is now dead code; drop it or fix the render direction')
+    throw new Error(
+      'generate-contracts: no additionalProperties:false was emitted — the strip is now dead code; drop it or fix the render direction',
+    )
   }
 
   const paths: Record<string, Record<string, unknown>> = {}
@@ -932,20 +1099,29 @@ function generateOpenAPISpec(): string {
     if (route.request) {
       operation.requestBody = {
         required: true,
-        content: { 'application/json': { schema: schemaRef(route.request, `${route.operationId} request`) } },
+        content: {
+          'application/json': { schema: schemaRef(route.request, `${route.operationId} request`) },
+        },
       }
     }
     operation.responses = Object.fromEntries(
       route.responses.map((response) => {
         const body = response.bodyOneOf
-          ? { oneOf: response.bodyOneOf.map((s) => schemaRef(s, `${route.operationId} ${response.status}`)) }
+          ? {
+              oneOf: response.bodyOneOf.map((s) =>
+                schemaRef(s, `${route.operationId} ${response.status}`),
+              ),
+            }
           : response.body
             ? schemaRef(response.body, `${route.operationId} ${response.status}`)
             : undefined
         return [
           String(response.status),
           body
-            ? { description: response.description, content: { 'application/json': { schema: body } } }
+            ? {
+                description: response.description,
+                content: { 'application/json': { schema: body } },
+              }
             : { description: response.description },
         ]
       }),
@@ -1007,7 +1183,9 @@ function generateOpenAPISpec(): string {
   assertOpenApiSpec(spec)
   const text = yaml.stringify(spec, { indent: 2 })
   if (text.includes('x-go-')) {
-    throw new Error('generate-contracts: x-go-* metadata leaked into openapi.yaml — strip it before writing')
+    throw new Error(
+      'generate-contracts: x-go-* metadata leaked into openapi.yaml — strip it before writing',
+    )
   }
   return text
 }
@@ -1049,14 +1227,17 @@ function assertOpenApiSpec(spec: unknown): void {
   for (const ref of refs) {
     const match = /^#\/components\/([^/]+)\/(.+)$/.exec(ref)
     if (!match) {
-      throw new Error(`generate-contracts: unsupported OpenAPI $ref "${ref}" — only #/components sections are referenced`)
+      throw new Error(
+        `generate-contracts: unsupported OpenAPI $ref "${ref}" — only #/components sections are referenced`,
+      )
     }
     const [, section, name] = match
     if (!Object.keys(components[section!] ?? {}).includes(name!)) {
-      throw new Error(`generate-contracts: dangling OpenAPI $ref "${ref}" — component is not emitted`)
+      throw new Error(
+        `generate-contracts: dangling OpenAPI $ref "${ref}" — component is not emitted`,
+      )
     }
   }
-
 
   // Reverse direction: a component nothing references is a schema that never
   // reaches the wire — either a path is missing from API_ROUTES or the schema
@@ -1102,7 +1283,9 @@ function assertOpenApiSpec(spec: unknown): void {
     for (const [method, operation] of operations) {
       const responses = (operation as { responses?: unknown }).responses
       if (!responses || typeof responses !== 'object' || Object.keys(responses).length === 0) {
-        throw new Error(`generate-contracts: OpenAPI ${method.toUpperCase()} ${path} documents no responses`)
+        throw new Error(
+          `generate-contracts: OpenAPI ${method.toUpperCase()} ${path} documents no responses`,
+        )
       }
     }
   }
@@ -1134,7 +1317,9 @@ function main(): void {
   try {
     execSync(`gofmt -w "${goContractsFile}" "${goValidationFile}"`, { stdio: 'inherit' })
   } catch {
-    console.warn('Warning: gofmt failed or is not available — generated Go files are unformatted; CI gofmt check will fail.')
+    console.warn(
+      'Warning: gofmt failed or is not available — generated Go files are unformatted; CI gofmt check will fail.',
+    )
   }
 
   writeFileSync(openapiFile, openapiYaml, 'utf8')
