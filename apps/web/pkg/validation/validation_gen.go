@@ -203,14 +203,14 @@ func ParseCreateBookingInput(body []byte) (contracts.CreateBookingInput, *Errors
 	out.GuestName, _ = strValue(e, m, "guestName", true, true, DisplayNameRule)
 	out.GuestTicket, _ = strValue(e, m, "guestTicket", true, false, AuthTicketRule)
 	out.SelectedOptions, _ = strArrValue(e, m, "selectedOptions", false, true, OptionLabelRule, 50)
-	out.GuestLocale = guestLocaleOrDefault(e, m)
+	out.GuestLocale = CreateBookingInputGuestLocaleOrDefault(e, m)
 
 	return out, e.Finish()
 }
 
-func guestLocaleOrDefault(e *Errors, m map[string]json.RawMessage) string {
-	guestLocale, _ := strValue(e, m, "guestLocale", false, false, AppLocaleRule)
-	if guestLocale == "" {
+func CreateBookingInputGuestLocaleOrDefault(e *Errors, m map[string]json.RawMessage) string {
+	guestLocale, guestLocalePresent := strValue(e, m, "guestLocale", false, false, AppLocaleRule)
+	if !guestLocalePresent {
 		return "en"
 	}
 	return guestLocale
@@ -396,15 +396,15 @@ func ParseRegisterOrganizerInput(body []byte) (contracts.RegisterOrganizerInput,
 	if contactPresent {
 		out.Contact = &contact
 	}
-	out.Language = languageOrDefault(e, m)
+	out.Language = RegisterOrganizerInputLanguageOrDefault(e, m)
 
 	refineRegisterOrganizerInput(e, &out)
 	return out, e.Finish()
 }
 
-func languageOrDefault(e *Errors, m map[string]json.RawMessage) string {
-	language, _ := strValue(e, m, "language", false, false, AppLocaleRule)
-	if language == "" {
+func RegisterOrganizerInputLanguageOrDefault(e *Errors, m map[string]json.RawMessage) string {
+	language, languagePresent := strValue(e, m, "language", false, false, AppLocaleRule)
+	if !languagePresent {
 		return "en"
 	}
 	return language

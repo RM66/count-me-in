@@ -15,9 +15,10 @@
  * Anything the emitter cannot derive (transforms, refinements,
  * temporal checks, domain functions) lives hand-written in rules.go /
  * refine.go / domain.go; the generator emits only calls and verifies the
- * callees exist. `assertOpenApiSpec` rejects a structurally broken spec, and
- * the cross-language vector tests in `packages/contracts/vectors` pin
- * behaviour on both sides.
+ * x-go-rule / x-go-refine callees exist (the errors.go helpers it calls are
+ * checked by the Go build instead). `assertOpenApiSpec` rejects a
+ * structurally broken spec, and the cross-language vector tests in
+ * `packages/contracts/vectors` pin behaviour on both sides.
  *
  * Run via: `bun run generate:contracts`
  * In CI: verified via `git diff --exit-code`
@@ -46,12 +47,15 @@ function goString(str: string): string {
   return JSON.stringify(str)
 }
 
-// RE2 (Go) is not a superset of the JS regex dialect: a lookaround or
-// backreference compiles in TypeScript and panics inside regexp.MustCompile at
-// Go package init, taking the whole function down on cold start.
-const RE2_UNSUPPORTED = /\(\?=|\(\?!|\(\?<=|\(\?<!|\\[1-9]/
+// RE2 (Go) is not a superset of the JS regex dialect: lookarounds,
+// backreferences, named backreferences, atomic groups and possessive
+// quantifiers compile in TypeScript and panic inside regexp.MustCompile at
+// Go package init, taking the whole function down on cold start. Character
+// classes are stripped first so their literal characters cannot
+// false-positive (e.g. `[a*+?]` is not a possessive quantifier).
+const RE2_UNSUPPORTED = /\(\?=|\(\?!|\(\?<=|\(\?<!|\(\?>|\\[1-9]|\\k<|[*+?]\+/
 function goRegexSource(pattern: RegExp, name: string): string {
-  if (RE2_UNSUPPORTED.test(pattern.source)) {
+  if (RE2_UNSUPPORTED.test(pattern.source.replace(/\[(?:[^\]\\]|\\.)*\]/g, ''))) {
     throw new Error(
       `generate-contracts: ${name} uses a construct RE2 does not support (lookaround or backreference) — rewrite it or move the check into a hand-written rule`,
     )
@@ -103,27 +107,50 @@ type JSchema = {
   maxItems?: number
 }
 
+// Records are response DTOs: their top-level structure (properties, required)
+// resolves through the output render — the response truth — so a record-level
+// transform cannot generate a struct on the wrong side of the pipe. Field $ref
+// targets still resolve through the input render: zod v4 renders a
+// transform-terminated primitive (SlugShape) as an empty schema in output mode,
+// and the OpenAPI components for primitives are the input render for the same
+// reason. Inputs/updates are what a client sends and stay on the input
+// render entirely (D11).
+type Dir = 'input' | 'output'
 const wireJSON = z.toJSONSchema(wire, {
   io: 'input',
   unrepresentable: 'any',
   uri: (id: string) => id,
 }) as unknown as { schemas: Record<string, JSchema> }
+const wireJSONOutput = z.toJSONSchema(wire, {
+  io: 'output',
+  unrepresentable: 'any',
+  uri: (id: string) => id,
+}) as unknown as { schemas: Record<string, JSchema> }
 const jsonSchemas: Record<string, JSchema> = wireJSON.schemas
+const jsonSchemasOutput: Record<string, JSchema> = wireJSONOutput.schemas
 
-function targetOf(id: string, where: string): JSchema {
-  const t = jsonSchemas[id]
+function targetOf(
+  id: string,
+  where: string,
+  dir: Dir = 'input',
+  seen: Set<string> = new Set(),
+): JSchema {
+  const t = (dir === 'output' ? jsonSchemasOutput : jsonSchemas)[id]
   if (!t) {
     throw new Error(`generate-contracts: $ref "${id}" in ${where} resolves to no registered schema`)
   }
   // A refined primitive (Slug = SlugShape.refine(policy)) renders as
   // `{ $ref: SlugShape }`. Follow the ref for the JSON Schema shape; callers
-  // still use the original id with metaOf for the Go rule name.
+  // still use the original id with metaOf for the Go rule name. `seen` turns
+  // any $ref cycle (A→B→A, only buildable with z.lazy) into an error instead
+  // of unbounded recursion.
   if (typeof t.$ref === 'string') {
-    const refId = t.$ref.split('/').pop() as string
-    if (refId === id) {
-      throw new Error(`generate-contracts: ${where} $ref "${id}" is circular`)
+    if (seen.has(id)) {
+      throw new Error(`generate-contracts: ${where} $ref chain is circular at "${id}"`)
     }
-    return targetOf(refId, `${where} via ${id}`)
+    seen.add(id)
+    const refId = t.$ref.split('/').pop() as string
+    return targetOf(refId, `${where} via ${id}`, dir, seen)
   }
   return t
 }
@@ -254,6 +281,26 @@ const GO_PREDECLARED = new Set([
   'min',
 ])
 
+// Identifiers the generated parser bodies declare or reference besides the
+// field locals: the fixed locals and the `body` parameter, the imported
+// package qualifier, and the errors.go helper callees. A key colliding with
+// one of these either breaks compilation or shadows the callee for every
+// later field; reject it at generation time with a nameable error instead.
+const PARSER_IDENTIFIERS = new Set([
+  'body',
+  'contracts',
+  'rawObject',
+  'NewErrors',
+  'strValue',
+  'intValue',
+  'strArrValue',
+  'flexTimeValue',
+  'optStr',
+  'optInt',
+  'optStrArr',
+  'optFlexTime',
+])
+
 function guardFieldName(k: string, where: string, locals = true): void {
   // Parser bodies declare locals named after input/update keys; a key like
   // `out` or `range` would break compilation silently. Record keys only feed
@@ -262,7 +309,7 @@ function guardFieldName(k: string, where: string, locals = true): void {
     k === 'e' ||
     k === 'm' ||
     k === 'out' ||
-    (locals && (GO_KEYWORDS.has(k) || GO_PREDECLARED.has(k)))
+    (locals && (GO_KEYWORDS.has(k) || GO_PREDECLARED.has(k) || PARSER_IDENTIFIERS.has(k)))
   ) {
     throw new Error(
       `generate-contracts: field "${k}" in ${where} collides with a Go keyword, predeclared identifier, or parser local`,
@@ -285,6 +332,8 @@ function goRefType(
   k: string,
   where: string,
 ): string {
+  // Field $ref targets resolve through the input render even for records —
+  // see the Dir comment above.
   const t = targetOf(r.id, where)
   const meta = metaOf(r.id, where)
   if (meta.kind === 'record') return r.id
@@ -376,8 +425,16 @@ function inlineBaseType(prop: JSchema, where: string): string {
   for (const key of ['anyOf', 'oneOf'] as const) {
     const branches = prop[key]
     if (!Array.isArray(branches) || branches.length !== 2) continue
-    const other = branches.find((b) => b.type !== 'null')
-    if (other && !other.$ref) return inlineBaseType(other, where)
+    const nullIdx = branches.findIndex((b) => b.type === 'null' && b.$ref === undefined)
+    if (nullIdx < 0) {
+      // A real union has no single Go type; only nullable wrappers are ported.
+      // Without this check the first branch would win silently.
+      throw new Error(
+        `generate-contracts: ${where} is an inline union — only nullable wrappers are ported`,
+      )
+    }
+    const other = branches[1 - nullIdx] as JSchema
+    if (!other.$ref) return inlineBaseType(other, where)
   }
   throw new Error(`generate-contracts: ${where} has unsupported inline shape in a record`)
 }
@@ -388,7 +445,10 @@ function goStructType(
   parentId: string,
 ): string {
   const where = `${parentId}.${k}`
-  const schema = targetOf(parentId, `struct ${parentId}`)
+  // The parent's own structure comes from the output render for records
+  // (response truth); field targets resolve via input inside goRefType /
+  // inlineBaseType.
+  const schema = targetOf(parentId, `struct ${parentId}`, kind === 'record' ? 'output' : 'input')
   const required = new Set(schema.required ?? [])
   const r = refOf(prop)
   if (r.id === null) {
@@ -416,7 +476,7 @@ function goStructType(
 }
 
 function generateStruct(id: string, kind: 'input' | 'update' | 'record'): string {
-  const schema = targetOf(id, `struct ${id}`)
+  const schema = targetOf(id, `struct ${id}`, kind === 'record' ? 'output' : 'input')
   const props = schema.properties ?? {}
   const goNames = new Map<string, string>()
   let out = `type ${id} struct {\n`
@@ -454,6 +514,13 @@ function generateGoContracts(): string {
     if (meta?.kind !== 'enum' || meta['x-go-type']) continue
     const values = targetOf(id, `enum ${id}`).enum ?? []
     const consts = meta['x-go-enum-consts'] ?? {}
+    for (const v of Object.keys(consts)) {
+      if (!values.includes(v)) {
+        throw new Error(
+          `generate-contracts: enum ${id} x-go-enum-consts entry "${v}" matches no enum value in wire.ts`,
+        )
+      }
+    }
     const lines = values.map((v) => {
       const constName = consts[v]
       if (!constName) {
@@ -600,9 +667,13 @@ function generateRules(): string {
         parts.push(
           `func ${id}Rule(v string) string {\n\tif charLen(v) > ${t.maxLength} {\n\t\treturn ${goString(zodMessages.stringTooBig(t.maxLength))}\n\t}\n\treturn ""\n}\n`,
         )
+      } else if (t.minLength !== undefined) {
+        parts.push(
+          `func ${id}Rule(v string) string {\n\tif charLen(v) < ${t.minLength} {\n\t\treturn ${goString(zodMessages.stringTooSmall(t.minLength))}\n\t}\n\treturn ""\n}\n`,
+        )
       } else {
         throw new Error(
-          `generate-contracts: primitive ${id} has no derivable length constraints and no x-go-rule`,
+          `generate-contracts: primitive ${id} has no length constraints and no x-go-rule`,
         )
       }
     }
@@ -659,8 +730,15 @@ function generateEnumRules(): string {
   return parts.join('\n')
 }
 
-function orDefaultBlock(k: string, rule: string, def: unknown): string {
-  return `func ${k}OrDefault(e *Errors, m map[string]json.RawMessage) string {\n\t${k}, _ := strValue(e, m, "${k}", false, false, ${rule})\n\tif ${k} == "" {\n\t\treturn ${goString(def as string)}\n\t}\n\treturn ${k}\n}\n`
+/**
+ * Helper for an input field with a Zod `.default()`: the default applies only
+ * when the key is absent, exactly like Zod (a present-but-empty string is a
+ * value, not an absence). Named after the schema id so two inputs sharing a
+ * defaulted key cannot emit duplicate package-level functions.
+ */
+function orDefaultBlock(id: string, k: string, rule: string, trim: boolean, def: unknown): string {
+  const fn = `${id}${toPascalCase(k)}OrDefault`
+  return `func ${fn}(e *Errors, m map[string]json.RawMessage) string {\n\t${k}, ${k}Present := strValue(e, m, "${k}", false, ${trim}, ${rule})\n\tif !${k}Present {\n\t\treturn ${goString(def as string)}\n\t}\n\treturn ${k}\n}\n`
 }
 
 function arrayElemRule(
@@ -740,6 +818,11 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
     }
     const req = required.has(k)
     if (kind === 'update') {
+      if (r.def !== undefined) {
+        throw new Error(
+          `generate-contracts: ${id}.${k} has a default — update fields have no canonical default (absent means "leave unchanged")`,
+        )
+      }
       if (meta.kind === 'enum' && (meta['x-go-type'] ?? r.id) !== 'string') {
         const enumGo = meta['x-go-type'] ?? r.id
         L.push(`\t${k} := optStr(e, m, "${k}", false, ${r.nullable}, ${r.id}Rule)`)
@@ -791,8 +874,8 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
       const enumGo = meta['x-go-type'] ?? r.id
       const rule = `${r.id}Rule`
       if (r.def !== undefined) {
-        L.push(`\tout.${Go} = ${k}OrDefault(e, m)`)
-        helpers.push(orDefaultBlock(k, rule, r.def))
+        L.push(`\tout.${Go} = ${id}${Go}OrDefault(e, m)`)
+        helpers.push(orDefaultBlock(id, k, rule, false, r.def))
       } else if (req) {
         if (enumGo !== 'string') {
           throw new Error(
@@ -803,14 +886,25 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
       } else {
         L.push(`\t${k}, _ := strValue(e, m, "${k}", false, false, ${rule})`)
         L.push(`\tif ${k} != "" {`)
-        L.push(`\t\t${k}Typed := contracts.${enumGo}(${k})`)
-        L.push(`\t\tout.${Go} = &${k}Typed`)
+        if (enumGo === 'string') {
+          // x-go-type 'string' enums have no named Go type to convert
+          // through; the struct field is a plain *string.
+          L.push(`\t\tout.${Go} = &${k}`)
+        } else {
+          L.push(`\t\t${k}Typed := contracts.${enumGo}(${k})`)
+          L.push(`\t\tout.${Go} = &${k}Typed`)
+        }
         L.push(`\t}`)
       }
       continue
     }
     if (meta['x-go-type'] === 'FlexTime') {
-      L.push(`\t${k}, ${k}Present := flexTimeValue(e, m, "${k}", true, nil)`)
+      if (r.def !== undefined) {
+        throw new Error(
+          `generate-contracts: ${id}.${k} is a FlexTime field with a default — no canonical form, add one consciously`,
+        )
+      }
+      L.push(`\t${k}, ${k}Present := flexTimeValue(e, m, "${k}", ${req}, nil)`)
       L.push(`\tif ${k}Present {`)
       L.push(`\t\tout.${Go} = ${k}.Time()`)
       L.push(`\t}`)
@@ -819,8 +913,8 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
     if (t.type === 'string') {
       const { rule, trim } = stringRuleFor(r.id, t, `${id}.${k}`)
       if (r.def !== undefined) {
-        L.push(`\tout.${Go} = ${k}OrDefault(e, m)`)
-        helpers.push(orDefaultBlock(k, rule, r.def))
+        L.push(`\tout.${Go} = ${id}${Go}OrDefault(e, m)`)
+        helpers.push(orDefaultBlock(id, k, rule, trim, r.def))
       } else if (req) {
         L.push(`\tout.${Go}, _ = strValue(e, m, "${k}", true, ${trim}, ${rule})`)
       } else {
@@ -848,6 +942,11 @@ function generateParser(id: string, kind: 'input' | 'update'): string {
       continue
     }
     if (t.type === 'array') {
+      if (r.def !== undefined) {
+        throw new Error(
+          `generate-contracts: ${id}.${k} is an array field with a default — no canonical form, add one consciously`,
+        )
+      }
       const { elemRule, elemTrim, max } = arrayElemRule(t, `${id}.${k}`)
       if (t.minItems !== undefined) {
         const parentMeta = metaOf(id, `parser ${id}`)
@@ -930,7 +1029,9 @@ ${body}`
 
 // Hand-written residue lives in ordinary Go files (rules.go / refine.go /
 // domain.go), never in *_gen.go. The generator emits only calls and verifies
-// the callee exists — a missing function fails generation, not the Go build.
+// the x-go-rule / x-go-refine callee exists — a missing function fails
+// generation, not the Go build. The errors.go helpers (strValue, optStr, …)
+// are called unverified: a rename there is caught by the Go build.
 function assertHandwrittenExists(goFile: string, funcName: string): void {
   const src = readFileSync(goFile, 'utf8')
   if (!src.includes(`func ${funcName}(`)) {
@@ -977,8 +1078,10 @@ function schemaRef(schema: unknown, where: string): { $ref: string } {
   return { $ref: `#/components/schemas/${meta.id}` }
 }
 
-function specVersion(schemas: Record<string, unknown>): string {
-  const digest = createHash('sha256').update(JSON.stringify(schemas)).digest('hex')
+function specVersion(schemas: Record<string, unknown>, paths: Record<string, unknown>): string {
+  // Hash the paths too: a routes-only change (new endpoint over existing
+  // schemas) must move the version, not just the diff.
+  const digest = createHash('sha256').update(JSON.stringify({ paths, schemas })).digest('hex')
   return `1.0.0+${digest.slice(0, 12)}`
 }
 
@@ -1077,13 +1180,30 @@ function generateOpenAPISpec(): string {
   }
 
   const paths: Record<string, Record<string, unknown>> = {}
+  const seenOperations = new Set<string>()
   for (const route of API_ROUTES) {
+    const opKey = `${route.method} ${route.path}`
+    if (seenOperations.has(opKey)) {
+      throw new Error(
+        `generate-contracts: duplicate operation ${opKey} in API_ROUTES — the OpenAPI emitter would silently keep only the last one`,
+      )
+    }
+    seenOperations.add(opKey)
     const operation: Record<string, unknown> = {
       summary: route.summary,
       operationId: route.operationId,
     }
     if (route.auth === 'sessionWritable' || route.auth === 'sessionOrDemoRead') {
       operation.security = [{ sessionCookie: [] }]
+    }
+    if (route.rateLimit) {
+      // The 429 response is hand-declared per route; this carries the numbers
+      // themselves so the spec documents the limit, not just the status.
+      operation['x-rateLimit'] = {
+        limit: route.rateLimit.limit,
+        windowSeconds: route.rateLimit.windowSeconds,
+        per: route.rateLimit.per,
+      }
     }
     if (route.params?.length) {
       operation.parameters = route.params.map((p) => ({
@@ -1150,12 +1270,18 @@ function generateOpenAPISpec(): string {
     },
   }
 
+  if (contracts.SESSION_COOKIE_NAMES.length < 2) {
+    throw new Error(
+      'generate-contracts: SESSION_COOKIE_NAMES must list the https and http cookie names',
+    )
+  }
+
   const spec = {
     openapi: '3.1.0',
     info: {
       title: 'CountMeIn API',
       description: 'API for group booking, organizer cabinet management, and notifications.',
-      version: specVersion(schemas),
+      version: specVersion(schemas, paths),
     },
     servers: [
       { url: 'https://countmein.group', description: 'Production' },
@@ -1275,12 +1401,33 @@ function assertOpenApiSpec(spec: unknown): void {
   }
 
   const methods = new Set(['get', 'post', 'put', 'patch', 'delete'])
+  const operationIds = new Set<string>()
   for (const [path, item] of Object.entries(root.paths ?? {})) {
     const operations = Object.entries(item).filter(([m]) => methods.has(m))
     if (operations.length === 0) {
       throw new Error(`generate-contracts: OpenAPI path "${path}" documents no operations`)
     }
     for (const [method, operation] of operations) {
+      const op = operation as {
+        operationId?: unknown
+        parameters?: Array<{ name?: unknown; in?: unknown }>
+      }
+      if (typeof op.operationId !== 'string' || operationIds.has(op.operationId)) {
+        throw new Error(
+          `generate-contracts: OpenAPI ${method.toUpperCase()} ${path} has a missing or duplicate operationId "${String(op.operationId)}" — codegen clients key on it`,
+        )
+      }
+      operationIds.add(op.operationId)
+      const pathParams = new Set(
+        (op.parameters ?? []).filter((p) => p.in === 'path').map((p) => String(p.name)),
+      )
+      for (const match of path.matchAll(/\{([^}]+)\}/g)) {
+        if (!pathParams.has(match[1]!)) {
+          throw new Error(
+            `generate-contracts: OpenAPI ${method.toUpperCase()} ${path} uses path parameter "{${match[1]}}" but declares no matching in: path parameter`,
+          )
+        }
+      }
       const responses = (operation as { responses?: unknown }).responses
       if (!responses || typeof responses !== 'object' || Object.keys(responses).length === 0) {
         throw new Error(
