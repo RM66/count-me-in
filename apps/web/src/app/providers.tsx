@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { SessionProvider, useSession } from 'next-auth/react'
+import { ThemeProvider } from 'next-themes'
 import { type ReactNode, useEffect, useState } from 'react'
 
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
@@ -62,10 +63,17 @@ export function Providers({ children }: { children: ReactNode }) {
       <Analytics />
       <SpeedInsights />
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-        <CookieConsentBanner />
-        <Toaster />
-        {!isProduction && <ReactQueryDevtools initialIsOpen={false} />}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          <CookieConsentBanner />
+          <Toaster />
+          {!isProduction && <ReactQueryDevtools initialIsOpen={false} />}
+        </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>
   )
