@@ -1,8 +1,8 @@
 {
-  "formErrors": [],
   "fieldErrors": {
     "title": [
       "Required"
     ]
-  }
+  },
+  "formErrors": []
 }

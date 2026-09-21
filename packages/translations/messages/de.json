@@ -795,6 +795,7 @@
     "slugTaken": "Dieser öffentliche Kurzname ist bereits vergeben — wähle einen anderen",
     "accountExists": "Für diese Telegram-Identität besteht bereits ein Konto — melde dich stattdessen an",
     "nothingToUpdate": "Keine Felder zum Aktualisieren",
+    "unsupportedMediaType": "Dieser Endpunkt akzeptiert nur application/merge-patch+json (RFC 7386)",
     "capacityBelowBooked": "Die Kapazität darf nicht unter {count, plural, =1 {dem bereits gebuchten # Platz} other {den bereits gebuchten # Plätzen}} liegen",
     "demoReadOnly": "Dies ist ein schreibgeschütztes Demokonto — registriere dich, um eigene buchbare Angebote zu erstellen.",
     "soldOut": "Dieser Termin ist ausgebucht",

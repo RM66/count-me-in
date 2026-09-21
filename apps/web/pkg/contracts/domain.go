@@ -6,10 +6,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	gen "countmein/pkg/api/gen"
 )
 
 // Hand-written domain logic: mirrors TypeScript in packages/contracts/src that
-// cannot be derived from JSON Schema (see wire.ts). Pinned by
+// cannot be derived from the OpenAPI spec (ADR-016). Pinned by
 // packages/contracts/vectors/domain/* (vitest + go test).
 
 func IsAppLocale(v string) bool {
@@ -25,11 +27,11 @@ func IsDemoOrganizerID(organizerID string) bool {
 	return organizerID == DemoOrganizerID
 }
 
-func CancelNotificationRecipient(by CancelActor) NotificationRecipient {
-	if by == ActorGuest {
-		return RecipientOrganizer
+func CancelNotificationRecipient(by gen.CancelActor) gen.NotificationRecipient {
+	if by == gen.CancelActorGuest {
+		return gen.NotificationRecipientOrganizer
 	}
-	return RecipientGuest
+	return gen.NotificationRecipientGuest
 }
 
 func LoginLinkKey(token string) string {
@@ -72,7 +74,7 @@ func EffectiveContact(service, organizer *string) *string {
 // Mirror of buildSelectedOptionsSchema in packages/contracts/src/options.ts —
 // error strings are intentionally identical; parity is pinned by the
 // validateSelectedOptions domain vectors.
-func ValidateSelectedOptions(serviceOptions []string, selectMode OptionsSelectMode, selected []string) ([]string, error) {
+func ValidateSelectedOptions(serviceOptions []string, selectMode gen.OptionsSelectMode, selected []string) ([]string, error) {
 	allowed := make(map[string]bool, len(serviceOptions))
 	for _, o := range serviceOptions {
 		allowed[o] = true
@@ -97,7 +99,7 @@ func ValidateSelectedOptions(serviceOptions []string, selectMode OptionsSelectMo
 			return nil, fmt.Errorf("option %q is not offered by this service", v)
 		}
 	}
-	if selectMode == OptionsSingle && len(selected) > 1 {
+	if selectMode == gen.Single && len(selected) > 1 {
 		return nil, errors.New("this service allows selecting only one option")
 	}
 	if len(selected) == 0 {

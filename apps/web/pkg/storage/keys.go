@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 )
 
@@ -82,37 +83,37 @@ func IsOwnMediaURL(organizerID, url string) bool {
 
 // CreateAvatarUpload returns a signed upload URL for an organizer's
 // avatar (browser resizes/re-encodes first, then PUTs straight to R2).
-func CreateAvatarUpload(ctx context.Context, organizerID string, input contracts.CreateAvatarUploadInput) (contracts.ImageUploadTarget, error) {
-	ext, err := extForContentType(input.ContentType)
+func CreateAvatarUpload(ctx context.Context, organizerID string, input gen.CreateAvatarUploadInput) (gen.ImageUploadTarget, error) {
+	ext, err := extForContentType(string(input.ContentType))
 	if err != nil {
-		return contracts.ImageUploadTarget{}, err
+		return gen.ImageUploadTarget{}, err
 	}
 	key := AvatarKey(organizerID, ext)
-	return signedTarget(ctx, key, input.ContentType, int64(input.Size))
+	return signedTarget(ctx, key, string(input.ContentType), int64(input.Size))
 }
 
 // CreateServicePhotoUpload returns a signed upload URL for a service
 // cover photo (landscape covers get their own limits instead of
 // reusing the avatar constants).
-func CreateServicePhotoUpload(ctx context.Context, organizerID string, input contracts.CreateServicePhotoUploadInput) (contracts.ImageUploadTarget, error) {
-	ext, err := extForContentType(input.ContentType)
+func CreateServicePhotoUpload(ctx context.Context, organizerID string, input gen.CreateServicePhotoUploadInput) (gen.ImageUploadTarget, error) {
+	ext, err := extForContentType(string(input.ContentType))
 	if err != nil {
-		return contracts.ImageUploadTarget{}, err
+		return gen.ImageUploadTarget{}, err
 	}
 	key := ServicePhotoKey(organizerID, ext)
-	return signedTarget(ctx, key, input.ContentType, int64(input.Size))
+	return signedTarget(ctx, key, string(input.ContentType), int64(input.Size))
 }
 
-func signedTarget(ctx context.Context, key, contentType string, size int64) (contracts.ImageUploadTarget, error) {
+func signedTarget(ctx context.Context, key, contentType string, size int64) (gen.ImageUploadTarget, error) {
 	uploadURL, expiresAt, err := SignedUploadURL(ctx, key, contentType, size)
 	if err != nil {
-		return contracts.ImageUploadTarget{}, err
+		return gen.ImageUploadTarget{}, err
 	}
 	publicURL, err := PublicURL(key)
 	if err != nil {
-		return contracts.ImageUploadTarget{}, err
+		return gen.ImageUploadTarget{}, err
 	}
-	return contracts.ImageUploadTarget{
+	return gen.ImageUploadTarget{
 		UploadURL: uploadURL,
 		PublicURL: publicURL,
 		ExpiresAt: contracts.ISODate(expiresAt),

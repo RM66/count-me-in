@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/validation"
 )
@@ -42,7 +43,7 @@ type TelegramIdentity struct {
 // ToTicketPayload converts the validated identity into the ticket shape.
 func (t TelegramIdentity) ToTicketPayload() contracts.AuthTicketPayload {
 	return contracts.AuthTicketPayload{
-		Messenger:      contracts.Messenger(t.Messenger),
+		Messenger:      gen.Messenger(t.Messenger),
 		MessengerID:    t.MessengerID,
 		DisplayName:    t.DisplayName,
 		PhotoURL:       t.PhotoURL,
@@ -68,7 +69,7 @@ func ValidateTelegramWidget(body []byte) (*TelegramIdentity, error) {
 		return nil, ErrTelegramNotConfigured
 	}
 
-	payload, errs := validation.ParseTelegramWidgetPayload(body)
+	payload, errs := validation.DecodeTelegramWidgetPayload(body)
 	if errs != nil {
 		return nil, ErrTelegramInvalid
 	}
@@ -120,7 +121,7 @@ func ValidateTelegramWidget(body []byte) (*TelegramIdentity, error) {
 	identity := &TelegramIdentity{
 		Messenger:   "telegram",
 		MessengerID: strconv.FormatInt(int64(payload.ID), 10),
-		DisplayName: strings.TrimSpace(strings.TrimSpace(payload.FirstName) + " " + derefOr(payload.LastName, "")),
+		DisplayName: strings.TrimSpace(strings.TrimSpace(payload.FirstName) + " " + contracts.DerefOr(payload.LastName, "")),
 		PhotoURL:    nilIfEmpty(payload.PhotoURL),
 	}
 	if payload.Username != nil && *payload.Username != "" {
@@ -140,13 +141,6 @@ func scalarString(v any) (string, bool) {
 		return t.String(), true
 	}
 	return "", false
-}
-
-func derefOr(s *string, def string) string {
-	if s != nil {
-		return *s
-	}
-	return def
 }
 
 func nilIfEmpty(s *string) *string {

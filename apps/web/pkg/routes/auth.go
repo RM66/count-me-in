@@ -1,10 +1,3 @@
-// Package routes holds the actual route logic for every API endpoint and
-// the single shared mux (mux.go) that wires them. The Vercel entry point
-// (api/entry/index.go) and the local dev server (cmd/dev) both mount
-// routes.NewMux, so dev and prod dispatch identically. Keeping the logic
-// in pkg/ is what makes both possible — the single function restores the
-// original path from ?_path and dispatches via the ServeMux patterns
-// (/api/services/{id}, /api/jobs/{queue}, …).
 package routes
 
 import (
@@ -12,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/auth"
-	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/httpx"
 	"countmein/pkg/i18n"
@@ -30,11 +23,6 @@ import (
 // the ticket server-side and never trusts the echo (invariant 8).
 func TelegramGuest(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 	if !httpx.RateLimited(w, r, "rl:guest:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 10, Window: time.Minute}) {
 		return
 	}
@@ -59,9 +47,9 @@ func TelegramGuest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusOK, contracts.GuestTicketResponse{
+	httpx.JSON(http.StatusOK, gen.GuestTicketResponse{
 		Ticket:      ticket,
-		Messenger:   contracts.Messenger(identity.Messenger),
+		Messenger:   gen.Messenger(identity.Messenger),
 		MessengerID: identity.MessengerID,
 		DisplayName: identity.DisplayName,
 	}).Write(w)
@@ -74,11 +62,6 @@ func TelegramGuest(w http.ResponseWriter, r *http.Request) {
 // profile form POSTs to /api/organizers.
 func TelegramSignup(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 	if !httpx.RateLimited(w, r, "rl:signup:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 5, Window: time.Minute}) {
 		return
 	}
@@ -109,7 +92,7 @@ func TelegramSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusOK, contracts.AuthTicketResponse{
+	httpx.JSON(http.StatusOK, gen.AuthTicketResponse{
 		Ticket:          ticket,
 		OrganizerExists: exists,
 	}).Write(w)

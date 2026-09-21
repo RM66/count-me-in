@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/logx"
 )
@@ -61,16 +62,16 @@ func PublishBookingCreated(ctx context.Context, bookingID, traceID string) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		publishWithTrace(ctx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
-			BookingID: bookingID,
-			Recipient: contracts.RecipientOrganizer,
+		publishWithTrace(ctx, contracts.QueueBookingCreated, gen.BookingCreatedJob{
+			BookingID: contracts.ToUUID(bookingID),
+			Recipient: gen.NotificationRecipientOrganizer,
 		}, traceID)
 	}()
 	go func() {
 		defer wg.Done()
-		publishWithTrace(ctx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
-			BookingID: bookingID,
-			Recipient: contracts.RecipientGuest,
+		publishWithTrace(ctx, contracts.QueueBookingCreated, gen.BookingCreatedJob{
+			BookingID: contracts.ToUUID(bookingID),
+			Recipient: gen.NotificationRecipientGuest,
 		}, traceID)
 	}()
 	wg.Wait()
@@ -79,9 +80,9 @@ func PublishBookingCreated(ctx context.Context, bookingID, traceID string) {
 // PublishBookingCancelled publishes the booking.cancelled job for a
 // cancelled booking. Only the actor is recorded; the receiver notifies
 // the counterparty.
-func PublishBookingCancelled(ctx context.Context, bookingID string, cancelledBy contracts.CancelActor, traceID string) {
-	publishWithTrace(ctx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
-		BookingID:   bookingID,
+func PublishBookingCancelled(ctx context.Context, bookingID string, cancelledBy gen.CancelActor, traceID string) {
+	publishWithTrace(ctx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
+		BookingID:   contracts.ToUUID(bookingID),
 		CancelledBy: cancelledBy,
 	}, traceID)
 }

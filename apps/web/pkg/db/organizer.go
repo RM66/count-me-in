@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 
 	"github.com/jackc/pgx/v5"
@@ -49,16 +50,16 @@ func scanOrganizer(row pgx.Row) (*OrganizerRow, error) {
 
 // ToOrganizerProfile — dates → ISO strings; language clamped to the
 // supported set (a stale column value must not break rendering).
-func ToOrganizerProfile(o OrganizerRow, isDemo bool) contracts.OrganizerProfile {
-	language := o.Language
-	if !contracts.IsAppLocale(language) {
-		language = contracts.DefaultLocale
+func ToOrganizerProfile(o OrganizerRow, isDemo bool) gen.OrganizerProfile {
+	language := gen.AppLocale(o.Language)
+	if !contracts.IsAppLocale(o.Language) {
+		language = gen.AppLocale(contracts.DefaultLocale)
 	}
-	return contracts.OrganizerProfile{
-		ID:          o.ID,
+	return gen.OrganizerProfile{
+		ID:          contracts.ToUUID(o.ID),
 		Slug:        o.Slug,
 		Name:        o.Name,
-		Messenger:   contracts.Messenger(o.Messenger),
+		Messenger:   gen.Messenger(o.Messenger),
 		MessengerID: o.MessengerID,
 		Timezone:    o.Timezone,
 		Description: o.Description,
@@ -72,9 +73,9 @@ func ToOrganizerProfile(o OrganizerRow, isDemo bool) contracts.OrganizerProfile 
 }
 
 // ToPublicOrganizer — the public projection; isDemo derived from the id.
-func ToPublicOrganizer(o OrganizerRow) contracts.PublicOrganizer {
-	return contracts.PublicOrganizer{
-		ID:          o.ID,
+func ToPublicOrganizer(o OrganizerRow) gen.PublicOrganizer {
+	return gen.PublicOrganizer{
+		ID:          contracts.ToUUID(o.ID),
 		Slug:        o.Slug,
 		Name:        o.Name,
 		Timezone:    o.Timezone,
@@ -111,25 +112,30 @@ func ExistsOrganizerByMessenger(ctx context.Context, messenger, messengerID stri
 }
 
 // NoOrganizerUpdatesError — the update payload contains no writable field.
-// Typed (not a sentinel var) so the route can type-switch it into a 400,
-// matching the sibling NoServiceUpdatesError / NoSlotUpdatesError pattern.
 type NoOrganizerUpdatesError struct{}
 
 func (NoOrganizerUpdatesError) Error() string { return "No fields to update" }
+
+// OrganizerUpdate carries the merged state and the set of keys the patch
+// touched (RFC 7386 merge-patch, ADR-016).
+type OrganizerUpdate struct {
+	State   gen.UpdateOrganizerProfileInput
+	Touched map[string]bool
+}
 
 // InsertOrganizer registers an organizer; the messenger identity comes
 // from the peeked ticket (validated server-side), never from the body.
 // A 23505 surfaces as the raw *pgconn.PgError for the route to map to
 // slugTaken / accountExists by constraint name.
-func InsertOrganizer(ctx context.Context, input contracts.RegisterOrganizerInput, identity contracts.AuthTicketPayload) (contracts.RegisteredOrganizer, error) {
+func InsertOrganizer(ctx context.Context, input gen.RegisterOrganizerInput, identity contracts.AuthTicketPayload) (gen.RegisteredOrganizer, error) {
 	id := newID()
-	var out contracts.RegisteredOrganizer
+	var out gen.RegisteredOrganizer
 	err := Pool().QueryRow(ctx, `
 		INSERT INTO organizers (id, slug, name, messenger, messenger_id, timezone, language, contact, photo_url)
 		VALUES ($1::uuid, $2, $3, $4::messenger_kind, $5, $6, $7, $8, $9)
 		RETURNING id, slug`,
 		id, input.Slug, input.Name, identity.Messenger, identity.MessengerID,
-		input.Timezone, input.Language, input.Contact, identity.PhotoURL,
+		input.Timezone, string(*input.Language), input.Contact, identity.PhotoURL,
 	).Scan(&out.ID, &out.Slug)
 	if err != nil {
 		return out, err
@@ -140,8 +146,8 @@ func InsertOrganizer(ctx context.Context, input contracts.RegisterOrganizerInput
 // UpdateOrganizerProfile — editable fields only; messenger identity,
 // id and createdAt are set at registration and never editable.
 // Absent keys are left untouched, explicit nulls clear the column
-// (pickDefined semantics).
-func UpdateOrganizerProfile(ctx context.Context, organizerID string, input contracts.UpdateOrganizerProfileInput) (*OrganizerRow, error) {
+// (merge-patch semantics, ADR-016).
+func UpdateOrganizerProfile(ctx context.Context, organizerID string, update OrganizerUpdate) (*OrganizerRow, error) {
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -154,39 +160,40 @@ func UpdateOrganizerProfile(ctx context.Context, organizerID string, input contr
 		sets = append(sets, col+" = NULL")
 	}
 
-	if input.Name.Set && input.Name.Value != nil {
-		add("name", *input.Name.Value)
+	state := update.State
+	if update.Touched["name"] && state.Name != nil {
+		add("name", *state.Name)
 	}
-	if input.Slug.Set && input.Slug.Value != nil {
-		add("slug", *input.Slug.Value)
+	if update.Touched["slug"] && state.Slug != nil {
+		add("slug", *state.Slug)
 	}
-	if input.Timezone.Set && input.Timezone.Value != nil {
-		add("timezone", *input.Timezone.Value)
+	if update.Touched["timezone"] && state.Timezone != nil {
+		add("timezone", *state.Timezone)
 	}
-	if input.Description.Set {
-		if input.Description.Value != nil {
-			add("description", *input.Description.Value)
+	if update.Touched["description"] {
+		if state.Description != nil {
+			add("description", *state.Description)
 		} else {
 			setNull("description")
 		}
 	}
-	if input.Location.Set {
-		if input.Location.Value != nil {
-			add("location", *input.Location.Value)
+	if update.Touched["location"] {
+		if state.Location != nil {
+			add("location", *state.Location)
 		} else {
 			setNull("location")
 		}
 	}
-	if input.Contact.Set {
-		if input.Contact.Value != nil {
-			add("contact", *input.Contact.Value)
+	if update.Touched["contact"] {
+		if state.Contact != nil {
+			add("contact", *state.Contact)
 		} else {
 			setNull("contact")
 		}
 	}
-	if input.PhotoURL.Set {
-		if input.PhotoURL.Value != nil {
-			add("photo_url", *input.PhotoURL.Value)
+	if update.Touched["photoUrl"] {
+		if state.PhotoURL != nil {
+			add("photo_url", *state.PhotoURL)
 		} else {
 			setNull("photo_url")
 		}

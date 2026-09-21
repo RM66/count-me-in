@@ -1,11 +1,11 @@
 {
-  "id": "01930000-0000-7000-8000-000000000001",
-  "slug": "my-studio",
-  "name": "Studio",
-  "timezone": "Europe/Belgrade",
-  "description": null,
-  "photoUrl": null,
-  "location": null,
   "contact": null,
-  "isDemo": false
+  "description": null,
+  "id": "01930000-0000-7000-8000-000000000001",
+  "isDemo": false,
+  "location": null,
+  "name": "Studio",
+  "photoUrl": null,
+  "slug": "my-studio",
+  "timezone": "Europe/Belgrade"
 }

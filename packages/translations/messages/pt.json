@@ -795,6 +795,7 @@
     "slugTaken": "Este identificador já está em uso — escolha outro",
     "accountExists": "Já existe uma conta com esta identidade do Telegram — entre em vez de criar outra",
     "nothingToUpdate": "Nenhum campo para atualizar",
+    "unsupportedMediaType": "Este endpoint aceita apenas application/merge-patch+json (RFC 7386)",
     "capacityBelowBooked": "A capacidade não pode ser menor que {count, plural, =1 {# vaga já reservada} other {# vagas já reservadas}}",
     "demoReadOnly": "Esta é uma conta de demonstração somente para visualização — cadastre-se para criar seus próprios serviços com reservas.",
     "soldOut": "Esta sessão está totalmente reservada",

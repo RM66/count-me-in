@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/logx"
 
@@ -53,14 +54,14 @@ func (e *InvalidJobPayloadError) Error() string {
 func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID string) error {
 	switch queue {
 	case contracts.QueueBookingCreated:
-		var job contracts.BookingCreatedJob
+		var job gen.BookingCreatedJob
 		if err := parsePayload(body, &job); err != nil {
 			return err
 		}
 		// bookingId is a uuid on the wire (bookingCreatedJob schema);
 		// a malformed id must be a 400, not a 500 — otherwise QStash
 		// burns all retries on bytes that can never succeed.
-		if !validBookingID(job.BookingID) || !validRecipient(string(job.Recipient)) {
+		if !validBookingID(contracts.UUIDString(job.BookingID)) || !validRecipient(string(job.Recipient)) {
 			return &InvalidJobPayloadError{Queue: queue}
 		}
 		env, err := ReadEnv()
@@ -71,12 +72,12 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID str
 			return HandleBookingCreated(ctx, env, job, traceID)
 		})
 	case contracts.QueueBookingCancelled:
-		var job contracts.BookingCancelledJob
+		var job gen.BookingCancelledJob
 		if err := parsePayload(body, &job); err != nil {
 			return err
 		}
-		if !validBookingID(job.BookingID) ||
-			(job.CancelledBy != contracts.ActorGuest && job.CancelledBy != contracts.ActorOrganizer) {
+		if !validBookingID(contracts.UUIDString(job.BookingID)) ||
+			(job.CancelledBy != gen.CancelActorGuest && job.CancelledBy != gen.CancelActorOrganizer) {
 			return &InvalidJobPayloadError{Queue: queue}
 		}
 		env, err := ReadEnv()
@@ -147,7 +148,7 @@ func parsePayload(body json.RawMessage, dst any) error {
 }
 
 func validRecipient(v string) bool {
-	return v == string(contracts.RecipientOrganizer) || v == string(contracts.RecipientGuest)
+	return v == string(gen.NotificationRecipientOrganizer) || v == string(gen.NotificationRecipientGuest)
 }
 
 func validBookingID(v string) bool {

@@ -10,26 +10,44 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	gen "countmein/pkg/api/gen"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")
+
+// recordNames — the wire records (was RecordNames in the retired
+// constants_gen.go); TestGoldenCoverage pins the list against the samples.
+var recordNames = []string{
+	"OrganizerProfile", "PublicOrganizer", "ServiceRecord", "TimeSlotRecord",
+	"BookingRecord", "GuestBooking", "ImageUploadTarget", "RegisteredOrganizer",
+	"Registered", "AuthTicketPayload", "GuestTicketResponse", "AuthTicketResponse",
+	"LoginLinkPayload", "BookingCreatedJob", "BookingCancelledJob",
+	"ServiceEnvelope", "ServicesEnvelope", "SlotEnvelope", "SlotsEnvelope",
+	"GuestBookingEnvelope", "BookingEnvelope", "GuestBookingsEnvelope",
+	"OrganizerEnvelope", "DeletedServiceEnvelope", "DeletedSlotEnvelope",
+	"ErrorBody", "ValidationErrors", "InvalidBody", "InvalidIssuesBody",
+}
 
 func goldenTime() string {
 	return ISODate(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC))
 }
 
-func goldenUUID(n int) string {
-	return "01930000-0000-7000-8000-0000000000" + string(rune('0'+n/10)) + string(rune('0'+n%10))
+func goldenUUID(n int) gen.UUID {
+	return ToUUID("01930000-0000-7000-8000-0000000000" + string(rune('0'+n/10)) + string(rune('0'+n%10)))
 }
+
+// strSlicePtr wraps a string slice for the generated *[]string fields.
+func strSlicePtr(s []string) *[]string { return &s }
 
 func strptr(s string) *string { return &s }
 
-func sampleOrganizerProfile() OrganizerProfile {
-	return OrganizerProfile{
+func sampleOrganizerProfile() gen.OrganizerProfile {
+	return gen.OrganizerProfile{
 		ID:          goldenUUID(1),
 		Slug:        "my-studio",
 		Name:        "Studio",
-		Messenger:   MessengerTelegram,
+		Messenger:   gen.Telegram,
 		MessengerID: "123456789",
 		Timezone:    "Europe/Belgrade",
 		Description: strptr("Morning practice"),
@@ -42,8 +60,8 @@ func sampleOrganizerProfile() OrganizerProfile {
 	}
 }
 
-func samplePublicOrganizer() PublicOrganizer {
-	return PublicOrganizer{
+func samplePublicOrganizer() gen.PublicOrganizer {
+	return gen.PublicOrganizer{
 		ID:          goldenUUID(1),
 		Slug:        "my-studio",
 		Name:        "Studio",
@@ -56,9 +74,9 @@ func samplePublicOrganizer() PublicOrganizer {
 	}
 }
 
-func sampleServiceRecord() ServiceRecord {
-	mode := OptionsSingle
-	return ServiceRecord{
+func sampleServiceRecord() gen.ServiceRecord {
+	mode := gen.Single
+	return gen.ServiceRecord{
 		ID:                     "demo-yoga",
 		OrganizerID:            goldenUUID(1),
 		Title:                  "Yoga",
@@ -70,14 +88,14 @@ func sampleServiceRecord() ServiceRecord {
 		DefaultCapacity:        5,
 		DefaultDurationMinutes: 60,
 		MaxSeatsPerBooking:     1,
-		Options:                []string{"Beginner", "Intermediate"},
+		Options:                strSlicePtr([]string{"Beginner", "Intermediate"}),
 		OptionsSelectMode:      &mode,
 		CreatedAt:              goldenTime(),
 	}
 }
 
-func sampleTimeSlotRecord() TimeSlotRecord {
-	return TimeSlotRecord{
+func sampleTimeSlotRecord() gen.TimeSlotRecord {
+	return gen.TimeSlotRecord{
 		ID:              goldenUUID(2),
 		ServiceID:       "demo-yoga",
 		StartsAt:        goldenTime(),
@@ -89,28 +107,28 @@ func sampleTimeSlotRecord() TimeSlotRecord {
 	}
 }
 
-func sampleBookingRecord() BookingRecord {
-	return BookingRecord{
+func sampleBookingRecord() gen.BookingRecord {
+	return gen.BookingRecord{
 		ID:                  goldenUUID(3),
 		TimeSlotID:          goldenUUID(2),
-		Status:              BookingConfirmed,
+		Status:              gen.Confirmed,
 		Seats:               2,
 		GuestName:           "Mila Petrović",
-		GuestMessenger:      MessengerTelegram,
+		GuestMessenger:      gen.Telegram,
 		GuestMessengerID:    "123456789",
 		GuestMessengerLogin: strptr("mila"),
-		SelectedOptions:     []string{"Beginner"},
+		SelectedOptions:     strSlicePtr([]string{"Beginner"}),
 		CreatedAt:           goldenTime(),
 	}
 }
 
-func sampleGuestBooking() GuestBooking {
-	return GuestBooking{
+func sampleGuestBooking() gen.GuestBooking {
+	return gen.GuestBooking{
 		ID:              goldenUUID(3),
-		Status:          BookingConfirmed,
+		Status:          gen.Confirmed,
 		Seats:           2,
 		GuestName:       "Mila Petrović",
-		SelectedOptions: []string{"Beginner"},
+		SelectedOptions: strSlicePtr([]string{"Beginner"}),
 		CreatedAt:       goldenTime(),
 		ManageToken:     "manage-token-1234567890",
 		Slot:            sampleTimeSlotRecord(),
@@ -157,12 +175,12 @@ func goldenSamples() map[string]any {
 	publicNulls.Contact = nil
 
 	demoProfile := organizer
-	demoProfile.ID = DemoOrganizerID
+	demoProfile.ID = ToUUID(DemoOrganizerID)
 	demoProfile.Slug = DemoOrganizerSlug
 	demoProfile.IsDemo = true
 
 	demoPublic := public
-	demoPublic.ID = DemoOrganizerID
+	demoPublic.ID = ToUUID(DemoOrganizerID)
 	demoPublic.Slug = DemoOrganizerSlug
 	demoPublic.IsDemo = true
 
@@ -174,17 +192,17 @@ func goldenSamples() map[string]any {
 	maxService.Title = strings.Repeat("я", 100)
 	maxService.Description = strptr(strings.Repeat("x", 2000))
 	maxService.DefaultPrice = strings.Repeat("9", 50)
-	maxService.Options = []string{strings.Repeat("o", 100)}
+	maxService.Options = strSlicePtr([]string{strings.Repeat("o", 100)})
 
 	payload := AuthTicketPayload{
-		Messenger:      MessengerTelegram,
+		Messenger:      gen.Telegram,
 		MessengerID:    "123456789",
 		DisplayName:    "Mila Petrović",
 		PhotoURL:       strptr("https://example.com/avatar.webp"),
 		MessengerLogin: strptr("mila"),
 	}
 	payloadNulls := AuthTicketPayload{
-		Messenger:   MessengerTelegram,
+		Messenger:   gen.Telegram,
 		MessengerID: "123456789",
 		DisplayName: "Mila Petrović",
 	}
@@ -209,58 +227,58 @@ func goldenSamples() map[string]any {
 		"BookingRecord.nulls":     bookingNulls,
 		"GuestBooking":            guest,
 		"GuestBooking.nulls":      guestNulls,
-		"ImageUploadTarget": ImageUploadTarget{
+		"ImageUploadTarget": gen.ImageUploadTarget{
 			UploadURL: "https://upload.example.com/put",
 			PublicURL: "https://example.com/avatar.webp",
 			ExpiresAt: goldenTime(),
 		},
-		"RegisteredOrganizer":     RegisteredOrganizer{ID: goldenUUID(1), Slug: "my-studio"},
-		"Registered":              Registered{Organizer: RegisteredOrganizer{ID: goldenUUID(1), Slug: "my-studio"}},
+		"RegisteredOrganizer":     gen.RegisteredOrganizer{ID: goldenUUID(1), Slug: "my-studio"},
+		"Registered":              gen.Registered{Organizer: gen.RegisteredOrganizer{ID: goldenUUID(1), Slug: "my-studio"}},
 		"AuthTicketPayload":       payload,
 		"AuthTicketPayload.nulls": payloadNulls,
-		"GuestTicketResponse": GuestTicketResponse{
+		"GuestTicketResponse": gen.GuestTicketResponse{
 			Ticket:      "whatever-guest-ticket-12345678",
-			Messenger:   MessengerTelegram,
+			Messenger:   gen.Telegram,
 			MessengerID: "123456789",
 			DisplayName: "Mila Petrović",
 		},
-		"AuthTicketResponse": AuthTicketResponse{Ticket: "whatever-auth-ticket-12345678", OrganizerExists: true},
-		"LoginLinkPayload":   LoginLinkPayload{OrganizerID: goldenUUID(1), Next: "/cabinet"},
-		"BookingCreatedJob":  BookingCreatedJob{BookingID: goldenUUID(3), Recipient: RecipientOrganizer},
-		"BookingCancelledJob": BookingCancelledJob{
+		"AuthTicketResponse": gen.AuthTicketResponse{Ticket: "whatever-auth-ticket-12345678", OrganizerExists: true},
+		"LoginLinkPayload":   LoginLinkPayload{OrganizerID: UUIDString(goldenUUID(1)), Next: "/cabinet"},
+		"BookingCreatedJob":  gen.BookingCreatedJob{BookingID: goldenUUID(3), Recipient: gen.NotificationRecipientOrganizer},
+		"BookingCancelledJob": gen.BookingCancelledJob{
 			BookingID:   goldenUUID(3),
-			CancelledBy: ActorGuest,
+			CancelledBy: gen.CancelActorGuest,
 		},
-		"ServiceEnvelope":        ServiceEnvelope{Service: service},
-		"ServicesEnvelope":       ServicesEnvelope{Services: []ServiceRecord{service}},
-		"SlotEnvelope":           SlotEnvelope{Slot: slot},
-		"SlotsEnvelope":          SlotsEnvelope{Slots: []TimeSlotRecord{slot}},
-		"GuestBookingEnvelope":   GuestBookingEnvelope{Booking: guest},
-		"BookingEnvelope":        BookingEnvelope{Booking: booking},
-		"GuestBookingsEnvelope":  GuestBookingsEnvelope{Bookings: []GuestBooking{guest}},
-		"OrganizerEnvelope":      OrganizerEnvelope{Organizer: organizer},
-		"OrganizerEnvelope.demo": OrganizerEnvelope{Organizer: demoProfile},
-		"DeletedServiceEnvelope": DeletedServiceEnvelope{ID: "demo-yoga"},
-		"DeletedSlotEnvelope":    DeletedSlotEnvelope{ID: goldenUUID(2)},
-		"ErrorBody": ErrorBody{
+		"ServiceEnvelope":        gen.ServiceEnvelope{Service: service},
+		"ServicesEnvelope":       gen.ServicesEnvelope{Services: []gen.ServiceRecord{service}},
+		"SlotEnvelope":           gen.SlotEnvelope{Slot: slot},
+		"SlotsEnvelope":          gen.SlotsEnvelope{Slots: []gen.TimeSlotRecord{slot}},
+		"GuestBookingEnvelope":   gen.GuestBookingEnvelope{Booking: guest},
+		"BookingEnvelope":        gen.BookingEnvelope{Booking: booking},
+		"GuestBookingsEnvelope":  gen.GuestBookingsEnvelope{Bookings: []gen.GuestBooking{guest}},
+		"OrganizerEnvelope":      gen.OrganizerEnvelope{Organizer: organizer},
+		"OrganizerEnvelope.demo": gen.OrganizerEnvelope{Organizer: demoProfile},
+		"DeletedServiceEnvelope": gen.DeletedServiceEnvelope{ID: "demo-yoga"},
+		"DeletedSlotEnvelope":    gen.DeletedSlotEnvelope{ID: goldenUUID(2)},
+		"ErrorBody": gen.ErrorBody{
 			Error:     "Only 4 seats left",
 			Code:      strptr("seats_left"),
 			SeatsLeft: &seatsLeft,
 			MaxSeats:  &maxSeats,
 		},
-		"ErrorBody.nulls": ErrorBody{Error: "Something went wrong"},
-		"ValidationErrors": ValidationErrors{
+		"ErrorBody.nulls": gen.ErrorBody{Error: "Something went wrong"},
+		"ValidationErrors": gen.ValidationErrors{
 			FormErrors:  []string{},
 			FieldErrors: map[string][]string{"title": {"Required"}},
 		},
-		"InvalidBody": InvalidBody{
+		"InvalidBody": gen.InvalidBody{
 			Error: "Invalid input",
-			Details: ValidationErrors{
+			Details: gen.ValidationErrors{
 				FormErrors:  []string{},
 				FieldErrors: map[string][]string{"title": {"Required"}},
 			},
 		},
-		"InvalidIssuesBody": InvalidIssuesBody{
+		"InvalidIssuesBody": gen.InvalidIssuesBody{
 			Error:  "Invalid input",
 			Issues: map[string][]string{"slug": {"this slug is reserved for system use — please choose another"}},
 		},
@@ -316,21 +334,21 @@ func TestGoldenCoverage(t *testing.T) {
 		}
 		seen[base] = true
 	}
-	for _, n := range RecordNames {
+	for _, n := range recordNames {
 		if !seen[n] {
-			t.Errorf("RecordNames entry %q has no golden sample", n)
+			t.Errorf("record %q has no golden sample", n)
 		}
 	}
 	for base := range seen {
 		found := false
-		for _, n := range RecordNames {
+		for _, n := range recordNames {
 			if n == base {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("golden sample %q is not in RecordNames", base)
+			t.Errorf("golden sample %q is not in the record list", base)
 		}
 	}
 }

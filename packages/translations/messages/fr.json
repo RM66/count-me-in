@@ -795,6 +795,7 @@
     "slugTaken": "Cet identifiant est déjà pris — choisis-en un autre",
     "accountExists": "Un compte associé à cette identité Telegram existe déjà — connecte-toi plutôt",
     "nothingToUpdate": "Aucun champ à mettre à jour",
+    "unsupportedMediaType": "Ce point de terminaison n'accepte que application/merge-patch+json (RFC 7386)",
     "capacityBelowBooked": "La capacité ne peut pas être inférieure au nombre de places déjà réservées : {count, plural, =1 {# place} other {# places}}",
     "demoReadOnly": "Ce compte de démonstration est en lecture seule — inscris-toi pour créer tes propres activités réservables.",
     "soldOut": "Cette séance est complète",

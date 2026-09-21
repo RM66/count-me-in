@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/demo"
@@ -11,41 +12,31 @@ import (
 	"countmein/pkg/validation"
 )
 
-// SlotsCollection — GET/POST /api/slots. GET lists slots across every
-// service of the organizer this request may view (signed-in, or demo
-// for anonymous visitors, ADR-010); ?upcoming=1 drops slots that have
-// already started. POST creates a slot under one of the signed-in
-// organizer's services — ownership comes from the session, never the
-// body: a serviceId belonging to someone else answers 404.
-func SlotsCollection(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		slotsList(w, r)
-	case http.MethodPost:
-		slotsCreate(w, r)
-	default:
-		w.Header().Set("Allow", "GET, POST")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func slotsList(w http.ResponseWriter, r *http.Request) {
+// SlotsList — GET /api/slots: lists slots across every service of the
+// organizer this request may view (signed-in, or demo for anonymous
+// visitors, ADR-010). ?upcoming=1 drops slots that have already started;
+// the query parameter is parsed and bound by the generated router into
+// `params`, so it is read from there and nowhere else.
+func SlotsList(w http.ResponseWriter, r *http.Request, params gen.ListSlotsParams) {
 	organizerID, _ := demo.ResolveCabinetOrganizerID(r)
-	upcomingOnly := r.URL.Query().Get("upcoming") == "1"
+	upcomingOnly := params.Upcoming != nil && string(*params.Upcoming) == "1"
 
 	rows, err := db.ListSlots(r.Context(), organizerID, upcomingOnly)
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
 	}
-	slots := make([]contracts.TimeSlotRecord, 0, len(rows))
+	slots := make([]gen.TimeSlotRecord, 0, len(rows))
 	for _, row := range rows {
 		slots = append(slots, db.ToTimeSlotRecord(row))
 	}
-	httpx.JSON(http.StatusOK, contracts.SlotsEnvelope{Slots: slots}).Write(w)
+	httpx.JSON(http.StatusOK, gen.SlotsEnvelope{Slots: slots}).Write(w)
 }
 
-func slotsCreate(w http.ResponseWriter, r *http.Request) {
+// SlotsCreate — POST /api/slots: creates a slot under one of the
+// signed-in organizer's services — ownership comes from the session,
+// never the body: a serviceId belonging to someone else answers 404.
+func SlotsCreate(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
@@ -54,7 +45,7 @@ func slotsCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCreateTimeSlotInput(body)
+	input, errs := validation.DecodeCreateTimeSlotInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -69,33 +60,12 @@ func slotsCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusCreated, contracts.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusCreated, gen.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
 }
 
-// SlotItem — GET/PUT/DELETE /api/slots/{id}, scoped to the signed-in
-// organizer through the parent service. PUT cannot move a slot to
-// another service and never touches bookedCount (seats change only
-// through the booking flow's atomic reserve); shrinking capacity below
-// the seats already sold answers 409. DELETE refuses a slot that still
-// has confirmed bookings (409 — the organizer must cancel them first);
-// the time_slots FK is RESTRICT, so the database would reject the
-// delete anyway. Guests are not notified from here.
-func SlotItem(w http.ResponseWriter, r *http.Request) {
-	id := httpx.PathParam(r, "/api/slots/", "id")
-	switch r.Method {
-	case http.MethodGet:
-		slotGet(w, r, id)
-	case http.MethodPut:
-		slotPut(w, r, id)
-	case http.MethodDelete:
-		slotDelete(w, r, id)
-	default:
-		w.Header().Set("Allow", "GET, PUT, DELETE")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func slotGet(w http.ResponseWriter, r *http.Request, slotID string) {
+// SlotGet — GET /api/slots/{id}, scoped to the organizer this request may
+// view through the parent service.
+func SlotGet(w http.ResponseWriter, r *http.Request, slotID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, _ := demo.ResolveCabinetOrganizerID(r)
 
@@ -108,25 +78,61 @@ func slotGet(w http.ResponseWriter, r *http.Request, slotID string) {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, contracts.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, gen.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
 }
 
-func slotPut(w http.ResponseWriter, r *http.Request, slotID string) {
+// SlotPut — PUT /api/slots/{id}. Cannot move a slot to another service and
+// never touches bookedCount (seats change only through the booking flow's
+// atomic reserve); shrinking capacity below the seats already sold answers
+// 409. Takes a JSON Merge Patch body (RFC 7386/ADR-016): the patch is
+// validated, merged into the current state, and the result re-validated.
+func SlotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
 		resp.Write(w)
 		return
 	}
+	if !requireMergePatchContentType(w, r, locale) {
+		return
+	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseUpdateTimeSlotInput(body)
+	if _, errs := validation.DecodeUpdateTimeSlotInput(body); errs != nil {
+		httpx.WriteInvalidBody(w, locale, errs)
+		return
+	}
+	touched, ok := patchKeys(body)
+	if !ok {
+		httpx.Error(http.StatusBadRequest, locale, "nothingToUpdate").Write(w)
+		return
+	}
+
+	current, err := db.GetOwnedSlot(r.Context(), organizerID, slotID)
+	if err != nil {
+		httpx.Internal(err).Write(w)
+		return
+	}
+	if current == nil {
+		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
+		return
+	}
+
+	merged, err := mergePatch(slotWritableState(*current), body)
+	if err != nil {
+		httpx.Error(http.StatusBadRequest, locale, "invalidInput").Write(w)
+		return
+	}
+	state, errs := validation.DecodeMergedSlotInput(merged, touched["startsAt"])
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
 	}
 
-	row, err := db.UpdateOwnedSlot(r.Context(), organizerID, slotID, input)
+	row, err := db.UpdateOwnedSlot(r.Context(), organizerID, slotID, db.SlotUpdate{
+		State:   state,
+		Touched: touched,
+	})
 	if err != nil {
 		// One handler, two inline errors — no risk of disagreeing with
 		// itself, so these live here instead of a shared mapper.
@@ -141,10 +147,26 @@ func slotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, contracts.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, gen.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)
 }
 
-func slotDelete(w http.ResponseWriter, r *http.Request, slotID string) {
+// slotWritableState renders the writable fields of a slot row in their
+// wire shape — the merge-patch base. startsAt is the ISO string the row
+// already carries; a patch may replace it with an epoch number.
+func slotWritableState(s db.TimeSlotRow) map[string]any {
+	return map[string]any{
+		"startsAt":        contracts.ISODate(s.StartsAt),
+		"durationMinutes": s.DurationMinutes,
+		"capacity":        s.Capacity,
+		"price":           s.Price,
+	}
+}
+
+// SlotDelete — DELETE /api/slots/{id}. Refuses a slot that still has
+// confirmed bookings (409 — the organizer must cancel them first); the
+// time_slots FK is RESTRICT, so the database would reject the delete
+// anyway. Guests are not notified from here.
+func SlotDelete(w http.ResponseWriter, r *http.Request, slotID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
@@ -165,5 +187,5 @@ func slotDelete(w http.ResponseWriter, r *http.Request, slotID string) {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, contracts.DeletedSlotEnvelope{ID: deletedID}).Write(w)
+	httpx.JSON(http.StatusOK, gen.DeletedSlotEnvelope{ID: contracts.ToUUID(deletedID)}).Write(w)
 }

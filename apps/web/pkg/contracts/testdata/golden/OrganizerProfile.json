@@ -1,15 +1,15 @@
 {
+  "contact": "+123456",
+  "createdAt": "2026-01-02T03:04:05.000Z",
+  "description": "Morning practice",
   "id": "01930000-0000-7000-8000-000000000001",
-  "slug": "my-studio",
-  "name": "Studio",
+  "isDemo": false,
+  "language": "ru",
+  "location": "Hall A",
   "messenger": "telegram",
   "messengerId": "123456789",
-  "timezone": "Europe/Belgrade",
-  "description": "Morning practice",
+  "name": "Studio",
   "photoUrl": "https://example.com/avatar.webp",
-  "location": "Hall A",
-  "contact": "+123456",
-  "language": "ru",
-  "createdAt": "2026-01-02T03:04:05.000Z",
-  "isDemo": false
+  "slug": "my-studio",
+  "timezone": "Europe/Belgrade"
 }

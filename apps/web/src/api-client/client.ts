@@ -23,7 +23,12 @@ const DELETE_ERROR_FALLBACK = 'Delete failed — try again'
 function throwApiError(data: unknown, status: number, fallback: string): never {
   const parsed = errorBody.safeParse(data)
   if (parsed.success) {
-    throw new ApiError(parsed.data.error || fallback, status, parsed.data.code, data as Record<string, unknown>)
+    throw new ApiError(
+      parsed.data.error || fallback,
+      status,
+      parsed.data.code,
+      data as Record<string, unknown>,
+    )
   }
   throw new ApiError(fallback, status, undefined, data as Record<string, unknown>)
 }
@@ -45,7 +50,11 @@ function checkContract<S extends z.ZodType>(url: string, schema: S, data: unknow
 }
 
 /** Generic POST helper with error handling. */
-export async function post<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.input<S>> {
+export async function post<S extends z.ZodType>(
+  url: string,
+  body: unknown,
+  schema: S,
+): Promise<z.input<S>> {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -68,11 +77,21 @@ export async function get<S extends z.ZodType>(url: string, schema: S): Promise<
   return checkContract(url, schema, data)
 }
 
-/** Generic PUT helper with error handling. */
-export async function put<S extends z.ZodType>(url: string, body: unknown, schema: S): Promise<z.input<S>> {
+/**
+ * Generic PUT helper with error handling. The three partial-update
+ * endpoints take JSON Merge Patch bodies (RFC 7386, ADR-016) — absent key
+ * = keep, explicit null = clear — so they pass the merge-patch media
+ * type; everything else keeps application/json.
+ */
+export async function put<S extends z.ZodType>(
+  url: string,
+  body: unknown,
+  schema: S,
+  contentType: 'application/json' | 'application/merge-patch+json' = 'application/json',
+): Promise<z.input<S>> {
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': contentType },
     body: JSON.stringify(body),
   })
   if (!res.ok) {

@@ -1,16 +1,16 @@
 {
-  "id": "demo-yoga",
-  "organizerId": "01930000-0000-7000-8000-000000000001",
-  "title": "Yoga",
-  "description": null,
-  "photoUrl": null,
-  "location": null,
   "contact": null,
-  "defaultPrice": "10",
+  "createdAt": "2026-01-02T03:04:05.000Z",
   "defaultCapacity": 5,
   "defaultDurationMinutes": 60,
+  "defaultPrice": "10",
+  "description": null,
+  "id": "demo-yoga",
+  "location": null,
   "maxSeatsPerBooking": 1,
   "options": null,
   "optionsSelectMode": null,
-  "createdAt": "2026-01-02T03:04:05.000Z"
+  "organizerId": "01930000-0000-7000-8000-000000000001",
+  "photoUrl": null,
+  "title": "Yoga"
 }

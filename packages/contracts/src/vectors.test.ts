@@ -11,7 +11,7 @@ import { cancelNotificationRecipient } from './jobs'
 import { buildSelectedOptionsSchema } from './options'
 import { effectiveContact, effectiveLocation } from './service'
 import { seatsLeft, slotPrice } from './time-slot'
-import { WIRE_META, WIRE_SCHEMAS } from './wire'
+import { WIRE_SCHEMAS } from './wire'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const validationDir = join(here, '..', 'vectors', 'validation')
@@ -54,7 +54,7 @@ function replaceNowMarkers(value: unknown): unknown {
 function shapeKeys(schema: z.ZodType): string[] {
   // Direct .shape only: a pipe/refine-wrapped input would yield {} here and
   // fail coverage loudly instead of silently disabling per-field checks.
-  // (Only wire.test.ts and generator-parity.test.ts may read Zod internals.)
+  // (Only wire.test.ts and this coverage check may read Zod internals.)
   const shape = (schema as unknown as { shape?: Record<string, unknown> }).shape ?? {}
   return Object.keys(shape)
 }
@@ -100,8 +100,10 @@ describe('validation vectors', () => {
       filesBySchema.set(schema, cases)
     }
     for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      const kind = WIRE_META[id]?.kind
-      if (kind !== 'input' && kind !== 'update') continue
+      // Input/update schemas are the ones with validation vectors: every
+      // `*Input` plus the Telegram widget payload (kind tags died with the
+      // hand-written generator, so the set is derived from ids).
+      if (!id.endsWith('Input') && id !== 'TelegramWidgetPayload') continue
       const cases = filesBySchema.get(id)
       expect(cases, `missing vectors file for schema ${id}`).toBeDefined()
       expect(
@@ -138,8 +140,7 @@ describe('domain vectors', () => {
                 options: (c.serviceOptions as string[] | null) ?? null,
                 optionsSelectMode: (c.selectMode as 'single' | 'multi' | null) ?? null,
               })
-              const input =
-                c.selected === null || c.selected === undefined ? undefined : c.selected
+              const input = c.selected === null || c.selected === undefined ? undefined : c.selected
               const result = schema.safeParse(input)
               expect(result.success, name).toBe(c.valid)
               if (result.success && 'expectedSelected' in c) {
@@ -188,9 +189,10 @@ describe('domain vectors', () => {
               break
             }
             case 'cancelNotificationRecipient': {
-              expect(cancelNotificationRecipient(c.cancelledBy as 'guest' | 'organizer'), name).toBe(
-                c.expected,
-              )
+              expect(
+                cancelNotificationRecipient(c.cancelledBy as 'guest' | 'organizer'),
+                name,
+              ).toBe(c.expected)
               break
             }
             case 'loginLinkKey': {
@@ -198,10 +200,9 @@ describe('domain vectors', () => {
               break
             }
             case 'isDemoOrganizerId': {
-              expect(
-                isDemoOrganizerId((c.organizerId as string | null) ?? null),
-                name,
-              ).toBe(c.expected)
+              expect(isDemoOrganizerId((c.organizerId as string | null) ?? null), name).toBe(
+                c.expected,
+              )
               break
             }
             default:

@@ -29,8 +29,8 @@ type vectorFile struct {
 
 var nowMarker = regexp.MustCompile(`^\$now([+-]\d+)(s|m|h|d)$`)
 
-// Schema dispatch is the generated Parsers table — a new input works in the
-// vectors with no test edit.
+// Schema dispatch is the Decoders table in decode.go — a new input works in
+// the vectors with no test edit.
 
 func replaceNowMarkers(v any) any {
 	switch t := v.(type) {
@@ -82,9 +82,9 @@ func TestValidationVectors(t *testing.T) {
 		if err := json.Unmarshal(data, &vf); err != nil {
 			t.Fatalf("parse %s: %v", entry.Name(), err)
 		}
-		parse, ok := Parsers[vf.Schema]
+		parse, ok := Decoders[vf.Schema]
 		if !ok {
-			t.Errorf("no parser dispatch for schema %s", vf.Schema)
+			t.Errorf("no decoder dispatch for schema %s", vf.Schema)
 			continue
 		}
 		for _, c := range vf.Cases {

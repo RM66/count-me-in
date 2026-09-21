@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/auth"
 	"countmein/pkg/contracts"
 	"countmein/pkg/db"
@@ -18,8 +19,8 @@ import (
 // HandleBookingCreated notifies one recipient about a fresh booking.
 // PostHog captures from the TS handler are not ported (no SDK in the
 // dependency set); delivery logging covers the remainder.
-func HandleBookingCreated(ctx context.Context, env Env, job contracts.BookingCreatedJob, traceID string) error {
-	booking, slot, service, organizer, err := db.GetBookingChain(ctx, job.BookingID)
+func HandleBookingCreated(ctx context.Context, env Env, job gen.BookingCreatedJob, traceID string) error {
+	booking, slot, service, organizer, err := db.GetBookingChain(ctx, contracts.UUIDString(job.BookingID))
 	if err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func HandleBookingCreated(ctx context.Context, env Env, job contracts.BookingCre
 		return nil
 	}
 
-	if job.Recipient == contracts.RecipientOrganizer {
+	if job.Recipient == gen.NotificationRecipientOrganizer {
 		// Minted per send attempt: a retry mints a fresh token and the
 		// abandoned one simply expires, so a delivered message never
 		// carries a button already spent by an earlier attempt.
@@ -58,12 +59,12 @@ func HandleBookingCreated(ctx context.Context, env Env, job contracts.BookingCre
 		if err != nil {
 			return err
 		}
-		locale := NotificationLocale(contracts.RecipientOrganizer, view)
+		locale := NotificationLocale(gen.NotificationRecipientOrganizer, view)
 		message := BookingCreatedForOrganizer(view, LoginLinkURL(env.AppURL, token), locale)
 		return SendMessage(ctx, env.TelegramBotToken, organizer.MessengerID, message.Text, message.Button)
 	}
 
-	locale := NotificationLocale(contracts.RecipientGuest, view)
+	locale := NotificationLocale(gen.NotificationRecipientGuest, view)
 	message := BookingCreatedForGuest(view, ManageBookingURL(env.AppURL, booking.ManageToken), locale)
 	return SendMessage(ctx, env.TelegramBotToken, booking.GuestMessengerID, message.Text, message.Button)
 }

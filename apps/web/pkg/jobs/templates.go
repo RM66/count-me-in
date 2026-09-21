@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/i18n"
@@ -71,9 +72,9 @@ func EscapeHTML(value string) string {
 
 // NotificationLocale — the locale a recipient reads: the organizer's
 // own language, the guest's captured booking locale.
-func NotificationLocale(recipient contracts.NotificationRecipient, view BookingView) string {
+func NotificationLocale(recipient gen.NotificationRecipient, view BookingView) string {
 	stored := view.Booking.GuestLocale
-	if recipient == contracts.RecipientOrganizer {
+	if recipient == gen.NotificationRecipientOrganizer {
 		stored = view.Organizer.Language
 	}
 	if contracts.IsAppLocale(stored) {

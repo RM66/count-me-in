@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/httpx"
@@ -24,17 +25,12 @@ import (
 // claimed by the atomic reserve in db.CreateGuestBooking (invariant 2).
 func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 	if !httpx.RateLimited(w, r, "rl:booking:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 5, Window: time.Minute}) {
 		return
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCreateBookingInput(body)
+	input, errs := validation.DecodeCreateBookingInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -53,14 +49,16 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	// message" becomes a grep for one id.
 	traceID := logx.NewTraceID()
 
-	created, err := db.CreateGuestBooking(r.Context(), contracts.CreateBookingData{
+	created, err := db.CreateGuestBooking(r.Context(), db.CreateBookingData{
 		ServiceID:       input.ServiceID,
-		TimeSlotID:      input.TimeSlotID,
+		TimeSlotID:      contracts.UUIDString(input.TimeSlotID),
 		Seats:           input.Seats,
 		GuestName:       input.GuestName,
-		SelectedOptions: input.SelectedOptions,
-		GuestLocale:     input.GuestLocale,
-		Guest:           *identity,
+		SelectedOptions: derefSlice(input.SelectedOptions),
+		// DecodeCreateBookingInput applies the schema default, so the
+		// pointer is never nil here; the fallback is belt-and-braces.
+		GuestLocale: string(contracts.DerefOr(input.GuestLocale, gen.En)),
+		Guest:       *identity,
 	})
 	if err != nil {
 		logx.Error(err, map[string]any{"traceId": traceID, "scope": "booking-create"})
@@ -89,13 +87,13 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	// The response is flushed to the socket before the publish so the
 	// guest sees the 201 immediately; the function then stays alive to
 	// finish the (bounded) publish.
-	httpx.JSON(http.StatusCreated, contracts.GuestBookingEnvelope{Booking: *created}).Write(w)
+	httpx.JSON(http.StatusCreated, gen.GuestBookingEnvelope{Booking: *created}).Write(w)
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCreated(publishCtx, created.ID, traceID)
+	queue.PublishBookingCreated(publishCtx, contracts.UUIDString(created.ID), traceID)
 }
 
 // BookingLookup — POST /api/bookings/lookup: "find my bookings"
@@ -107,14 +105,8 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 // only from the ticket — a raw messengerId in the body would turn this
 // into a way to read anyone's bookings.
 func BookingLookup(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseLookupBookingsInput(body)
+	input, errs := validation.DecodeLookupBookingsInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, i18n.DetectLocale(r), errs)
 		return
@@ -132,9 +124,9 @@ func BookingLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if bookings == nil {
-		bookings = []contracts.GuestBooking{}
+		bookings = []gen.GuestBooking{}
 	}
-	httpx.JSON(http.StatusOK, contracts.GuestBookingsEnvelope{Bookings: bookings}).Write(w)
+	httpx.JSON(http.StatusOK, gen.GuestBookingsEnvelope{Bookings: bookings}).Write(w)
 }
 
 // BookingCancel — POST /api/bookings/cancel: the guest cancels via
@@ -147,16 +139,11 @@ func BookingLookup(w http.ResponseWriter, r *http.Request) {
 // and the response is the updated booking.
 func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	traceID := logx.NewTraceID()
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCancelBookingByTokenInput(body)
+	input, errs := validation.DecodeCancelBookingByTokenInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -189,13 +176,13 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	// publish runs inline after the response is written and before
 	// Handler returns under a bounded context — the guest does not
 	// wait for QStash.
-	httpx.JSON(http.StatusOK, contracts.GuestBookingEnvelope{Booking: *booking}).Write(w)
+	httpx.JSON(http.StatusOK, gen.GuestBookingEnvelope{Booking: *booking}).Write(w)
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCancelled(publishCtx, booking.ID, contracts.ActorGuest, traceID)
+	queue.PublishBookingCancelled(publishCtx, contracts.UUIDString(booking.ID), gen.CancelActorGuest, traceID)
 }
 
 // BookingCancelByOrganizer — POST /api/bookings/cancel-by-organizer:
@@ -209,11 +196,6 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 // where a missing check turns into cancelling someone else's booking.
 func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	traceID := logx.NewTraceID()
 
@@ -227,13 +209,13 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCancelBookingByOrganizerInput(body)
+	input, errs := validation.DecodeCancelBookingByOrganizerInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
 	}
 
-	booking, err := db.CancelOwnedBooking(r.Context(), organizerID, input.BookingID)
+	booking, err := db.CancelOwnedBooking(r.Context(), organizerID, contracts.UUIDString(input.BookingID))
 	if err != nil {
 		// Already cancelled → 409, demo → 403.
 		if resp := httpx.BookingErrorResponse(err, locale); resp != nil {
@@ -260,11 +242,11 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	// after the response is written and before Handler returns — the
 	// organizer does not wait for QStash. The response is flushed first
 	// so the organizer sees the 200 immediately.
-	httpx.JSON(http.StatusOK, contracts.BookingEnvelope{Booking: *booking}).Write(w)
+	httpx.JSON(http.StatusOK, gen.BookingEnvelope{Booking: *booking}).Write(w)
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCancelled(publishCtx, booking.ID, contracts.ActorOrganizer, traceID)
+	queue.PublishBookingCancelled(publishCtx, contracts.UUIDString(booking.ID), gen.CancelActorOrganizer, traceID)
 }

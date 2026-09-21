@@ -88,7 +88,7 @@ describe('timezone', () => {
 })
 
 /**
- * Parity with `charLen` in pkg/validation/validation_gen.go: length bounds are
+ * Parity with the Go length rule (pkg/validation): length bounds are
  * UTF-16 code units (JS String.length), not bytes. These vectors keep the Go
  * port from drifting back to byte length for multi-byte text.
  */

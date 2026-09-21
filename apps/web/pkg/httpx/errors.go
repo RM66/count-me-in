@@ -3,7 +3,7 @@ package httpx
 import (
 	"net/http"
 
-	"countmein/pkg/contracts"
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/db"
 	"countmein/pkg/demo"
 )
@@ -30,14 +30,14 @@ func BookingErrorResponse(err error, locale string) *Response {
 		// actually left rather than only that the attempt failed.
 		if e.SeatsLeft == 0 {
 			return ErrorExtras(http.StatusConflict, locale, "soldOut", nil,
-				contracts.ErrorBody{SeatsLeft: ptr(0)})
+				gen.ErrorBody{SeatsLeft: ptr(0)})
 		}
 		return ErrorExtras(http.StatusConflict, locale, "seatsLeftOnSession",
 			map[string]any{"count": e.SeatsLeft},
-			contracts.ErrorBody{SeatsLeft: ptr(e.SeatsLeft)})
+			gen.ErrorBody{SeatsLeft: ptr(e.SeatsLeft)})
 	case db.DuplicateBookingError:
 		return ErrorExtras(http.StatusConflict, locale, "duplicateBooking", nil,
-			contracts.ErrorBody{Code: ptr("duplicate_booking")})
+			gen.ErrorBody{Code: ptr("duplicate_booking")})
 	case db.BookingAlreadyCancelledError:
 		return Error(http.StatusConflict, locale, "alreadyCancelled")
 	case db.ManageTokenExpiredError:
@@ -50,11 +50,11 @@ func BookingErrorResponse(err error, locale string) *Response {
 		// logs; the body gets the machine-readable code plus localized
 		// copy, and the booking dialog re-renders it from the code.
 		return ErrorExtras(http.StatusBadRequest, locale, "invalidOptions", nil,
-			contracts.ErrorBody{Code: ptr("invalid_option")})
+			gen.ErrorBody{Code: ptr("invalid_option")})
 	case db.PartyTooLargeError:
 		return ErrorExtras(http.StatusBadRequest, locale, "partyTooLarge",
 			map[string]any{"maxSeats": e.MaxSeats},
-			contracts.ErrorBody{MaxSeats: ptr(e.MaxSeats)})
+			gen.ErrorBody{MaxSeats: ptr(e.MaxSeats)})
 	}
 	return nil
 }

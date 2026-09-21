@@ -3,19 +3,20 @@ package contracts
 import (
 	"encoding/json"
 	"time"
+
+	gen "countmein/pkg/api/gen"
+
+	"github.com/google/uuid"
 )
 
-// Optional distinguishes an absent JSON key from an explicit null —
-// Zod's `optional()` vs `nullable()` distinction. Set=false: absent;
-// Set=true, Value=nil: explicit null; Set=true, Value!=nil: value.
-//
-// Built only by the validation package's opt* helpers, which derive Set/Value
-// from the raw request body while applying the same rules as Zod. There is
-// deliberately no UnmarshalJSON: decoding straight into an update struct would
-// bypass validation, and the update structs carry no json tags.
-type Optional[T any] struct {
-	Set   bool
-	Value *T
+// DerefOr returns the value behind a pointer, or the default when nil.
+// Shared by the routes handlers and the Telegram widget parser, which
+// both read oapi-codegen's optional pointer fields.
+func DerefOr[T any](p *T, def T) T {
+	if p == nil {
+		return def
+	}
+	return *p
 }
 
 // ISODate renders t like JS Date.toISOString(): always UTC, always
@@ -72,3 +73,39 @@ func parseRFC3339(s string) (time.Time, error) {
 }
 
 func (f FlexTime) Time() time.Time { return time.Time(f) }
+
+// FlexTimeFromRaw decodes the raw JSON behind a generated SlotStartsAt
+// union (oapi-codegen renders oneOf as json.RawMessage) into a FlexTime.
+func FlexTimeFromRaw(raw json.RawMessage) (FlexTime, error) {
+	var f FlexTime
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return f, err
+	}
+	return f, nil
+}
+
+// ── Generated-type helpers ───────────────────────────────────────────────────
+//
+// The wire structs live in pkg/api/gen (oapi-codegen); the database and
+// job layers keep working with plain strings and time.Time. These two
+// adapters are the only place that converts between the shapes, so a
+// change of representation has one seam.
+
+// ToUUID converts a canonical UUID string into the generated wire type.
+// An invalid input yields the zero UUID (never panics) — callers reach
+// this with values that already passed the spec's uuid pattern, so the
+// fallback only fires on DB corruption, where a zero id fails closed
+// downstream instead of crashing the function.
+func ToUUID(s string) gen.UUID {
+	parsed, err := uuid.Parse(s)
+	if err != nil {
+		return gen.UUID{}
+	}
+	return gen.UUID(parsed)
+}
+
+// UUIDString renders the generated wire UUID back into its canonical
+// text form.
+func UUIDString(u gen.UUID) string {
+	return uuid.UUID(u).String()
+}

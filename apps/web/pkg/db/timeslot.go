@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 
 	"github.com/jackc/pgx/v5"
@@ -50,9 +51,9 @@ func scanSlot(row pgx.Row) (*TimeSlotRow, error) {
 	return &s, nil
 }
 
-func ToTimeSlotRecord(s TimeSlotRow) contracts.TimeSlotRecord {
-	return contracts.TimeSlotRecord{
-		ID:              s.ID,
+func ToTimeSlotRecord(s TimeSlotRow) gen.TimeSlotRecord {
+	return gen.TimeSlotRecord{
+		ID:              contracts.ToUUID(s.ID),
 		ServiceID:       s.ServiceID,
 		StartsAt:        contracts.ISODate(s.StartsAt),
 		DurationMinutes: s.DurationMinutes,
@@ -123,8 +124,27 @@ func (e SlotCapacityBelowBookedError) Error() string {
 // 409; the organizer must cancel the bookings first.
 type SlotHasActiveBookingsError struct{}
 
-func (SlotHasActiveBookingsError) Error() string {
-	return "Slot has active bookings"
+func (SlotHasActiveBookingsError) Error() string { return "Slot has active bookings" }
+
+// SlotUpdate carries the merged state and the set of keys the patch
+// touched (RFC 7386 merge-patch, ADR-016).
+type SlotUpdate struct {
+	State   gen.UpdateTimeSlotInput
+	Touched map[string]bool
+}
+
+// slotStartsAtTime extracts the instant behind the generated oneOf
+// wrapper (ISO string or epoch).
+func slotStartsAtTime(s gen.SlotStartsAt) (time.Time, error) {
+	raw, err := s.MarshalJSON()
+	if err != nil {
+		return time.Time{}, err
+	}
+	ft, err := contracts.FlexTimeFromRaw(raw)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return ft.Time(), nil
 }
 
 // CreateSlot — under a service owned by organizerID; nil when the
@@ -134,7 +154,7 @@ func (SlotHasActiveBookingsError) Error() string {
 // the id is generated app-side, an INSERT…SELECT would skip it; the
 // gap that opens is harmless — if the service disappears in between,
 // the FK rejects the row).
-func CreateSlot(ctx context.Context, organizerID string, input contracts.CreateTimeSlotInput) (*TimeSlotRow, error) {
+func CreateSlot(ctx context.Context, organizerID string, input gen.CreateTimeSlotInput) (*TimeSlotRow, error) {
 	var owned string
 	err := Pool().QueryRow(ctx,
 		`SELECT id FROM services WHERE id = $1 AND organizer_id = $2::uuid LIMIT 1`,
@@ -146,16 +166,21 @@ func CreateSlot(ctx context.Context, organizerID string, input contracts.CreateT
 		return nil, err
 	}
 
+	startsAt, err := slotStartsAtTime(input.StartsAt)
+	if err != nil {
+		return nil, err
+	}
+
 	id := newID()
 	query := `INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, capacity, price)
 		VALUES ($1::uuid, $2, $3, $4, $5, $6) RETURNING ` + slotColumns
-	return scanSlot(Pool().QueryRow(ctx, query, id, owned, input.StartsAt, input.DurationMinutes, input.Capacity, input.Price))
+	return scanSlot(Pool().QueryRow(ctx, query, id, owned, startsAt, input.DurationMinutes, input.Capacity, input.Price))
 }
 
 // UpdateOwnedSlot — bookedCount is deliberately not updatable: seats
 // move only through the atomic reserve in the booking flow (invariant
 // 2). Shrinking capacity below the seats already sold answers a 409.
-func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, input contracts.UpdateTimeSlotInput) (*TimeSlotRow, error) {
+func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, update SlotUpdate) (*TimeSlotRow, error) {
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -164,18 +189,23 @@ func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, input cont
 		args = append(args, val)
 		n++
 	}
-	if input.StartsAt.Set && input.StartsAt.Value != nil {
-		add("starts_at", input.StartsAt.Value.Time())
+	state := update.State
+	if update.Touched["startsAt"] && state.StartsAt != nil {
+		startsAt, err := slotStartsAtTime(*state.StartsAt)
+		if err != nil {
+			return nil, err
+		}
+		add("starts_at", startsAt)
 	}
-	if input.DurationMinutes.Set && input.DurationMinutes.Value != nil {
-		add("duration_minutes", *input.DurationMinutes.Value)
+	if update.Touched["durationMinutes"] && state.DurationMinutes != nil {
+		add("duration_minutes", *state.DurationMinutes)
 	}
-	if input.Capacity.Set && input.Capacity.Value != nil {
-		add("capacity", *input.Capacity.Value)
+	if update.Touched["capacity"] && state.Capacity != nil {
+		add("capacity", *state.Capacity)
 	}
-	if input.Price.Set {
-		if input.Price.Value != nil {
-			add("price", *input.Price.Value)
+	if update.Touched["price"] {
+		if state.Price != nil {
+			add("price", *state.Price)
 		} else {
 			sets = append(sets, "price = NULL")
 		}
@@ -200,7 +230,7 @@ func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, input cont
 	// race the booking flow's atomic reserve. FOR UPDATE serializes
 	// against it — an improvement on the TS version, whose backstop is
 	// the booked_count CHECK constraint surfacing as an opaque 23514.
-	if input.Capacity.Set && input.Capacity.Value != nil {
+	if update.Touched["capacity"] && state.Capacity != nil {
 		var bookedCount int
 		err := tx.QueryRow(ctx,
 			`SELECT booked_count FROM time_slots WHERE `+scope+` FOR UPDATE`, args...).Scan(&bookedCount)
@@ -210,7 +240,7 @@ func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, input cont
 		if err != nil {
 			return nil, err
 		}
-		if *input.Capacity.Value < bookedCount {
+		if *state.Capacity < bookedCount {
 			return nil, SlotCapacityBelowBookedError{BookedCount: bookedCount}
 		}
 	}

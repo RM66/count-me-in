@@ -3,7 +3,6 @@ package httpx
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"countmein/pkg/logx"
 )
@@ -20,6 +19,10 @@ import (
 //     (ApiErrors dictionaries), so shared caches must key by language.
 //   - X-Robots-Tag: noindex — mirrors the next.config.js rule for
 //     /api/:path*; belt-and-braces alongside the meta robots on pages.
+//
+// Path and query parameters are not extracted here: the generated router
+// (pkg/api) owns both — it matches the method+path pattern and forwards
+// {id}/{queue} and bound query params to the adapters explicitly.
 func Recover(next func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Language")
@@ -35,54 +38,4 @@ func Recover(next func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc
 		}()
 		next(w, r)
 	}
-}
-
-// RequireMethod answers 405 (with an Allow header, like Next.js route
-// files) for anything else and calls next only for the wanted one.
-func RequireMethod(w http.ResponseWriter, r *http.Request, method string, next func()) {
-	if r.Method != method {
-		w.Header().Set("Allow", method)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	next()
-}
-
-// PathParam extracts the single dynamic segment of a route.
-//
-// Production (Vercel): every /api/* route is rewritten to the single
-// function at /api/entry, which restores r.URL.Path from the ?_path query
-// param vercel.json carries. Vercel also injects the matched segment as
-// a query parameter (?id=abc123 / ?queue=booking.created), so the value
-// is read from the query string first — queryKey names it ("id" for
-// services/slots, "queue" for jobs). The restored path makes the
-// dev-style path branch a working fallback.
-//
-// Dev (cmd/dev): Go 1.22+ http.ServeMux patterns route /api/services/{id}
-// directly, so the segment lives in the path after prefix.
-//
-// r.URL.Path is already percent-decoded by net/http — no second unescape
-// here, or %2520-style input would decode twice.
-func PathParam(r *http.Request, prefix, queryKey string) string {
-	// Production: Vercel rewrites pass the dynamic segment as a query param.
-	if v := r.URL.Query().Get(queryKey); v != "" {
-		return v
-	}
-	// Dev (or production after path restoration): the segment is in the
-	// path after prefix.
-	// Strict prefix check: without it a path that merely shares a length
-	// with the prefix would strip the wrong number of bytes and return
-	// garbage as the param.
-	if !strings.HasPrefix(r.URL.Path, prefix) {
-		return ""
-	}
-	rest := r.URL.Path[len(prefix):]
-	// One segment only — anything deeper did not match this route.
-	for i := 0; i < len(rest); i++ {
-		if rest[i] == '/' {
-			rest = rest[:i]
-			break
-		}
-	}
-	return rest
 }
