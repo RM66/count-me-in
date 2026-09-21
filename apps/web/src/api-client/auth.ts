@@ -23,8 +23,7 @@ const SIGN_IN_ERROR_FALLBACK = 'Could not sign you in — authenticate with Tele
  */
 export function useRegisterOrganizer() {
   return useMutation({
-    mutationFn: (input: RegisterOrganizerInput) =>
-      post('/api/organizers', input, registered),
+    mutationFn: (input: RegisterOrganizerInput) => post('/api/organizers', input, registered),
   })
 }
 

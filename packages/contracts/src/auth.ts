@@ -8,7 +8,10 @@ import { authTicket, httpUrl, messengerId, uuid } from './primitives'
  * the `__Secure-` name on HTTPS; both are listed because local development
  * serves plain HTTP, and the Go API accepts either.
  */
-export const SESSION_COOKIE_NAMES = ['__Secure-authjs.session-token', 'authjs.session-token'] as const
+export const SESSION_COOKIE_NAMES = [
+  '__Secure-authjs.session-token',
+  'authjs.session-token',
+] as const
 
 /**
  * Telegram numeric user id. Bounded rather than `.positive()` so the bound is

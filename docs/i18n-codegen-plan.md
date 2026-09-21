@@ -7,6 +7,7 @@
 ## 1. Контекст и мотивация
 
 ### Текущее состояние (Проблема)
+
 - В Git хранятся **16 дублирующихся JSON-файлов** (8 языков для `messages/` и 8 для `notifications/`) в двух местах:
   1. `packages/translations/{messages,notifications}/*.json`
   2. `apps/web/pkg/i18n/translations/{messages,notifications}/*.json`
@@ -17,6 +18,7 @@
   - При холодном старте Go API тратит процессорное время и память на `json.Unmarshal` 16 файлов.
 
 ### Целевое состояние (Решение)
+
 - `packages/translations` остается **единственным источником правды** для всех локализаций в репозитории.
 - Каталог `apps/web/pkg/i18n/translations/` со всеми 16 JSON-файлами **полностью удаляется из репозитория**.
 - Скрипты `sync-translations.sh` и `check-translations.sh` удаляются.
@@ -272,9 +274,11 @@ func Notif(locale, section, key string, params map[string]any) string {
 Убрать строку `sh scripts/check-translations.sh` из скрипта сборки Go.
 
 **Было в `apps/web/scripts/go/build.sh`:**
+
 ```sh
 sh scripts/check-translations.sh
 ```
+
 **Стало:**
 Строка удалена, так как проверка дрифта больше не требуется (файл генерируется детерминированно из источника).
 
@@ -284,6 +288,7 @@ sh scripts/check-translations.sh
 
 1. **В `apps/web/package.json`:**
    Добавить скрипт генерации:
+
    ```json
    "scripts": {
      "generate:i18n": "bun scripts/generate-i18n-go.ts",
@@ -294,6 +299,7 @@ sh scripts/check-translations.sh
 
 2. **В `packages/translations/package.json`:**
    Заменить `"sync:go"` на вызов генератора:
+
    ```json
    "scripts": {
      "generate:go": "bun run ../../apps/web/scripts/generate-i18n-go.ts",
@@ -303,12 +309,14 @@ sh scripts/check-translations.sh
 
 3. **В корневой `package.json`:**
    Добавить шорткат:
+
    ```json
    "generate:i18n": "turbo run generate:i18n"
    ```
 
 4. **В `turbo.json`:**
    Описать зависимость генератора, чтобы Turbo кэшировал результат:
+
    ```json
    "tasks": {
      "generate:i18n": {
@@ -331,7 +339,7 @@ sh scripts/check-translations.sh
    - name: Check for uncommitted generated changes
      run: git diff --exit-code apps/web/pkg/i18n/translations_gen.go
    ```
-   *Это гарантирует, что если разработчик изменил текст в JSON, он не забыл перегенерировать файл перед коммитом.*
+   _Это гарантирует, что если разработчик изменил текст в JSON, он не забыл перегенерировать файл перед коммитом._
 
 ---
 
