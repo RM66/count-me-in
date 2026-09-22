@@ -214,6 +214,12 @@ export async function getAnalyticsSummary(
   const windowStart = new Date(now.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000)
   const prevWindowStart = new Date(now.getTime() - 2 * WINDOW_DAYS * 24 * 60 * 60 * 1000)
   const trendStart = new Date(now.getTime() - TREND_DAYS * 24 * 60 * 60 * 1000)
+  // Drizzle's query cache hashes params with Buffer.from(), which
+  // throws on Date objects — pass the boundaries as ISO strings
+  // (Postgres compares timestamptz with string literals fine).
+  const windowStartISO = windowStart.toISOString()
+  const prevWindowStartISO = prevWindowStart.toISOString()
+  const trendStartISO = trendStart.toISOString()
 
   const owned = ownedSlotIds(organizerId)
 
@@ -221,12 +227,12 @@ export async function getAnalyticsSummary(
   const [headline, byServiceRows, trendRows] = await Promise.all([
     db
       .select({
-        totalBookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${windowStart})`,
-        prevTotalBookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${prevWindowStart} and ${bookings.createdAt} < ${windowStart})`,
-        seatsSold: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${windowStart}), 0)`,
-        prevSeatsSold: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${prevWindowStart} and ${bookings.createdAt} < ${windowStart}), 0)`,
-        windowBookings: sql<number>`count(*) filter (where ${bookings.createdAt} >= ${windowStart})`,
-        cancelledInWindow: sql<number>`count(*) filter (where ${bookings.status} = 'cancelled' and ${bookings.createdAt} >= ${windowStart})`,
+        totalBookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${windowStartISO})`,
+        prevTotalBookings: sql<number>`count(*) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${prevWindowStartISO} and ${bookings.createdAt} < ${windowStartISO})`,
+        seatsSold: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${windowStartISO}), 0)`,
+        prevSeatsSold: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed' and ${bookings.createdAt} >= ${prevWindowStartISO} and ${bookings.createdAt} < ${windowStartISO}), 0)`,
+        windowBookings: sql<number>`count(*) filter (where ${bookings.createdAt} >= ${windowStartISO})`,
+        cancelledInWindow: sql<number>`count(*) filter (where ${bookings.status} = 'cancelled' and ${bookings.createdAt} >= ${windowStartISO})`,
       })
       .from(bookings)
       .where(inArray(bookings.timeSlotId, owned)),
@@ -242,7 +248,7 @@ export async function getAnalyticsSummary(
         and(
           inArray(bookings.timeSlotId, owned),
           eq(bookings.status, 'confirmed'),
-          sql`${bookings.createdAt} >= ${windowStart}`,
+          sql`${bookings.createdAt} >= ${windowStartISO}`,
         ),
       )
       .groupBy(services.title),
@@ -253,7 +259,9 @@ export async function getAnalyticsSummary(
         seats: sql<number>`coalesce(sum(${bookings.seats}) filter (where ${bookings.status} = 'confirmed'), 0)`,
       })
       .from(bookings)
-      .where(and(inArray(bookings.timeSlotId, owned), sql`${bookings.createdAt} >= ${trendStart}`))
+      .where(
+        and(inArray(bookings.timeSlotId, owned), sql`${bookings.createdAt} >= ${trendStartISO}`),
+      )
       .groupBy(sql`to_char(${bookings.createdAt}, 'YYYY-MM-DD')`),
   ])
 
