@@ -40,14 +40,25 @@ type TelegramIdentity struct {
 	MessengerLogin *string
 }
 
+// Ticket purposes: a ticket minted for one
+// flow must not be redeemable in another.
+const (
+	TicketPurposeGuest     = "guest"
+	TicketPurposeOrganizer = "organizer"
+)
+
 // ToTicketPayload converts the validated identity into the ticket shape.
-func (t TelegramIdentity) ToTicketPayload() contracts.AuthTicketPayload {
+// `purpose` binds the ticket to one flow — the caller decides which
+// flow, the payload carries it, and the consuming guard rejects a
+// ticket minted for the other flow.
+func (t TelegramIdentity) ToTicketPayload(purpose string) contracts.AuthTicketPayload {
 	return contracts.AuthTicketPayload{
 		Messenger:      gen.Messenger(t.Messenger),
 		MessengerID:    t.MessengerID,
 		DisplayName:    t.DisplayName,
 		PhotoURL:       t.PhotoURL,
 		MessengerLogin: t.MessengerLogin,
+		Purpose:        purpose,
 	}
 }
 

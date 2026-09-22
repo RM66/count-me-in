@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -35,7 +36,10 @@ func OrganizerRegister(w http.ResponseWriter, r *http.Request) {
 		httpx.Internal(err).Write(w)
 		return
 	}
-	if identity == nil {
+	// Purpose claim: only an organizer-flow
+	// ticket may register an organizer — a guest booking ticket must not
+	// be redeemable here. Answered like an expired one.
+	if identity == nil || identity.Purpose != auth.TicketPurposeOrganizer {
 		httpx.Error(http.StatusUnauthorized, locale, "authSessionExpired").Write(w)
 		return
 	}
@@ -111,7 +115,17 @@ func OrganizerMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	current, err := db.GetOrganizerProfile(r.Context(), organizerID)
+	// Read → merge → write on one transaction:
+	// a separate read and write let two concurrent PUTs merge against
+	// different snapshots and silently lose columns.
+	tx, err := db.Pool().Begin(r.Context())
+	if err != nil {
+		httpx.Internal(err).Write(w)
+		return
+	}
+	defer tx.Rollback(context.Background()) //nolint
+
+	current, err := db.GetOrganizerProfileTx(r.Context(), tx, organizerID)
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
@@ -141,11 +155,18 @@ func OrganizerMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	row, err := db.UpdateOrganizerProfile(r.Context(), organizerID, db.OrganizerUpdate{
+	row, err := db.UpdateOrganizerProfileTx(r.Context(), tx, organizerID, db.OrganizerUpdate{
 		State:   state,
 		Touched: touched,
 	})
 	if err != nil {
+		// A slug change to an occupied handle hits the unique index —
+		// map it to 409 slugTaken like registration does, instead of a
+		// bare 500.
+		if unique := db.UniqueViolation(err); unique != nil && strings.Contains(unique.ConstraintName, "slug") {
+			httpx.Error(http.StatusConflict, locale, "slugTaken").Write(w)
+			return
+		}
 		if resp := httpx.OrganizerErrorResponse(err, locale); resp != nil {
 			resp.Write(w)
 			return
@@ -155,6 +176,11 @@ func OrganizerMePut(w http.ResponseWriter, r *http.Request) {
 	}
 	if row == nil {
 		httpx.Error(http.StatusNotFound, locale, "organizerNotFound").Write(w)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Internal(err).Write(w)
 		return
 	}
 

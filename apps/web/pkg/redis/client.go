@@ -12,25 +12,37 @@ import (
 )
 
 var (
-	client *goredis.Client
-	once   sync.Once
+	client  *goredis.Client
+	initErr error
+	once    sync.Once
 )
 
 // Client returns the shared connection, opened on first use — a missing
 // REDIS_URL surfaces at the call site rather than at import time.
+//
+// A failed initialization is cached and re-panicked on every call:
+// sync.Once marks itself done even when the
+// function panics, so a plain panic inside once.Do would leave `client`
+// nil for the lifetime of the instance — every subsequent request
+// nil-derefs into a 500 instead of a clear "REDIS_URL is not set".
 func Client() *goredis.Client {
 	once.Do(func() {
 		url := os.Getenv("REDIS_URL")
 		if url == "" {
-			panic(errors.New("REDIS_URL is not set"))
+			initErr = errors.New("REDIS_URL is not set")
+			return
 		}
 		opts, err := goredis.ParseURL(url)
 		if err != nil {
-			panic(err)
+			initErr = err
+			return
 		}
 		// Mirror @repo/redis: maxRetriesPerRequest 2.
 		opts.MaxRetries = 2
 		client = goredis.NewClient(opts)
 	})
+	if initErr != nil {
+		panic(initErr)
+	}
 	return client
 }

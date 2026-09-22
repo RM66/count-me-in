@@ -99,7 +99,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 **One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — the handler refetches at send time, so `manageToken` and login tokens never leave the database boundary. Contracts in `packages/contracts/src/jobs.ts`.
 
-**Publish after commit** (`apps/web/pkg/queue`): the Go handler publishes inline once the booking transaction has committed and the response is written (no `after()` on the Vercel Go runtime) — the guest does not wait for QStash, but the function stays alive until the publish completes (bounded context, 3s). QStash delivers to `POST /api/jobs/{queue}` with 5 retries. The accepted loss window is a crash between commit and publish ([ADR-012](decisions/012-queue-upstash-qstash.md)).
+**Publish after commit** (`apps/web/pkg/queue`): the Go handler publishes inline once the booking transaction has committed and the response is written (no `after()` on the Vercel Go runtime) — the guest does not wait for QStash, but the function stays alive until the publish completes (bounded context, 1.5s). QStash delivers to `POST /api/jobs/{queue}` with 5 retries. A crash between commit and publish is covered by the transactional outbox — the sweeper re-publishes pending rows ([ADR-012](decisions/012-queue-upstash-qstash.md)).
 
 ### Links in messages
 

@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	neturl "net/url"
+	"path"
+	"strings"
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
@@ -73,12 +76,36 @@ func OrganizerMediaURLPrefix(organizerID string) (string, error) {
 // IsOwnMediaURL validates that a client-submitted photoUrl belongs to
 // this organizer's prefix — prevents pointing the row at an arbitrary
 // host or another organizer's media.
+//
+// The check parses the URL and compares host + normalized path:
+// a raw prefix comparison lets
+// `…/{id}/../{other}/x` through, because `..` segments are resolved by
+// the HTTP client, not by the string. `url.Parse` + `path.Clean` on the
+// decoded path closes that: the cleaned path must stay under the
+// organizer's directory.
 func IsOwnMediaURL(organizerID, url string) bool {
 	prefix, err := OrganizerMediaURLPrefix(organizerID)
 	if err != nil {
 		return false
 	}
-	return len(url) >= len(prefix) && url[:len(prefix)] == prefix
+	parsed, err := neturl.Parse(url)
+	if err != nil {
+		return false
+	}
+	prefixURL, err := neturl.Parse(prefix)
+	if err != nil {
+		return false
+	}
+	if parsed.Host != prefixURL.Host {
+		return false
+	}
+	// Clean resolves `..` and `.` segments; the result must remain
+	// inside the organizer's directory. path.Clean strips the trailing
+	// slash, so the boundary is the directory itself or anything
+	// beneath it — a sibling like /organizers/{id}-evil must not match.
+	cleaned := path.Clean("/" + parsed.Path)
+	own := strings.TrimSuffix(path.Clean(prefixURL.Path), "/") // e.g. /organizers/{id}
+	return cleaned == own || strings.HasPrefix(cleaned, own+"/")
 }
 
 // CreateAvatarUpload returns a signed upload URL for an organizer's

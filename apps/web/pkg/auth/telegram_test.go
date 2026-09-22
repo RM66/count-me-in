@@ -96,7 +96,7 @@ func TestValidateTelegramWidgetValid(t *testing.T) {
 		identity.MessengerLogin == nil || *identity.MessengerLogin != "@milap" {
 		t.Fatalf("unexpected identity: %+v", identity)
 	}
-	payload := identity.ToTicketPayload()
+	payload := identity.ToTicketPayload(TicketPurposeGuest)
 	if payload.Messenger != "telegram" || payload.MessengerID != "123456789" {
 		t.Fatalf("unexpected ticket payload: %+v", payload)
 	}

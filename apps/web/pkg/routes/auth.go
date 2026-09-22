@@ -41,7 +41,7 @@ func TelegramGuest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket, err := auth.IssueTicket(r.Context(), identity.ToTicketPayload())
+	ticket, err := auth.IssueTicket(r.Context(), identity.ToTicketPayload(auth.TicketPurposeGuest))
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
@@ -86,7 +86,7 @@ func TelegramSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket, err := auth.IssueTicket(r.Context(), identity.ToTicketPayload())
+	ticket, err := auth.IssueTicket(r.Context(), identity.ToTicketPayload(auth.TicketPurposeOrganizer))
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return

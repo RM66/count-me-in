@@ -53,16 +53,21 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   }
 
   // API routes: mint the organizer-auth header for the Go API.
+  // The token must travel in the *request* headers — the Go handler
+  // reads r.Header.Get(ORGANIZER_AUTH_HEADER). Setting it on the
+  // response (as this code once did) never reaches the handler, and
+  // every browser-side organizer write arrived anonymous (403
+  // DEMO_READ_ONLY) — consolidated review P0-4.
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
-    const response = NextResponse.next()
+    const requestHeaders = new Headers(request.headers)
     const session = await auth()
     if (session?.user?.id) {
       const token = await mintOrganizerAuth(session.user.id, session.user.slug)
       if (token) {
-        response.headers.set(ORGANIZER_AUTH_HEADER, token)
+        requestHeaders.set(ORGANIZER_AUTH_HEADER, token)
       }
     }
-    return response
+    return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   return NextResponse.next()

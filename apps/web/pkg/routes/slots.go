@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 
 	gen "countmein/pkg/api/gen"
@@ -108,7 +109,15 @@ func SlotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 		return
 	}
 
-	current, err := db.GetOwnedSlot(r.Context(), organizerID, slotID)
+	// Read → merge → write on one transaction.
+	tx, err := db.Pool().Begin(r.Context())
+	if err != nil {
+		httpx.Internal(err).Write(w)
+		return
+	}
+	defer tx.Rollback(context.Background()) //nolint
+
+	current, err := db.GetOwnedSlotTx(r.Context(), tx, organizerID, slotID)
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
@@ -129,7 +138,7 @@ func SlotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 		return
 	}
 
-	row, err := db.UpdateOwnedSlot(r.Context(), organizerID, slotID, db.SlotUpdate{
+	row, err := db.UpdateOwnedSlotTx(r.Context(), tx, organizerID, slotID, db.SlotUpdate{
 		State:   state,
 		Touched: touched,
 	})
@@ -145,6 +154,10 @@ func SlotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 	}
 	if row == nil {
 		httpx.Error(http.StatusNotFound, locale, "slotNotFound").Write(w)
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Internal(err).Write(w)
 		return
 	}
 	httpx.JSON(http.StatusOK, gen.SlotEnvelope{Slot: db.ToTimeSlotRecord(*row)}).Write(w)

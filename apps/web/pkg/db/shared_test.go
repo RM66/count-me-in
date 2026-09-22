@@ -36,6 +36,16 @@ func TestNewServiceIDShape(t *testing.T) {
 	}
 }
 
+// HashManageToken parity vector: the same
+// SHA-256 hex as the TS helper (@repo/contracts/manage-token) and the
+// SQL lookup key — pinned on both sides of the wire.
+func TestHashManageTokenParity(t *testing.T) {
+	const want = "fdacba0aa4450ff1b8a7a6c94795723794dc2987dac5bb0b2f81f6cadfd9f7a4"
+	if got := HashManageToken("countmein-parity-vector"); got != want {
+		t.Errorf("HashManageToken parity vector = %q, want %q", got, want)
+	}
+}
+
 func TestNewManageTokenShape(t *testing.T) {
 	token := newManageToken()
 	// 32 bytes → 43 base64url chars (never typed by hand).

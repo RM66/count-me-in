@@ -8,49 +8,98 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Transactional outbox for notification publishing (architecture
-// review fix #3). A row is written in the same transaction as the
+// Transactional outbox for notification publishing. A row is written
+// in the same transaction as the
 // booking commit, carrying the queue name and the job payload (ids
-// only). The inline publish runs after commit as before; if it fails
-// (function killed, network drop), the sweeper job reads `pending`
-// rows past a grace period and re-publishes them, marking them `sent`
-// on success. This closes the loss window between commit and publish.
+// only). The inline publish runs after commit; on success it marks the
+// row `sent` so the sweeper does not
+// re-publish it. If the inline publish fails (function killed, network
+// drop), the row stays `pending` and the sweeper re-publishes it past a
+// grace period. Rows past the retry budget move to the terminal
+// `failed` status; `sent` rows are deleted by retention.
 
-// OutboxRow is one pending or sent notification job.
+// OutboxRow is one pending, sent or failed notification job.
 type OutboxRow struct {
 	ID        string
 	Queue     string
 	Payload   string
+	TraceID   string
 	Status    string
 	Attempts  int
 	CreatedAt time.Time
 	SentAt    *time.Time
 }
 
-// EnqueueOutbox writes one outbox row inside the given transaction. The
-// row is `pending` — the inline publish or the sweeper will move it to
-// `sent`. Call this before tx.Commit so the outbox row commits atomically
-// with the booking it describes.
-func EnqueueOutbox(ctx context.Context, tx pgx.Tx, queue string, payload any) error {
+// EnqueueOutbox writes one outbox row inside the given transaction and
+// returns it. The row is `pending` — the inline publish (which owns the
+// row's delivery) or the sweeper will move it to `sent`. Call this
+// before tx.Commit so the outbox row commits atomically with the
+// booking it describes. The returned row lets the caller publish the
+// exact stored payload and mark it `sent` by id (P0-1).
+func EnqueueOutbox(ctx context.Context, tx pgx.Tx, queue string, payload any, traceID string) (OutboxRow, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return OutboxRow{}, err
 	}
+	row := OutboxRow{ID: newID(), Queue: queue, Payload: string(body), TraceID: traceID}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO notification_outbox (id, queue, payload, status, attempts)
-		VALUES ($1::uuid, $2, $3, 'pending', 0)`,
-		newID(), queue, string(body))
-	return err
+		INSERT INTO notification_outbox (id, queue, payload, trace_id, status, attempts)
+		VALUES ($1::uuid, $2, $3, $4, 'pending', 0)`,
+		row.ID, queue, row.Payload, row.TraceID)
+	return row, err
 }
 
 // MarkOutboxSent moves a row to `sent` with a timestamp. Called by the
-// inline publish after a successful QStash POST, so the sweeper does
-// not re-publish it.
+// inline publish after a successful QStash POST, and by the sweeper
+// after a successful re-publish — so the row is delivered exactly once
+// on the success path (P0-1).
 func MarkOutboxSent(ctx context.Context, id string) error {
 	_, err := Pool().Exec(ctx, `
 		UPDATE notification_outbox SET status = 'sent', sent_at = now()
 		WHERE id = $1::uuid AND status = 'pending'`, id)
 	return err
+}
+
+// MarkOutboxFailed moves a row past the retry budget to the terminal
+// `failed` status (P0-1). Terminal rows no longer match the sweeper's
+// `pending` filter, so they cannot clog the batch (head-of-line
+// blocking) and never get rescanned.
+func MarkOutboxFailed(ctx context.Context, id string) error {
+	_, err := Pool().Exec(ctx, `
+		UPDATE notification_outbox SET status = 'failed'
+		WHERE id = $1::uuid AND status = 'pending'`, id)
+	return err
+}
+
+// DeleteSentOutboxBefore removes `sent` rows older than the cutoff —
+// retention so the table does not grow unbounded (P0-1). Returns the
+// number of deleted rows for the sweeper's log.
+func DeleteSentOutboxBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	tag, err := Pool().Exec(ctx, `
+		DELETE FROM notification_outbox
+		WHERE status = 'sent' AND created_at < $1`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+// OutboxBacklog reports the pending-row count and the age of the oldest
+// pending row — the minimum alertable signal for the async pipeline.
+// Called by the sweeper on every run so the
+// numbers land in the logs on a schedule even when everything is fine.
+func OutboxBacklog(ctx context.Context) (pending int64, oldestAge time.Duration, err error) {
+	var oldest *time.Time
+	err = Pool().QueryRow(ctx, `
+		SELECT count(*), min(created_at) FROM notification_outbox WHERE status = 'pending'`).
+		Scan(&pending, &oldest)
+	if err != nil {
+		return 0, 0, err
+	}
+	if oldest != nil {
+		oldestAge = time.Since(*oldest)
+	}
+	return pending, oldestAge, nil
 }
 
 // SweepOutbox reads up to `limit` `pending` rows older than the grace
@@ -66,7 +115,7 @@ func SweepOutbox(ctx context.Context, gracePeriod time.Duration, limit int) ([]O
 	defer tx.Rollback(context.Background()) //nolint
 
 	rows, err := tx.Query(ctx, `
-		SELECT id, queue, payload, status::text, attempts, created_at, sent_at
+		SELECT id, queue, payload, coalesce(trace_id, ''), status::text, attempts, created_at, sent_at
 		FROM notification_outbox
 		WHERE status = 'pending' AND created_at < $1
 		ORDER BY created_at ASC
@@ -78,7 +127,7 @@ func SweepOutbox(ctx context.Context, gracePeriod time.Duration, limit int) ([]O
 	out := []OutboxRow{}
 	for rows.Next() {
 		var r OutboxRow
-		if err := rows.Scan(&r.ID, &r.Queue, &r.Payload, &r.Status, &r.Attempts, &r.CreatedAt, &r.SentAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Queue, &r.Payload, &r.TraceID, &r.Status, &r.Attempts, &r.CreatedAt, &r.SentAt); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -90,7 +139,14 @@ func SweepOutbox(ctx context.Context, gracePeriod time.Duration, limit int) ([]O
 	}
 
 	// Bump attempts for the claimed rows so a failing job does not
-	// retry forever (the sweeper drops rows past maxAttempts).
+	// retry forever (the sweeper moves rows past maxAttempts to
+	// `failed`). Semantics: `attempts` counts
+	// sweep *claims*, not publish failures — incrementing at claim
+	// time inside the SKIP LOCKED transaction is what makes the budget
+	// race-free (two concurrent sweepers cannot both spend the same
+	// attempt). A row that publishes fine on its first sweep ends at
+	// attempts=1; the budget therefore bounds sweep rounds, which is
+	// the quantity that actually matters for head-of-line blocking.
 	for _, r := range out {
 		if _, err := tx.Exec(ctx, `
 			UPDATE notification_outbox SET attempts = attempts + 1

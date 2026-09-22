@@ -108,6 +108,7 @@ export function createTelegramProvider() {
             messengerId,
             displayName: [telegramUser.first_name, telegramUser.last_name ?? ''].join(' ').trim(),
             photoUrl: telegramUser.photo_url,
+            purpose: 'organizer',
           })
           throw new Error(`SIGNUP_REQUIRED:${ticket}`)
         }

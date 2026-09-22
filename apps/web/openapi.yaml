@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+8618a220e286
+  version: 1.0.0+f332e898b50a
 servers:
   - url: https://countmein.group
     description: Production
@@ -902,10 +902,16 @@ components:
           format: uri
         messengerLogin:
           type: string
+        purpose:
+          type: string
+          enum:
+            - guest
+            - organizer
       required:
         - messenger
         - messengerId
         - displayName
+        - purpose
     AuthTicketResponse:
       type: object
       properties:

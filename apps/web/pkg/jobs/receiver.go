@@ -124,8 +124,8 @@ func hmacForAlg(alg, key, msg string) (sig string, ok bool) {
 	return "", false
 }
 
-// TraceIDFromRequest reads the trace-id header forwarded by QStash
-// (architecture review fix #5). The publisher sets Upstash-Trace-Id on
+// TraceIDFromRequest reads the trace-id header forwarded by QStash.
+// The publisher sets Upstash-Trace-Id on
 // the publish request; QStash forwards Upstash-* headers to the
 // destination. Returns "" when absent (sweeper re-publish, legacy).
 func TraceIDFromRequest(r *http.Request) string {

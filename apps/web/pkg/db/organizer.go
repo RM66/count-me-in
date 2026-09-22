@@ -89,8 +89,17 @@ func ToPublicOrganizer(o OrganizerRow) gen.PublicOrganizer {
 
 // GetOrganizerProfile — the profile for the organizer this request may
 // view; nil when the id does not exist (e.g. demo not yet seeded).
+// Tx variant reads through an open transaction (merge-patch, P2).
 func GetOrganizerProfile(ctx context.Context, organizerID string) (*OrganizerRow, error) {
-	row := Pool().QueryRow(ctx,
+	return GetOrganizerProfileTx(ctx, Pool(), organizerID)
+}
+
+// GetOrganizerProfileTx is GetOrganizerProfile on a caller-supplied
+// querier (pool or open tx) — the merge-patch route reads the current
+// state and writes the merged state on one transaction so concurrent
+// PUTs cannot lose columns.
+func GetOrganizerProfileTx(ctx context.Context, q Querier, organizerID string) (*OrganizerRow, error) {
+	row := q.QueryRow(ctx,
 		`SELECT `+organizerColumns+` FROM organizers WHERE id = $1::uuid`, organizerID)
 	return scanOrganizer(row)
 }
@@ -148,6 +157,13 @@ func InsertOrganizer(ctx context.Context, input gen.RegisterOrganizerInput, iden
 // Absent keys are left untouched, explicit nulls clear the column
 // (merge-patch semantics, ADR-016).
 func UpdateOrganizerProfile(ctx context.Context, organizerID string, update OrganizerUpdate) (*OrganizerRow, error) {
+	return UpdateOrganizerProfileTx(ctx, Pool(), organizerID, update)
+}
+
+// UpdateOrganizerProfileTx is UpdateOrganizerProfile on a caller-supplied
+// querier — the merge-patch route pairs it with GetOrganizerProfileTx on
+// one transaction (P2: read and write must share a snapshot).
+func UpdateOrganizerProfileTx(ctx context.Context, q Querier, organizerID string, update OrganizerUpdate) (*OrganizerRow, error) {
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -205,7 +221,11 @@ func UpdateOrganizerProfile(ctx context.Context, organizerID string, update Orga
 	args = append(args, organizerID)
 	query := fmt.Sprintf(`UPDATE organizers SET %s WHERE id = $%d::uuid RETURNING %s`,
 		strings.Join(sets, ", "), n, organizerColumns)
-	return scanOrganizer(Pool().QueryRow(ctx, query, args...))
+	// Write through the passed Querier: this used to run
+	// through Pool(), so the route's transaction committed an empty
+	// read-only tx while the UPDATE went out-of-band — losing the
+	// merge-patch snapshot guarantee and holding a second connection.
+	return scanOrganizer(q.QueryRow(ctx, query, args...))
 }
 
 // UpdateOrganizerLanguage — set the organizer's notification language

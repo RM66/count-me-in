@@ -200,11 +200,13 @@ func goldenSamples() map[string]any {
 		DisplayName:    "Mila Petrović",
 		PhotoURL:       strptr("https://example.com/avatar.webp"),
 		MessengerLogin: strptr("mila"),
+		Purpose:        "guest",
 	}
 	payloadNulls := AuthTicketPayload{
 		Messenger:   gen.Telegram,
 		MessengerID: "123456789",
 		DisplayName: "Mila Petrović",
+		Purpose:     "organizer",
 	}
 
 	seatsLeft := 4

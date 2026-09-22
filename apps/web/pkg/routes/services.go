@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 
 	gen "countmein/pkg/api/gen"
@@ -118,7 +119,15 @@ func ServicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 		return
 	}
 
-	current, err := db.GetOwnedService(r.Context(), organizerID, serviceID)
+	// Read → merge → write on one transaction.
+	tx, err := db.Pool().Begin(r.Context())
+	if err != nil {
+		httpx.Internal(err).Write(w)
+		return
+	}
+	defer tx.Rollback(context.Background()) //nolint
+
+	current, err := db.GetOwnedServiceTx(r.Context(), tx, organizerID, serviceID)
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
@@ -148,7 +157,7 @@ func ServicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 		return
 	}
 
-	row, err := db.UpdateOwnedService(r.Context(), organizerID, serviceID, db.ServiceUpdate{
+	row, err := db.UpdateOwnedServiceTx(r.Context(), tx, organizerID, serviceID, db.ServiceUpdate{
 		State:   state,
 		Touched: touched,
 	})
@@ -162,6 +171,10 @@ func ServicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 	}
 	if row == nil {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Internal(err).Write(w)
 		return
 	}
 	httpx.JSON(http.StatusOK, gen.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)

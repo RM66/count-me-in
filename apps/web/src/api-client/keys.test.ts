@@ -41,13 +41,9 @@ describe('queryKeys.bookings', () => {
     expect(queryKeys.bookings.all).toEqual(['bookings'])
   })
 
-  it('creates a guest key keyed by messengerId', () => {
-    expect(queryKeys.bookings.guest('tg-123')).toEqual(['bookings', 'guest', 'tg-123'])
-  })
-
-  it('guest keys are distinct per messengerId', () => {
-    expect(queryKeys.bookings.guest('user-a')).not.toEqual(queryKeys.bookings.guest('user-b'))
-  })
+  // The `bookings.guest` key was removed (consolidated review W-7): it
+  // was written by useLookupBookings but never read by any useQuery —
+  // dead cache entries with no consumer.
 })
 
 describe('queryKeys — referential stability', () => {

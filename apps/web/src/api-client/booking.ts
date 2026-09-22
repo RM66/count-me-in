@@ -2,10 +2,9 @@
 
 import type { CreateBookingInput, Messenger } from '@repo/contracts'
 import { bookingEnvelope, guestBookingEnvelope, guestBookingsEnvelope } from '@repo/contracts'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
 import { post } from './client'
-import { queryKeys } from './keys'
 
 /**
  * Client-side API for the **Booking** entity — both audiences of it.
@@ -49,6 +48,9 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: (manageToken: string) =>
       post('/api/bookings/cancel', { manageToken }, guestBookingEnvelope),
+    // Non-idempotent: a retried cancel of an already-cancelled booking
+    // surfaces `alreadyCancelled` and overwrites the real result (review W-6).
+    retry: false,
   })
 }
 
@@ -64,6 +66,8 @@ export function useCancelBookingByOrganizer() {
   return useMutation({
     mutationFn: (bookingId: string) =>
       post('/api/bookings/cancel-by-organizer', { bookingId }, bookingEnvelope),
+    // Non-idempotent: same reason as useCancelBooking (review W-6).
+    retry: false,
   })
 }
 
@@ -73,8 +77,6 @@ export function useCancelBookingByOrganizer() {
  * `retry: false` — same reason as `useCreateBooking`.
  */
 export function useLookupBookings() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (identity: { ticket: string; messenger: Messenger; messengerId: string }) => {
       const data = await post(
@@ -84,8 +86,6 @@ export function useLookupBookings() {
         },
         guestBookingsEnvelope,
       )
-
-      queryClient.setQueryData(queryKeys.bookings.guest(identity.messengerId), data.bookings)
 
       return data.bookings
     },

@@ -96,10 +96,16 @@ func ListSlots(ctx context.Context, organizerID string, upcomingOnly bool) ([]Ti
 // organizer's service, so callers cannot leak a foreign slot by
 // guessing ids.
 func GetOwnedSlot(ctx context.Context, organizerID, slotID string) (*TimeSlotRow, error) {
+	return GetOwnedSlotTx(ctx, Pool(), organizerID, slotID)
+}
+
+// GetOwnedSlotTx is GetOwnedSlot on a caller-supplied querier
+// (merge-patch transaction, P2).
+func GetOwnedSlotTx(ctx context.Context, q Querier, organizerID, slotID string) (*TimeSlotRow, error) {
 	query := fmt.Sprintf(`SELECT %s FROM time_slots
 		WHERE id = $1::uuid AND service_id IN (%s) LIMIT 1`,
 		slotColumns, ownedServiceIDsAt(2))
-	return scanSlot(Pool().QueryRow(ctx, query, slotID, organizerID))
+	return scanSlot(q.QueryRow(ctx, query, slotID, organizerID))
 }
 
 // NoSlotUpdatesError — the update payload contains no writable field.
@@ -180,7 +186,11 @@ func CreateSlot(ctx context.Context, organizerID string, input gen.CreateTimeSlo
 // UpdateOwnedSlot — bookedCount is deliberately not updatable: seats
 // move only through the atomic reserve in the booking flow (invariant
 // 2). Shrinking capacity below the seats already sold answers a 409.
-func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, update SlotUpdate) (*TimeSlotRow, error) {
+// Runs on a caller-supplied transaction: the merge-patch route opens
+// the tx, reads the current state, merges, and calls this on the same
+// tx (P2) — the capacity precheck's FOR UPDATE lock then also
+// serializes against concurrent merge-patch reads of the same row.
+func UpdateOwnedSlotTx(ctx context.Context, tx pgx.Tx, organizerID, slotID string, update SlotUpdate) (*TimeSlotRow, error) {
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -219,12 +229,6 @@ func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, update Slo
 	args = append(args, slotID, organizerID)
 	scope := fmt.Sprintf(`id = $%d::uuid AND service_id IN (%s)`, slotPos, ownedServiceIDsAt(orgPos))
 
-	tx, err := Pool().Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(context.Background()) //nolint
-
 	// Capacity precheck inside the same tx, under a row lock: a plain
 	// SELECT takes no lock under READ COMMITTED, so the check could
 	// race the booking flow's atomic reserve. FOR UPDATE serializes
@@ -247,12 +251,20 @@ func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, update Slo
 
 	query := fmt.Sprintf(`UPDATE time_slots SET %s WHERE %s RETURNING %s`,
 		strings.Join(sets, ", "), scope, slotColumns)
-	slot, err := scanSlot(tx.QueryRow(ctx, query, args...))
+	return scanSlot(tx.QueryRow(ctx, query, args...))
+}
+
+// UpdateOwnedSlot wraps UpdateOwnedSlotTx in its own transaction for
+// callers that are not already inside one.
+func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, update SlotUpdate) (*TimeSlotRow, error) {
+	tx, err := Pool().Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if slot == nil {
-		return nil, nil
+	defer tx.Rollback(context.Background()) //nolint
+	slot, err := UpdateOwnedSlotTx(ctx, tx, organizerID, slotID, update)
+	if err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err

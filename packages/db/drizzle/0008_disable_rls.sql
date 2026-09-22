@@ -11,7 +11,8 @@
 -- Rather than ship a half-built security layer, RLS is dropped. If
 -- defense-in-depth at the database layer is wanted later, it must be
 -- done properly: FORCE ROW LEVEL SECURITY, per-request role/setting,
--- and a policy per table. See docs/architecture-review-2026.md #2.
+-- and a policy per table. (The original review document is no longer in
+-- the repository; the rationale lives in this migration and ADR-013.)
 ALTER TABLE "public"."organizers" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "public"."services" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "public"."time_slots" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint

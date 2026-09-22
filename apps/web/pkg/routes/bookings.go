@@ -42,14 +42,14 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Trace id (architecture review fix #5): correlates this request
+	// Trace id: correlates this request
 	// across the async pipeline — the id travels in the QStash message
 	// header and is emitted in every log line in both the API handler
 	// and the job handler, so debugging "I booked but didn't get a
 	// message" becomes a grep for one id.
 	traceID := logx.NewTraceID()
 
-	created, err := db.CreateGuestBooking(r.Context(), db.CreateBookingData{
+	created, outbox, err := db.CreateGuestBooking(r.Context(), db.CreateBookingData{
 		ServiceID:       input.ServiceID,
 		TimeSlotID:      contracts.UUIDString(input.TimeSlotID),
 		Seats:           input.Seats,
@@ -59,6 +59,7 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 		// pointer is never nil here; the fallback is belt-and-braces.
 		GuestLocale: string(contracts.DerefOr(input.GuestLocale, gen.En)),
 		Guest:       *identity,
+		TraceID:     traceID,
 	})
 	if err != nil {
 		logx.Error(err, map[string]any{"traceId": traceID, "scope": "booking-create"})
@@ -93,7 +94,7 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCreated(publishCtx, contracts.UUIDString(created.ID), traceID)
+	publishOutboxRows(publishCtx, outbox, traceID)
 }
 
 // BookingLookup — POST /api/bookings/lookup: "find my bookings"
@@ -105,6 +106,12 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 // only from the ticket — a raw messengerId in the body would turn this
 // into a way to read anyone's bookings.
 func BookingLookup(w http.ResponseWriter, r *http.Request) {
+	// IP bucket: the ticket is single-use, but
+	// the endpoint itself must not be hammerable — each attempt burns a
+	// Redis round trip and a widget auth upstream.
+	if !httpx.RateLimited(w, r, "rl:lookup:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 10, Window: time.Minute}) {
+		return
+	}
 	body, _ := httpx.ReadBody(r)
 	input, errs := validation.DecodeLookupBookingsInput(body)
 	if errs != nil {
@@ -140,6 +147,13 @@ func BookingLookup(w http.ResponseWriter, r *http.Request) {
 func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
 
+	// IP bucket: the manageToken is the
+	// credential, so cancel is a brute-forceable write — throttle it
+	// like booking creation.
+	if !httpx.RateLimited(w, r, "rl:cancel:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 10, Window: time.Minute}) {
+		return
+	}
+
 	traceID := logx.NewTraceID()
 
 	body, _ := httpx.ReadBody(r)
@@ -149,7 +163,7 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	booking, err := db.CancelGuestBookingByToken(r.Context(), input.ManageToken)
+	booking, outbox, err := db.CancelGuestBookingByToken(r.Context(), input.ManageToken, traceID)
 	if err != nil {
 		if resp := httpx.BookingErrorResponse(err, locale); resp != nil {
 			resp.Write(w)
@@ -182,7 +196,7 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCancelled(publishCtx, contracts.UUIDString(booking.ID), gen.CancelActorGuest, traceID)
+	publishOutboxRows(publishCtx, outbox, traceID)
 }
 
 // BookingCancelByOrganizer — POST /api/bookings/cancel-by-organizer:
@@ -215,7 +229,7 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	booking, err := db.CancelOwnedBooking(r.Context(), organizerID, contracts.UUIDString(input.BookingID))
+	booking, outbox, err := db.CancelOwnedBooking(r.Context(), organizerID, contracts.UUIDString(input.BookingID), traceID)
 	if err != nil {
 		// Already cancelled → 409, demo → 403.
 		if resp := httpx.BookingErrorResponse(err, locale); resp != nil {
@@ -248,5 +262,42 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	}
 	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 	defer cancel()
-	queue.PublishBookingCancelled(publishCtx, contracts.UUIDString(booking.ID), gen.CancelActorOrganizer, traceID)
+	publishOutboxRows(publishCtx, outbox, traceID)
+}
+
+// publishOutboxRows is the shared after-commit publish (P0-1): each
+// outbox row written in the booking transaction is published to its
+// queue with the row id as the dedup id, then marked `sent` on success
+// so the sweeper never re-publishes a delivered row. Publish errors are
+// absorbed (the booking is already committed) — the row stays
+// `pending` and the sweeper retries it. The mark-sent runs in its own
+// context: it must not be cancelled by the publish deadline, and its
+// failure must not fail anything (the sweeper's dedup id makes a
+// re-publish harmless).
+func publishOutboxRows(ctx context.Context, rows []db.OutboxRow, traceID string) {
+	for _, row := range rows {
+		if err := queue.PublishOutbox(ctx, row.Queue, []byte(row.Payload), row.ID, traceID); err != nil {
+			logx.Error(err, map[string]any{
+				"queue":    row.Queue,
+				"outboxId": row.ID,
+				"traceId":  traceID,
+				"source":   "inline-publish",
+			})
+			continue // stays pending — the sweeper retries
+		}
+		// Bounded context: the publish context may already be expired
+		// by the time the last row is marked, and an unbounded
+		// Background context would keep the function alive past its
+		// budget on a slow DB.
+		markCtx, markCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := db.MarkOutboxSent(markCtx, row.ID)
+		markCancel()
+		if err != nil {
+			logx.Error(err, map[string]any{
+				"outboxId": row.ID,
+				"traceId":  traceID,
+				"source":   "inline-mark-sent",
+			})
+		}
+	}
 }

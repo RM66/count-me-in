@@ -3,5 +3,6 @@
   "messengerId": "123456789",
   "displayName": "Mila Petrović",
   "photoUrl": "https://example.com/avatar.webp",
-  "messengerLogin": "mila"
+  "messengerLogin": "mila",
+  "purpose": "guest"
 }

@@ -1,4 +1,5 @@
 import { DEMO_ORGANIZER_ID } from '@repo/contracts'
+import { hashManageToken } from '@repo/contracts/manage-token'
 import { eq, inArray } from 'drizzle-orm'
 
 import { client, db } from '../client'
@@ -67,13 +68,38 @@ export async function seedDemo(now: Date = new Date()): Promise<void> {
     }
 
     await tx.insert(timeSlots).values(slots)
-    await tx.insert(bookings).values(slotBookings)
+    // manageTokenHash is NOT NULL (consolidated review P1): compute it at
+    // insert time rather than repeating it in every demo literal.
+    await tx
+      .insert(bookings)
+      .values(slotBookings.map((b) => ({ ...b, manageTokenHash: hashManageToken(b.manageToken) })))
   })
 }
 
-/** Remove the demo organizer and everything under it (cascades). */
+/**
+ * Remove the demo organizer and everything under it.
+ *
+ * Bookings are deleted explicitly first (consolidated review P1-4):
+ * `bookings.time_slot_id` is ON DELETE RESTRICT, so the organizer
+ * cascade alone would die on the seeded bookings with an FK violation.
+ * One transaction so a failure leaves the demo intact.
+ */
 export async function removeDemo(): Promise<void> {
-  await db.delete(organizers).where(eq(organizers.id, DEMO_ORGANIZER_ID))
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(bookings)
+      .where(
+        inArray(
+          bookings.timeSlotId,
+          tx
+            .select({ id: timeSlots.id })
+            .from(timeSlots)
+            .innerJoin(services, eq(timeSlots.serviceId, services.id))
+            .where(eq(services.organizerId, DEMO_ORGANIZER_ID)),
+        ),
+      )
+    await tx.delete(organizers).where(eq(organizers.id, DEMO_ORGANIZER_ID))
+  })
 }
 
 if (import.meta.main) {

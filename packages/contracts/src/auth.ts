@@ -57,13 +57,19 @@ export const authTicketResponse = z.object({
 })
 export type AuthTicketResponse = z.infer<typeof authTicketResponse>
 
-/** Identity payload cached in Redis behind an auth ticket (ADR-008). */
+/**
+ * Identity payload cached in Redis behind an auth ticket (ADR-008).
+ * `purpose` binds the ticket to one flow (consolidated review A-5): a
+ * guest ticket from `/api/auth/telegram-guest` must not be redeemable
+ * in `POST /api/organizers`, and vice versa.
+ */
 export const authTicketPayload = z.object({
   messenger: messengerEnum,
   messengerId,
   displayName: z.string(),
   photoUrl: z.string().url().optional(),
   messengerLogin: z.string().optional(),
+  purpose: z.enum(['guest', 'organizer']),
 })
 export type AuthTicketPayload = z.infer<typeof authTicketPayload>
 

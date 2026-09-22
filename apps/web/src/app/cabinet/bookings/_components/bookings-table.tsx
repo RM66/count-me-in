@@ -275,11 +275,11 @@ export function BookingsTable({
       {bookings.length > 0 && (
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" asChild disabled={page <= 1}>
-            <Link href={pageHref(page - 1)}>{t('prevPage')}</Link>
+            <Link href={pageHref(page - 1, activeServiceId, activeSlotId)}>{t('prevPage')}</Link>
           </Button>
           <span className="text-sm text-muted-foreground">{t('pageLabel', { page })}</span>
           <Button variant="outline" size="sm" asChild disabled={bookings.length < pageSize}>
-            <Link href={pageHref(page + 1)}>{t('nextPage')}</Link>
+            <Link href={pageHref(page + 1, activeServiceId, activeSlotId)}>{t('nextPage')}</Link>
           </Button>
         </div>
       )}
@@ -287,9 +287,15 @@ export function BookingsTable({
   )
 }
 
-/** Build the bookings URL for a given page, preserving the active filters. */
-function pageHref(page: number): string {
+/**
+ * Build the bookings URL for a given page, preserving the active filters
+ * (`?service=` / `?slot=`) — pagination must not silently reset them
+ * (consolidated review W-3).
+ */
+function pageHref(page: number, serviceId?: string, slotId?: string): string {
   const params = new URLSearchParams()
+  if (serviceId) params.set('service', serviceId)
+  if (slotId) params.set('slot', slotId)
   if (page > 1) params.set('page', String(page))
   const qs = params.toString()
   return qs ? `/cabinet/bookings?${qs}` : '/cabinet/bookings'

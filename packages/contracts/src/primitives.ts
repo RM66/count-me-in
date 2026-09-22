@@ -42,6 +42,20 @@ export const BOUNDS = {
 } as const
 
 /**
+ * Length semantics (consolidated review P3 — assessed, safe by construction):
+ * Zod's `.max()` counts UTF-16 code units, while JSON Schema `maxLength`
+ * (Go/kin-openapi) and Postgres `char_length` count **code points** — an
+ * emoji is 2 units but 1 point. The layers therefore diverge only in one
+ * direction: a string within N UTF-16 units always has ≤ N code points, so
+ * **Zod-pass ⇒ Go-pass ⇒ DB-pass** — no layer can reject what an earlier
+ * layer accepted, and no `contractViolation` noise is possible. The cost is
+ * that Zod rejects some astral-heavy strings Go would accept (e.g. 60 emoji
+ * in a 100-char name); the browser client always validates with Zod first,
+ * so users never see the gap. Do not "fix" this by dropping `.max()` — it is
+ * what emits `maxLength` into the OpenAPI spec for the Go side.
+ */
+
+/**
  * Slug as a *value*: what a stored organizer slug may look like.
  * Reserved names are not part of the shape — the demo organizer's slug is
  * itself reserved, so a response DTO validated against the registration rule

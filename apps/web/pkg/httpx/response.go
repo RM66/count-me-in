@@ -23,11 +23,16 @@ import (
 type Response struct {
 	Status int
 	Body   any // nil → empty body
+	// Headers written before the status line (e.g. Retry-After on 429).
+	Headers map[string]string
 }
 
 func (r *Response) Write(w http.ResponseWriter) {
 	if r == nil {
 		return
+	}
+	for k, v := range r.Headers {
+		w.Header().Set(k, v)
 	}
 	if r.Body == nil {
 		w.WriteHeader(r.Status)

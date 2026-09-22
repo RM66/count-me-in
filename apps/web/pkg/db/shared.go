@@ -1,8 +1,12 @@
 package db
 
 import (
+	"context"
+	"countmein/pkg/logx"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 
@@ -10,6 +14,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// Querier is the read/write surface shared by the pool and an open
+// transaction — lets the merge-patch routes run read→merge→write on one
+// tx (two concurrent PUTs used to lose columns when the read and the
+// write were separate snapshots).
+type Querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 // Postgres SQLSTATE for a unique constraint violation — the code the
 // postgres driver puts on the error when a unique index rejects a write.
@@ -79,15 +91,27 @@ func newManageToken() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
+// HashManageToken — SHA-256 hex of the manage token, the lookup key
+// for cancel and the guest management page.
+// The raw token is stored only for the flows that must re-issue the
+// deep link; every credential check goes through this hash.
+func HashManageToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
 // parseStringArray decodes array_to_json() output: NULL (nil raw) or
 // "null" → nil slice; else a JSON array of strings. Selected this
 // projection over pgx array scanning for explicit NULL handling.
+// A malformed value is logged, not silently swallowed: "no options"
+// and "corrupt options" must be distinguishable in the logs.
 func parseStringArray(raw *string) []string {
 	if raw == nil || *raw == "null" {
 		return nil
 	}
 	var out []string
 	if err := json.Unmarshal([]byte(*raw), &out); err != nil {
+		logx.Error(err, map[string]any{"scope": "parse-string-array", "raw": *raw})
 		return nil
 	}
 	return out
