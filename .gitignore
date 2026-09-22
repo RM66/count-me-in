@@ -19,8 +19,14 @@ dist/
 # turbo
 .turbo
 
-# kilo agent scratch (plans); shared config (.kilo/command, .kilo/agent) stays tracked
-.kilo/plans/
+# Kilo — machine-local state and secrets are never committed;
+# shared commands/agents/skills stay tracked (see AGENTS.md).
+.kilo/*
+!.kilo/command/
+!.kilo/agent/
+!.kilo/skills
+!.kilo/setup-script*
+!.kilo/run-script*
 
 # misc
 .DS_Store
