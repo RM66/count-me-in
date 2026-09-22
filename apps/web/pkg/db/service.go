@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 
 	"github.com/jackc/pgx/v5"
@@ -53,15 +54,15 @@ func scanService(row pgx.Row) (*ServiceRow, error) {
 	return &s, nil
 }
 
-func ToServiceRecord(s ServiceRow) contracts.ServiceRecord {
-	var mode *contracts.OptionsSelectMode
+func ToServiceRecord(s ServiceRow) gen.ServiceRecord {
+	var mode *gen.OptionsSelectMode
 	if s.OptionsSelectMode != nil {
-		m := contracts.OptionsSelectMode(*s.OptionsSelectMode)
+		m := gen.OptionsSelectMode(*s.OptionsSelectMode)
 		mode = &m
 	}
-	return contracts.ServiceRecord{
+	return gen.ServiceRecord{
 		ID:                     s.ID,
-		OrganizerID:            s.OrganizerID,
+		OrganizerID:            contracts.ToUUID(s.OrganizerID),
 		Title:                  s.Title,
 		Description:            s.Description,
 		PhotoURL:               s.PhotoURL,
@@ -71,7 +72,7 @@ func ToServiceRecord(s ServiceRow) contracts.ServiceRecord {
 		DefaultCapacity:        s.DefaultCapacity,
 		DefaultDurationMinutes: s.DefaultDurationMinutes,
 		MaxSeatsPerBooking:     s.MaxSeatsPerBooking,
-		Options:                s.Options,
+		Options:                strSlicePtr(s.Options),
 		OptionsSelectMode:      mode,
 		CreatedAt:              contracts.ISODate(s.CreatedAt),
 	}
@@ -109,12 +110,16 @@ func GetOwnedService(ctx context.Context, organizerID, serviceID string) (*Servi
 
 // CreateService — the owner always comes from the session, never the
 // payload; optional columns are normalized to null.
-func CreateService(ctx context.Context, organizerID string, input contracts.CreateServiceInput) (*ServiceRow, error) {
+func CreateService(ctx context.Context, organizerID string, input gen.CreateServiceInput) (*ServiceRow, error) {
 	id := newServiceID()
 	var modeStr *string
 	if input.OptionsSelectMode != nil {
 		s := string(*input.OptionsSelectMode)
 		modeStr = &s
+	}
+	var options any
+	if input.Options != nil {
+		options = *input.Options
 	}
 	row := Pool().QueryRow(ctx, `
 		INSERT INTO services (id, organizer_id, title, description, photo_url, location, contact,
@@ -124,7 +129,7 @@ func CreateService(ctx context.Context, organizerID string, input contracts.Crea
 		RETURNING `+serviceColumns,
 		id, organizerID, input.Title, input.Description, input.PhotoURL, input.Location, input.Contact,
 		input.DefaultPrice, input.DefaultCapacity, input.DefaultDurationMinutes, input.MaxSeatsPerBooking,
-		nullableSlice(input.Options), modeStr)
+		options, modeStr)
 	return scanService(row)
 }
 
@@ -133,10 +138,18 @@ type NoServiceUpdatesError struct{}
 
 func (NoServiceUpdatesError) Error() string { return "No fields to update" }
 
+// ServiceUpdate carries the merged state and the set of keys the patch
+// touched, so the UPDATE writes only the columns the client intended to
+// change (RFC 7386 merge-patch, ADR-016).
+type ServiceUpdate struct {
+	State   gen.UpdateServiceInput
+	Touched map[string]bool
+}
+
 // UpdateOwnedService — nil when the id does not exist or belongs to
 // someone else (caller answers 404 either way); NoServiceUpdatesError
 // when the payload carries no writable field.
-func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, input contracts.UpdateServiceInput) (*ServiceRow, error) {
+func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, update ServiceUpdate) (*ServiceRow, error) {
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -147,61 +160,62 @@ func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, inpu
 	}
 	setNull := func(col string) { sets = append(sets, col+" = NULL") }
 
-	if input.Title.Set && input.Title.Value != nil {
-		add("title", *input.Title.Value)
+	state := update.State
+	if update.Touched["title"] && state.Title != nil {
+		add("title", *state.Title)
 	}
-	if input.Description.Set {
-		if input.Description.Value != nil {
-			add("description", *input.Description.Value)
+	if update.Touched["description"] {
+		if state.Description != nil {
+			add("description", *state.Description)
 		} else {
 			setNull("description")
 		}
 	}
-	if input.Location.Set {
-		if input.Location.Value != nil {
-			add("location", *input.Location.Value)
+	if update.Touched["location"] {
+		if state.Location != nil {
+			add("location", *state.Location)
 		} else {
 			setNull("location")
 		}
 	}
-	if input.Contact.Set {
-		if input.Contact.Value != nil {
-			add("contact", *input.Contact.Value)
+	if update.Touched["contact"] {
+		if state.Contact != nil {
+			add("contact", *state.Contact)
 		} else {
 			setNull("contact")
 		}
 	}
-	if input.DefaultPrice.Set && input.DefaultPrice.Value != nil {
-		add("default_price", *input.DefaultPrice.Value)
+	if update.Touched["defaultPrice"] && state.DefaultPrice != nil {
+		add("default_price", *state.DefaultPrice)
 	}
-	if input.DefaultCapacity.Set && input.DefaultCapacity.Value != nil {
-		add("default_capacity", *input.DefaultCapacity.Value)
+	if update.Touched["defaultCapacity"] && state.DefaultCapacity != nil {
+		add("default_capacity", *state.DefaultCapacity)
 	}
-	if input.DefaultDurationMinutes.Set && input.DefaultDurationMinutes.Value != nil {
-		add("default_duration_minutes", *input.DefaultDurationMinutes.Value)
+	if update.Touched["defaultDurationMinutes"] && state.DefaultDurationMinutes != nil {
+		add("default_duration_minutes", *state.DefaultDurationMinutes)
 	}
-	if input.MaxSeatsPerBooking.Set && input.MaxSeatsPerBooking.Value != nil {
-		add("max_seats_per_booking", *input.MaxSeatsPerBooking.Value)
+	if update.Touched["maxSeatsPerBooking"] && state.MaxSeatsPerBooking != nil {
+		add("max_seats_per_booking", *state.MaxSeatsPerBooking)
 	}
-	if input.Options.Set {
-		if input.Options.Value != nil {
-			add("options", *input.Options.Value)
+	if update.Touched["options"] {
+		if state.Options != nil {
+			add("options", *state.Options)
 		} else {
 			setNull("options")
 		}
 	}
-	if input.OptionsSelectMode.Set {
-		if input.OptionsSelectMode.Value != nil {
+	if update.Touched["optionsSelectMode"] {
+		if state.OptionsSelectMode != nil {
 			sets = append(sets, fmt.Sprintf("options_select_mode = $%d::options_select_mode", n))
-			args = append(args, string(*input.OptionsSelectMode.Value))
+			args = append(args, string(*state.OptionsSelectMode))
 			n++
 		} else {
 			setNull("options_select_mode")
 		}
 	}
-	if input.PhotoURL.Set {
-		if input.PhotoURL.Value != nil {
-			add("photo_url", *input.PhotoURL.Value)
+	if update.Touched["photoUrl"] {
+		if state.PhotoURL != nil {
+			add("photo_url", *state.PhotoURL)
 		} else {
 			setNull("photo_url")
 		}
@@ -231,12 +245,4 @@ func DeleteOwnedService(ctx context.Context, organizerID, serviceID string) (str
 		return "", err
 	}
 	return id, nil
-}
-
-// nullableSlice keeps nil distinct from empty for array params.
-func nullableSlice(s []string) any {
-	if s == nil {
-		return nil
-	}
-	return s
 }

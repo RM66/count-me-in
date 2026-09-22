@@ -795,6 +795,7 @@
     "slugTaken": "This handle is already taken — pick another one",
     "accountExists": "An account with this Telegram identity already exists — log in instead",
     "nothingToUpdate": "No fields to update",
+    "unsupportedMediaType": "This endpoint accepts only application/merge-patch+json (RFC 7386)",
     "capacityBelowBooked": "Capacity cannot be lower than the {count, plural, =1 {# seat} other {# seats}} already booked",
     "demoReadOnly": "This is a read-only demo account — sign up to create your own bookable services.",
     "soldOut": "This session is fully booked",

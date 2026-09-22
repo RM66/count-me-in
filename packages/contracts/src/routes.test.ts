@@ -43,7 +43,10 @@ describe('API route manifest', () => {
   it('a rate-limited route documents 429', () => {
     for (const route of API_ROUTES) {
       if (!route.rateLimit) continue
-      expect(route.responses.map((r) => r.status), route.operationId).toContain(429)
+      expect(
+        route.responses.map((r) => r.status),
+        route.operationId,
+      ).toContain(429)
     }
   })
 

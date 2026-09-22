@@ -35,6 +35,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "فشل التحقق من مصادقة Telegram",
 		"ticketExpired":            "انتهت صلاحية تأكيد Telegram — تحقق من هويتك مجددًا",
 		"tooManyRequests":          "طلبات كثيرة جدًا — يرجى المحاولة مرة أخرى بعد قليل",
+		"unsupportedMediaType":     "يقبل هذا الموقع فقط application/merge-patch+json (RFC 7386)",
 	},
 	"de": {
 		"accountExists":            "Für diese Telegram-Identität besteht bereits ein Konto — melde dich stattdessen an",
@@ -64,6 +65,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "Die Telegram-Authentifizierung konnte nicht validiert werden",
 		"ticketExpired":            "Deine Telegram-Bestätigung ist abgelaufen — authentifiziere dich erneut",
 		"tooManyRequests":          "Zu viele Anfragen — bitte versuchen Sie es gleich noch einmal",
+		"unsupportedMediaType":     "Dieser Endpunkt akzeptiert nur application/merge-patch+json (RFC 7386)",
 	},
 	"en": {
 		"accountExists":            "An account with this Telegram identity already exists — log in instead",
@@ -93,6 +95,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "Telegram auth validation failed",
 		"ticketExpired":            "Your Telegram confirmation expired — authenticate again",
 		"tooManyRequests":          "Too many requests — please try again in a moment",
+		"unsupportedMediaType":     "This endpoint accepts only application/merge-patch+json (RFC 7386)",
 	},
 	"es": {
 		"accountExists":            "Ya existe una cuenta con esta identidad de Telegram; inicia sesión",
@@ -122,6 +125,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "No se pudo validar la autenticación de Telegram",
 		"ticketExpired":            "Tu confirmación de Telegram ha caducado; vuelve a autenticarte",
 		"tooManyRequests":          "Demasiadas solicitudes — inténtalo de nuevo en un momento",
+		"unsupportedMediaType":     "Este endpoint solo acepta application/merge-patch+json (RFC 7386)",
 	},
 	"fr": {
 		"accountExists":            "Un compte associé à cette identité Telegram existe déjà — connecte-toi plutôt",
@@ -151,6 +155,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "Échec de la validation de l’authentification Telegram",
 		"ticketExpired":            "Ta confirmation Telegram a expiré — authentifie-toi de nouveau",
 		"tooManyRequests":          "Trop de requêtes — réessayez dans un instant",
+		"unsupportedMediaType":     "Ce point de terminaison n'accepte que application/merge-patch+json (RFC 7386)",
 	},
 	"ja": {
 		"accountExists":            "このTelegramアカウントではすでに登録されています。ログインしてください",
@@ -180,6 +185,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "Telegramの認証データを検証できませんでした",
 		"ticketExpired":            "Telegramでの確認が期限切れです。もう一度認証してください",
 		"tooManyRequests":          "リクエストが多すぎます — しばらくしてからもう一度お試しください",
+		"unsupportedMediaType":     "このエンドポイントは application/merge-patch+json (RFC 7386) のみを受け付けます",
 	},
 	"pt": {
 		"accountExists":            "Já existe uma conta com esta identidade do Telegram — entre em vez de criar outra",
@@ -209,6 +215,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "Falha ao validar a autenticação do Telegram",
 		"ticketExpired":            "Sua confirmação pelo Telegram expirou — autentique-se novamente",
 		"tooManyRequests":          "Muitas solicitações — tente novamente em instantes",
+		"unsupportedMediaType":     "Este endpoint aceita apenas application/merge-patch+json (RFC 7386)",
 	},
 	"ru": {
 		"accountExists":            "Этот аккаунт Telegram уже связан с профилем CountMeIn — войдите в него",
@@ -238,6 +245,7 @@ var genAPIErrors = map[string]map[string]string{
 		"telegramValidationFailed": "Не удалось проверить авторизацию Telegram",
 		"ticketExpired":            "Срок подтверждения через Telegram истёк — подтвердите личность ещё раз",
 		"tooManyRequests":          "Слишком много запросов — попробуйте ещё раз через минуту",
+		"unsupportedMediaType":     "Этот эндпоинт принимает только application/merge-patch+json (RFC 7386)",
 	},
 }
 

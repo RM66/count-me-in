@@ -1,16 +1,16 @@
 {
   "booking": {
-    "id": "01930000-0000-7000-8000-000000000003",
-    "timeSlotId": "01930000-0000-7000-8000-000000000002",
-    "status": "confirmed",
-    "seats": 2,
-    "guestName": "Mila Petrović",
+    "createdAt": "2026-01-02T03:04:05.000Z",
     "guestMessenger": "telegram",
     "guestMessengerId": "123456789",
     "guestMessengerLogin": "mila",
+    "guestName": "Mila Petrović",
+    "id": "01930000-0000-7000-8000-000000000003",
+    "seats": 2,
     "selectedOptions": [
       "Beginner"
     ],
-    "createdAt": "2026-01-02T03:04:05.000Z"
+    "status": "confirmed",
+    "timeSlotId": "01930000-0000-7000-8000-000000000002"
   }
 }

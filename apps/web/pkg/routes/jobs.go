@@ -29,15 +29,9 @@ var errJobsSigningKeysNotSet = errors.New("QSTASH_CURRENT_SIGNING_KEY / QSTASH_N
 //   - 404 — unknown queue name (e.g. a destination configured for
 //     another app)
 //   - 500 — handler failure; this is what makes QStash retry
-func JobsReceiver(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	queue := httpx.PathParam(r, "/api/jobs/", "queue")
-
+//
+// queue comes from the generated router (gen.RunJobParamsQueue).
+func JobsReceiver(w http.ResponseWriter, r *http.Request, queue string) {
 	currentSigningKey := os.Getenv("QSTASH_CURRENT_SIGNING_KEY")
 	nextSigningKey := os.Getenv("QSTASH_NEXT_SIGNING_KEY")
 	if currentSigningKey == "" || nextSigningKey == "" {

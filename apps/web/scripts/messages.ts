@@ -1,7 +1,11 @@
 /**
- * The exact Zod v4 default messages the Go rules reproduce. Go logs and TS logs
- * should read the same for the same rejection; a Zod upgrade that rewords one
- * is caught by messages.test.ts rather than discovered in a log.
+ * Reference Zod v4 default messages. Since ADR-016 request validation is
+ * kin-openapi (which phrases its own messages) and vectors pin error keys,
+ * not text, these are not interpolated into Go code. They exist purely as
+ * the pin messages.test.ts checks: a Zod upgrade that rewords one surfaces
+ * as a failing test rather than a silent log divergence. The remaining
+ * hand-written Go messages that intentionally match Zod word-for-word
+ * (options uniqueness / minItems in refine.go) are covered by that test.
  */
 export const zodMessages = {
   stringTooSmall: (min: number) => `Too small: expected string to have >=${min} characters`,

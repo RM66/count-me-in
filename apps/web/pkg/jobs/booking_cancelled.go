@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/auth"
 	"countmein/pkg/contracts"
 	"countmein/pkg/db"
@@ -14,8 +15,8 @@ import (
 // counterparty is notified; the job records who cancelled and the
 // recipient is derived from it.
 
-func HandleBookingCancelled(ctx context.Context, env Env, job contracts.BookingCancelledJob, traceID string) error {
-	booking, slot, service, organizer, err := db.GetBookingChain(ctx, job.BookingID)
+func HandleBookingCancelled(ctx context.Context, env Env, job gen.BookingCancelledJob, traceID string) error {
+	booking, slot, service, organizer, err := db.GetBookingChain(ctx, contracts.UUIDString(job.BookingID))
 	if err != nil {
 		return err
 	}
@@ -44,17 +45,17 @@ func HandleBookingCancelled(ctx context.Context, env Env, job contracts.BookingC
 
 	recipient := contracts.CancelNotificationRecipient(job.CancelledBy)
 
-	if recipient == contracts.RecipientOrganizer {
+	if recipient == gen.NotificationRecipientOrganizer {
 		token, err := auth.IssueLoginLink(ctx, organizer.ID, CabinetSlotPath(slot.ID))
 		if err != nil {
 			return err
 		}
-		locale := NotificationLocale(contracts.RecipientOrganizer, view)
+		locale := NotificationLocale(gen.NotificationRecipientOrganizer, view)
 		message := BookingCancelledForOrganizer(view, LoginLinkURL(env.AppURL, token), locale)
 		return SendMessage(ctx, env.TelegramBotToken, organizer.MessengerID, message.Text, message.Button)
 	}
 
-	locale := NotificationLocale(contracts.RecipientGuest, view)
+	locale := NotificationLocale(gen.NotificationRecipientGuest, view)
 	message := BookingCancelledForGuest(view, OrganizerPageURL(env.AppURL, organizer.Slug), locale)
 	return SendMessage(ctx, env.TelegramBotToken, booking.GuestMessengerID, message.Text, message.Button)
 }

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+506c952d8deb
+  version: 1.0.0+8618a220e286
 servers:
   - url: https://countmein.group
     description: Production
@@ -13,6 +13,10 @@ paths:
     post:
       summary: Verify Telegram login widget data and mint a single-use guest ticket
       operationId: telegramGuest
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
@@ -48,6 +52,10 @@ paths:
     post:
       summary: Verify Telegram login widget data and mint an organizer signup ticket
       operationId: telegramSignup
+      x-rateLimit:
+        limit: 5
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
@@ -145,7 +153,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          application/merge-patch+json:
             schema:
               $ref: "#/components/schemas/UpdateOrganizerProfileInput"
       responses:
@@ -169,6 +177,12 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "415":
+          description: Content-Type must be application/merge-patch+json (RFC 7386)
           content:
             application/json:
               schema:
@@ -210,6 +224,10 @@ paths:
       operationId: createAvatarUploadTarget
       security:
         - sessionCookie: []
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 3600
+        per: organizer
       requestBody:
         required: true
         content:
@@ -249,6 +267,10 @@ paths:
       operationId: createServicePhotoUploadTarget
       security:
         - sessionCookie: []
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 3600
+        per: organizer
       requestBody:
         required: true
         content:
@@ -370,7 +392,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          application/merge-patch+json:
             schema:
               $ref: "#/components/schemas/UpdateServiceInput"
       responses:
@@ -395,6 +417,12 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "415":
+          description: Content-Type must be application/merge-patch+json (RFC 7386)
           content:
             application/json:
               schema:
@@ -536,7 +564,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          application/merge-patch+json:
             schema:
               $ref: "#/components/schemas/UpdateTimeSlotInput"
       responses:
@@ -566,6 +594,12 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
           description: Capacity below the seats already booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "415":
+          description: Content-Type must be application/merge-patch+json (RFC 7386)
           content:
             application/json:
               schema:
@@ -614,6 +648,10 @@ paths:
     post:
       summary: Guest creates a booking (atomic reserve)
       operationId: createBooking
+      x-rateLimit:
+        limit: 5
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
@@ -801,6 +839,17 @@ paths:
               - booking.cancelled
               - demo.refresh
               - notification.outbox.sweep
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/BookingCreatedJob"
+                - $ref: "#/components/schemas/BookingCancelledJob"
+                - type: object
+                  maxProperties: 0
+                  description: demo.refresh and notification.outbox.sweep carry no payload
       responses:
         "200":
           description: Job succeeded (including an unreachable recipient — no retry)
@@ -812,16 +861,6 @@ paths:
           description: Unknown queue name
         "500":
           description: Handler failure (triggers a QStash retry)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - $ref: "#/components/schemas/BookingCreatedJob"
-                - $ref: "#/components/schemas/BookingCancelledJob"
-                - type: object
-                  description: demo.refresh carries no payload
 x-internal:
   - $ref: "#/components/schemas/AuthTicketPayload"
   - $ref: "#/components/schemas/LoginLinkPayload"
@@ -1537,6 +1576,7 @@ components:
         - type: string
           format: date-time
         - type: integer
+          format: int64
           description: Unix epoch — seconds, or milliseconds when > 1e12.
       description: Date-only strings are rejected with 400.
     SlotsEnvelope:

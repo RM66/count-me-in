@@ -148,6 +148,18 @@ describe('put', () => {
     })
   })
 
+  it('sends the merge-patch media type when requested (partial updates, ADR-016)', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ id: '1', name: 'updated' }, true, 200))
+
+    await put('/api/test', { name: 'updated' }, idNameSchema, 'application/merge-patch+json')
+
+    expect(fetch).toHaveBeenCalledWith('/api/test', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/merge-patch+json' },
+      body: JSON.stringify({ name: 'updated' }),
+    })
+  })
+
   it('throws ApiError with server error message on failure', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'Conflict' }, false, 409))
 

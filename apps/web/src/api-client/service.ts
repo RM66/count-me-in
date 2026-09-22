@@ -1,11 +1,7 @@
 'use client'
 
 import type { CreateServiceInput, UpdateServiceInput } from '@repo/contracts'
-import {
-  deletedServiceEnvelope,
-  imageUploadTarget,
-  serviceEnvelope,
-} from '@repo/contracts'
+import { deletedServiceEnvelope, imageUploadTarget, serviceEnvelope } from '@repo/contracts'
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
@@ -32,8 +28,7 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 /** Create a service owned by the signed-in organizer. */
 export function useCreateService() {
   return useMutation({
-    mutationFn: (input: CreateServiceInput) =>
-      post('/api/services', input, serviceEnvelope),
+    mutationFn: (input: CreateServiceInput) => post('/api/services', input, serviceEnvelope),
   })
 }
 
@@ -41,7 +36,7 @@ export function useCreateService() {
 export function useUpdateService(serviceId: string) {
   return useMutation({
     mutationFn: (input: UpdateServiceInput) =>
-      put(`/api/services/${serviceId}`, input, serviceEnvelope),
+      put(`/api/services/${serviceId}`, input, serviceEnvelope, 'application/merge-patch+json'),
   })
 }
 

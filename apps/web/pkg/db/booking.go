@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/demo"
 
@@ -21,6 +22,19 @@ import (
 // Two audiences, two DTOs: BookingRecord is the organizer's view and
 // drops manageToken; GuestBooking is the guest's own booking and
 // keeps it, because that token is their link to the management page.
+
+// CreateBookingData carries the validated booking input plus the
+// resolved guest identity into the booking transaction (hand-written
+// request plumbing, not a wire type).
+type CreateBookingData struct {
+	ServiceID       string
+	TimeSlotID      string
+	Seats           int
+	GuestName       string
+	SelectedOptions []string
+	GuestLocale     string
+	Guest           contracts.AuthTicketPayload
+}
 
 type BookingRow struct {
 	ID                  string
@@ -102,8 +116,8 @@ func (DuplicateBookingError) Error() string { return "You already have a booking
 
 // ManageTokenExpiredError — the manageToken is past its expiry
 // (architecture review fix #4). A past event's booking no longer needs
-// cancel access; the token is answered like an unknown one (404) so
-// the endpoint cannot be used to test whether a token exists.
+// cancel access; the token is answered like an unknown one (404) so the
+// endpoint cannot be used to test whether a token exists.
 type ManageTokenExpiredError struct{}
 
 func (ManageTokenExpiredError) Error() string { return "This booking can no longer be cancelled" }
@@ -207,28 +221,28 @@ func scanBookingChain(row pgx.Row) (*BookingRow, *TimeSlotRow, *ServiceRow, *Org
 	return &b, &slot, &service, &organizer, nil
 }
 
-func ToBookingRecord(b BookingRow) contracts.BookingRecord {
-	return contracts.BookingRecord{
-		ID:                  b.ID,
-		TimeSlotID:          b.TimeSlotID,
-		Status:              contracts.BookingStatus(b.Status),
+func ToBookingRecord(b BookingRow) gen.BookingRecord {
+	return gen.BookingRecord{
+		ID:                  contracts.ToUUID(b.ID),
+		TimeSlotID:          contracts.ToUUID(b.TimeSlotID),
+		Status:              gen.BookingStatus(b.Status),
 		Seats:               b.Seats,
 		GuestName:           b.GuestName,
-		GuestMessenger:      contracts.Messenger(b.GuestMessenger),
+		GuestMessenger:      gen.Messenger(b.GuestMessenger),
 		GuestMessengerID:    b.GuestMessengerID,
 		GuestMessengerLogin: b.GuestMessengerLogin,
-		SelectedOptions:     b.SelectedOptions,
+		SelectedOptions:     strSlicePtr(b.SelectedOptions),
 		CreatedAt:           contracts.ISODate(b.CreatedAt),
 	}
 }
 
-func ToGuestBooking(b BookingRow, slot TimeSlotRow, service ServiceRow, organizer OrganizerRow) contracts.GuestBooking {
-	return contracts.GuestBooking{
-		ID:              b.ID,
-		Status:          contracts.BookingStatus(b.Status),
+func ToGuestBooking(b BookingRow, slot TimeSlotRow, service ServiceRow, organizer OrganizerRow) gen.GuestBooking {
+	return gen.GuestBooking{
+		ID:              contracts.ToUUID(b.ID),
+		Status:          gen.BookingStatus(b.Status),
 		Seats:           b.Seats,
 		GuestName:       b.GuestName,
-		SelectedOptions: b.SelectedOptions,
+		SelectedOptions: strSlicePtr(b.SelectedOptions),
 		CreatedAt:       contracts.ISODate(b.CreatedAt),
 		ManageToken:     b.ManageToken,
 		Slot:            ToTimeSlotRecord(slot),
@@ -243,7 +257,7 @@ func ToGuestBooking(b BookingRow, slot TimeSlotRow, service ServiceRow, organize
 // first (ADR-002, entry path 2). Cancelled bookings are included: a
 // guest looking for "my bookings" is often checking whether a
 // cancellation went through.
-func ListGuestBookings(ctx context.Context, messenger, messengerID string) ([]contracts.GuestBooking, error) {
+func ListGuestBookings(ctx context.Context, messenger, messengerID string) ([]gen.GuestBooking, error) {
 	rows, err := Pool().Query(ctx, bookingChainSelect+`
 		WHERE b.guest_messenger = $1::messenger_kind AND b.guest_messenger_id = $2
 		ORDER BY b.created_at DESC`, messenger, messengerID)
@@ -251,7 +265,7 @@ func ListGuestBookings(ctx context.Context, messenger, messengerID string) ([]co
 		return nil, err
 	}
 	defer rows.Close()
-	out := []contracts.GuestBooking{}
+	out := []gen.GuestBooking{}
 	for rows.Next() {
 		b, slot, service, organizer, err := scanBookingChain(rows)
 		if err != nil {
@@ -290,7 +304,7 @@ func GetBookingChain(ctx context.Context, bookingID string) (*BookingRow, *TimeS
 // that statement affected a row, and both live in one transaction: a
 // claimed seat with no booking would be capacity lost forever, and a
 // booking with no claim is an overbooking.
-func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (*contracts.GuestBooking, error) {
+func CreateGuestBooking(ctx context.Context, data CreateBookingData) (*gen.GuestBooking, error) {
 	tx, err := Pool().Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -310,9 +324,9 @@ func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (
 		return nil, err
 	}
 
-	mode := contracts.OptionsMulti
-	if service.OptionsSelectMode != nil && *service.OptionsSelectMode == string(contracts.OptionsSingle) {
-		mode = contracts.OptionsSingle
+	mode := gen.Multi
+	if service.OptionsSelectMode != nil && *service.OptionsSelectMode == string(gen.Single) {
+		mode = gen.Single
 	}
 	selected, err := contracts.ValidateSelectedOptions(service.Options, mode, data.SelectedOptions)
 	if err != nil {
@@ -374,13 +388,13 @@ func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (
 	// outbox row per recipient in the same transaction, so a crash
 	// between commit and the inline publish does not lose the
 	// notification — the sweeper re-publishes pending rows.
-	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
-		BookingID: created.ID, Recipient: contracts.RecipientOrganizer,
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, gen.BookingCreatedJob{
+		BookingID: contracts.ToUUID(created.ID), Recipient: gen.NotificationRecipientOrganizer,
 	}); err != nil {
 		return nil, err
 	}
-	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, contracts.BookingCreatedJob{
-		BookingID: created.ID, Recipient: contracts.RecipientGuest,
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, gen.BookingCreatedJob{
+		BookingID: contracts.ToUUID(created.ID), Recipient: gen.NotificationRecipientGuest,
 	}); err != nil {
 		return nil, err
 	}
@@ -400,7 +414,7 @@ func CreateGuestBooking(ctx context.Context, data contracts.CreateBookingData) (
 // reported as already cancelled instead of decrementing twice.
 // Returns nil for an unknown token (caller answers 404 without
 // confirming whether the token exists).
-func CancelGuestBookingByToken(ctx context.Context, token string) (*contracts.GuestBooking, error) {
+func CancelGuestBookingByToken(ctx context.Context, token string) (*gen.GuestBooking, error) {
 	tx, err := Pool().Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -453,8 +467,8 @@ func CancelGuestBookingByToken(ctx context.Context, token string) (*contracts.Gu
 	// Transactional outbox (architecture review fix #3): the organizer
 	// is notified of the guest's cancellation. One row — the counterparty
 	// only (ADR-012).
-	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
-		BookingID: cancelled.ID, CancelledBy: contracts.ActorGuest,
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
+		BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorGuest,
 	}); err != nil {
 		return nil, err
 	}
@@ -474,7 +488,7 @@ func CancelGuestBookingByToken(ctx context.Context, token string) (*contracts.Gu
 // booking hangs off, so the id is scoped through ownedServiceIds.
 // Returns the organizer's DTO, which drops manageToken: the cabinet
 // must never receive it, even as a side effect.
-func CancelOwnedBooking(ctx context.Context, organizerID, bookingID string) (*contracts.BookingRecord, error) {
+func CancelOwnedBooking(ctx context.Context, organizerID, bookingID string) (*gen.BookingRecord, error) {
 	if err := demo.AssertNotDemo(organizerID); err != nil {
 		return nil, err
 	}
@@ -523,8 +537,8 @@ func CancelOwnedBooking(ctx context.Context, organizerID, bookingID string) (*co
 	// Transactional outbox (architecture review fix #3): the guest is
 	// notified of the organizer's cancellation. One row — the
 	// counterparty only (ADR-012).
-	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, contracts.BookingCancelledJob{
-		BookingID: cancelled.ID, CancelledBy: contracts.ActorOrganizer,
+	if err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
+		BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorOrganizer,
 	}); err != nil {
 		return nil, err
 	}

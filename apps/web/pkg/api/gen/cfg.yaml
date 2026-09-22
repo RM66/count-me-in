@@ -1,0 +1,16 @@
+# oapi-codegen configuration (ADR-016, Phase 2).
+#
+# Generates from the committed spec (openapi.yaml, OpenAPI 3.1 — rendered
+# by `bun run generate:openapi` from the Zod wire registry; oapi-codegen
+# supports 3.1 since v2.8.0):
+#   - types_gen.go   — structs, enums, request/response types
+#   - server_gen.go  — StrictServerInterface + std net/http ServeMux
+#   - spec_gen.go    — go:embed of the spec (base64)
+#
+# No custom templates: configuration of an off-the-shelf generator only.
+package: api
+generate:
+  models: true
+output: types_gen.go
+output-options:
+  name-normalizer: ToCamelCaseWithInitialisms

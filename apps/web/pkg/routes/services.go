@@ -3,7 +3,7 @@ package routes
 import (
 	"net/http"
 
-	"countmein/pkg/contracts"
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/db"
 	"countmein/pkg/demo"
 	"countmein/pkg/httpx"
@@ -12,24 +12,11 @@ import (
 	"countmein/pkg/validation"
 )
 
-// ServicesCollection — GET/POST /api/services. GET lists the services
-// of the organizer this request may view (the signed-in organizer, or
-// the demo organizer for anonymous visitors, ADR-010). POST creates a
-// service owned by the signed-in organizer — organizerId always comes
-// from the session, never from the body.
-func ServicesCollection(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		servicesList(w, r)
-	case http.MethodPost:
-		servicesCreate(w, r)
-	default:
-		w.Header().Set("Allow", "GET, POST")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func servicesList(w http.ResponseWriter, r *http.Request) {
+// ServicesList — GET /api/services: lists the services of the organizer
+// this request may view (the signed-in organizer, or the demo organizer
+// for anonymous visitors, ADR-010). Method and path come from the
+// generated router (pkg/api), so the handler carries no method switch.
+func ServicesList(w http.ResponseWriter, r *http.Request) {
 	organizerID, _ := demo.ResolveCabinetOrganizerID(r)
 
 	rows, err := db.ListServices(r.Context(), organizerID)
@@ -37,14 +24,17 @@ func servicesList(w http.ResponseWriter, r *http.Request) {
 		httpx.Internal(err).Write(w)
 		return
 	}
-	services := make([]contracts.ServiceRecord, 0, len(rows))
+	services := make([]gen.ServiceRecord, 0, len(rows))
 	for _, row := range rows {
 		services = append(services, db.ToServiceRecord(row))
 	}
-	httpx.JSON(http.StatusOK, contracts.ServicesEnvelope{Services: services}).Write(w)
+	httpx.JSON(http.StatusOK, gen.ServicesEnvelope{Services: services}).Write(w)
 }
 
-func servicesCreate(w http.ResponseWriter, r *http.Request) {
+// ServicesCreate — POST /api/services: creates a service owned by the
+// signed-in organizer — organizerId always comes from the session, never
+// from the body.
+func ServicesCreate(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
@@ -53,7 +43,7 @@ func servicesCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCreateServiceInput(body)
+	input, errs := validation.DecodeCreateServiceInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -80,30 +70,13 @@ func servicesCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusCreated, contracts.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusCreated, gen.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
 }
 
-// ServiceItem — GET/PUT/DELETE /api/services/{id}, scoped to the
-// signed-in organizer: an id belonging to someone else answers 404, not
-// 403, so the endpoint never confirms that a foreign id exists. PUT
-// follows the profile convention (absent key = untouched, explicit null
-// clears). DELETE cascades to slots and their bookings (the services FK).
-func ServiceItem(w http.ResponseWriter, r *http.Request) {
-	id := httpx.PathParam(r, "/api/services/", "id")
-	switch r.Method {
-	case http.MethodGet:
-		serviceGet(w, r, id)
-	case http.MethodPut:
-		servicePut(w, r, id)
-	case http.MethodDelete:
-		serviceDelete(w, r, id)
-	default:
-		w.Header().Set("Allow", "GET, PUT, DELETE")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func serviceGet(w http.ResponseWriter, r *http.Request, serviceID string) {
+// ServiceGet — GET /api/services/{id}, scoped to the organizer this
+// request may view: an id belonging to someone else answers 404, not
+// 403, so the endpoint never confirms that a foreign id exists.
+func ServiceGet(w http.ResponseWriter, r *http.Request, serviceID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, _ := demo.ResolveCabinetOrganizerID(r)
 
@@ -116,31 +89,69 @@ func serviceGet(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, contracts.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, gen.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
 }
 
-func servicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
+// ServicePut — PUT /api/services/{id}. Takes a JSON Merge Patch body
+// (absent key = keep, explicit null = clear, RFC 7386/ADR-016): the patch
+// is validated first (a null on a non-nullable key is rejected before any
+// read), then merged into the current state and the result re-validated.
+func ServicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
 		resp.Write(w)
 		return
 	}
+	if !requireMergePatchContentType(w, r, locale) {
+		return
+	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseUpdateServiceInput(body)
+	if _, errs := validation.DecodeUpdateServiceInput(body); errs != nil {
+		httpx.WriteInvalidBody(w, locale, errs)
+		return
+	}
+	touched, ok := patchKeys(body)
+	if !ok {
+		httpx.Error(http.StatusBadRequest, locale, "nothingToUpdate").Write(w)
+		return
+	}
+
+	current, err := db.GetOwnedService(r.Context(), organizerID, serviceID)
+	if err != nil {
+		httpx.Internal(err).Write(w)
+		return
+	}
+	if current == nil {
+		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
+		return
+	}
+
+	merged, err := mergePatch(serviceWritableState(*current), body)
+	if err != nil {
+		httpx.Error(http.StatusBadRequest, locale, "invalidInput").Write(w)
+		return
+	}
+	state, errs := validation.DecodeMergedServiceInput(merged)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
 	}
 
-	if input.PhotoURL.Set && input.PhotoURL.Value != nil &&
-		!storage.IsOwnMediaURL(organizerID, *input.PhotoURL.Value) {
+	// A new cover must live under this organizer's media prefix —
+	// otherwise the row could point at an arbitrary host or another
+	// organizer's object. Null clears and stays allowed.
+	if touched["photoUrl"] && state.PhotoURL != nil &&
+		!storage.IsOwnMediaURL(organizerID, *state.PhotoURL) {
 		httpx.Error(http.StatusBadRequest, locale, "photoPrefix").Write(w)
 		return
 	}
 
-	row, err := db.UpdateOwnedService(r.Context(), organizerID, serviceID, input)
+	row, err := db.UpdateOwnedService(r.Context(), organizerID, serviceID, db.ServiceUpdate{
+		State:   state,
+		Touched: touched,
+	})
 	if err != nil {
 		if resp := httpx.ServiceErrorResponse(err, locale); resp != nil {
 			resp.Write(w)
@@ -153,10 +164,30 @@ func servicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, contracts.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
+	httpx.JSON(http.StatusOK, gen.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
 }
 
-func serviceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
+// serviceWritableState renders the writable fields of a service row in
+// their wire shape — the merge-patch base.
+func serviceWritableState(s db.ServiceRow) map[string]any {
+	return map[string]any{
+		"title":                  s.Title,
+		"description":            s.Description,
+		"location":               s.Location,
+		"contact":                s.Contact,
+		"defaultPrice":           s.DefaultPrice,
+		"defaultCapacity":        s.DefaultCapacity,
+		"defaultDurationMinutes": s.DefaultDurationMinutes,
+		"maxSeatsPerBooking":     s.MaxSeatsPerBooking,
+		"options":                s.Options,
+		"optionsSelectMode":      s.OptionsSelectMode,
+		"photoUrl":               s.PhotoURL,
+	}
+}
+
+// ServiceDelete — DELETE /api/services/{id}; cascades to slots and their
+// bookings (the services FK).
+func ServiceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
@@ -173,5 +204,5 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Error(http.StatusNotFound, locale, "serviceNotFound").Write(w)
 		return
 	}
-	httpx.JSON(http.StatusOK, contracts.DeletedServiceEnvelope{ID: deletedID}).Write(w)
+	httpx.JSON(http.StatusOK, gen.DeletedServiceEnvelope{ID: deletedID}).Write(w)
 }

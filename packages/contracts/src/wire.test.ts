@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { serviceFormSchema } from './service-form'
-import { metaOfSchema, WIRE_META, WIRE_SCHEMAS } from './wire'
+import { metaOfSchema, WIRE_SCHEMAS } from './wire'
 
 // Non-wire Zod schemas: the only consumer is the completeness test below, so
 // the list lives here — not in wire.ts — keeping form schemas out of the
@@ -10,7 +10,7 @@ import { metaOfSchema, WIRE_META, WIRE_SCHEMAS } from './wire'
 const TS_ONLY: ReadonlyArray<{ schema: z.ZodType; reason: string }> = [
   {
     schema: serviceFormSchema as unknown as z.ZodType,
-    reason: 'форм-схема, не wire; timeSlotFormSchema — функция и в проверку не попадает',
+    reason: 'form schema, not wire; timeSlotFormSchema is a factory and is not exported',
   },
 ]
 
@@ -38,28 +38,16 @@ describe('wire registry completeness', () => {
     expect(TS_ONLY[0]?.reason).toBeTruthy()
   })
 
-  it('ids are unique and match WIRE_SCHEMAS keys', () => {
-    for (const [id] of Object.entries(WIRE_SCHEMAS)) {
-      expect(WIRE_META[id]?.id).toBe(id)
+  it('metaOfSchema round-trips every registered id', () => {
+    for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
+      expect(metaOfSchema(schema)?.id, id).toBe(id)
     }
   })
 
-  it("kind 'update' schemas accept an empty object", () => {
-    for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      if (WIRE_META[id]?.kind !== 'update') continue
-      expect((schema as z.ZodType).safeParse({}).success, id).toBe(true)
-    }
-  })
-
-  it("kind 'enum' without x-go-type string covers all options in x-go-enum-consts", () => {
-    for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      const meta = WIRE_META[id]
-      if (meta?.kind !== 'enum' || meta['x-go-type'] === 'string') continue
-      const options = (schema as unknown as { options?: readonly string[] }).options ?? []
-      const consts = meta['x-go-enum-consts'] ?? {}
-      for (const option of options) {
-        expect(consts[option], `${id}.${option}`).toBeTruthy()
-      }
+  it('update schemas accept an empty object (merge-patch: an empty patch is a no-op)', () => {
+    for (const id of ['UpdateServiceInput', 'UpdateTimeSlotInput', 'UpdateOrganizerProfileInput']) {
+      const schema = WIRE_SCHEMAS[id] as z.ZodType
+      expect(schema.safeParse({}).success, id).toBe(true)
     }
   })
 })

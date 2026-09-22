@@ -1,6 +1,6 @@
 {
-  "ticket": "whatever-guest-ticket-12345678",
+  "displayName": "Mila Petrović",
   "messenger": "telegram",
   "messengerId": "123456789",
-  "displayName": "Mila Petrović"
+  "ticket": "whatever-guest-ticket-12345678"
 }

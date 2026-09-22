@@ -111,11 +111,27 @@ export type ApiRoute = {
   auth: ApiAuth
   params?: readonly ApiParam[]
   request?: z.ZodType
+  /**
+   * Media type of the request body. The three partial-update endpoints use
+   * JSON Merge Patch (RFC 7386, ADR-016): absent key = keep, explicit null =
+   * clear — the semantics come from the media type itself.
+   *
+   * A cross-field pair (service `options` + `optionsSelectMode`) must be
+   * patched together in both directions: the consistency refine reads the
+   * patch, not the merged row, so clearing options means sending both keys
+   * as null and setting them means sending both values.
+   */
+  requestContentType?: 'application/json' | 'application/merge-patch+json'
   responses: readonly ApiResponse[]
   /** Documented for the spec and for the 429 response; enforcement is in the handler. */
   rateLimit?: { limit: number; windowSeconds: number; per: 'ip' | 'organizer' }
 }
 
+const UNSUPPORTED_MEDIA_TYPE = {
+  status: 415,
+  description: 'Content-Type must be application/merge-patch+json (RFC 7386)',
+  body: errorBody,
+} as const
 const TOO_MANY = { status: 429, description: 'Rate limit exceeded', body: errorBody } as const
 const INVALID_BODY = { status: 400, description: 'Validation error', body: invalidBody } as const
 const INTERNAL = { status: 500, description: 'Internal error' } as const
@@ -208,8 +224,10 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: 'Update organizer profile',
     auth: 'sessionWritable',
     request: updateOrganizerProfileInput,
+    requestContentType: 'application/merge-patch+json',
     responses: [
       { status: 200, description: 'Updated profile', body: organizerEnvelope },
+      UNSUPPORTED_MEDIA_TYPE,
       INVALID_BODY,
       DEMO_FORBIDDEN,
       { status: 404, description: 'Organizer not found', body: errorBody },
@@ -311,8 +329,10 @@ export const API_ROUTES: readonly ApiRoute[] = [
     auth: 'sessionWritable',
     params: [{ name: 'id', in: 'path', required: true, schema: serviceId }],
     request: updateServiceInput,
+    requestContentType: 'application/merge-patch+json',
     responses: [
       { status: 200, description: 'Service updated', body: serviceEnvelope },
+      UNSUPPORTED_MEDIA_TYPE,
       {
         status: 400,
         description:
@@ -393,8 +413,10 @@ export const API_ROUTES: readonly ApiRoute[] = [
     auth: 'sessionWritable',
     params: [{ name: 'id', in: 'path', required: true, schema: uuid }],
     request: updateTimeSlotInput,
+    requestContentType: 'application/merge-patch+json',
     responses: [
       { status: 200, description: 'Slot updated', body: slotEnvelope },
+      UNSUPPORTED_MEDIA_TYPE,
       { status: 400, description: 'Validation error or nothing to update', body: invalidBody },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Slot not found', body: errorBody },

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	gen "countmein/pkg/api/gen"
 )
 
 func strPtr(s string) *string { return &s }
@@ -57,9 +59,9 @@ func TestDomainVectors(t *testing.T) {
 					// A null/absent mode must stay empty: the TS side passes null
 					// through and skips the single-mode check, so defaulting to
 					// OptionsSingle here would mask a regression in that branch.
-					mode := OptionsSelectMode("")
+					mode := gen.OptionsSelectMode("")
 					if m, ok := c["selectMode"].(string); ok {
-						mode = OptionsSelectMode(m)
+						mode = gen.OptionsSelectMode(m)
 					}
 					var selected []string
 					if arr, ok := c["selected"].([]any); ok {
@@ -147,11 +149,11 @@ func TestDomainVectors(t *testing.T) {
 				}
 			case "cancelNotificationRecipient":
 				{
-					var by CancelActor
-					if c["cancelledBy"] == string(ActorGuest) {
-						by = ActorGuest
+					var by gen.CancelActor
+					if c["cancelledBy"] == string(gen.CancelActorGuest) {
+						by = gen.CancelActorGuest
 					} else {
-						by = ActorOrganizer
+						by = gen.CancelActorOrganizer
 					}
 					if got := CancelNotificationRecipient(by); string(got) != c["expected"].(string) {
 						t.Errorf("cancelNotificationRecipient/%s: got %q, want %q", name, got, c["expected"])

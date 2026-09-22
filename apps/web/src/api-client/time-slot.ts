@@ -25,7 +25,7 @@ export function useCreateSlot() {
 export function useUpdateSlot(slotId: string) {
   return useMutation({
     mutationFn: (input: UpdateTimeSlotInput) =>
-      put(`/api/slots/${slotId}`, input, slotEnvelope),
+      put(`/api/slots/${slotId}`, input, slotEnvelope, 'application/merge-patch+json'),
   })
 }
 

@@ -115,7 +115,7 @@
       },
       "name": "date-only startsAt",
       "skip": {
-        "go": "FlexTime rejects date-only by design (optional.go:27-35)"
+        "go": "FlexTime rejects date-only by design (flex.go:18-27)"
       },
       "valid": true
     }

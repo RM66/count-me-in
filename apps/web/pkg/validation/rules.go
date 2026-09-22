@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -11,80 +10,31 @@ import (
 	// Embedded tz database so time.LoadLocation works on any runtime
 	// (Vercel containers ship no system tzdata).
 	_ "time/tzdata"
-
-	"github.com/google/uuid"
 )
 
-// Hand-written validation rules: everything the generator cannot derive from
-// JSON Schema (see wire.ts x-go-rule). Derived length/int/enum rules live in
-// validation_gen.go. Pinned by packages/contracts/vectors/validation/*.
+// Hand-written validation rules: everything the OpenAPI spec cannot
+// express (ADR-016). Bounds, enums, patterns (uuid, serviceId, slug shape)
+// and required-ness come from the spec via kin-openapi (spec.go); these are
+// the leftovers. Pinned by packages/contracts/vectors/validation/*.
 
-// charLen counts UTF-16 code units, matching JavaScript String.length (and
-// therefore Zod's .min()/.max()). Byte length would reject a valid 100-char
-// Cyrillic title as "200 characters".
-func charLen(v string) int {
-	n := 0
-	for _, r := range v {
-		if r > 0xFFFF {
-			n += 2
-		} else {
-			n++
-		}
-	}
-	return n
+// Reserved slugs (ADR-009): path segments the public booking page can never
+// be served from. The slug *shape* is a spec pattern; reserved-ness is a
+// policy only the code knows.
+var reservedSlugs = map[string]bool{
+	"api":     true,
+	"booking": true,
+	"cabinet": true,
+	"signup":  true,
+	"login":   true,
+	"terms":   true,
+	"privacy": true,
+	"demo":    true,
 }
 
-func intRange(min, max int64) func(int64) string {
-	return func(n int64) string {
-		if n < min {
-			return fmt.Sprintf("Too small: expected number to be >=%d", min)
-		}
-		if n > max {
-			return fmt.Sprintf("Too big: expected number to be <=%d", max)
-		}
-		return ""
-	}
-}
-
-func UUIDRule(v string) string {
-	if _, err := uuid.Parse(v); err != nil {
-		return "Invalid input: expected UUID"
-	}
-	return ""
-}
-
-func ServiceIDRule(v string) string {
-	if !serviceIDPattern.MatchString(v) {
-		return "Invalid service id"
-	}
-	return ""
-}
-
-// SlugShapeRule validates a slug as a value: length and alphabet only.
-// Reserved names belong to the registration rule below, not to the shape —
-// the demo organizer's own slug is reserved.
-func SlugShapeRule(v string) string {
-	v = strings.ToLower(v)
-	if charLen(v) < 4 {
-		return "Too small: expected string to have >=4 characters"
-	}
-	if charLen(v) > 40 {
-		return "Too big: expected string to have <=40 characters"
-	}
-	if !slugPattern.MatchString(v) {
-		return "slug must be lowercase letters, digits and single hyphens"
-	}
-	return ""
-}
-
-func SlugRule(v string) string {
-	if msg := SlugShapeRule(v); msg != "" {
-		return msg
-	}
-	if reservedSlugs[strings.ToLower(v)] {
-		return "this slug is reserved for system use — please choose another"
-	}
-	return ""
+// IsReservedSlug reports path segments the public booking page can never
+// be served from (including "demo" — the demo organizer's own slug).
+func IsReservedSlug(v string) bool {
+	return reservedSlugs[strings.ToLower(v)]
 }
 
 func TimezoneRule(v string) string {
@@ -134,6 +84,8 @@ func ValidURL(v string) bool {
 	return err == nil && u.Scheme != "" && (u.Host != "" || u.Opaque != "")
 }
 
+// URLRule — the spec carries only `format: uri`, which kin-openapi does not
+// enforce; the shape check stays here.
 func URLRule(v string) string {
 	if !ValidURL(v) {
 		return "Invalid input: expected URL"

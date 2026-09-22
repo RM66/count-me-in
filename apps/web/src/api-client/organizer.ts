@@ -56,7 +56,7 @@ export function useUpdateOrganizerProfile() {
 
   return useMutation({
     mutationFn: (input: UpdateOrganizerProfileInput) =>
-      put('/api/organizers/me', input, organizerEnvelope),
+      put('/api/organizers/me', input, organizerEnvelope, 'application/merge-patch+json'),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.organizer.me, data)
     },
@@ -104,6 +104,7 @@ export function useUploadAvatar() {
           photoUrl: target.publicUrl,
         },
         organizerEnvelope,
+        'application/merge-patch+json',
       )
     },
     onSuccess: (data) => {

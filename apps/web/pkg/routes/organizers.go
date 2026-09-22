@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/auth"
-	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/demo"
 	"countmein/pkg/httpx"
@@ -22,14 +22,9 @@ import (
 // it for a session via Auth.js (signIn('telegram', {ticket}) consumes it).
 func OrganizerRegister(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseRegisterOrganizerInput(body)
+	input, errs := validation.DecodeRegisterOrganizerInput(body)
 	if errs != nil {
 		httpx.WriteInvalidIssues(w, locale, errs)
 		return
@@ -61,27 +56,15 @@ func OrganizerRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusCreated, contracts.Registered{Organizer: registered}).Write(w)
+	httpx.JSON(http.StatusCreated, gen.Registered{Organizer: registered}).Write(w)
 }
 
-// OrganizerMe — GET/PUT /api/organizers/me. GET returns the organizer
-// this request may view: the signed-in organizer, or the demo organizer
-// with isDemo: true for anonymous visitors (/cabinet is open to everyone
-// and renders the read-only demo, ADR-010). Writes are never inferred
-// from the GET response: PUT re-checks the session independently.
-func OrganizerMe(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		organizerMeGet(w, r)
-	case http.MethodPut:
-		organizerMePut(w, r)
-	default:
-		w.Header().Set("Allow", "GET, PUT")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func organizerMeGet(w http.ResponseWriter, r *http.Request) {
+// OrganizerMeGet — GET /api/organizers/me: returns the organizer this
+// request may view: the signed-in organizer, or the demo organizer with
+// isDemo: true for anonymous visitors (/cabinet is open to everyone and
+// renders the read-only demo, ADR-010). Writes are never inferred from
+// the GET response: OrganizerMePut re-checks the session independently.
+func OrganizerMeGet(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
 	organizerID, isDemo := demo.ResolveCabinetOrganizerID(r)
 
@@ -100,19 +83,50 @@ func organizerMeGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusOK, contracts.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, isDemo)}).Write(w)
+	httpx.JSON(http.StatusOK, gen.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, isDemo)}).Write(w)
 }
 
-func organizerMePut(w http.ResponseWriter, r *http.Request) {
+// OrganizerMePut — PUT /api/organizers/me. Takes a JSON Merge Patch body
+// (RFC 7386/ADR-016): validate the patch, merge into the current state,
+// validate the result.
+func OrganizerMePut(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
 		resp.Write(w)
 		return
 	}
+	if !requireMergePatchContentType(w, r, locale) {
+		return
+	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseUpdateOrganizerProfileInput(body)
+	if _, errs := validation.DecodeUpdateOrganizerProfileInput(body); errs != nil {
+		httpx.WriteInvalidBody(w, locale, errs)
+		return
+	}
+	touched, ok := patchKeys(body)
+	if !ok {
+		httpx.Error(http.StatusBadRequest, locale, "nothingToUpdate").Write(w)
+		return
+	}
+
+	current, err := db.GetOrganizerProfile(r.Context(), organizerID)
+	if err != nil {
+		httpx.Internal(err).Write(w)
+		return
+	}
+	if current == nil {
+		httpx.Error(http.StatusNotFound, locale, "organizerNotFound").Write(w)
+		return
+	}
+
+	merged, err := mergePatch(organizerWritableState(*current), body)
+	if err != nil {
+		httpx.Error(http.StatusBadRequest, locale, "invalidInput").Write(w)
+		return
+	}
+	state, errs := validation.DecodeMergedOrganizerInput(merged)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -121,13 +135,16 @@ func organizerMePut(w http.ResponseWriter, r *http.Request) {
 	// A new avatar must live under this organizer's media prefix —
 	// otherwise the row could point at an arbitrary host or another
 	// organizer's object. Null clears and stays allowed.
-	if input.PhotoURL.Set && input.PhotoURL.Value != nil &&
-		!storage.IsOwnMediaURL(organizerID, *input.PhotoURL.Value) {
+	if touched["photoUrl"] && state.PhotoURL != nil &&
+		!storage.IsOwnMediaURL(organizerID, *state.PhotoURL) {
 		httpx.Error(http.StatusBadRequest, locale, "photoPrefix").Write(w)
 		return
 	}
 
-	row, err := db.UpdateOrganizerProfile(r.Context(), organizerID, input)
+	row, err := db.UpdateOrganizerProfile(r.Context(), organizerID, db.OrganizerUpdate{
+		State:   state,
+		Touched: touched,
+	})
 	if err != nil {
 		if resp := httpx.OrganizerErrorResponse(err, locale); resp != nil {
 			resp.Write(w)
@@ -141,7 +158,21 @@ func organizerMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.JSON(http.StatusOK, contracts.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, false)}).Write(w)
+	httpx.JSON(http.StatusOK, gen.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, false)}).Write(w)
+}
+
+// organizerWritableState renders the writable fields of an organizer row
+// in their wire shape — the merge-patch base.
+func organizerWritableState(o db.OrganizerRow) map[string]any {
+	return map[string]any{
+		"name":        o.Name,
+		"slug":        o.Slug,
+		"timezone":    o.Timezone,
+		"description": o.Description,
+		"location":    o.Location,
+		"contact":     o.Contact,
+		"photoUrl":    o.PhotoURL,
+	}
 }
 
 // OrganizerMeLanguage — PATCH /api/organizers/me/language (ADR-011).
@@ -153,12 +184,6 @@ func organizerMePut(w http.ResponseWriter, r *http.Request) {
 // affected); demo/anonymous callers are refused by RequireWritableOrganizer.
 func OrganizerMeLanguage(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPatch {
-		w.Header().Set("Allow", http.MethodPatch)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
 		resp.Write(w)
@@ -166,13 +191,13 @@ func OrganizerMeLanguage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseUpdateOrganizerLanguageInput(body)
+	input, errs := validation.DecodeUpdateOrganizerLanguageInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
 	}
 
-	if err := db.UpdateOrganizerLanguage(r.Context(), organizerID, input.Language); err != nil {
+	if err := db.UpdateOrganizerLanguage(r.Context(), organizerID, string(input.Language)); err != nil {
 		httpx.Internal(err).Write(w)
 		return
 	}
@@ -186,12 +211,6 @@ func OrganizerMeLanguage(w http.ResponseWriter, r *http.Request) {
 // demo cabinet visitors, so they get the same refusal.
 func OrganizerAvatar(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
 		resp.Write(w)
@@ -202,7 +221,7 @@ func OrganizerAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCreateAvatarUploadInput(body)
+	input, errs := validation.DecodeCreateAvatarUploadInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -224,12 +243,6 @@ func OrganizerAvatar(w http.ResponseWriter, r *http.Request) {
 // also what the photoUrl ownership check validates.
 func OrganizerServicePhoto(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
 	if resp != nil {
 		resp.Write(w)
@@ -240,7 +253,7 @@ func OrganizerServicePhoto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := httpx.ReadBody(r)
-	input, errs := validation.ParseCreateServicePhotoUploadInput(body)
+	input, errs := validation.DecodeCreateServicePhotoUploadInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return

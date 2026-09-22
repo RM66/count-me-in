@@ -1,23 +1,18 @@
-// Package validation ports the Zod input schemas of @repo/contracts.
-// Parse functions decode raw JSON bodies into contracts inputs and
-// return *Errors (nil when valid); error bodies mirror z.flattenError
-// ({formErrors, fieldErrors}) and are never shown to users verbatim —
-// the API responds with a localized generic plus these details for
-// logs/devtools.
+// Package validation ports the Zod input schemas of @repo/contracts to the
+// Go API (ADR-016). Structural validation — types, bounds, enums, patterns,
+// required — runs against the OpenAPI spec via kin-openapi (spec.go); the
+// rules JSON Schema cannot express (timezones, URLs, reserved slugs, option
+// consistency, slot-in-past) stay hand-written in rules.go / refine.go.
 //
-// Message text tracks Zod's wording where it names a type ("expected
-// number, received string"), so the two sides' logs read the same. One
-// deliberate deviation: an absent required field reports "Required" instead of
-// Zod's "received undefined" — there is no undefined on the wire, and the
-// stable word keeps the Go tests readable.
+// Error bodies mirror z.flattenError ({formErrors, fieldErrors}) and are
+// never shown to users verbatim — the API responds with a localized generic
+// plus these details for logs/devtools. Message text is kin-openapi's
+// phrasing; vectors pin error *keys*, not text.
 package validation
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
-
-	"countmein/pkg/contracts"
 )
 
 // Errors mirrors z.flattenError's shape.
@@ -61,9 +56,9 @@ func FormErrors(msg string) *Errors {
 	return e
 }
 
-// rawObject decodes the body into per-key raw values so each field can
-// be attributed by name. Null, non-object and malformed bodies become
-// form errors, like safeParse(null) in Zod.
+// rawObject decodes the body into per-key raw values so each field can be
+// attributed by name. Null, non-object and malformed bodies become form
+// errors, like safeParse(null) in Zod.
 func rawObject(body []byte) (map[string]json.RawMessage, *Errors) {
 	if len(body) == 0 {
 		return nil, FormErrors("Invalid input: expected object, received null")
@@ -83,20 +78,10 @@ func rawObject(body []byte) (map[string]json.RawMessage, *Errors) {
 	return m, nil
 }
 
-// jsTrim matches JavaScript String.prototype.trim(), which Zod's .trim() calls:
-// the Unicode WhiteSpace set plus line terminators plus U+FEFF, and *not*
-// U+0085 — strings.TrimSpace differs at both ends of that list.
-func jsTrim(v string) string {
-	return strings.TrimFunc(v, func(r rune) bool {
-		switch r {
-		case '\t', '\n', '\v', '\f', '\r', ' ', 0x00A0, 0xFEFF,
-			0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000:
-			return true
-		}
-		return r >= 0x2000 && r <= 0x200A
-	})
-}
-
+// kindOf names the JSON kind of a raw value for a Zod-style message.
+// strings.TrimSpace is enough here: the bytes between values in a JSON
+// document are only space/tab/CR/LF (RFC 8259), a subset of both TrimSpace
+// and jsTrim — unlike field values, which need the exact JS trim set.
 func kindOf(raw json.RawMessage) string {
 	s := strings.TrimSpace(string(raw))
 	if s == "" {
@@ -118,300 +103,79 @@ func kindOf(raw json.RawMessage) string {
 	}
 }
 
-// ── Field helpers ──────────────────────────────────────────────────────────
-// Each returns (value, present). present=false means absent (no error);
-// invalid values add a field error and return present=true with a zero
-// value — callers may still assign it, the response is a 400 anyway.
-
-func strValue(e *Errors, m map[string]json.RawMessage, name string, required, trim bool, rule func(string) string) (string, bool) {
-	raw, present := m[name]
-	if !present {
-		if required {
-			e.Add(name, "Required")
+// jsTrim matches JavaScript String.prototype.trim(), which Zod's .trim() calls:
+// the Unicode WhiteSpace set plus line terminators plus U+FEFF, and *not*
+// U+0085 — strings.TrimSpace differs at both ends of that list. The vectors
+// pin BOM-padded input, so the exact set matters.
+func jsTrim(v string) string {
+	return strings.TrimFunc(v, func(r rune) bool {
+		switch r {
+		case '\t', '\n', '\v', '\f', '\r', ' ', 0x00A0, 0xFEFF,
+			0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000:
+			return true
 		}
-		return "", false
-	}
-	if string(raw) == "null" {
-		e.Add(name, "Invalid input: expected string, received null")
-		return "", true
-	}
-	var v string
-	if err := json.Unmarshal(raw, &v); err != nil {
-		e.Add(name, "Invalid input: expected string, received "+kindOf(raw))
-		return "", true
-	}
-	if trim {
-		v = jsTrim(v)
-	}
-	if rule != nil {
-		if msg := rule(v); msg != "" {
-			e.Add(name, msg)
-			return "", true
-		}
-	}
-	return v, present
+		return r >= 0x2000 && r <= 0x200A
+	})
 }
 
-// parseJSONInt accepts integer JSON numbers without routing through float64
-// (which loses precision past 2^53). "1.0" is accepted like Zod's .int()
-// (1.0 === 1 in JS); "1.5" and non-numeric JSON are rejected.
-func parseJSONInt(raw json.RawMessage) (int64, bool) {
-	s := strings.TrimSpace(string(raw))
-	if s == "" || s[0] == '"' {
-		return 0, false
+// ── Zod transforms the spec cannot express ──────────────────────────────────
+//
+// Zod's .trim() and .toLowerCase() run before the checks; kin-openapi only
+// validates. The Decode functions apply the same transforms to the raw body
+// first, so bounds see the same value Zod would have checked.
+
+// trimJSONKey applies jsTrim (JavaScript String.prototype.trim, which Zod's
+// .trim() calls) to a string property. Absent keys are left absent —
+// inserting a nil entry would turn "untouched" into a validation failure.
+func trimJSONKey(m map[string]json.RawMessage, key string) {
+	if _, ok := m[key]; !ok {
+		return
 	}
-	var num json.Number
-	if err := json.Unmarshal(raw, &num); err != nil {
-		return 0, false
-	}
-	if n, err := num.Int64(); err == nil {
-		return n, true
-	}
-	var f float64
-	if err := json.Unmarshal(raw, &f); err != nil {
-		return 0, false
-	}
-	if f != float64(int64(f)) {
-		return 0, false
-	}
-	return int64(f), true
+	m[key] = trimJSONValue(m[key])
 }
 
-// intTypeError names the received kind the way Zod's .int() does: a non-number
-// fails the number check, a fractional number fails the int check.
-func intTypeError(raw json.RawMessage) string {
-	if kindOf(raw) == "number" {
-		return "Invalid input: expected int, received number"
+// trimJSONValue trims a string, or every string inside a string array
+// (Zod's .trim() on option lists). Non-strings pass through unchanged.
+func trimJSONValue(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 {
+		return raw
 	}
-	return "Invalid input: expected number, received " + kindOf(raw)
+	switch raw[0] {
+	case '"':
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return raw
+		}
+		trimmed, _ := json.Marshal(jsTrim(s))
+		return trimmed
+	case '[':
+		var items []json.RawMessage
+		if err := json.Unmarshal(raw, &items); err != nil {
+			return raw
+		}
+		for i, item := range items {
+			items[i] = trimJSONValue(item)
+		}
+		out, err := json.Marshal(items)
+		if err != nil {
+			return raw
+		}
+		return out
+	default:
+		return raw
+	}
 }
 
-func intValue(e *Errors, m map[string]json.RawMessage, name string, required bool, rule func(int64) string) (int64, bool) {
-	raw, present := m[name]
-	if !present {
-		if required {
-			e.Add(name, "Required")
-		}
-		return 0, false
+// lowerJSONKey lowercases a string property (Zod .toLowerCase()).
+func lowerJSONKey(m map[string]json.RawMessage, key string) {
+	raw := m[key]
+	if len(raw) == 0 || raw[0] != '"' {
+		return
 	}
-	if string(raw) == "null" {
-		e.Add(name, "Invalid input: expected number, received null")
-		return 0, true
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return
 	}
-	n, ok := parseJSONInt(raw)
-	if !ok {
-		e.Add(name, intTypeError(raw))
-		return 0, true
-	}
-	if rule != nil {
-		if msg := rule(n); msg != "" {
-			e.Add(name, msg)
-			return 0, true
-		}
-	}
-	return n, present
-}
-
-func strArrValue(e *Errors, m map[string]json.RawMessage, name string, required, trim bool, elemRule func(string) string, max int) ([]string, bool) {
-	raw, present := m[name]
-	if !present {
-		if required {
-			e.Add(name, "Required")
-		}
-		return nil, false
-	}
-	if string(raw) == "null" {
-		e.Add(name, "Invalid input: expected array, received null")
-		return nil, true
-	}
-	var items []json.RawMessage
-	if err := json.Unmarshal(raw, &items); err != nil {
-		e.Add(name, "Invalid input: expected array, received "+kindOf(raw))
-		return nil, true
-	}
-	if len(items) > max {
-		e.Add(name, fmt.Sprintf("Too big: expected array to have <=%d items", max))
-		return nil, true
-	}
-	out := make([]string, 0, len(items))
-	for _, item := range items {
-		var v string
-		if err := json.Unmarshal(item, &v); err != nil {
-			e.Add(name, "Invalid input: expected string, received "+kindOf(item))
-			return nil, true
-		}
-		if trim {
-			v = jsTrim(v)
-		}
-		if elemRule != nil {
-			if msg := elemRule(v); msg != "" {
-				e.Add(name, msg)
-				return nil, true
-			}
-		}
-		out = append(out, v)
-	}
-	return out, present
-}
-
-func flexTimeValue(e *Errors, m map[string]json.RawMessage, name string, required bool, rule func(contracts.FlexTime) string) (contracts.FlexTime, bool) {
-	raw, present := m[name]
-	if !present {
-		if required {
-			e.Add(name, "Required")
-		}
-		return contracts.FlexTime{}, false
-	}
-	if string(raw) == "null" {
-		e.Add(name, "Invalid input: expected date, received null")
-		return contracts.FlexTime{}, true
-	}
-	var ft contracts.FlexTime
-	if err := json.Unmarshal(raw, &ft); err != nil {
-		e.Add(name, "Invalid input: expected date, received "+kindOf(raw))
-		return contracts.FlexTime{}, true
-	}
-	if rule != nil {
-		if msg := rule(ft); msg != "" {
-			e.Add(name, msg)
-			return contracts.FlexTime{}, true
-		}
-	}
-	return ft, present
-}
-
-// ── Optional field helpers (update inputs: absent / null / value) ────────────
-
-func optStr(e *Errors, m map[string]json.RawMessage, name string, trim, nullable bool, rule func(string) string) contracts.Optional[string] {
-	raw, present := m[name]
-	var o contracts.Optional[string]
-	if !present {
-		return o
-	}
-	o.Set = true
-	if string(raw) == "null" {
-		if !nullable {
-			e.Add(name, "Invalid input: expected string, received null")
-			return contracts.Optional[string]{}
-		}
-		return o // Value nil = explicit null
-	}
-	var v string
-	if err := json.Unmarshal(raw, &v); err != nil {
-		e.Add(name, "Invalid input: expected string, received "+kindOf(raw))
-		return contracts.Optional[string]{}
-	}
-	if trim {
-		v = jsTrim(v)
-	}
-	if rule != nil {
-		if msg := rule(v); msg != "" {
-			e.Add(name, msg)
-			return contracts.Optional[string]{}
-		}
-	}
-	o.Value = &v
-	return o
-}
-
-func optInt(e *Errors, m map[string]json.RawMessage, name string, nullable bool, rule func(int64) string) contracts.Optional[int] {
-	raw, present := m[name]
-	var o contracts.Optional[int]
-	if !present {
-		return o
-	}
-	o.Set = true
-	if string(raw) == "null" {
-		if !nullable {
-			e.Add(name, "Invalid input: expected number, received null")
-			return contracts.Optional[int]{}
-		}
-		return o
-	}
-	n, ok := parseJSONInt(raw)
-	if !ok {
-		e.Add(name, intTypeError(raw))
-		return contracts.Optional[int]{}
-	}
-	if rule != nil {
-		if msg := rule(n); msg != "" {
-			e.Add(name, msg)
-			return contracts.Optional[int]{}
-		}
-	}
-	i := int(n)
-	o.Value = &i
-	return o
-}
-
-func optFlexTime(e *Errors, m map[string]json.RawMessage, name string, nullable bool, rule func(contracts.FlexTime) string) contracts.Optional[contracts.FlexTime] {
-	raw, present := m[name]
-	var o contracts.Optional[contracts.FlexTime]
-	if !present {
-		return o
-	}
-	o.Set = true
-	if string(raw) == "null" {
-		if !nullable {
-			e.Add(name, "Invalid input: expected date, received null")
-			return contracts.Optional[contracts.FlexTime]{}
-		}
-		return o
-	}
-	var ft contracts.FlexTime
-	if err := json.Unmarshal(raw, &ft); err != nil {
-		e.Add(name, "Invalid input: expected date, received "+kindOf(raw))
-		return contracts.Optional[contracts.FlexTime]{}
-	}
-	if rule != nil {
-		if msg := rule(ft); msg != "" {
-			e.Add(name, msg)
-			return contracts.Optional[contracts.FlexTime]{}
-		}
-	}
-	o.Value = &ft
-	return o
-}
-
-func optStrArr(e *Errors, m map[string]json.RawMessage, name string, nullable bool, elemRule func(string) string, max int) contracts.Optional[[]string] {
-	raw, present := m[name]
-	var o contracts.Optional[[]string]
-	if !present {
-		return o
-	}
-	o.Set = true
-	if string(raw) == "null" {
-		if !nullable {
-			e.Add(name, "Invalid input: expected array, received null")
-			return contracts.Optional[[]string]{}
-		}
-		return o
-	}
-	var items []json.RawMessage
-	if err := json.Unmarshal(raw, &items); err != nil {
-		e.Add(name, "Invalid input: expected array, received "+kindOf(raw))
-		return contracts.Optional[[]string]{}
-	}
-	if len(items) > max {
-		e.Add(name, fmt.Sprintf("Too big: expected array to have <=%d items", max))
-		return contracts.Optional[[]string]{}
-	}
-	out := make([]string, 0, len(items))
-	for _, item := range items {
-		var v string
-		if err := json.Unmarshal(item, &v); err != nil {
-			e.Add(name, "Invalid input: expected string, received "+kindOf(item))
-			return contracts.Optional[[]string]{}
-		}
-		v = jsTrim(v)
-		if elemRule != nil {
-			if msg := elemRule(v); msg != "" {
-				e.Add(name, msg)
-				return contracts.Optional[[]string]{}
-			}
-		}
-		out = append(out, v)
-	}
-	o.Value = &out
-	return o
+	lowered, _ := json.Marshal(strings.ToLower(s))
+	m[key] = lowered
 }

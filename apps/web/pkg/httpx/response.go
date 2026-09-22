@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
 	"countmein/pkg/i18n"
 	"countmein/pkg/logx"
@@ -41,8 +42,6 @@ func JSON(status int, body any) *Response { return &Response{Status: status, Bod
 
 func Empty(status int) *Response { return &Response{Status: status} }
 
-func MethodNotAllowed() *Response { return Empty(http.StatusMethodNotAllowed) }
-
 // Internal logs the error and returns an empty 500 — the Go analogue
 // of an unhandled throw in a Next.js route handler (no JSON body).
 func Internal(err error) *Response {
@@ -56,18 +55,18 @@ func ptr[T any](v T) *T { return &v }
 // Error renders {error: <localized message>} — the body carries the
 // caller's locale (ADR-011); machine-readable extras travel alongside.
 func Error(status int, locale, key string) *Response {
-	return &Response{Status: status, Body: contracts.ErrorBody{
+	return &Response{Status: status, Body: gen.ErrorBody{
 		Error: i18n.ApiError(locale, key, nil),
 	}}
 }
 
 func ErrorParams(status int, locale, key string, params map[string]any) *Response {
-	return &Response{Status: status, Body: contracts.ErrorBody{
+	return &Response{Status: status, Body: gen.ErrorBody{
 		Error: i18n.ApiError(locale, key, params),
 	}}
 }
 
-func ErrorExtras(status int, locale, key string, params map[string]any, extras contracts.ErrorBody) *Response {
+func ErrorExtras(status int, locale, key string, params map[string]any, extras gen.ErrorBody) *Response {
 	extras.Error = i18n.ApiError(locale, key, params)
 	return &Response{Status: status, Body: extras}
 }
@@ -76,7 +75,7 @@ func ErrorExtras(status int, locale, key string, params map[string]any, extras c
 // account or anonymous visitors (ADR-010).
 func DemoReadOnly(locale string) *Response {
 	return ErrorExtras(http.StatusForbidden, locale, "demoReadOnly", nil,
-		contracts.ErrorBody{Code: ptr(contracts.DemoReadOnlyCode)})
+		gen.ErrorBody{Code: ptr(contracts.DemoReadOnlyCode)})
 }
 
 // WriteInvalidBody — parseJsonBody's 400: a localized generic as the
@@ -87,9 +86,9 @@ func WriteInvalidBody(w http.ResponseWriter, locale string, errs *validation.Err
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(contracts.InvalidBody{
+	_ = json.NewEncoder(w).Encode(gen.InvalidBody{
 		Error: i18n.ApiError(locale, "invalidInput", nil),
-		Details: contracts.ValidationErrors{
+		Details: gen.ValidationErrors{
 			FormErrors:  errs.Form,
 			FieldErrors: errs.Fields,
 		},
@@ -105,7 +104,7 @@ func WriteInvalidIssues(w http.ResponseWriter, locale string, errs *validation.E
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(contracts.InvalidIssuesBody{
+	_ = json.NewEncoder(w).Encode(gen.InvalidIssuesBody{
 		Error:  i18n.ApiError(locale, "invalidInput", nil),
 		Issues: fields,
 	})
