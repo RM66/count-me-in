@@ -65,7 +65,7 @@
     "@tanstack/react-query-devtools": "^5.101.4",
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^16.0.0",
-    "@types/node": "^22.15.3",
+    "@types/node": "^26.6.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "concurrently": "^10.0.5",
