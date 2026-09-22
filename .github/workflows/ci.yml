@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           # Keep in sync with "go" in apps/web/go.mod.
-          go-version: '1.24'
+          go-version: '1.27'
           cache-dependency-path: apps/web/go.sum
 
       - name: Cache turbo
@@ -69,8 +69,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # Keep in sync with "go" in apps/go.mod.
-          go-version: '1.24'
+          # Keep in sync with "go" in apps/web/go.mod.
+          go-version: '1.27'
           cache-dependency-path: apps/web/go.sum
 
       - name: Set up Bun
