@@ -16,7 +16,7 @@ import (
 	"countmein/pkg/logx"
 )
 
-// Organizer session resolution (architecture review fix #1).
+// Organizer session resolution.
 //
 // The Go API no longer decrypts the Auth.js session cookie. Instead,
 // the Next.js edge middleware (proxy.ts) mints a short-lived HS256 JWT
@@ -159,8 +159,11 @@ func verifyOrganizerAuth(token, secret string) (*organizerClaims, error) {
 		return nil, errBadToken
 	}
 
-	// Expiry (15s clock tolerance, matching the old decoder).
-	if claims.Exp != 0 && time.Now().Add(-15*time.Second).Unix() > claims.Exp {
+	// Expiry (15s clock tolerance, matching the old decoder). exp is
+	// required: a token without it used to
+	// be treated as non-expiring, but the mint always sets it — an
+	// absent exp means a forged or malformed token, not a legacy one.
+	if claims.Exp == 0 || time.Now().Add(-15*time.Second).Unix() > claims.Exp {
 		return nil, errBadToken
 	}
 	return &claims, nil

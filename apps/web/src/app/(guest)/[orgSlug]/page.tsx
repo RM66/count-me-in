@@ -5,6 +5,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 
 import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { ContactLink } from '@/components/contact-link'
+import { JsonLd } from '@/components/json-ld'
 import { LocationLink } from '@/components/location-link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-preview'
@@ -99,11 +100,9 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
 
   return (
     <div className="flex flex-col gap-6">
-      <script
-        type="application/ld+json"
-        // Structured data built from the same public rows the page renders.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      {/* Structured data built from the same public rows the page renders;
+          escaped for HTML context (P0-3). */}
+      <JsonLd data={structuredData} />
       <div className="flex flex-col items-center gap-4 text-center">
         <Avatar className="size-20">
           {organizer.photoUrl ? (

@@ -127,6 +127,19 @@ func TestVercelRewritesCoverSpecPaths(t *testing.T) {
 	}
 }
 
+// TestHealthzRewrite: /api/healthz is mounted in NewMux outside the
+// spec (infrastructure, not part of the OpenAPI surface), so the
+// spec-coverage test cannot see it — pin its rewrite explicitly
+// (without it the probe 404s in production behind Next.js).
+func TestHealthzRewrite(t *testing.T) {
+	for _, source := range vercelRewrites(t) {
+		if source == "/api/healthz" {
+			return
+		}
+	}
+	t.Error("vercel.json has no /api/healthz rewrite — the probe would 404 in production")
+}
+
 // TestMuxCoversSpecPaths: the generated router is built from the same
 // embedded spec, so both must agree on the dispatched surface.
 func TestMuxCoversSpecPaths(t *testing.T) {

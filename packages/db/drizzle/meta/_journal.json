@@ -78,6 +78,34 @@
       "when": 1788185600000,
       "tag": "0010_manage_token_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788272000000,
+      "tag": "0011_outbox_failed_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788358400000,
+      "tag": "0012_hot_read_indexes_and_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788364800000,
+      "tag": "0013_manage_token_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788371200000,
+      "tag": "0014_outbox_trace_id_and_expiry_backfill",
+      "breakpoints": true
     }
   ]
 }

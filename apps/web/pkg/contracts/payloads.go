@@ -20,6 +20,11 @@ type AuthTicketPayload struct {
 	DisplayName    string        `json:"displayName"`
 	PhotoURL       *string       `json:"photoUrl,omitempty"`
 	MessengerLogin *string       `json:"messengerLogin,omitempty"`
+	// Purpose binds the ticket to one flow:
+	// "guest" tickets redeem only in booking endpoints, "organizer"
+	// tickets only in registration. Parity: `purpose` in
+	// packages/contracts/src/auth.ts.
+	Purpose string `json:"purpose"`
 }
 
 // LoginLinkPayload is what a one-time login link resolves to once consumed.

@@ -2,7 +2,7 @@
 // per line on stdout. Vercel captures function stdout into log drains,
 // and JSON keeps the fields queryable there. Sentry/PostHog from the
 // TS handlers are out of the dependency set — this is what stands in
-// for them (implementation-review must-have: structured logging).
+// for them (structured logging is the baseline requirement).
 //
 // Deliberately dependency-free and importable from anywhere (unlike a
 // logger living in httpx, which auth/db cannot import without cycles).
@@ -46,7 +46,7 @@ func Error(err error, fields map[string]any) {
 }
 
 // NewTraceID generates a short random hex id for correlating a request
-// across the async pipeline (architecture review fix #5). The id travels
+// across the async pipeline. The id travels
 // in the QStash job payload and is emitted in every log line in both the
 // API handler and the job handler, so debugging "I booked but didn't get
 // a message" becomes a grep for one id instead of archaeology across

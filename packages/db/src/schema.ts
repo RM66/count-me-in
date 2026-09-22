@@ -25,7 +25,7 @@ export const messengerKind = pgEnum('messenger_kind', ['telegram'])
  * and re-publishes them, closing the loss window between commit and
  * the inline publish.
  */
-export const outboxStatus = pgEnum('outbox_status', ['pending', 'sent'])
+export const outboxStatus = pgEnum('outbox_status', ['pending', 'sent', 'failed'])
 
 /** The organizer is the Auth.js account itself; `id` is the user subject. */
 export const organizers = pgTable(
@@ -55,6 +55,8 @@ export const organizers = pgTable(
     check('organizers_description_length_check', sql`char_length(${t.description}) <= 4000`),
     check('organizers_location_length_check', sql`char_length(${t.location}) <= 300`),
     check('organizers_contact_length_check', sql`char_length(${t.contact}) <= 300`),
+    check('organizers_timezone_length_check', sql`char_length(${t.timezone}) <= 64`),
+    check('organizers_language_length_check', sql`char_length(${t.language}) <= 8`),
   ],
 )
 
@@ -97,6 +99,14 @@ export const services = pgTable(
     check('services_default_price_length_check', sql`char_length(${t.defaultPrice}) <= 50`),
     check('services_location_length_check', sql`char_length(${t.location}) <= 300`),
     check('services_contact_length_check', sql`char_length(${t.contact}) <= 300`),
+    /**
+     * `options` non-empty implies `options_select_mode` is set — the pair is
+     * patched together on the wire (RFC 7386 merge-patch) and now also in the DB.
+     */
+    check(
+      'services_options_select_mode_check',
+      sql`(${t.options} IS NULL OR array_length(${t.options}, 1) IS NULL) OR ${t.optionsSelectMode} IS NOT NULL`,
+    ),
   ],
 )
 
@@ -120,6 +130,7 @@ export const timeSlots = pgTable(
   (t) => [
     index('time_slots_service_id_idx').on(t.serviceId),
     index('time_slots_starts_at_idx').on(t.startsAt),
+    index('time_slots_service_id_starts_at_idx').on(t.serviceId, t.startsAt),
     check('time_slots_duration_check', sql`${t.durationMinutes} > 0`),
     check('time_slots_capacity_check', sql`${t.capacity} >= 1`),
     check(
@@ -149,6 +160,13 @@ export const bookings = pgTable(
     /** The locale the guest's confirmation/cancellation messages are rendered in (ADR-011). */
     guestLocale: text('guest_locale').notNull().default(DEFAULT_LOCALE),
     manageToken: text('manage_token').notNull(),
+    /**
+     * SHA-256(token) hex — the lookup key for cancel and the guest
+     * management page (consolidated review P1). The raw column stays
+     * for the flows that must re-issue the link (booking.created job,
+     * "lost my link"); see ADR-020 for the contract phase.
+     */
+    manageTokenHash: text('manage_token_hash').notNull(),
     selectedOptions: text('selected_options').array(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     /**
@@ -161,8 +179,11 @@ export const bookings = pgTable(
   },
   (t) => [
     index('bookings_time_slot_id_idx').on(t.timeSlotId),
+    index('bookings_time_slot_id_created_at_idx').on(t.timeSlotId, t.createdAt),
+    index('bookings_created_at_idx').on(t.createdAt),
     index('bookings_guest_messenger_idx').on(t.guestMessenger, t.guestMessengerId),
     uniqueIndex('bookings_manage_token_key').on(t.manageToken),
+    uniqueIndex('bookings_manage_token_hash_key').on(t.manageTokenHash),
     /**
      * One active booking per guest per slot. A partial unique index so a guest
      * cannot hold two `confirmed` bookings on the same slot at once — cancelled
@@ -176,6 +197,11 @@ export const bookings = pgTable(
       .where(sql`${t.status} = 'confirmed'`),
     check('bookings_seats_check', sql`${t.seats} >= 1`),
     check('bookings_guest_name_length_check', sql`char_length(${t.guestName}) <= 100`),
+    check(
+      'bookings_guest_messenger_id_length_check',
+      sql`char_length(${t.guestMessengerId}) <= 100`,
+    ),
+    check('bookings_manage_token_length_check', sql`char_length(${t.manageToken}) <= 128`),
   ],
 )
 
@@ -224,6 +250,8 @@ export const notificationOutbox = pgTable(
     payload: text('payload').notNull(),
     status: outboxStatus('status').notNull().default('pending'),
     attempts: integer('attempts').notNull().default(0),
+    /** Trace id stamped on the QStash message; forwarded on sweeper republish. */
+    traceId: text('trace_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp('sent_at', { withTimezone: true }),
   },

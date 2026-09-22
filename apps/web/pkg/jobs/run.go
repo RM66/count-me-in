@@ -96,7 +96,7 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID str
 		}
 		return nil
 	case contracts.QueueOutboxSweep:
-		// Outbox sweeper (architecture review fix #3): re-publishes
+		// Outbox sweeper: re-publishes
 		// pending notification rows that the inline publish missed.
 		// A failure escapes as a 500 so QStash retries the sweep.
 		if err := HandleOutboxSweep(ctx); err != nil {

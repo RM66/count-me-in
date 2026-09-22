@@ -21,7 +21,10 @@ import (
 func main() {
 	loadDotEnv(".env")
 
-	mux := api.NewMux()
+	mux, err := api.NewMux()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	addr := ":" + envOr("PORT", "3001")
 	log.Printf("api-go dev server on http://localhost%s (routes: /api/*)", addr)

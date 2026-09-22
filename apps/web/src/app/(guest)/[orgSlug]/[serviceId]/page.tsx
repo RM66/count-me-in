@@ -10,6 +10,7 @@ import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges
 import { BookingDialog } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-dialog'
 import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { ContactLink } from '@/components/contact-link'
+import { JsonLd } from '@/components/json-ld'
 import { LocationLink } from '@/components/location-link'
 import { Badge } from '@/components/ui/badge'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
@@ -125,10 +126,7 @@ export default async function ServicePage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      <JsonLd data={structuredData} />
       <div className="flex flex-col gap-5">
         <Link
           href={`/${organizer.slug}`}

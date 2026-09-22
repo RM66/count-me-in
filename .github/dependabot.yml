@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # JS/TS monorepo (bun) — weekly, grouped, dev + prod.
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: ['minor', 'patch']
+    # Major bumps are listed individually (not grouped) so breaking
+    # changes get their own PR.
+    open-pull-requests-limit: 10
+
+  # Go API (apps/web is its own Go module).
+  - package-ecosystem: gomod
+    directory: '/apps/web'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # GitHub Actions workflow versions.
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

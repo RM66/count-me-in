@@ -103,7 +103,13 @@ func ListServices(ctx context.Context, organizerID string) ([]ServiceRow, error)
 // guessing ids. Ownership sits in the WHERE clause like every sibling
 // query (the TS version compared in JS; same observable behavior).
 func GetOwnedService(ctx context.Context, organizerID, serviceID string) (*ServiceRow, error) {
-	return scanService(Pool().QueryRow(ctx,
+	return GetOwnedServiceTx(ctx, Pool(), organizerID, serviceID)
+}
+
+// GetOwnedServiceTx is GetOwnedService on a caller-supplied querier
+// (merge-patch transaction, P2).
+func GetOwnedServiceTx(ctx context.Context, q Querier, organizerID, serviceID string) (*ServiceRow, error) {
+	return scanService(q.QueryRow(ctx,
 		`SELECT `+serviceColumns+` FROM services WHERE id = $1 AND organizer_id = $2::uuid LIMIT 1`,
 		serviceID, organizerID))
 }
@@ -150,6 +156,13 @@ type ServiceUpdate struct {
 // someone else (caller answers 404 either way); NoServiceUpdatesError
 // when the payload carries no writable field.
 func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, update ServiceUpdate) (*ServiceRow, error) {
+	return UpdateOwnedServiceTx(ctx, Pool(), organizerID, serviceID, update)
+}
+
+// UpdateOwnedServiceTx is UpdateOwnedService on a caller-supplied
+// querier — paired with GetOwnedServiceTx on one merge-patch
+// transaction (P2).
+func UpdateOwnedServiceTx(ctx context.Context, q Querier, organizerID, serviceID string, update ServiceUpdate) (*ServiceRow, error) {
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -227,7 +240,7 @@ func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, upda
 	args = append(args, serviceID, organizerID)
 	query := fmt.Sprintf(`UPDATE services SET %s WHERE id = $%d AND organizer_id = $%d::uuid RETURNING %s`,
 		strings.Join(sets, ", "), n, n+1, serviceColumns)
-	return scanService(Pool().QueryRow(ctx, query, args...))
+	return scanService(q.QueryRow(ctx, query, args...))
 }
 
 // DeleteOwnedService — slots and their bookings cascade (the services

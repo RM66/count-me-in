@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"errors"
 	"net/http"
 
 	gen "countmein/pkg/api/gen"
@@ -19,58 +20,79 @@ import (
 //   - 409 sold out / already cancelled / duplicate — well-formed
 //     request, conflicting state
 //   - 400 invalid option selection / party over the per-booking cap
+//
+// errors.As, not a type switch: wrapped errors must not slip past the
+// mapping into a bare 500 (applied to every mapper in this file).
 func BookingErrorResponse(err error, locale string) *Response {
-	switch e := err.(type) {
-	case demo.DemoReadOnlyError:
+	var readOnly demo.DemoReadOnlyError
+	if errors.As(err, &readOnly) {
 		return DemoReadOnly(locale)
-	case db.SlotNotBookableError:
+	}
+	var notBookable db.SlotNotBookableError
+	if errors.As(err, &notBookable) {
 		return Error(http.StatusNotFound, locale, "slotGone")
-	case db.SlotSoldOutError:
+	}
+	var soldOut db.SlotSoldOutError
+	if errors.As(err, &soldOut) {
 		// seatsLeft travels with it so the dialog can say how many are
 		// actually left rather than only that the attempt failed.
-		if e.SeatsLeft == 0 {
+		if soldOut.SeatsLeft == 0 {
 			return ErrorExtras(http.StatusConflict, locale, "soldOut", nil,
 				gen.ErrorBody{SeatsLeft: ptr(0)})
 		}
 		return ErrorExtras(http.StatusConflict, locale, "seatsLeftOnSession",
-			map[string]any{"count": e.SeatsLeft},
-			gen.ErrorBody{SeatsLeft: ptr(e.SeatsLeft)})
-	case db.DuplicateBookingError:
+			map[string]any{"count": soldOut.SeatsLeft},
+			gen.ErrorBody{SeatsLeft: ptr(soldOut.SeatsLeft)})
+	}
+	var duplicate db.DuplicateBookingError
+	if errors.As(err, &duplicate) {
 		return ErrorExtras(http.StatusConflict, locale, "duplicateBooking", nil,
 			gen.ErrorBody{Code: ptr("duplicate_booking")})
-	case db.BookingAlreadyCancelledError:
+	}
+	var alreadyCancelled db.BookingAlreadyCancelledError
+	if errors.As(err, &alreadyCancelled) {
 		return Error(http.StatusConflict, locale, "alreadyCancelled")
-	case db.ManageTokenExpiredError:
+	}
+	var tokenExpired db.ManageTokenExpiredError
+	if errors.As(err, &tokenExpired) {
 		// Answered like an unknown token (404) so the endpoint cannot
-		// be used to test whether a token exists (architecture review
-		// fix #4).
+		// be used to test whether a token exists.
 		return Error(http.StatusNotFound, locale, "bookingNotFound")
-	case db.InvalidOptionSelectionError:
+	}
+	var invalidOptions db.InvalidOptionSelectionError
+	if errors.As(err, &invalidOptions) {
 		// The class message carries the English validation detail for
 		// logs; the body gets the machine-readable code plus localized
 		// copy, and the booking dialog re-renders it from the code.
 		return ErrorExtras(http.StatusBadRequest, locale, "invalidOptions", nil,
 			gen.ErrorBody{Code: ptr("invalid_option")})
-	case db.PartyTooLargeError:
+	}
+	var partyTooLarge db.PartyTooLargeError
+	if errors.As(err, &partyTooLarge) {
 		return ErrorExtras(http.StatusBadRequest, locale, "partyTooLarge",
-			map[string]any{"maxSeats": e.MaxSeats},
-			gen.ErrorBody{MaxSeats: ptr(e.MaxSeats)})
+			map[string]any{"maxSeats": partyTooLarge.MaxSeats},
+			gen.ErrorBody{MaxSeats: ptr(partyTooLarge.MaxSeats)})
 	}
 	return nil
 }
 
 // SlotErrorResponse maps the slot route's two inline errors — one
 // handler, no risk of disagreeing with itself (mirrors the TS note).
+// errors.As, not type switches: wrapped errors must not slip past the
+// mapping into a bare 500 (applied to every mapper in this file).
 func SlotErrorResponse(err error, locale string) *Response {
-	switch err.(type) {
-	case db.NoSlotUpdatesError:
+	var noUpdates db.NoSlotUpdatesError
+	if errors.As(err, &noUpdates) {
 		return Error(http.StatusBadRequest, locale, "nothingToUpdate")
-	case db.SlotCapacityBelowBookedError:
+	}
+	var belowBooked db.SlotCapacityBelowBookedError
+	if errors.As(err, &belowBooked) {
 		// The payload is well-formed, it conflicts with current state.
-		e := err.(db.SlotCapacityBelowBookedError)
 		return ErrorParams(http.StatusConflict, locale, "capacityBelowBooked",
-			map[string]any{"count": e.BookedCount})
-	case db.SlotHasActiveBookingsError:
+			map[string]any{"count": belowBooked.BookedCount})
+	}
+	var hasBookings db.SlotHasActiveBookingsError
+	if errors.As(err, &hasBookings) {
 		// The slot still has confirmed bookings — the organizer must
 		// cancel them before the slot can be deleted.
 		return Error(http.StatusConflict, locale, "slotHasActiveBookings")
@@ -80,17 +102,19 @@ func SlotErrorResponse(err error, locale string) *Response {
 
 // ServiceErrorResponse maps the service route's inline error.
 func ServiceErrorResponse(err error, locale string) *Response {
-	switch err.(type) {
-	case db.NoServiceUpdatesError:
+	var noUpdates db.NoServiceUpdatesError
+	if errors.As(err, &noUpdates) {
 		return Error(http.StatusBadRequest, locale, "nothingToUpdate")
 	}
 	return nil
 }
 
 // OrganizerErrorResponse maps the organizer route's inline error.
+// errors.As, not a type switch: wrapped errors must not slip past the
+// mapping into a bare 500.
 func OrganizerErrorResponse(err error, locale string) *Response {
-	switch err.(type) {
-	case db.NoOrganizerUpdatesError:
+	var noUpdates db.NoOrganizerUpdatesError
+	if errors.As(err, &noUpdates) {
 		return Error(http.StatusBadRequest, locale, "nothingToUpdate")
 	}
 	return nil

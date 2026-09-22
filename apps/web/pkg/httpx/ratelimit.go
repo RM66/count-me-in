@@ -24,52 +24,62 @@ type RateLimitConfig struct {
 	Window time.Duration
 }
 
+// slidingWindowLua implements the whole sliding-window check as one
+// atomic Redis script: the old TxPipeline
+// could interleave between concurrent requests — two callers could both
+// ZAdd before either ZCard runs, letting a burst slip past the limit.
+// KEYS[1] = rate key; ARGV[1] = now (ns), ARGV[2] = window (ns),
+// ARGV[3] = limit, ARGV[4] = unique member.
+// Returns {allowed (0/1), retry_after_ns}.
+var slidingWindowLua = goredis.NewScript(`
+local window_start = tonumber(ARGV[1]) - tonumber(ARGV[2])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '0', window_start)
+local count = redis.call('ZCARD', KEYS[1])
+if count >= tonumber(ARGV[3]) then
+	local oldest = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')
+	-- Retry-After: the oldest hit ages out at oldest + window, so the
+	-- caller waits oldest + window - now.
+	local retry = tonumber(ARGV[2])
+	if oldest[2] then
+		retry = math.max(0, tonumber(oldest[2]) + tonumber(ARGV[2]) - tonumber(ARGV[1]))
+	end
+	return {0, retry}
+end
+redis.call('ZADD', KEYS[1], ARGV[1], ARGV[4])
+redis.call('PEXPIRE', KEYS[1], math.ceil(tonumber(ARGV[2]) / 1000000))
+return {1, 0}
+`)
+
 // Allow checks the sliding-window limit for key. It returns true when
 // the request is within the limit. On Redis failure it fails open — a
 // limiter outage must never block traffic, and without REDIS_URL there
-// is nothing to count against.
+// is nothing to count against. The fail-open choice is recorded in
+// ADR-019.
 func Allow(ctx context.Context, key string, cfg RateLimitConfig) (allowed bool, retryAfter time.Duration) {
 	if os.Getenv("REDIS_URL") == "" {
 		return true, 0
 	}
 	client := redis.Client()
 	now := time.Now()
-	windowStart := now.Add(-cfg.Window)
-	// Member must be unique per request so the sorted set holds one
-	// entry per hit; timestamp + random is enough.
 	member := fmt.Sprintf("%d-%d", now.UnixNano(), rand.Int63())
 
-	pipe := client.TxPipeline()
-	pipe.ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(windowStart.UnixNano(), 10))
-	pipe.ZAdd(ctx, key, goredis.Z{Score: float64(now.UnixNano()), Member: member})
-	pipe.ZCard(ctx, key)
-	pipe.ZRangeWithScores(ctx, key, 0, 0) // oldest member, for Retry-After
-	pipe.Expire(ctx, key, cfg.Window)
-	cmds, err := pipe.Exec(ctx)
+	res, err := slidingWindowLua.Run(ctx, client, []string{key},
+		now.UnixNano(), cfg.Window.Nanoseconds(), cfg.Limit, member).Slice()
 	if err != nil {
 		return true, 0
 	}
-
-	count := cmds[2].(*goredis.IntCmd).Val()
-	if count <= int64(cfg.Limit) {
+	if len(res) < 2 {
 		return true, 0
 	}
-
-	// Over the limit: Retry-After is how long until the oldest hit in
-	// the window ages out. Fall back to the full window if unknown.
-	if oldest, ok := cmds[3].(*goredis.ZSliceCmd); ok {
-		if scores := oldest.Val(); len(scores) > 0 {
-			oldestAt := time.Unix(0, int64(scores[0].Score))
-			retryAfter = cfg.Window - now.Sub(oldestAt)
-			if retryAfter < 0 {
-				retryAfter = 0
-			}
-		}
+	allowed64, _ := res[0].(int64)
+	if allowed64 == 1 {
+		return true, 0
 	}
-	if retryAfter <= 0 {
-		retryAfter = cfg.Window
+	retryNs, _ := res[1].(int64)
+	if retryNs <= 0 {
+		retryNs = cfg.Window.Nanoseconds()
 	}
-	return false, retryAfter
+	return false, time.Duration(retryNs)
 }
 
 // RateLimited enforces a sliding-window limit for key and answers 429
@@ -86,11 +96,22 @@ func RateLimited(w http.ResponseWriter, r *http.Request, key string, cfg RateLim
 	return false
 }
 
+// TooManyRequests builds the 429 Response for guards that return a
+// *Response instead of writing to the socket (e.g. inside
+// RequireWritableOrganizer), carrying the Retry-After header.
+func TooManyRequests(locale string, retryAfter time.Duration) *Response {
+	resp := Error(http.StatusTooManyRequests, locale, "tooManyRequests")
+	resp.Headers = map[string]string{
+		"Retry-After": strconv.Itoa(int(math.Ceil(retryAfter.Seconds()))),
+	}
+	return resp
+}
+
 // ClientIP returns the caller's IP. Vercel sets x-vercel-forwarded-for
 // (and x-forwarded-for); the first value is the original client, the
 // rest are the proxy chain. Falls back to RemoteAddr in dev.
 //
-// Trust assumption (architecture review fix #8): on Vercel the edge
+// Trust assumption: on Vercel the edge
 // overwrites these headers, so they are trustworthy. If the function
 // is ever reached without going through the edge (a misconfigured
 // internal call, a non-Vercel deployment), a spoofed X-Forwarded-For

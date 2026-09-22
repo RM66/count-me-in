@@ -48,3 +48,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*
+
+# Go dev binary (cmd/dev build output, ~30 MB)
+apps/web/dev

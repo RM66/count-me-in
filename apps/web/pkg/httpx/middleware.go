@@ -27,6 +27,14 @@ func Recover(next func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Language")
 		w.Header().Set("X-Robots-Tag", "noindex")
+		// Security headers: the Go origin
+		// bypasses next.config.js headers(), so the API must set its own.
+		// No CSP here — API responses are JSON, never HTML documents.
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		defer func() {
 			if rec := recover(); rec != nil {
 				logx.Error(fmt.Errorf("panic: %v", rec), map[string]any{

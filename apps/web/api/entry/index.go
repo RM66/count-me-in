@@ -17,7 +17,16 @@ import (
 	"countmein/pkg/api"
 )
 
-var mux = api.NewMux()
+// Env validation (P1-8) fails the cold start loudly on a production
+// misconfiguration; a panic here surfaces as a 500 on every request,
+// which is the intended loud failure.
+var mux = func() http.Handler {
+	h, err := api.NewMux()
+	if err != nil {
+		panic(err)
+	}
+	return h
+}()
 
 // Handler is the sole Vercel Functions entry point for the Go API.
 //

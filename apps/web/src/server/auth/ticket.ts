@@ -31,6 +31,12 @@ export interface AuthTicketPayload {
    * Telegram: @username (may be absent if the user has no username set).
    */
   messengerLogin?: string
+  /**
+   * Binds the ticket to one flow (consolidated review A-5): 'organizer'
+   * tickets redeem only in registration, 'guest' tickets only in the
+   * booking flow. Parity: `purpose` in packages/contracts/src/auth.ts.
+   */
+  purpose: 'organizer' | 'guest'
 }
 
 /** Issue a new short-lived auth ticket for a validated messenger identity. */

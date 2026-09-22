@@ -385,10 +385,10 @@ func SeedDemo(ctx context.Context, now time.Time) error {
 	for _, b := range slotBookings {
 		_, err = tx.Exec(ctx, `
 			INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
-				guest_messenger_login, guest_locale, manage_token, selected_options)
-			VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11)`,
+				guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options)
+			VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11, $12)`,
 			b.ID, b.TimeSlotID, b.Status, b.Seats, b.GuestName, b.GuestMessenger, b.GuestMessengerID,
-			b.GuestMessengerLogin, b.GuestLocale, b.ManageToken, nullableSlice(b.SelectedOptions))
+			b.GuestMessengerLogin, b.GuestLocale, b.ManageToken, HashManageToken(b.ManageToken), nullableSlice(b.SelectedOptions))
 		if err != nil {
 			return err
 		}

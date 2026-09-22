@@ -121,7 +121,7 @@ func readBalanced(msg string, start int) (text string, next int) {
 func renderParam(sb *strings.Builder, name string, params map[string]any) {
 	v, ok := params[name]
 	if !ok {
-		// A missing param renders as-is so it stays visible in review.
+		// A missing param renders as-is so it stays visible in logs.
 		sb.WriteString("{" + name + "}")
 		return
 	}

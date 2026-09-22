@@ -1,4 +1,5 @@
 import type { BookingRecord, GuestBooking } from '@repo/contracts'
+import { hashManageToken } from '@repo/contracts/manage-token'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { bookings, db, organizers, services, timeSlots } from '@repo/db'
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
@@ -160,7 +161,11 @@ export async function countConfirmedBookings(
  * Returns `null` for an unknown token, which the page turns into a `404`.
  */
 export async function getGuestBookingByToken(token: string): Promise<GuestBooking | null> {
-  const [row] = await guestBookingQuery().where(eq(bookings.manageToken, token)).limit(1)
+  // Credential check goes through the hash (consolidated review P1):
+  // the raw token column is not a lookup key anymore.
+  const [row] = await guestBookingQuery()
+    .where(eq(bookings.manageTokenHash, hashManageToken(token)))
+    .limit(1)
 
   return row ? toGuestBooking(row) : null
 }

@@ -34,6 +34,10 @@
     {
       "source": "/api/jobs/:path*",
       "destination": "/api/entry?_path=/api/jobs/:path*"
+    },
+    {
+      "source": "/api/healthz",
+      "destination": "/api/entry?_path=/api/healthz"
     }
   ]
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	"countmein/pkg/auth"
 	"countmein/pkg/contracts"
@@ -18,12 +19,24 @@ import (
 // the demo id itself rather than a bare 401. The policy lives in
 // pkg/demo; this is its request-level door.
 //
+// Every organizer write also passes a per-organizer rate bucket:
+// the cabinet CRUD routes had no limits at
+// all, so a runaway client could hammer the API unthrottled. The
+// bucket is keyed by organizer id — a signed-in organizer is already
+// authenticated, so this is abuse protection, not auth.
+//
 // Returns ("", non-nil resp) on refusal — resp is already rendered,
 // the caller writes it and returns.
 func RequireWritableOrganizer(r *http.Request) (organizerID string, resp *Response) {
 	organizerID = auth.SessionOrganizerID(r)
 	if demo.IsReadOnly(organizerID) {
 		return "", DemoReadOnly(i18n.DetectLocale(r))
+	}
+	if organizerID != "" {
+		allowed, retryAfter := Allow(r.Context(), "rl:organizer-write:"+organizerID, RateLimitConfig{Limit: 60, Window: time.Minute})
+		if !allowed {
+			return "", TooManyRequests(i18n.DetectLocale(r), retryAfter)
+		}
 	}
 	return organizerID, nil
 }
@@ -40,7 +53,11 @@ func RequireGuestIdentity(ctx context.Context, r *http.Request, ticket string) (
 	if err != nil {
 		return nil, Empty(http.StatusInternalServerError)
 	}
-	if payload == nil {
+	// Purpose claim: a ticket minted for
+	// organizer registration must not be redeemable in the booking
+	// flow. Answered like an expired one — the caller cannot
+	// distinguish "wrong flow" from "unknown ticket".
+	if payload == nil || payload.Purpose != auth.TicketPurposeGuest {
 		return nil, ErrorParams(http.StatusUnauthorized, locale, "ticketExpired", nil)
 	}
 	return payload, nil

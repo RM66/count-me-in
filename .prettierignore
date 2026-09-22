@@ -1,0 +1,11 @@
+# Verbatim external review reports — never reformatted.
+reviews/
+
+# Generated artifacts.
+apps/web/openapi.yaml
+apps/web/pkg/contracts/testdata/golden/
+packages/contracts/vectors/
+packages/db/drizzle/meta/
+
+# Vendored skill files.
+.agents/

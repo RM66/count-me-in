@@ -23,11 +23,5 @@ export const queryKeys = {
   },
   bookings: {
     all: ['bookings'] as const,
-    /**
-     * A guest's own bookings, keyed by the messenger identity they looked up
-     * with — not by the one-shot ticket, which differs on every tap and would
-     * make each lookup a permanent cache miss.
-     */
-    guest: (messengerId: string) => ['bookings', 'guest', messengerId] as const,
   },
 } as const

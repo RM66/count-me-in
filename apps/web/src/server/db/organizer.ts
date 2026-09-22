@@ -17,7 +17,6 @@ import { DEFAULT_LOCALE, isAppLocale, isDemoOrganizerId } from '@repo/contracts'
 import type { Organizer } from '@repo/db'
 import { db, organizers } from '@repo/db'
 import { asc, eq } from 'drizzle-orm'
-import { unstable_cache } from 'next/cache'
 
 import 'server-only'
 
@@ -65,11 +64,15 @@ export function toPublicOrganizer(row: Organizer): PublicOrganizer {
  * caller answers `404`. Slugs are stored lowercase (the `slug` primitive
  * transforms them), so the lookup lowercases too.
  *
- * Cached: this read sits on every guest page render and both OG-image
- * routes. The DTO is JSON-safe (no Date objects), so `unstable_cache` can hold
- * it across requests; writes below revalidate the tag.
+ * Not cached (consolidated review P0-2): the `unstable_cache` wrapper and its
+ * `public-organizers` tag used to be here, but writes moved to the Go API
+ * (ADR-013), which cannot call `revalidateTag` — the tag was never
+ * invalidated, so a renamed organizer served stale pages (and stale 404s for
+ * the new slug) for up to 5 minutes. Reading fresh costs one indexed query per
+ * render; when read traffic justifies caching again, add a Go → Next
+ * revalidation endpoint instead of a tag nothing can invalidate.
  */
-async function queryPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {
+export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {
   const [row] = await db
     .select()
     .from(organizers)
@@ -78,15 +81,6 @@ async function queryPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer
 
   return row ? toPublicOrganizer(row) : null
 }
-
-export const getPublicOrganizerBySlug = unstable_cache(
-  queryPublicOrganizerBySlug,
-  ['public-organizer-by-slug'],
-  {
-    revalidate: 300,
-    tags: ['public-organizers'],
-  },
-)
 
 /**
  * Every organizer slug, for `app/sitemap.ts`. Slugs are unique (schema index),

@@ -98,7 +98,10 @@ func sortedKeys[V any](m map[string]V) []string {
 // TestMuxDispatchesEveryOperation: every operation in the spec must be
 // routed by the generated mux (see muxOperations).
 func TestMuxDispatchesEveryOperation(t *testing.T) {
-	handler := NewMux()
+	handler, err := NewMux()
+	if err != nil {
+		t.Fatalf("NewMux: %v", err)
+	}
 	for _, op := range muxOperations {
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, httptest.NewRequest(op.method, op.path, nil))
