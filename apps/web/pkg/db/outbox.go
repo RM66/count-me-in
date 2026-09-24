@@ -35,7 +35,7 @@ type OutboxRow struct {
 // row's delivery) or the sweeper will move it to `sent`. Call this
 // before tx.Commit so the outbox row commits atomically with the
 // booking it describes. The returned row lets the caller publish the
-// exact stored payload and mark it `sent` by id (P0-1).
+// exact stored payload and mark it `sent` by id.
 func EnqueueOutbox(ctx context.Context, tx pgx.Tx, queue string, payload any, traceID string) (OutboxRow, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -52,7 +52,7 @@ func EnqueueOutbox(ctx context.Context, tx pgx.Tx, queue string, payload any, tr
 // MarkOutboxSent moves a row to `sent` with a timestamp. Called by the
 // inline publish after a successful QStash POST, and by the sweeper
 // after a successful re-publish — so the row is delivered exactly once
-// on the success path (P0-1).
+// on the success path.
 func MarkOutboxSent(ctx context.Context, id string) error {
 	_, err := Pool().Exec(ctx, `
 		UPDATE notification_outbox SET status = 'sent', sent_at = now()
@@ -61,7 +61,7 @@ func MarkOutboxSent(ctx context.Context, id string) error {
 }
 
 // MarkOutboxFailed moves a row past the retry budget to the terminal
-// `failed` status (P0-1). Terminal rows no longer match the sweeper's
+// `failed` status. Terminal rows no longer match the sweeper's
 // `pending` filter, so they cannot clog the batch (head-of-line
 // blocking) and never get rescanned.
 func MarkOutboxFailed(ctx context.Context, id string) error {
@@ -72,7 +72,7 @@ func MarkOutboxFailed(ctx context.Context, id string) error {
 }
 
 // DeleteSentOutboxBefore removes `sent` rows older than the cutoff —
-// retention so the table does not grow unbounded (P0-1). Returns the
+// retention so the table does not grow unbounded. Returns the
 // number of deleted rows for the sweeper's log.
 func DeleteSentOutboxBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	tag, err := Pool().Exec(ctx, `

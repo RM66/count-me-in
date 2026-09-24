@@ -1,0 +1,50 @@
+## createdOrganizer
+🎉 <b>新しい予約</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 2026/7月/25(土) 07:00
+👥 2名
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 残り3枠です。
+[button] 管理画面で開く → https://example.com/cabinet
+## createdGuest
+✅ <b>予約が確定しました</b> 予約先：Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 2026/7月/25(土) 07:00
+👥 2名
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+予定を変更する場合は、下のボタンからお手続きください。
+[button] 予約を管理 → https://example.com/booking/tok-abc123
+## cancelledOrganizer
+❌ <b>予約がキャンセルされました</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 2026/7月/25(土) 07:00
+👥 2名
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 この回に3枠の空きが出ました。
+[button] 管理画面で開く → https://example.com/cabinet
+## cancelledGuest
+❌ <b>予約がキャンセルされました</b> （Mira &amp; Yogaによるキャンセル）
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 2026/7月/25(土) 07:00
+👥 2名
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+申し訳ありません。下のボタンから別の回をお選びいただけます。
+[button] 別の回を見る → https://example.com/test-org

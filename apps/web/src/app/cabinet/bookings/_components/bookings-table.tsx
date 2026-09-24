@@ -289,8 +289,7 @@ export function BookingsTable({
 
 /**
  * Build the bookings URL for a given page, preserving the active filters
- * (`?service=` / `?slot=`) — pagination must not silently reset them
- * (consolidated review W-3).
+ * (`?service=` / `?slot=`) — pagination must not silently reset them.
  */
 function pageHref(page: number, serviceId?: string, slotId?: string): string {
   const params = new URLSearchParams()

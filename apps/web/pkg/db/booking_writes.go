@@ -45,7 +45,7 @@ type CreateBookingData struct {
 // claimed seat with no booking would be capacity lost forever, and a
 // booking with no claim is an overbooking.
 // The second return value is the outbox rows written in the same
-// transaction (P0-1): the caller publishes them inline after commit and
+// transaction: the caller publishes them inline after commit and
 // marks each `sent` on success, so the sweeper never re-publishes a
 // delivered row.
 func CreateGuestBooking(ctx context.Context, data CreateBookingData) (*gen.GuestBooking, []OutboxRow, error) {
@@ -140,7 +140,7 @@ func CreateGuestBooking(ctx context.Context, data CreateBookingData) (*gen.Guest
 	// between commit and the inline publish does not lose the
 	// notification — the sweeper re-publishes pending rows. The rows
 	// travel back to the caller, which owns the inline delivery and the
-	// `sent` marking (P0-1).
+	// `sent` marking.
 	outbox := make([]OutboxRow, 0, 2)
 	for _, recipient := range []gen.NotificationRecipient{gen.NotificationRecipientOrganizer, gen.NotificationRecipientGuest} {
 		row, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, gen.BookingCreatedJob{
@@ -222,7 +222,7 @@ func CancelGuestBookingByToken(ctx context.Context, token, traceID string) (*gen
 	// Transactional outbox: the organizer
 	// is notified of the guest's cancellation. One row — the counterparty
 	// only (ADR-012). The row travels back to the caller for the inline
-	// publish + `sent` marking (P0-1).
+	// publish + `sent` marking.
 	outboxRow, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
 		BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorGuest,
 	}, traceID)
@@ -292,7 +292,7 @@ func CancelOwnedBooking(ctx context.Context, organizerID, bookingID, traceID str
 	// Transactional outbox: the guest is
 	// notified of the organizer's cancellation. One row — the
 	// counterparty only (ADR-012). The row travels back to the caller
-	// for the inline publish + `sent` marking (P0-1).
+	// for the inline publish + `sent` marking.
 	outboxRow, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
 		BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorOrganizer,
 	}, traceID)

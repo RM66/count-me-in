@@ -38,7 +38,10 @@ const nextConfig = {
       { protocol: 'https', hostname: 't.me' }, // For Telegram avatars
     ],
   },
-  allowedDevOrigins: ['*.tunneler-si.yandex.ru'],
+  // 127.0.0.1/localhost: Playwright E2E (apps/web/e2e) drives the dev server
+  // on 127.0.0.1 — without the origin allowlisted, Next 16 blocks the HMR
+  // websocket and React hydration never completes.
+  allowedDevOrigins: ['127.0.0.1', 'localhost', '*.tunneler-si.yandex.ru'],
   async rewrites() {
     // In production Vercel Edge Router executes rewrites from vercel.json natively
     // before entering Next.js. No beforeFiles rewrites needed.

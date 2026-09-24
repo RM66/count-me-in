@@ -32,7 +32,7 @@ export interface AuthTicketPayload {
    */
   messengerLogin?: string
   /**
-   * Binds the ticket to one flow (consolidated review A-5): 'organizer'
+   * Binds the ticket to one flow: 'organizer'
    * tickets redeem only in registration, 'guest' tickets only in the
    * booking flow. Parity: `purpose` in packages/contracts/src/auth.ts.
    */

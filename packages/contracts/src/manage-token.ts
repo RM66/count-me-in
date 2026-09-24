@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 /**
  * SHA-256 hex of a manage token — the lookup key for the guest booking
- * management page and cancellation (consolidated review P1). The raw
+ * management page and cancellation. The raw
  * token is a password-equivalent credential; the database stores only
  * this hash for credential checks. Node-only (server side): the browser
  * never needs to hash a token — it sends the raw value in the request

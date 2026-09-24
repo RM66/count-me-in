@@ -20,6 +20,35 @@ jobs:
     # reports the type and test results, so a PR gets every problem in one pass.
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
+    services:
+      # Integration tests (pkg/db/booking_writes_test.go) and the TS
+      # booking integration test need a real Postgres + Redis. Without them
+      # the suites silently SKIP and the booking invariants go unverified.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: countmein
+          POSTGRES_PASSWORD: countmein
+          POSTGRES_DB: countmein
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      POSTGRES_URL: postgres://countmein:countmein@localhost:5432/countmein
+      REDIS_URL: redis://localhost:6379
     strategy:
       fail-fast: false
       matrix:
@@ -54,6 +83,14 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # Migrate the ephemeral CI Postgres before integration tests: the
+      # tests insert organizers/services/slots directly and SKIP (FAIL in
+      # CI, see requirePostgres) when the schema is missing.
+      - name: Migrate CI database
+        if: matrix.task == 'test'
+        working-directory: packages/db
+        run: bun run db:migrate
+
       # `next build` collects page data for OG routes, which instantiates
       # the Drizzle client: it never connects during the
       # build, but the constructor requires POSTGRES_URL. A placeholder
@@ -63,6 +100,16 @@ jobs:
         run: echo "POSTGRES_URL=postgres://ci:ci@localhost:5432/ci" >> "$GITHUB_ENV"
 
       - run: bun run ${{ matrix.task }}
+
+      # The plain `test` task above runs vitest without coverage
+      # (fast locally, where integration tests skip without docker and
+      # would trip the thresholds). The thresholds live in the vitest
+      # configs and are enforced here, against the migrated CI database.
+      - name: TS coverage thresholds
+        if: matrix.task == 'test'
+        run: |
+          bun run --cwd apps/web test:coverage
+          bun run --cwd packages/contracts test:coverage
 
   # Formatting and dead-code hygiene: neither
   # prettier --check nor knip ran in CI, so formatting drift and unused
@@ -97,6 +144,34 @@ jobs:
   go-api:
     name: Go API
     runs-on: ubuntu-latest
+    services:
+      # build-go.sh runs `go test ./pkg/...`, which includes the integration
+      # Postgres integration tests — same services as the `verify` job.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: countmein
+          POSTGRES_PASSWORD: countmein
+          POSTGRES_DB: countmein
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      POSTGRES_URL: postgres://countmein:countmein@localhost:5432/countmein
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v5
 
@@ -118,6 +193,10 @@ jobs:
         # explicitly, not via Bun's implicit auto-install.
         run: bun install --frozen-lockfile
 
+      - name: Migrate CI database
+        working-directory: packages/db
+        run: bun run db:migrate
+
       - name: Generate i18n, OpenAPI specs and Go constants
         working-directory: apps/web
         run: |
@@ -137,6 +216,81 @@ jobs:
       - name: Build, vet, test
         working-directory: apps/web
         run: sh scripts/build-go.sh
+
+      # Per-package statement coverage
+      # gate, generated code excluded. Runs the tests a second time with a
+      # coverprofile — the plain `go test` above stays as the fast feedback
+      # loop, this step is the gate.
+      - name: Go coverage gate
+        working-directory: apps/web
+        run: sh scripts/coverage-gate.sh
+
+  # E2E smoke: three scenarios against
+  # the dev topology — `next dev` + the Go API (cmd/dev) + real Postgres/Redis.
+  # Separate from the unit matrix: it boots two servers and needs the demo
+  # seed for the /demo scenario.
+  e2e:
+    name: E2E smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: countmein
+          POSTGRES_PASSWORD: countmein
+          POSTGRES_DB: countmein
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      POSTGRES_URL: postgres://countmein:countmein@localhost:5432/countmein
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: e2e-test-secret-not-production
+      APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: countmeingroupbot
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache-dependency-path: apps/web/go.sum
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - run: bun install --frozen-lockfile
+
+      - name: Migrate CI database
+        working-directory: packages/db
+        run: bun run db:migrate
+
+      - name: Seed demo organizer
+        working-directory: packages/db
+        run: bun run db:seed:demo
+
+      - name: Run E2E smoke
+        working-directory: apps/web
+        run: bun run test:e2e
 
   # Apply DB migrations only on the production deploy trigger (push to main),
   # after all checks pass. Running them in the Vercel build command would be

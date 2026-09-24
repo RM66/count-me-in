@@ -45,13 +45,15 @@ func (e *InvalidJobPayloadError) Error() string {
 	return fmt.Sprintf("invalid payload for job queue %q", e.Queue)
 }
 
-// RunJob validates and runs one QStash delivery. body is the parsed
-// JSON of the request, or nil for an empty body (the demo-refresh
-// schedule sends no payload). Returns UnknownJobQueueError for a
-// foreign queue name and InvalidJobPayloadError for a malformed
-// payload; any other error is a handler failure the route answers 500
-// with, which is what makes QStash retry.
-func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID string) error {
+// checkPayload validates one QStash delivery body without touching the
+// network or the database: UnknownJobQueueError for a foreign queue name,
+// InvalidJobPayloadError for a malformed payload, nil when the delivery
+// may proceed. The schedule-driven queues (demo.refresh, outbox.sweep)
+// send no payload, so any body — including an empty one — is valid for
+// them. Extracted so tests pin the 400/404 boundary without invoking
+// handlers (which would reseed the demo DB or sweep the outbox as a side
+// effect).
+func checkPayload(queue string, body json.RawMessage) error {
 	switch queue {
 	case contracts.QueueBookingCreated:
 		var job gen.BookingCreatedJob
@@ -64,6 +66,42 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID str
 		if !validBookingID(contracts.UUIDString(job.BookingID)) || !validRecipient(string(job.Recipient)) {
 			return &InvalidJobPayloadError{Queue: queue}
 		}
+		return nil
+	case contracts.QueueBookingCancelled:
+		var job gen.BookingCancelledJob
+		if err := parsePayload(body, &job); err != nil {
+			return err
+		}
+		if !validBookingID(contracts.UUIDString(job.BookingID)) ||
+			(job.CancelledBy != gen.CancelActorGuest && job.CancelledBy != gen.CancelActorOrganizer) {
+			return &InvalidJobPayloadError{Queue: queue}
+		}
+		return nil
+	case contracts.QueueDemoRefresh, contracts.QueueOutboxSweep:
+		return nil
+	default:
+		return &UnknownJobQueueError{Queue: queue}
+	}
+}
+
+// RunJob validates and runs one QStash delivery. body is the parsed
+// JSON of the request, or nil for an empty body (the demo-refresh
+// schedule sends no payload). Returns UnknownJobQueueError for a
+// foreign queue name and InvalidJobPayloadError for a malformed
+// payload; any other error is a handler failure the route answers 500
+// with, which is what makes QStash retry.
+func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID string) error {
+	if err := checkPayload(queue, body); err != nil {
+		return err
+	}
+	switch queue {
+	case contracts.QueueBookingCreated:
+		var job gen.BookingCreatedJob
+		// Already validated by checkPayload above — a failure here is
+		// unreachable (same bytes), but never proceed with a zero job.
+		if err := parsePayload(body, &job); err != nil {
+			return err
+		}
 		env, err := ReadEnv()
 		if err != nil {
 			return err
@@ -75,10 +113,6 @@ func RunJob(ctx context.Context, queue string, body json.RawMessage, traceID str
 		var job gen.BookingCancelledJob
 		if err := parsePayload(body, &job); err != nil {
 			return err
-		}
-		if !validBookingID(contracts.UUIDString(job.BookingID)) ||
-			(job.CancelledBy != gen.CancelActorGuest && job.CancelledBy != gen.CancelActorOrganizer) {
-			return &InvalidJobPayloadError{Queue: queue}
 		}
 		env, err := ReadEnv()
 		if err != nil {

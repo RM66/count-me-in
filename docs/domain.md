@@ -149,22 +149,22 @@ Interval: half-open `[startsAt, endsAt)`. `durationMinutes` is source of truth; 
 
 Reservation on a slot by a guest (no Auth.js account). Guest identified by messenger account, verified via login widget at booking time ([ADR-002](decisions/002-guest-booking.md), [ADR-008](decisions/008-messenger-only-auth.md)).
 
-| Field                 | Required | Meaning                                                                          |
-| --------------------- | -------- | -------------------------------------------------------------------------------- |
-| `timeSlotId`          | yes      | FK → TimeSlot                                                                    |
-| `seats`               | yes      | `>= 1`                                                                           |
-| `guestName`           | yes      | Display name                                                                     |
-| `guestMessenger`      | yes      | Messenger enum (`telegram` in MVP)                                               |
-| `guestMessengerId`    | yes      | Stable messenger user id; indexed with `guestMessenger` for "my bookings"        |
-| `guestMessengerLogin` | no       | Human-readable handle (e.g. @username)                                           |
-| `manageToken`         | yes      | Opaque secret in messenger deep link; **stored verbatim** (not hashed yet — MVP) |
-| `selectedOptions`     | no       | String values from `Service.options` (`text[]`; null when no options)            |
-| `status`              | yes      | Lifecycle                                                                        |
-| `createdAt`           | yes      | UTC timestamp                                                                    |
+| Field                 | Required | Meaning                                                                                                                                                                                                      |
+| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `timeSlotId`          | yes      | FK → TimeSlot                                                                                                                                                                                                |
+| `seats`               | yes      | `>= 1`                                                                                                                                                                                                       |
+| `guestName`           | yes      | Display name                                                                                                                                                                                                 |
+| `guestMessenger`      | yes      | Messenger enum (`telegram` in MVP)                                                                                                                                                                           |
+| `guestMessengerId`    | yes      | Stable messenger user id; indexed with `guestMessenger` for "my bookings"                                                                                                                                    |
+| `guestMessengerLogin` | no       | Human-readable handle (e.g. @username)                                                                                                                                                                       |
+| `manageToken`         | yes      | Opaque secret in messenger deep link; raw value stored for deep-link re-issue, **every credential check goes through the SHA-256 hash** (`manage_token_hash`, [ADR-020](decisions/020-manage-token-hash.md)) |
+| `selectedOptions`     | no       | String values from `Service.options` (`text[]`; null when no options)                                                                                                                                        |
+| `status`              | yes      | Lifecycle                                                                                                                                                                                                    |
+| `createdAt`           | yes      | UTC timestamp                                                                                                                                                                                                |
 
 Validation: every `selectedOptions` entry must be in service's `options`; count respects `optionsSelectMode`.
 
-**`manageToken` not hashed yet** — stored verbatim for direct match on `bookings_manage_token_key`. Treated as password-equivalent: never in URL on cancel (request body), never in `BookingRecord`, `/booking/{manageToken}` is `noindex`.
+**`manageToken` is password-equivalent:** the raw column exists only for the `booking.created` deep-link and re-issue flows — lookups and cancel checks match `manage_token_hash` ([ADR-020](decisions/020-manage-token-hash.md)). Never in URL on cancel (request body), never in `BookingRecord`, `/booking/{manageToken}` is `noindex`. Tokens expire at slot start + 24h grace (`manage_token_expires_at`).
 
 ## Booking statuses
 
@@ -181,3 +181,7 @@ MVP flow: guest authenticates **before** booking row exists (short-lived ticket;
 2. **Atomic reserve:** seats claimed with **single conditional statement** — `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` — inside booking transaction. `Booking` inserted only if statement affected a row. Never read `bookedCount`, check in JS, then write back.
 3. **Public access:** visitors read/book only via organizer `slug`; no organizer dashboard APIs.
 4. **One active booking per guest per slot:** a guest may hold at most one `confirmed` booking on a given slot. Enforced by a partial unique index `bookings_one_active_per_guest_per_slot` on `(timeSlotId, guestMessenger, guestMessengerId) WHERE status = 'confirmed'`, so a guest who cancels and re-books is not blocked. The second `INSERT` raises a `23505` that `createGuestBooking` maps to a `DuplicateBookingError` (`409`).
+5. **Transitive ownership:** there is no `organizerId` on bookings — a booking belongs to a slot, the slot to a service, the service to an organizer. Every read scopes through the parent chain; unknown id and foreign id are answered identically.
+6. **Options validity:** every `selectedOptions` entry must be in the service's `options`; count respects `optionsSelectMode` (`single` = at most one). The pair (`options`, `optionsSelectMode`) is always patched together.
+7. **Demo read-only ([ADR-010](decisions/010-demo-organizer-account.md)):** the demo organizer id and anonymous cabinet visitors are refused on **every** write path (guest booking/cancel included), never sent notifications.
+8. **Guest identity from ticket only:** the messenger identity stored on a booking comes from a server-validated, single-use auth ticket (`RequireGuestIdentity`), never from client-supplied `messengerId`.

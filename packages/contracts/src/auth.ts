@@ -59,7 +59,7 @@ export type AuthTicketResponse = z.infer<typeof authTicketResponse>
 
 /**
  * Identity payload cached in Redis behind an auth ticket (ADR-008).
- * `purpose` binds the ticket to one flow (consolidated review A-5): a
+ * `purpose` binds the ticket to one flow: a
  * guest ticket from `/api/auth/telegram-guest` must not be redeemable
  * in `POST /api/organizers`, and vice versa.
  */

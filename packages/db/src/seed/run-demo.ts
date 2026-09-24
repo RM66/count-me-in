@@ -68,7 +68,7 @@ export async function seedDemo(now: Date = new Date()): Promise<void> {
     }
 
     await tx.insert(timeSlots).values(slots)
-    // manageTokenHash is NOT NULL (consolidated review P1): compute it at
+    // manageTokenHash is NOT NULL: compute it at
     // insert time rather than repeating it in every demo literal.
     await tx
       .insert(bookings)
@@ -79,7 +79,7 @@ export async function seedDemo(now: Date = new Date()): Promise<void> {
 /**
  * Remove the demo organizer and everything under it.
  *
- * Bookings are deleted explicitly first (consolidated review P1-4):
+ * Bookings are deleted explicitly first:
  * `bookings.time_slot_id` is ON DELETE RESTRICT, so the organizer
  * cascade alone would die on the seeded bookings with an FK violation.
  * One transaction so a failure leaves the demo intact.

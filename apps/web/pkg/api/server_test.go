@@ -105,8 +105,25 @@ func TestMuxDispatchesEveryOperation(t *testing.T) {
 	for _, op := range muxOperations {
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, httptest.NewRequest(op.method, op.path, nil))
-		if rec.Code == http.StatusNotFound || rec.Code == http.StatusMethodNotAllowed {
+		if rec.Code == http.StatusMethodNotAllowed {
+			t.Errorf("%s %s: not routed by the generated mux (status %d)", op.method, op.path, rec.Code)
+			continue
+		}
+		if rec.Code == http.StatusNotFound && !isJSONError(rec) {
+			// The generated mux answers 404 (405 for a wrong method) with
+			// a text/plain body; route handlers answer their own 404s
+			// (unknown service/slot id, foreign queue) as JSON error
+			// bodies. Without a database the zero-uuid probes below panic
+			// into a 500; against a real database they legitimately
+			// answer a handler-level 404 — both prove the pattern is
+			// registered, only a mux-level 404 does not.
 			t.Errorf("%s %s: not routed by the generated mux (status %d)", op.method, op.path, rec.Code)
 		}
 	}
+}
+
+// isJSONError reports whether the recorder carries a route-handler JSON
+// error body rather than the mux's own text/plain 404 page.
+func isJSONError(rec *httptest.ResponseRecorder) bool {
+	return strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json")
 }

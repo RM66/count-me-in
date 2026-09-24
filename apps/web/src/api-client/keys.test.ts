@@ -41,7 +41,7 @@ describe('queryKeys.bookings', () => {
     expect(queryKeys.bookings.all).toEqual(['bookings'])
   })
 
-  // The `bookings.guest` key was removed (consolidated review W-7): it
+  // The `bookings.guest` key was removed: it
   // was written by useLookupBookings but never read by any useQuery —
   // dead cache entries with no consumer.
 })

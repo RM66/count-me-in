@@ -101,7 +101,7 @@ func HandleOutboxSweep(ctx context.Context) error {
 		}
 	}
 
-	// Retention (P0-1): `sent` rows have no diagnostic value past the
+	// Retention: `sent` rows have no diagnostic value past the
 	// window — the trace id lives in logs, not in the table.
 	if deleted, err := db.DeleteSentOutboxBefore(ctx, time.Now().Add(-outboxSentRetention)); err != nil {
 		logx.Error(err, map[string]any{"source": "outbox-retention"})

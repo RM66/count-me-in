@@ -1,4 +1,4 @@
-/** Sentry client-side init (consolidated review P1-7).
+/** Sentry client-side init.
  *
  * Next 16 runs on Turbopack, where the legacy `sentry.client.config.ts`
  * at the project root is deprecated and silently ignored — client errors

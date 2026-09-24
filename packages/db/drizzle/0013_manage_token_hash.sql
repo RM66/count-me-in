@@ -1,4 +1,4 @@
--- manageToken hashing (consolidated review P1, glm/hy4/mimo/muse).
+-- manageToken hashing.
 --
 -- The token is a password-equivalent credential: whoever holds it can
 -- cancel the booking. Storing it in the clear meant a database dump

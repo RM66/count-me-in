@@ -265,7 +265,7 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	publishOutboxRows(publishCtx, outbox, traceID)
 }
 
-// publishOutboxRows is the shared after-commit publish (P0-1): each
+// publishOutboxRows is the shared after-commit publish: each
 // outbox row written in the booking transaction is published to its
 // queue with the row id as the dedup id, then marked `sent` on success
 // so the sweeper never re-publishes a delivered row. Publish errors are

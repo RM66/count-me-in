@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n web,api -c blue,green \"next dev --port 3000\" \"go run ./cmd/dev\"",
+    "dev:web": "next dev --port 3000",
     "build": "next build",
     "build:go": "bun run generate:i18n && bun run generate:openapi && bun run generate:constants && go generate ./pkg/api/... && sh scripts/build-go.sh",
     "generate:i18n": "bun scripts/generate-i18n-go.ts",
@@ -19,7 +20,9 @@
     "test": "bun run test:web && bun run test:go",
     "test:web": "vitest run",
     "test:go": "go test ./pkg/...",
-    "test:watch": "vitest"
+    "test:e2e": "playwright test",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
@@ -37,11 +40,13 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "ioredis": "^6.0.0",
     "lucide-react": "^1.25.0",
     "next": "16.2.0",
     "next-auth": "^5.0.0-beta.32",
     "next-intl": "^4.13.7",
     "next-themes": "^0.4.6",
+    "postgres": "^3.4.9",
     "posthog-js": "^1.413.3",
     "radix-ui": "^1.6.4",
     "react": "^19.2.0",
@@ -56,6 +61,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@storybook/addon-docs": "^10.5.4",
@@ -68,6 +74,7 @@
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "@vitest/coverage-v8": "3.2.7",
     "concurrently": "^10.0.5",
     "eslint": "^9.39.1",
     "happy-dom": "^18.0.0",
