@@ -20,7 +20,7 @@
     "@types/node": "^22.15.3",
     "eslint": "^9.39.1",
     "typescript": "6.0.3",
-    "vitest": "^3.2.0"
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "@repo/contracts": "workspace:*"
