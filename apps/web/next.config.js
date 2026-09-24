@@ -92,8 +92,8 @@ const nextConfig = {
     // PostHog in production.
     // Next.js needs 'unsafe-inline' for styles (styled-jsx / inline
     // critical CSS) and 'unsafe-eval' only in dev. The Go API sets its
-    // own copies in pkg/httpx (its responses bypass headers()), so both
-    // sides of the wire are covered.
+    // own security headers in pkg/httpx (its responses bypass headers())
+    // — but no CSP there: API responses are JSON, never HTML documents.
     const isDev = process.env.NODE_ENV === 'development'
 
     // A malformed env value must not take the whole build down — fall
@@ -118,6 +118,27 @@ const nextConfig = {
     const posthogOrigin = process.env.NEXT_PUBLIC_POSTHOG_HOST
       ? originOf(process.env.NEXT_PUBLIC_POSTHOG_HOST, 'https://app.posthog.com')
       : 'https://app.posthog.com'
+    // The PostHog JS SDK loads code (/array/*/config.js, recorder, surveys)
+    // from a sibling assets CDN: eu.i.posthog.com serves from
+    // eu-assets.i.posthog.com, us.i/app.posthog.com from us-assets.i.posthog.com.
+    // PostHog rotates these hosts (adblock evasion) and recommends a wildcard,
+    // so an exact derived origin is brittle by design — it already broke once
+    // (missing `.i.` in the US assets host). The wildcard covers every current
+    // and future *.posthog.com host (ingest + assets, US + EU + legacy app.*);
+    // the exact origin stays for custom reverse-proxy setups (non-posthog.com),
+    // where the proxy domain itself must be allowed.
+    const posthogWildcard = 'https://*.posthog.com'
+    const posthogExtra = (() => {
+      try {
+        const host = new URL(posthogOrigin).hostname
+        // Already covered by the wildcard — avoid a noisy duplicate.
+        if (host === 'posthog.com' || host.endsWith('.posthog.com')) return ''
+      } catch {
+        // Malformed posthogOrigin already fell back to the default above;
+        // allow it rather than breaking analytics.
+      }
+      return ` ${posthogOrigin}`
+    })()
     // Sentry ingest region. instrumentation-client.ts reads
     // NEXT_PUBLIC_SENTRY_DSN ?? SENTRY_DSN, so the CSP must allow
     // whichever one is set.
@@ -139,11 +160,15 @@ const nextConfig = {
       // JSON-LD XSS vector is closed by escaping, and 'unsafe-inline'
       // is already granted — the marginal loss is
       // small. The long-term fix is the OAuth-redirect flow.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org",
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org ${posthogWildcard}${posthogExtra}`,
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${r2UploadOrigin}`,
+      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${r2UploadOrigin} ${posthogWildcard}${posthogExtra}`,
       "font-src 'self' data:",
-      `connect-src 'self' https://*.upstash.io ${sentryOrigin} ${posthogOrigin} ${r2UploadOrigin} ${mediaOrigin}`,
+      `connect-src 'self' https://*.upstash.io ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}`,
+      // Session replay runs its recorder in a blob: worker — without an
+      // explicit worker-src it falls back to default-src 'self' and replay
+      // silently never starts.
+      "worker-src 'self' blob:",
       // The Telegram login widget renders in an iframe from
       // oauth.telegram.org — without frame-src it falls back to
       // default-src 'self' and the widget never appears.
