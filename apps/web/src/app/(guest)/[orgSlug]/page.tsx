@@ -101,7 +101,7 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
   return (
     <div className="flex flex-col gap-6">
       {/* Structured data built from the same public rows the page renders;
-          escaped for HTML context (P0-3). */}
+          escaped for HTML context. */}
       <JsonLd data={structuredData} />
       <div className="flex flex-col items-center gap-4 text-center">
         <Avatar className="size-20">

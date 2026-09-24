@@ -309,6 +309,27 @@ describe('BookingManage', () => {
       })
     })
 
+    it('leaves the booking cancellable when the cancel fails (network error)', async () => {
+      // A network failure must not strand the guest: the booking stays
+      // confirmed and the Cancel button stays available for a retry.
+      mockMutateAsync.mockRejectedValueOnce(new Error('Network request failed'))
+
+      renderWithProviders(<BookingManage booking={makeBooking()} />)
+
+      fireEvent.click(screen.getByText('Cancel booking'))
+      fireEvent.click(screen.getByText('Yes, cancel'))
+
+      await waitFor(() => {
+        expect(mockToastError).toHaveBeenCalledWith('Network request failed')
+      })
+
+      // Still confirmed, no success side effects, retry possible.
+      expect(screen.getByText('Confirmed')).toBeInTheDocument()
+      expect(screen.getByText('Cancel booking')).toBeInTheDocument()
+      expect(mockToastSuccess).not.toHaveBeenCalled()
+      expect(mockRouterRefresh).not.toHaveBeenCalled()
+    })
+
     it('closes the dialog when Keep booking is clicked', () => {
       renderWithProviders(<BookingManage booking={makeBooking()} />)
 

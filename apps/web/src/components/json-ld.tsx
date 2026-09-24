@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
 /**
- * Escapes JSON for safe embedding inside a `<script>` element
- * (consolidated review P0-3). `JSON.stringify` does not escape `<`,
+ * Escapes JSON for safe embedding inside a `<script>` element.
+ * `JSON.stringify` does not escape `<`,
  * `>`, `&` or the U+2028/U+2029 line separators, so organizer-controlled
  * text like `</script><script>…</script>` would break out of the tag —
  * a self-serve stored XSS on public pages. Escaping them as JSON unicode
@@ -24,7 +24,7 @@ type JsonLdProps = {
 
 /**
  * Renders a `<script type="application/ld+json">` tag with the payload
- * escaped for HTML context (P0-3). Use this for *any* JSON-LD built from
+ * escaped for HTML context. Use this for *any* JSON-LD built from
  * user-controlled fields — organizer names, service titles, descriptions.
  */
 export function JsonLd({ data }: JsonLdProps): ReactNode {

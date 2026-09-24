@@ -6,7 +6,12 @@ node_modules
 .pnp.js
 
 # testing
-/coverage
+# Coverage / E2E artifacts in nested packages (vitest --coverage,
+# playwright polls these dirs on every run — never commit them).
+coverage/
+test-results/
+playwright-report/
+blob-report/
 
 # next.js
 .next/

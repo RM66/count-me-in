@@ -10,6 +10,8 @@
   "scripts": {
     "check-types": "tsc --noEmit",
     "lint": "eslint --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:generate": "bun --env-file=../../.env drizzle-kit generate",
     "db:migrate": "bun run src/migrate.ts",
     "db:push": "bun --env-file=../../.env drizzle-kit push",
@@ -22,7 +24,8 @@
     "@types/node": "^22.15.3",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.1",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^3.2.0"
   },
   "dependencies": {
     "@repo/contracts": "workspace:*",

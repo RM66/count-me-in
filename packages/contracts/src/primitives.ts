@@ -42,7 +42,7 @@ export const BOUNDS = {
 } as const
 
 /**
- * Length semantics (consolidated review P3 — assessed, safe by construction):
+ * Length semantics (assessed, safe by construction):
  * Zod's `.max()` counts UTF-16 code units, while JSON Schema `maxLength`
  * (Go/kin-openapi) and Postgres `char_length` count **code points** — an
  * emoji is 2 units but 1 point. The layers therefore diverge only in one

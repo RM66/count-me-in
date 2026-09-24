@@ -57,7 +57,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   // reads r.Header.Get(ORGANIZER_AUTH_HEADER). Setting it on the
   // response (as this code once did) never reaches the handler, and
   // every browser-side organizer write arrived anonymous (403
-  // DEMO_READ_ONLY) — consolidated review P0-4.
+  // DEMO_READ_ONLY).
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
     const requestHeaders = new Headers(request.headers)
     const session = await auth()

@@ -1,0 +1,50 @@
+## createdOrganizer
+🎉 <b>New booking</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 Sat, Jul 25, 2026, 07:00
+👥 2 seats
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 3 seats still free.
+[button] Open in cabinet → https://example.com/cabinet
+## createdGuest
+✅ <b>Booking confirmed</b> with Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 Sat, Jul 25, 2026, 07:00
+👥 2 seats
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+Need to change your plans? Use the button below.
+[button] Manage my booking → https://example.com/booking/tok-abc123
+## cancelledOrganizer
+❌ <b>Booking cancelled</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 Sat, Jul 25, 2026, 07:00
+👥 2 seats
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 3 seats now free on this session.
+[button] Open in cabinet → https://example.com/cabinet
+## cancelledGuest
+❌ <b>Your booking was cancelled</b> by Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 Sat, Jul 25, 2026, 07:00
+👥 2 seats
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+Sorry about that — you can pick another session below.
+[button] See other sessions → https://example.com/test-org

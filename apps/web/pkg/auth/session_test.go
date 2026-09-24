@@ -5,33 +5,22 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"countmein/pkg/authtest"
 )
 
 const testSecret = "test-golden-secret"
 
-// mintTestToken produces an HS256 compact JWT matching the format
-// mintOrganizerAuth in organizer-token.ts, signing with the same
-// HKDF-derived key.
+// mintTestToken delegates to the shared helper so the derivation parameters
+// have a single copy (see pkg/authtest); the derivation itself is pinned by
+// TestDerivedSigningKeyGolden below.
 func mintTestToken(secret, sub, slug string, exp int64) string {
-	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
-	payload, _ := json.Marshal(map[string]any{
-		"sub":  sub,
-		"slug": slug,
-		"iat":  time.Now().Unix(),
-		"exp":  exp,
-	})
-	payloadEncoded := base64.RawURLEncoding.EncodeToString(payload)
-	signingInput := header + "." + payloadEncoded
-	mac := hmac.New(sha256.New, derivedSigningKey(secret))
-	mac.Write([]byte(signingInput))
-	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	return signingInput + "." + sig
+	return authtest.MintOrganizerToken(secret, sub, slug, exp)
 }
 
 // TestDerivedSigningKeyGolden pins the HKDF derivation to Node's

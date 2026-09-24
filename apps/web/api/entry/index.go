@@ -17,7 +17,7 @@ import (
 	"countmein/pkg/api"
 )
 
-// Env validation (P1-8) fails the cold start loudly on a production
+// Env validation fails the cold start loudly on a production
 // misconfiguration; a panic here surfaces as a 500 on every request,
 // which is the intended loud failure.
 var mux = func() http.Handler {

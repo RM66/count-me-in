@@ -161,7 +161,7 @@ export async function countConfirmedBookings(
  * Returns `null` for an unknown token, which the page turns into a `404`.
  */
 export async function getGuestBookingByToken(token: string): Promise<GuestBooking | null> {
-  // Credential check goes through the hash (consolidated review P1):
+  // Credential check goes through the hash:
   // the raw token column is not a lookup key anymore.
   const [row] = await guestBookingQuery()
     .where(eq(bookings.manageTokenHash, hashManageToken(token)))

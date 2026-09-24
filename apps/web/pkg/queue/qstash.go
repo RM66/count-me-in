@@ -44,7 +44,7 @@ var (
 // returns the outcome. dedupID (the outbox row id) is sent as
 // Upstash-Deduplication-Id — QStash suppresses a redelivery of the same
 // id, which makes the sweeper's at-least-once re-publish safe against
-// the inline path and against its own retries (P0-1). traceID travels
+// the inline path and against its own retries. traceID travels
 // as Upstash-Trace-Id so the job handler can correlate the pipeline.
 //
 // In dev without QSTASH_TOKEN the publish is skipped with nil — local
@@ -89,7 +89,7 @@ func publishBody(ctx context.Context, token, base, destination, queueName string
 	if dedupID != "" {
 		// Suppresses duplicate deliveries of the same outbox row —
 		// the sweeper re-publish and QStash retries become no-ops
-		// instead of duplicate Telegram messages (P0-1).
+		// instead of duplicate Telegram messages.
 		req.Header.Set("Upstash-Deduplication-Id", dedupID)
 	}
 	if traceID != "" {

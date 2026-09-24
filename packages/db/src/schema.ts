@@ -162,7 +162,7 @@ export const bookings = pgTable(
     manageToken: text('manage_token').notNull(),
     /**
      * SHA-256(token) hex — the lookup key for cancel and the guest
-     * management page (consolidated review P1). The raw column stays
+     * management page. The raw column stays
      * for the flows that must re-issue the link (booking.created job,
      * "lost my link"); see ADR-020 for the contract phase.
      */

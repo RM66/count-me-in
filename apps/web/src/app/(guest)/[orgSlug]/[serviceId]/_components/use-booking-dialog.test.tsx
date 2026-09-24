@@ -667,3 +667,71 @@ describe('useBookingDialog — handleTicket', () => {
     expect(mockMutateAsync).toHaveBeenCalledTimes(2)
   })
 })
+
+// ── localized error mapping: the server copy is EN; the dialog
+// re-renders the recognizable failure modes in the guest's language,
+// keeping the real numbers. ─────────────────────────────────────────────────
+
+describe('useBookingDialog — localized error mapping', () => {
+  async function failWith(err: unknown) {
+    mockMutateAsync.mockRejectedValueOnce(err)
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper: createWrapper() },
+    )
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 't',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane',
+      })
+    })
+    return result.current.error
+  }
+
+  it('renders a sold-out 409 (seatsLeft 0) as the localized sold-out copy', async () => {
+    const error = await failWith(
+      new ApiError('raw server sold-out copy', 409, 'slot_sold_out', {
+        seatsLeft: 0,
+      }),
+    )
+    // The IntlTestProvider renders the real ICU copy — the raw server
+    // message must be replaced by the localized one.
+    expect(error).toBe('This session is fully booked')
+  })
+
+  it('keeps the real seatsLeft count in the localized message', async () => {
+    const error = await failWith(
+      new ApiError('Only 2 seats left', 409, 'slot_sold_out', { seatsLeft: 2 }),
+    )
+    expect(error).toContain('2')
+    expect(error).not.toBe('Only 2 seats left')
+  })
+
+  it('renders a party-too-large 400 with the maxSeats number', async () => {
+    const error = await failWith(
+      new ApiError('You can book at most 4 seats', 400, 'party_too_large', {
+        maxSeats: 4,
+      }),
+    )
+    expect(error).toContain('4')
+    expect(error).not.toBe('You can book at most 4 seats')
+  })
+
+  it('renders a 404 as the localized "no longer available" copy', async () => {
+    const error = await failWith(new ApiError('raw server gone copy', 404, 'slotNotBookable'))
+    expect(error).toBe('This session is no longer available')
+  })
+
+  it('renders an invalid-option code as the localized options copy', async () => {
+    const error = await failWith(new ApiError('Invalid option selection', 400, 'invalid_option'))
+    expect(error).toBeTruthy()
+    expect(error).not.toBe('Invalid option selection')
+  })
+
+  it('falls back to the server message for an unrecognized ApiError', async () => {
+    const error = await failWith(new ApiError('Something unexpected', 418))
+    expect(error).toBe('Something unexpected')
+  })
+})

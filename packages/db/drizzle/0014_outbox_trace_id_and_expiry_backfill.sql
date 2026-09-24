@@ -7,7 +7,7 @@
 ALTER TABLE "notification_outbox" ADD COLUMN IF NOT EXISTS "trace_id" text;
 
 -- Legacy manageToken rows created before the expiry column existed are
--- `manage_token_expires_at IS NULL` = non-expiring (review P1-8). A
+-- `manage_token_expires_at IS NULL` = non-expiring. A
 -- token's usable window is the slot start + 24h grace; for legacy rows
 -- the slot start is the best available bound, so backfill from it.
 UPDATE "bookings" b

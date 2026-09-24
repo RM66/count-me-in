@@ -1,4 +1,4 @@
--- Hot-read composite indexes + DB bounds (consolidated review P3).
+-- Hot-read composite indexes + DB bounds.
 --
 -- Indexes:
 --   time_slots(service_id, starts_at) — the public service page lists a

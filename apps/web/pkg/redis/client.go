@@ -46,3 +46,18 @@ func Client() *goredis.Client {
 	}
 	return client
 }
+
+// ResetForTest closes the shared client (if any) and drops the cached
+// init state, so the next Client() call re-reads REDIS_URL. Test-only:
+// production code must never call it — the singleton is process-wide, so
+// concurrent use while a test resets is a data race. The caller owns the
+// environment: set REDIS_URL first (t.Setenv inside a test, os.Setenv in
+// TestMain), then reset.
+func ResetForTest() {
+	if client != nil {
+		_ = client.Close()
+	}
+	client = nil
+	initErr = nil
+	once = sync.Once{}
+}

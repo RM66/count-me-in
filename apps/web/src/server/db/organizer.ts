@@ -64,7 +64,7 @@ export function toPublicOrganizer(row: Organizer): PublicOrganizer {
  * caller answers `404`. Slugs are stored lowercase (the `slug` primitive
  * transforms them), so the lookup lowercases too.
  *
- * Not cached (consolidated review P0-2): the `unstable_cache` wrapper and its
+ * Not cached: the `unstable_cache` wrapper and its
  * `public-organizers` tag used to be here, but writes moved to the Go API
  * (ADR-013), which cannot call `revalidateTag` — the tag was never
  * invalidated, so a renamed organizer served stale pages (and stale 404s for

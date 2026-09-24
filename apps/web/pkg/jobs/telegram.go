@@ -57,6 +57,10 @@ var chatNotFoundRe = regexp.MustCompile(`(?i)chat not found`)
 
 var telegramHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
+// telegramAPIBase — overridable so tests can point the client at a fake
+// Bot API server; production never sets it.
+var telegramAPIBase = "https://api.telegram.org"
+
 // SendMessage sends one message. link_preview_options.is_disabled
 // keeps Telegram from unfurling the cabinet or booking URL: the
 // preview would be a screenshot-sized card for a page that requires
@@ -81,7 +85,7 @@ func SendMessage(ctx context.Context, botToken, chatID, text string, button *Mes
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://api.telegram.org/bot"+botToken+"/sendMessage", bytes.NewReader(raw))
+		telegramAPIBase+"/bot"+botToken+"/sendMessage", bytes.NewReader(raw))
 	if err != nil {
 		return err
 	}
