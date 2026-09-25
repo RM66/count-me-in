@@ -206,6 +206,19 @@
       "valid": false
     },
     {
+      "name": "options without mode (the pair must travel together in the patch)",
+      "body": {
+        "options": [
+          "A",
+          "B"
+        ]
+      },
+      "valid": false,
+      "fieldErrors": [
+        "optionsSelectMode"
+      ]
+    },
+    {
       "name": "options empty array",
       "body": {
         "options": []
@@ -241,11 +254,31 @@
       ]
     },
     {
-      "name": "options null alone clears options",
+      "name": "options null alone is schema-valid (the merged state still needs the mode cleared)",
       "body": {
         "options": null
       },
       "valid": true
+    },
+    {
+      "name": "photoUrl javascript scheme",
+      "body": {
+        "photoUrl": "javascript:alert(1)"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "photoUrl"
+      ]
+    },
+    {
+      "name": "photoUrl data scheme",
+      "body": {
+        "photoUrl": "data:text/html,x"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "photoUrl"
+      ]
     }
   ],
   "schema": "UpdateServiceInput"

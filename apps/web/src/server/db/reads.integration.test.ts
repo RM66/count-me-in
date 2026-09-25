@@ -185,12 +185,24 @@ maybeDescribe('server/db reads (integration, real Postgres)', () => {
 
     it('getGuestBookingByToken resolves the full chain through the token hash', async () => {
       const { getGuestBookingByToken } = await import('@/server/db/booking')
-      // Deterministic demo token (publicly known — safe, ADR-010: every write
-      // path rejects the demo account, so the token cannot cancel anything).
-      const guest = await getGuestBookingByToken('demo-manage-token-1')
+      const { eq } = await import('drizzle-orm')
+      // Manage tokens are minted randomly per seed run (ADR-020), so read
+      // the live token instead of relying on a committed literal. The
+      // token belongs to demo-guest-1's first booking, whose slot is one
+      // of the upcoming ones — its expiry (slot start + 24h) is in the
+      // future, which the read enforces.
+      const [row] = await dbModule!.db
+        .select({ manageToken: dbModule!.bookings.manageToken })
+        .from(dbModule!.bookings)
+        .where(eq(dbModule!.bookings.guestMessengerId, 'demo-guest-1'))
+        .limit(1)
+      expect(row?.manageToken).toBeTruthy()
+
+      const guest = await getGuestBookingByToken(row!.manageToken)
       expect(guest).not.toBeNull()
-      expect(guest!.manageToken).toBe('demo-manage-token-1')
+      expect(guest!.manageToken).toBe(row!.manageToken)
       expect(guest!.guestName).toBe('Mila Petrović')
+      expect(guest!.canCancel).toBe(true)
       // The full parent chain comes along for the guest page.
       expect(guest!.slot.id).toMatch(/^01930000-/)
       expect(guest!.organizer.slug).toBe(DEMO_ORGANIZER_SLUG)
@@ -198,6 +210,21 @@ maybeDescribe('server/db reads (integration, real Postgres)', () => {
       // organizer DTO above must not.
       expect(guest!.service.id).toBeTruthy()
       expect(await getGuestBookingByToken('unknown-token')).toBeNull()
+    })
+
+    it('an expired manage token answers like an unknown one', async () => {
+      const { getGuestBookingByToken } = await import('@/server/db/booking')
+      const { eq } = await import('drizzle-orm')
+      // demo-guest-9's booking sits on a past slot: the token was born
+      // expired (slot start + 24h), so the manage page must 404 exactly
+      // like an unknown token — parity with the Go cancel write.
+      const [row] = await dbModule!.db
+        .select({ manageToken: dbModule!.bookings.manageToken })
+        .from(dbModule!.bookings)
+        .where(eq(dbModule!.bookings.guestMessengerId, 'demo-guest-9'))
+        .limit(1)
+      expect(row?.manageToken).toBeTruthy()
+      expect(await getGuestBookingByToken(row!.manageToken)).toBeNull()
     })
 
     it('getAnalyticsSummary aggregates the seeded windows', async () => {

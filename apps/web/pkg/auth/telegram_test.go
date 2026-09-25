@@ -25,6 +25,10 @@ func expiredAuthDate() string {
 	return strconv.FormatInt(time.Now().Unix()-widgetDataValidAfter-3600, 10)
 }
 
+func futureAuthDate() string {
+	return strconv.FormatInt(time.Now().Unix()+3600, 10)
+}
+
 // signWidget computes the Telegram widget hash independently of the
 // production code path (same algorithm, hand-written here) so the
 // test anchors the HMAC contract, not just itself. Values arrive
@@ -129,6 +133,18 @@ func TestValidateTelegramWidgetExpired(t *testing.T) {
 
 	if _, err := ValidateTelegramWidget(widgetBody(t, 123456789, "Mila", "", "", fields["auth_date"], fields["hash"])); err != ErrTelegramValidationFailed {
 		t.Fatalf("expired widget must fail validation, got %v", err)
+	}
+}
+
+// A future auth_date is a forged claim, not a slow clock: the past
+// window is 24h, the future direction only clock skew (5 minutes).
+func TestValidateTelegramWidgetFutureRejected(t *testing.T) {
+	t.Setenv("TELEGRAM_BOT_TOKEN", testBotToken)
+	fields := map[string]string{"auth_date": futureAuthDate(), "first_name": "Mila", "id": "123456789"}
+	fields["hash"] = signWidget(testBotToken, fields)
+
+	if _, err := ValidateTelegramWidget(widgetBody(t, 123456789, "Mila", "", "", fields["auth_date"], fields["hash"])); err != ErrTelegramValidationFailed {
+		t.Fatalf("widget an hour in the future must fail validation, got %v", err)
 	}
 }
 

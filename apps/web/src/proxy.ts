@@ -60,6 +60,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   // DEMO_READ_ONLY).
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
     const requestHeaders = new Headers(request.headers)
+    // The organizer-auth header is a middleware-minted credential and
+    // nothing else: strip any client-supplied value before minting, so
+    // an anonymous request can never carry a forged header through to
+    // the Go API. The trust boundary is the topology (this edge always
+    // overwrites the header), not only the signing secret.
+    requestHeaders.delete(ORGANIZER_AUTH_HEADER)
     const session = await auth()
     if (session?.user?.id) {
       const token = await mintOrganizerAuth(session.user.id, session.user.slug)

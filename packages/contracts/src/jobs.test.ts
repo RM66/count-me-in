@@ -16,6 +16,7 @@ describe('bookingCreatedJob', () => {
   it('parses a valid payload', () => {
     const result = bookingCreatedJob.safeParse({
       bookingId: '01930000-0000-7000-8000-000000000001',
+      outboxId: '01930000-0000-7000-8000-00000000000a',
       recipient: 'organizer',
     })
     expect(result.success).toBe(true)
@@ -49,6 +50,7 @@ describe('bookingCancelledJob', () => {
   it('parses a valid payload', () => {
     const result = bookingCancelledJob.safeParse({
       bookingId: '01930000-0000-7000-8000-000000000001',
+      outboxId: '01930000-0000-7000-8000-00000000000a',
       cancelledBy: 'guest',
     })
     expect(result.success).toBe(true)

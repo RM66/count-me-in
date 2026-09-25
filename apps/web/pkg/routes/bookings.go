@@ -2,7 +2,9 @@ package routes
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	gen "countmein/pkg/api/gen"
@@ -14,6 +16,12 @@ import (
 	"countmein/pkg/queue"
 	"countmein/pkg/validation"
 )
+
+// publishBudget bounds the inline outbox publish that runs after the
+// booking/cancel transaction commits: the response is already flushed,
+// so this is best-effort — the sweeper re-publishes anything the budget
+// cuts short.
+const publishBudget = 1500 * time.Millisecond
 
 // BookingCreate — POST /api/bookings: a guest reserves seats (ADR-002).
 // The public write of the whole product, and the only one with no
@@ -29,7 +37,10 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCreateBookingInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -92,7 +103,7 @@ func BookingCreate(w http.ResponseWriter, r *http.Request) {
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
-	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	publishCtx, cancel := context.WithTimeout(context.Background(), publishBudget)
 	defer cancel()
 	publishOutboxRows(publishCtx, outbox, traceID)
 }
@@ -112,7 +123,10 @@ func BookingLookup(w http.ResponseWriter, r *http.Request) {
 	if !httpx.RateLimited(w, r, "rl:lookup:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 10, Window: time.Minute}) {
 		return
 	}
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeLookupBookingsInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, i18n.DetectLocale(r), errs)
@@ -156,7 +170,10 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 
 	traceID := logx.NewTraceID()
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCancelBookingByTokenInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -194,7 +211,7 @@ func BookingCancel(w http.ResponseWriter, r *http.Request) {
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
-	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	publishCtx, cancel := context.WithTimeout(context.Background(), publishBudget)
 	defer cancel()
 	publishOutboxRows(publishCtx, outbox, traceID)
 }
@@ -222,7 +239,10 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCancelBookingByOrganizerInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -260,7 +280,7 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
-	publishCtx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	publishCtx, cancel := context.WithTimeout(context.Background(), publishBudget)
 	defer cancel()
 	publishOutboxRows(publishCtx, outbox, traceID)
 }
@@ -268,36 +288,71 @@ func BookingCancelByOrganizer(w http.ResponseWriter, r *http.Request) {
 // publishOutboxRows is the shared after-commit publish: each
 // outbox row written in the booking transaction is published to its
 // queue with the row id as the dedup id, then marked `sent` on success
-// so the sweeper never re-publishes a delivered row. Publish errors are
-// absorbed (the booking is already committed) — the row stays
-// `pending` and the sweeper retries it. The mark-sent runs in its own
-// context: it must not be cancelled by the publish deadline, and its
-// failure must not fail anything (the sweeper's dedup id makes a
-// re-publish harmless).
+// (or `skipped` on a deliberate dev skip) so the sweeper never
+// re-publishes a delivered row. Publish errors are absorbed (the
+// booking is already committed) — the row stays `pending` and the
+// sweeper retries it. The mark-sent runs in its own context: it must
+// not be cancelled by the publish deadline, and its failure must not
+// fail anything (the sweeper's dedup id makes a re-publish harmless).
+//
+// Publishes run concurrently: with two recipients the sequential 2×1s
+// worst case exceeds the 1.5s budget and the second row dies
+// mid-request. Marking stays sequential on detached contexts.
 func publishOutboxRows(ctx context.Context, rows []db.OutboxRow, traceID string) {
-	for _, row := range rows {
-		if err := queue.PublishOutbox(ctx, row.Queue, []byte(row.Payload), row.ID, traceID); err != nil {
-			logx.Error(err, map[string]any{
-				"queue":    row.Queue,
-				"outboxId": row.ID,
-				"traceId":  traceID,
-				"source":   "inline-publish",
-			})
-			continue // stays pending — the sweeper retries
+	type outcome struct {
+		row db.OutboxRow
+		err error
+	}
+	outcomes := make([]outcome, len(rows))
+	var wg sync.WaitGroup
+	for i, row := range rows {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			outcomes[i] = outcome{row, queue.PublishOutbox(ctx, row.Queue, []byte(row.Payload), row.ID, traceID)}
+		}()
+	}
+	wg.Wait()
+	for _, o := range outcomes {
+		if o.err == nil {
+			markOutboxTerminal(o.row.ID, traceID, false)
+			continue
 		}
-		// Bounded context: the publish context may already be expired
-		// by the time the last row is marked, and an unbounded
-		// Background context would keep the function alive past its
-		// budget on a slow DB.
-		markCtx, markCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		err := db.MarkOutboxSent(markCtx, row.ID)
-		markCancel()
-		if err != nil {
-			logx.Error(err, map[string]any{
-				"outboxId": row.ID,
-				"traceId":  traceID,
-				"source":   "inline-mark-sent",
-			})
+		if errors.Is(o.err, queue.ErrPublishSkipped) {
+			markOutboxTerminal(o.row.ID, traceID, true)
+			continue
 		}
+		logx.Error(o.err, map[string]any{
+			"queue":    o.row.Queue,
+			"outboxId": o.row.ID,
+			"traceId":  traceID,
+			"source":   "inline-publish",
+		})
+		// stays pending — the sweeper retries
+	}
+}
+
+// markOutboxTerminal records the inline-publish outcome on a detached
+// context: the publish context may already be expired, and an unbounded
+// Background context would keep the function alive past its budget on a
+// slow DB. skipped = the dev-skip sentinel (honest terminal state),
+// otherwise sent.
+func markOutboxTerminal(id, traceID string, skipped bool) {
+	markCtx, markCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer markCancel()
+	var err error
+	source := "inline-mark-sent"
+	if skipped {
+		source = "inline-mark-skipped"
+		err = db.MarkOutboxSkipped(markCtx, id)
+	} else {
+		err = db.MarkOutboxSent(markCtx, id)
+	}
+	if err != nil {
+		logx.Error(err, map[string]any{
+			"outboxId": id,
+			"traceId":  traceID,
+			"source":   source,
+		})
 	}
 }

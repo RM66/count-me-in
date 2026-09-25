@@ -9,6 +9,7 @@ import (
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
+	"countmein/pkg/demo"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -74,7 +75,10 @@ func ListSlots(ctx context.Context, organizerID string, upcomingOnly bool) ([]Ti
 	if upcomingOnly {
 		query += ` AND ts.starts_at >= now()`
 	}
-	query += ` ORDER BY ts.starts_at ASC`
+	// Bounded: a schedule years deep must not stream unbounded rows
+	// into one response. The cabinet paginates client-side today; the
+	// cap is the server-side backstop.
+	query += ` ORDER BY ts.starts_at ASC LIMIT 500`
 
 	rows, err := Pool().Query(ctx, query, organizerID)
 	if err != nil {
@@ -125,12 +129,19 @@ func (e SlotCapacityBelowBookedError) Error() string {
 	return fmt.Sprintf("Capacity cannot be lower than the %d seats already booked", e.BookedCount)
 }
 
-// SlotHasActiveBookingsError — the slot has confirmed bookings, so it
-// cannot be deleted without losing guest records. The caller answers
-// 409; the organizer must cancel the bookings first.
+// SlotHasActiveBookingsError — the slot is referenced by booking rows
+// (confirmed or cancelled), so it cannot be deleted without losing
+// guest records. The caller answers 409; the guard counts every
+// referencing row, not just confirmed ones: the FK is ON DELETE
+// RESTRICT, so a cancelled booking blocks the delete just the same,
+// and a guard narrower than the constraint would let the raw FK error
+// surface as a 500. Cancelling a booking does NOT release the slot —
+// cancelled rows are kept as guest history — so for MVP a booked slot
+// is effectively undeletable; the error copy must not promise an
+// action that clears the 409.
 type SlotHasActiveBookingsError struct{}
 
-func (SlotHasActiveBookingsError) Error() string { return "Slot has active bookings" }
+func (SlotHasActiveBookingsError) Error() string { return "Slot has bookings" }
 
 // SlotUpdate carries the merged state and the set of keys the patch
 // touched (RFC 7386 merge-patch, ADR-016).
@@ -161,6 +172,9 @@ func slotStartsAtTime(s gen.SlotStartsAt) (time.Time, error) {
 // gap that opens is harmless — if the service disappears in between,
 // the FK rejects the row).
 func CreateSlot(ctx context.Context, organizerID string, input gen.CreateTimeSlotInput) (*TimeSlotRow, error) {
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return nil, err
+	}
 	var owned string
 	err := Pool().QueryRow(ctx,
 		`SELECT id FROM services WHERE id = $1 AND organizer_id = $2::uuid LIMIT 1`,
@@ -180,7 +194,17 @@ func CreateSlot(ctx context.Context, organizerID string, input gen.CreateTimeSlo
 	id := newID()
 	query := `INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, capacity, price)
 		VALUES ($1::uuid, $2, $3, $4, $5, $6) RETURNING ` + slotColumns
-	return scanSlot(Pool().QueryRow(ctx, query, id, owned, startsAt, input.DurationMinutes, input.Capacity, input.Price))
+	slot, err := scanSlot(Pool().QueryRow(ctx, query, id, owned, startsAt, input.DurationMinutes, input.Capacity, input.Price))
+	if err != nil {
+		// The ownership check and the INSERT are not one snapshot: a
+		// service deleted in between surfaces as 23503, which must read
+		// as "not found", never a bare 500.
+		if isForeignKeyViolation(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return slot, nil
 }
 
 // UpdateOwnedSlot — bookedCount is deliberately not updatable: seats
@@ -191,6 +215,11 @@ func CreateSlot(ctx context.Context, organizerID string, input gen.CreateTimeSlo
 // tx (P2) — the capacity precheck's FOR UPDATE lock then also
 // serializes against concurrent merge-patch reads of the same row.
 func UpdateOwnedSlotTx(ctx context.Context, tx pgx.Tx, organizerID, slotID string, update SlotUpdate) (*TimeSlotRow, error) {
+	// Defense in depth: routes already refuse the demo account via
+	// RequireWritableOrganizer — a direct db call must not write it either.
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return nil, err
+	}
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -256,27 +285,18 @@ func UpdateOwnedSlotTx(ctx context.Context, tx pgx.Tx, organizerID, slotID strin
 
 // UpdateOwnedSlot wraps UpdateOwnedSlotTx in its own transaction for
 // callers that are not already inside one.
-func UpdateOwnedSlot(ctx context.Context, organizerID, slotID string, update SlotUpdate) (*TimeSlotRow, error) {
-	tx, err := Pool().Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(context.Background()) //nolint
-	slot, err := UpdateOwnedSlotTx(ctx, tx, organizerID, slotID, update)
-	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	return slot, nil
-}
 
-// DeleteOwnedSlot — refuses to delete a slot that still has confirmed
-// bookings (the time_slots FK is RESTRICT, so the database would reject
-// the delete anyway; failing here turns the opaque FK error into a 409
-// the organizer can act on). Returns "" when nothing matched.
+// DeleteOwnedSlot — refuses to delete a slot that is referenced by any
+// booking row, confirmed or cancelled (the time_slots FK is ON DELETE
+// RESTRICT, so the database would reject the delete anyway; failing
+// here turns the opaque FK error into a 409 the organizer can act on).
+// The guard must be at least as wide as the constraint: counting only
+// confirmed bookings would let a cancelled-only slot fall through to a
+// raw 23503 and a bare 500. Returns "" when nothing matched.
 func DeleteOwnedSlot(ctx context.Context, organizerID, slotID string) (string, error) {
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return "", err
+	}
 	tx, err := Pool().Begin(ctx)
 	if err != nil {
 		return "", err
@@ -297,18 +317,27 @@ func DeleteOwnedSlot(ctx context.Context, organizerID, slotID string) (string, e
 		return "", err
 	}
 
-	var active int
+	var referenced int
 	err = tx.QueryRow(ctx,
-		`SELECT count(*) FROM bookings WHERE time_slot_id = $1 AND status = 'confirmed'`, slotID).Scan(&active)
+		`SELECT count(*) FROM bookings WHERE time_slot_id = $1`, slotID).Scan(&referenced)
 	if err != nil {
 		return "", err
 	}
-	if active > 0 {
+	if referenced > 0 {
 		return "", SlotHasActiveBookingsError{}
 	}
 
 	err = tx.QueryRow(ctx, `DELETE FROM time_slots WHERE id = $1 RETURNING id`, slotID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
 	if err != nil {
+		// Backstop: if the constraint ever changes to allow the delete
+		// path this guard models, a stray FK violation must surface as
+		// the same 409, never a bare 500.
+		if isForeignKeyViolation(err) {
+			return "", SlotHasActiveBookingsError{}
+		}
 		return "", err
 	}
 	if err := tx.Commit(ctx); err != nil {

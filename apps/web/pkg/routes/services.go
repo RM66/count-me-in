@@ -44,7 +44,10 @@ func ServicesCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCreateServiceInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -109,7 +112,10 @@ func ServicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	if _, errs := validation.DecodeUpdateServiceInput(body); errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -209,11 +215,14 @@ func serviceWritableState(s db.ServiceRow) map[string]any {
 	}
 }
 
-// ServiceDelete — DELETE /api/services/{id}; cascades to slots and their
-// bookings (the services FK). The cover object is removed from R2
-// best-effort after the delete (see cleanupReplacedMedia) — the
-// photo_url rides along in the DELETE … RETURNING so a concurrent PUT
-// cannot slip a new cover in between a read and the delete.
+// ServiceDelete — DELETE /api/services/{id}. Slots cascade on the
+// services FK, but bookings hold their slots with ON DELETE RESTRICT,
+// so a service whose slots were ever booked answers 409 — terminal for
+// MVP, the booking rows are guest history and nothing removes them.
+// The cover object is removed
+// from R2 best-effort after the delete (see cleanupReplacedMedia) —
+// the photo_url rides along in the DELETE … RETURNING so a concurrent
+// PUT cannot slip a new cover in between a read and the delete.
 func ServiceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
@@ -224,6 +233,10 @@ func ServiceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 
 	deletedID, photoURL, err := db.DeleteOwnedService(r.Context(), organizerID, serviceID)
 	if err != nil {
+		if resp := httpx.ServiceErrorResponse(err, locale); resp != nil {
+			resp.Write(w)
+			return
+		}
 		httpx.Internal(err).Write(w)
 		return
 	}

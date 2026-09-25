@@ -805,6 +805,8 @@
     "alreadyCancelled": "Esta reserva já foi cancelada",
     "slotGone": "Esta sessão não está mais disponível",
     "tooManyRequests": "Muitas solicitações — tente novamente em instantes",
-    "slotHasActiveBookings": "Esta sessão ainda tem reservas confirmadas — cancele-as antes de excluir"
+    "slotHasActiveBookings": "Esta sessão tem reservas e não pode ser excluída",
+    "serviceHasBookings": "Este serviço tem reservas em suas sessões e não pode ser excluído",
+    "bodyTooLarge": "O corpo da requisição é grande demais"
   }
 }

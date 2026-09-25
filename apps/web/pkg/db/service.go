@@ -9,6 +9,7 @@ import (
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
+	"countmein/pkg/demo"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -81,7 +82,7 @@ func ToServiceRecord(s ServiceRow) gen.ServiceRecord {
 // ListServices — all services of an organizer, oldest first.
 func ListServices(ctx context.Context, organizerID string) ([]ServiceRow, error) {
 	rows, err := Pool().Query(ctx,
-		`SELECT `+serviceColumns+` FROM services WHERE organizer_id = $1::uuid ORDER BY created_at ASC`,
+		`SELECT `+serviceColumns+` FROM services WHERE organizer_id = $1::uuid ORDER BY created_at ASC LIMIT 200`,
 		organizerID)
 	if err != nil {
 		return nil, err
@@ -117,6 +118,9 @@ func GetOwnedServiceTx(ctx context.Context, q Querier, organizerID, serviceID st
 // CreateService — the owner always comes from the session, never the
 // payload; optional columns are normalized to null.
 func CreateService(ctx context.Context, organizerID string, input gen.CreateServiceInput) (*ServiceRow, error) {
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return nil, err
+	}
 	id := newServiceID()
 	var modeStr *string
 	if input.OptionsSelectMode != nil {
@@ -155,14 +159,16 @@ type ServiceUpdate struct {
 // UpdateOwnedService — nil when the id does not exist or belongs to
 // someone else (caller answers 404 either way); NoServiceUpdatesError
 // when the payload carries no writable field.
-func UpdateOwnedService(ctx context.Context, organizerID, serviceID string, update ServiceUpdate) (*ServiceRow, error) {
-	return UpdateOwnedServiceTx(ctx, Pool(), organizerID, serviceID, update)
-}
 
 // UpdateOwnedServiceTx is UpdateOwnedService on a caller-supplied
 // querier — paired with GetOwnedServiceTx on one merge-patch
 // transaction (P2).
 func UpdateOwnedServiceTx(ctx context.Context, q Querier, organizerID, serviceID string, update ServiceUpdate) (*ServiceRow, error) {
+	// Defense in depth: routes already refuse the demo account via
+	// RequireWritableOrganizer — a direct db call must not write it either.
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return nil, err
+	}
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -243,22 +249,78 @@ func UpdateOwnedServiceTx(ctx context.Context, q Querier, organizerID, serviceID
 	return scanService(q.QueryRow(ctx, query, args...))
 }
 
-// DeleteOwnedService — slots and their bookings cascade (the services
-// FK), so this also removes any scheduled sessions. Returns "" when
-// nothing matched. The deleted cover URL rides along so the caller can
-// remove the R2 object best-effort after the commit (same pattern as
-// the PUT handlers) — a separate read-then-delete would race with a
-// concurrent PUT pointing the row at a new cover.
+// ServiceHasBookingsError — a booking row (confirmed or cancelled)
+// references one of the service's slots, so the service cannot be
+// deleted without losing guest records. The caller answers 409;
+// cancelling a booking does not remove it, so there is no organizer
+// action that clears the error for MVP.
+type ServiceHasBookingsError struct{}
+
+func (ServiceHasBookingsError) Error() string { return "Service has bookings" }
+
+// DeleteOwnedService — refuses to delete a service whose slots are
+// referenced by any booking row. Slots cascade on the services FK, but
+// bookings hold their slots with ON DELETE RESTRICT, so the cascade
+// stops at the first booked slot and the raw FK error would surface as
+// a 500. The guard runs first and answers a 409 the organizer can act
+// on; the FK mapping below is the backstop. Returns "" when nothing
+// matched. The deleted cover URL rides along so the caller can remove
+// the R2 object best-effort after the commit (same pattern as the PUT
+// handlers) — a separate read-then-delete would race with a concurrent
+// PUT pointing the row at a new cover.
 func DeleteOwnedService(ctx context.Context, organizerID, serviceID string) (string, *string, error) {
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return "", nil, err
+	}
+	tx, err := Pool().Begin(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	defer tx.Rollback(context.Background()) //nolint
+
+	// Lock the service row so the check sees a stable parent: FOR UPDATE
+	// serializes against a concurrent service delete, not against a
+	// concurrent booking INSERT (bookings lock the slot row, not the
+	// service row). A booking landing between the guard and the DELETE
+	// is caught by the FK backstop below, which answers the same 409.
 	var id string
-	var photoURL *string
-	err := Pool().QueryRow(ctx,
-		`DELETE FROM services WHERE id = $1 AND organizer_id = $2::uuid RETURNING id, photo_url`,
-		serviceID, organizerID).Scan(&id, &photoURL)
+	err = tx.QueryRow(ctx,
+		`SELECT id FROM services WHERE id = $1 AND organizer_id = $2::uuid FOR UPDATE`,
+		serviceID, organizerID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, nil
 	}
 	if err != nil {
+		return "", nil, err
+	}
+
+	var referenced int
+	err = tx.QueryRow(ctx, `
+		SELECT count(*) FROM bookings b
+		INNER JOIN time_slots ts ON b.time_slot_id = ts.id
+		WHERE ts.service_id = $1`, serviceID).Scan(&referenced)
+	if err != nil {
+		return "", nil, err
+	}
+	if referenced > 0 {
+		return "", nil, ServiceHasBookingsError{}
+	}
+
+	var photoURL *string
+	err = tx.QueryRow(ctx,
+		`DELETE FROM services WHERE id = $1 RETURNING photo_url`, serviceID).Scan(&photoURL)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil, nil
+	}
+	if err != nil {
+		// Backstop: a stray FK violation must surface as the same 409,
+		// never a bare 500.
+		if isForeignKeyViolation(err) {
+			return "", nil, ServiceHasBookingsError{}
+		}
+		return "", nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return "", nil, err
 	}
 	return id, photoURL, nil

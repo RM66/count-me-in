@@ -12,11 +12,16 @@ import (
 // ListGuestBookings — every booking of one messenger identity, newest
 // first (ADR-002, entry path 2). Cancelled bookings are included: a
 // guest looking for "my bookings" is often checking whether a
-// cancellation went through.
+// cancellation went through. Expired manageTokens stay listed too (
+// the DTO marks them canCancel=false): dropping the row would silently
+// erase the guest's booking history 24h after the slot, and the caller
+// of this endpoint *is* the owner of the identity, so the expired
+// token is not a leak.
 func ListGuestBookings(ctx context.Context, messenger, messengerID string) ([]gen.GuestBooking, error) {
 	rows, err := Pool().Query(ctx, bookingChainSelect+`
 		WHERE b.guest_messenger = $1::messenger_kind AND b.guest_messenger_id = $2
-		ORDER BY b.created_at DESC`, messenger, messengerID)
+		ORDER BY b.created_at DESC
+		LIMIT 200`, messenger, messengerID)
 	if err != nil {
 		return nil, err
 	}

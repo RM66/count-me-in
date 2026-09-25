@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   bookingRecord,
+  canCancelBooking,
   cancelBookingByTokenInput,
   createBookingInput,
   guestBooking,
@@ -103,6 +104,7 @@ describe('guestBooking (guest view)', () => {
     selectedOptions: ['Beginner'],
     createdAt: '2026-07-25T10:00:00.000Z',
     manageToken: 'a'.repeat(32),
+    canCancel: true,
     slot: {
       id: '01930000-0000-7000-8000-000000000002',
       serviceId: 'svc-abc',
@@ -151,5 +153,27 @@ describe('guestBooking (guest view)', () => {
     const result = guestBooking.safeParse(validGuestBooking)
     expect(result.success).toBe(true)
     expect(result.data).toHaveProperty('manageToken')
+  })
+
+  it('rejects a guest booking without canCancel (the action flag is required)', () => {
+    expect(guestBooking.safeParse({ ...validGuestBooking, canCancel: undefined }).success).toBe(
+      false,
+    )
+  })
+})
+
+describe('canCancelBooking', () => {
+  const future = new Date(Date.now() + 60_000)
+  const past = new Date(Date.now() - 60_000)
+
+  it('is true only for confirmed bookings with a live token', () => {
+    expect(canCancelBooking('confirmed', future)).toBe(true)
+    expect(canCancelBooking('confirmed', null)).toBe(true) // legacy non-expiring row
+    expect(canCancelBooking('confirmed', past)).toBe(false)
+  })
+
+  it('is false for cancelled bookings regardless of expiry', () => {
+    expect(canCancelBooking('cancelled', future)).toBe(false)
+    expect(canCancelBooking('cancelled', null)).toBe(false)
   })
 })

@@ -805,6 +805,8 @@
     "alreadyCancelled": "This booking has already been cancelled",
     "slotGone": "This session is no longer available",
     "tooManyRequests": "Too many requests — please try again in a moment",
-    "slotHasActiveBookings": "This session still has confirmed bookings — cancel them before deleting it"
+    "slotHasActiveBookings": "This session has bookings and cannot be deleted",
+    "serviceHasBookings": "This service has bookings in its sessions and cannot be deleted",
+    "bodyTooLarge": "The request body is too large"
   }
 }

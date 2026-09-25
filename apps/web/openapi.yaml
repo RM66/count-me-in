@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+f332e898b50a
+  version: 1.0.0+5fab21c281ec
 servers:
   - url: https://countmein.group
     description: Production
@@ -933,9 +933,12 @@ components:
           $ref: "#/components/schemas/UUID"
         cancelledBy:
           $ref: "#/components/schemas/CancelActor"
+        outboxId:
+          $ref: "#/components/schemas/UUID"
       required:
         - bookingId
         - cancelledBy
+        - outboxId
     BookingCreatedJob:
       type: object
       properties:
@@ -943,9 +946,12 @@ components:
           $ref: "#/components/schemas/UUID"
         recipient:
           $ref: "#/components/schemas/NotificationRecipient"
+        outboxId:
+          $ref: "#/components/schemas/UUID"
       required:
         - bookingId
         - recipient
+        - outboxId
     BookingEnvelope:
       type: object
       properties:
@@ -1179,6 +1185,8 @@ components:
           type: string
         manageToken:
           $ref: "#/components/schemas/ManageToken"
+        canCancel:
+          type: boolean
         slot:
           $ref: "#/components/schemas/TimeSlotRecord"
         service:
@@ -1193,6 +1201,7 @@ components:
         - selectedOptions
         - createdAt
         - manageToken
+        - canCancel
         - slot
         - service
         - organizer

@@ -1,6 +1,7 @@
 {
   "bookings": [
     {
+      "canCancel": true,
       "createdAt": "2026-01-02T03:04:05.000Z",
       "guestName": "Mila Petrović",
       "id": "01930000-0000-7000-8000-000000000003",

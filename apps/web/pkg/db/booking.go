@@ -224,6 +224,19 @@ func ToBookingRecord(b BookingRow) gen.BookingRecord {
 	}
 }
 
+// CanCancelBooking — the guest may still act on this booking: it is
+// confirmed and its manageToken has not expired. NULL expiry means a
+// legacy row created before the column existed (ADR-020) and stays
+// cancellable, matching the cancel write's check in booking_writes.go.
+// The guest DTO carries this as canCancel so the management link is
+// only offered while it works.
+func CanCancelBooking(b BookingRow) bool {
+	if b.Status != string(gen.Confirmed) {
+		return false
+	}
+	return b.ManageTokenExpiresAt == nil || b.ManageTokenExpiresAt.After(time.Now())
+}
+
 func ToGuestBooking(b BookingRow, slot TimeSlotRow, service ServiceRow, organizer OrganizerRow) gen.GuestBooking {
 	return gen.GuestBooking{
 		ID:              contracts.ToUUID(b.ID),
@@ -233,6 +246,7 @@ func ToGuestBooking(b BookingRow, slot TimeSlotRow, service ServiceRow, organize
 		SelectedOptions: strSlicePtr(b.SelectedOptions),
 		CreatedAt:       contracts.ISODate(b.CreatedAt),
 		ManageToken:     b.ManageToken,
+		CanCancel:       CanCancelBooking(b),
 		Slot:            ToTimeSlotRecord(slot),
 		Service:         ToServiceRecord(service),
 		Organizer:       ToPublicOrganizer(organizer),

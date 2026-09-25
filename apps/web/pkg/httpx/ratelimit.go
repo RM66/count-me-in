@@ -14,6 +14,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 
 	"countmein/pkg/i18n"
+	"countmein/pkg/logx"
 	"countmein/pkg/redis"
 )
 
@@ -54,7 +55,8 @@ return {1, 0}
 // the request is within the limit. On Redis failure it fails open — a
 // limiter outage must never block traffic, and without REDIS_URL there
 // is nothing to count against. The fail-open choice is recorded in
-// ADR-019.
+// ADR-019; the outage itself is logged (rate-limited to once per
+// interval) so a silent Redis loss does not go unnoticed.
 func Allow(ctx context.Context, key string, cfg RateLimitConfig) (allowed bool, retryAfter time.Duration) {
 	if os.Getenv("REDIS_URL") == "" {
 		return true, 0
@@ -66,6 +68,10 @@ func Allow(ctx context.Context, key string, cfg RateLimitConfig) (allowed bool, 
 	res, err := slidingWindowLua.Run(ctx, client, []string{key},
 		now.UnixNano(), cfg.Window.Nanoseconds(), cfg.Limit, member).Slice()
 	if err != nil {
+		logx.WarnEvery(5*time.Minute, "rate limiter unavailable — failing open", map[string]any{
+			"scope": "rate-limit",
+			"error": err.Error(),
+		})
 		return true, 0
 	}
 	if len(res) < 2 {
@@ -111,20 +117,30 @@ func TooManyRequests(locale string, retryAfter time.Duration) *Response {
 // (and x-forwarded-for); the first value is the original client, the
 // rest are the proxy chain. Falls back to RemoteAddr in dev.
 //
-// Trust assumption: on Vercel the edge
-// overwrites these headers, so they are trustworthy. If the function
-// is ever reached without going through the edge (a misconfigured
-// internal call, a non-Vercel deployment), a spoofed X-Forwarded-For
-// would let an attacker rotate rate-limit keys. This is acceptable for
-// the current Vercel-only deployment; revisit if the topology changes.
+// Trust assumption: on Vercel the edge overwrites these headers, so
+// they are trustworthy. TRUST_PROXY_HEADERS=1 is the explicit opt-in
+// for any non-Vercel topology (local dev behind a proxy, self-hosted);
+// without it the forwarded headers are ignored outside Vercel, so a
+// spoofed X-Forwarded-For cannot rotate rate-limit keys.
 func ClientIP(r *http.Request) string {
-	for _, header := range []string{"x-vercel-forwarded-for", "x-forwarded-for"} {
-		if fwd := r.Header.Get(header); fwd != "" {
-			if i := strings.IndexByte(fwd, ','); i >= 0 {
-				return strings.TrimSpace(fwd[:i])
+	if trustProxyHeaders() {
+		for _, header := range []string{"x-vercel-forwarded-for", "x-forwarded-for"} {
+			if fwd := r.Header.Get(header); fwd != "" {
+				if i := strings.IndexByte(fwd, ','); i >= 0 {
+					return strings.TrimSpace(fwd[:i])
+				}
+				return strings.TrimSpace(fwd)
 			}
-			return strings.TrimSpace(fwd)
 		}
 	}
 	return r.RemoteAddr
+}
+
+// trustProxyHeaders — forwarded-for headers are honored on Vercel
+// (edge overwrites them) or when TRUST_PROXY_HEADERS=1 opts in.
+func trustProxyHeaders() bool {
+	if os.Getenv("VERCEL") == "1" {
+		return true
+	}
+	return os.Getenv("TRUST_PROXY_HEADERS") == "1"
 }

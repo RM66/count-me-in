@@ -93,18 +93,27 @@ func SlotErrorResponse(err error, locale string) *Response {
 	}
 	var hasBookings db.SlotHasActiveBookingsError
 	if errors.As(err, &hasBookings) {
-		// The slot still has confirmed bookings — the organizer must
-		// cancel them before the slot can be deleted.
+		// The slot is referenced by booking rows (confirmed or
+		// cancelled) — a booked slot cannot be deleted (no path removes
+		// the rows; cancelled bookings are kept as guest history).
 		return Error(http.StatusConflict, locale, "slotHasActiveBookings")
 	}
 	return nil
 }
 
-// ServiceErrorResponse maps the service route's inline error.
+// ServiceErrorResponse maps the service route's inline errors.
+// errors.As, not a type switch: wrapped errors must not slip past the
+// mapping into a bare 500.
 func ServiceErrorResponse(err error, locale string) *Response {
 	var noUpdates db.NoServiceUpdatesError
 	if errors.As(err, &noUpdates) {
 		return Error(http.StatusBadRequest, locale, "nothingToUpdate")
+	}
+	var hasBookings db.ServiceHasBookingsError
+	if errors.As(err, &hasBookings) {
+		// A booking row (confirmed or cancelled) references one of the
+		// service's slots — deleting would lose guest records.
+		return Error(http.StatusConflict, locale, "serviceHasBookings")
 	}
 	return nil
 }
@@ -116,6 +125,10 @@ func OrganizerErrorResponse(err error, locale string) *Response {
 	var noUpdates db.NoOrganizerUpdatesError
 	if errors.As(err, &noUpdates) {
 		return Error(http.StatusBadRequest, locale, "nothingToUpdate")
+	}
+	var notFound db.OrganizerNotFoundError
+	if errors.As(err, &notFound) {
+		return Error(http.StatusNotFound, locale, "organizerNotFound")
 	}
 	return nil
 }

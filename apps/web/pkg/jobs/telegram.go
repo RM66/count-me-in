@@ -40,6 +40,17 @@ func (e *TelegramUnreachableError) Error() string {
 	return fmt.Sprintf("Telegram cannot reach chat %s: %s", e.ChatID, e.Description)
 }
 
+// TelegramTerminalError — the message content itself was rejected
+// (too long, malformed HTML). Retrying cannot fix the payload, so the
+// job completes with a log instead of burning the retry budget.
+type TelegramTerminalError struct {
+	Description string
+}
+
+func (e *TelegramTerminalError) Error() string {
+	return "Telegram rejected the message content: " + e.Description
+}
+
 // TelegramTransientError — rate limit, outage, network. The job retries.
 type TelegramTransientError struct {
 	Message string
@@ -54,6 +65,10 @@ type telegramResponse struct {
 }
 
 var chatNotFoundRe = regexp.MustCompile(`(?i)chat not found`)
+
+// terminalContentRe — Bot API descriptions for rejections caused by the
+// message itself rather than the recipient or the network.
+var terminalContentRe = regexp.MustCompile(`(?i)(message is too long|can't parse entities|can't parse buttons)`)
 
 var telegramHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
@@ -115,6 +130,9 @@ func SendMessage(ctx context.Context, botToken, chatID, text string, button *Mes
 	}
 	if res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500 {
 		return &TelegramTransientError{Message: fmt.Sprintf("Telegram %d: %s", res.StatusCode, description)}
+	}
+	if res.StatusCode >= 400 && res.StatusCode < 500 && terminalContentRe.MatchString(description) {
+		return &TelegramTerminalError{Description: description}
 	}
 	return fmt.Errorf("Telegram rejected the message (%d): %s", res.StatusCode, description)
 }

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -69,16 +70,34 @@ func TestLoginLinkRejectsAbsoluteNext(t *testing.T) {
 	// unusable — answered like an unknown token, (nil, nil).
 	ctx := context.Background()
 	for name, raw := range map[string]string{
-		"absolute next":  `{"organizerId":"01930000-0000-7000-8000-000000000003","next":"https://evil.example.com"}`,
-		"empty next":     `{"organizerId":"01930000-0000-7000-8000-000000000003","next":""}`,
-		"empty org id":   `{"organizerId":"","next":"/cabinet"}`,
-		"broken payload": "{not json",
+		"absolute next":     `{"organizerId":"01930000-0000-7000-8000-000000000003","next":"https://evil.example.com"}`,
+		"protocol-relative": `{"organizerId":"01930000-0000-7000-8000-000000000003","next":"//evil.example.com"}`,
+		"backslash trick":   `{"organizerId":"01930000-0000-7000-8000-000000000003","next":"/\\evil.example.com"}`,
+		"inner backslash":   `{"organizerId":"01930000-0000-7000-8000-000000000003","next":"/cabinet\\bookings"}`,
+		"newline":           "{\"organizerId\":\"01930000-0000-7000-8000-000000000003\",\"next\":\"/cabinet\\nbookings\"}",
+		"carriage return":   "{\"organizerId\":\"01930000-0000-7000-8000-000000000003\",\"next\":\"/cabinet\\rbookings\"}",
+		"empty next":        `{"organizerId":"01930000-0000-7000-8000-000000000003","next":""}`,
+		"empty org id":      `{"organizerId":"","next":"/cabinet"}`,
+		"broken payload":    "{not json",
 	} {
 		token := "link-" + name
 		testRedis.Set(contracts.LoginLinkKey(token), raw)
 		payload, err := PeekLoginLink(ctx, token)
 		if err != nil || payload != nil {
 			t.Fatalf("%s: must be (nil, nil), got %v, %v", name, payload, err)
+		}
+	}
+}
+
+func TestLoginLinkAcceptsCabinetPaths(t *testing.T) {
+	ctx := context.Background()
+	for _, next := range []string{"/cabinet", "/cabinet/bookings", "/cabinet/services/abc"} {
+		token := "link-ok-" + next
+		raw := `{"organizerId":"01930000-0000-7000-8000-000000000003","next":` + strconv.Quote(next) + `}`
+		testRedis.Set(contracts.LoginLinkKey(token), raw)
+		payload, err := PeekLoginLink(ctx, token)
+		if err != nil || payload == nil || payload.Next != next {
+			t.Fatalf("next=%q must verify, got %v, %v", next, payload, err)
 		}
 	}
 }

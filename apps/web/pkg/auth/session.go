@@ -9,10 +9,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
-	"countmein/pkg/contracts"
 	"countmein/pkg/logx"
 )
 
@@ -46,10 +44,10 @@ const (
 	hkdfLen  = 32
 )
 
-var (
-	warnMissingSecretOnce sync.Once
-	warnBrokenTokenOnce   sync.Once
-)
+// No sync.Once warn-once here: on a warmed serverless instance a
+// once-per-process log line makes a persistent misconfiguration nearly
+// invisible. WarnEvery keeps a heartbeat in the logs instead.
+var warnInterval = 5 * time.Minute
 
 // Session is the organizer identity extracted from the organizer-auth
 // token: Organizer.id IS the Auth.js user id (sub claim).
@@ -64,9 +62,7 @@ type Session struct {
 func SessionFromRequest(r *http.Request) *Session {
 	secret := os.Getenv("AUTH_SECRET")
 	if secret == "" {
-		warnMissingSecretOnce.Do(func() {
-			logx.Info("AUTH_SECRET is not set — every request is anonymous", nil)
-		})
+		logx.WarnEvery(warnInterval, "AUTH_SECRET is not set — every request is anonymous", nil)
 		return nil
 	}
 
@@ -77,9 +73,7 @@ func SessionFromRequest(r *http.Request) *Session {
 
 	claims, err := verifyOrganizerAuth(token, secret)
 	if err != nil {
-		warnBrokenTokenOnce.Do(func() {
-			logx.Info("organizer-auth token present but invalid (AUTH_SECRET mismatch or expiry)", nil)
-		})
+		logx.WarnEvery(warnInterval, "organizer-auth token present but invalid (AUTH_SECRET mismatch or expiry)", nil)
 		return nil
 	}
 	return &Session{OrganizerID: claims.Sub, Slug: claims.Slug}
@@ -92,12 +86,6 @@ func SessionOrganizerID(r *http.Request) string {
 		return s.OrganizerID
 	}
 	return ""
-}
-
-// IsDemoOrganizerSession — convenience for callers that only need the
-// demo check.
-func IsDemoOrganizerSession(r *http.Request) bool {
-	return contracts.IsDemoOrganizerID(SessionOrganizerID(r))
 }
 
 // ── HS256 JWT verification (stdlib only) ────────────────────────────────────

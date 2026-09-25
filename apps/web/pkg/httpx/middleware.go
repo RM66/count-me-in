@@ -3,6 +3,7 @@ package httpx
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
 	"countmein/pkg/logx"
 )
@@ -27,6 +28,9 @@ func Recover(next func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Language")
 		w.Header().Set("X-Robots-Tag", "noindex")
+		// API responses are per-request (auth, rate limits, live seat
+		// counts) — no shared or browser cache may store them.
+		w.Header().Set("Cache-Control", "no-store")
 		// Security headers: the Go origin
 		// bypasses next.config.js headers(), so the API must set its own.
 		// No CSP here — API responses are JSON, never HTML documents.
@@ -37,9 +41,19 @@ func Recover(next func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		defer func() {
 			if rec := recover(); rec != nil {
+				// The stack is the only trace of where the panic came
+				// from — the recover value alone cannot be mapped back
+				// to a line. Truncated so a deep recursive panic cannot
+				// flood the log line.
+				stack := debug.Stack()
+				const maxStack = 8 << 10
+				if len(stack) > maxStack {
+					stack = stack[:maxStack]
+				}
 				logx.Error(fmt.Errorf("panic: %v", rec), map[string]any{
 					"method": r.Method,
 					"path":   r.URL.Path,
+					"stack":  string(stack),
 				})
 				w.WriteHeader(http.StatusInternalServerError)
 			}

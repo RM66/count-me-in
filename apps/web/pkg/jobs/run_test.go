@@ -112,13 +112,13 @@ func TestCheckPayloadScheduleQueuesAcceptEmptyBody(t *testing.T) {
 			if body != "" {
 				raw = json.RawMessage(body)
 			}
-			if err := checkPayload(queue, raw); err != nil {
+			if _, err := parseJob(queue, raw); err != nil {
 				t.Errorf("%s with body %q must be valid, got %T: %v", queue, body, err, err)
 			}
 		}
 	}
 	for _, queue := range []string{contracts.QueueBookingCreated, contracts.QueueBookingCancelled} {
-		if err := checkPayload(queue, nil); err == nil {
+		if _, err := parseJob(queue, nil); err == nil {
 			t.Errorf("%s with an empty body must be invalid", queue)
 		} else {
 			var invalid *InvalidJobPayloadError
@@ -130,7 +130,7 @@ func TestCheckPayloadScheduleQueuesAcceptEmptyBody(t *testing.T) {
 }
 
 func TestCheckPayloadUnknownQueue(t *testing.T) {
-	err := checkPayload("some.foreign.queue", nil)
+	_, err := parseJob("some.foreign.queue", nil)
 	var unknown *UnknownJobQueueError
 	if !errors.As(err, &unknown) {
 		t.Fatalf("unknown queue must be UnknownJobQueueError, got %T: %v", err, err)
@@ -165,6 +165,84 @@ func TestWithRetryPolicyPropagatesTransient(t *testing.T) {
 func TestWithRetryPolicySuccess(t *testing.T) {
 	if err := withRetryPolicy(contracts.QueueBookingCreated, "trace-4", func() error { return nil }); err != nil {
 		t.Fatalf("success must stay success, got %v", err)
+	}
+}
+
+// ── consumer idempotency ──────────────────────────────────────────────────────
+//
+// The claim suppresses duplicate deliveries; a retryable failure must
+// release it, or every QStash retry (and sweeper re-publish) of a row
+// whose first send failed would be answered as a duplicate and the
+// notification would be lost while the outbox row looked delivered.
+// Runs against the miniredis TestMain installs.
+
+func TestRunClaimedReleasesClaimOnRetryableFailure(t *testing.T) {
+	ctx := context.Background()
+	outboxID := "01930000-0000-7000-8000-0000000000c1"
+	transient := &TelegramTransientError{Message: "Telegram 429: Too Many Requests"}
+
+	var calls int
+	err := runClaimed(ctx, contracts.QueueBookingCreated, "trace-idem-1", outboxID, func() error {
+		calls++
+		return transient
+	})
+	if !errors.Is(err, transient) {
+		t.Fatalf("a transient send failure must propagate (500 → QStash retries), got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("first delivery must reach the handler, got %d calls", calls)
+	}
+
+	// The retry must be processed, not suppressed: the failed attempt
+	// released the claim.
+	if err := runClaimed(ctx, contracts.QueueBookingCreated, "trace-idem-1", outboxID, func() error {
+		calls++
+		return nil
+	}); err != nil {
+		t.Fatalf("retry must succeed, got %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("a retryable failure must release the claim, got %d handler calls, want 2", calls)
+	}
+}
+
+func TestRunClaimedSuppressesDuplicateAfterSuccess(t *testing.T) {
+	ctx := context.Background()
+	outboxID := "01930000-0000-7000-8000-0000000000c2"
+
+	var calls int
+	send := func() error { calls++; return nil }
+	if err := runClaimed(ctx, contracts.QueueBookingCreated, "trace-idem-2", outboxID, send); err != nil {
+		t.Fatalf("first delivery: %v", err)
+	}
+	// A second delivery of the same outbox row (sweeper re-publish after
+	// a successful send + failed mark-sent) completes without sending.
+	if err := runClaimed(ctx, contracts.QueueBookingCreated, "trace-idem-2", outboxID, send); err != nil {
+		t.Fatalf("duplicate delivery must complete with nil, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("duplicate delivery must not send again, got %d handler calls", calls)
+	}
+}
+
+func TestRunClaimedKeepsClaimOnAbsorbedTerminalError(t *testing.T) {
+	ctx := context.Background()
+	outboxID := "01930000-0000-7000-8000-0000000000c3"
+
+	var calls int
+	unreachable := &TelegramUnreachableError{ChatID: "123", Description: "Forbidden: bot was blocked by the user"}
+	run := func() error { calls++; return unreachable }
+
+	// withRetryPolicy absorbs the terminal error (nil) — the delivery is
+	// complete, so the claim stays and a redelivery is a no-op.
+	if err := runClaimed(ctx, contracts.QueueBookingCreated, "trace-idem-3", outboxID, run); err != nil {
+		t.Fatalf("unreachable recipient must be absorbed, got %v", err)
+	}
+	if err := runClaimed(ctx, contracts.QueueBookingCreated, "trace-idem-3", outboxID, run); err != nil {
+		t.Fatalf("redelivery after a terminal outcome must be a no-op, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("terminal outcome must keep the claim, got %d handler calls", calls)
 	}
 }
 

@@ -805,6 +805,8 @@
     "alreadyCancelled": "Cette réservation a déjà été annulée",
     "slotGone": "Cette séance n’est plus disponible",
     "tooManyRequests": "Trop de requêtes — réessayez dans un instant",
-    "slotHasActiveBookings": "Cette séance a encore des réservations confirmées — annulez-les avant de la supprimer"
+    "slotHasActiveBookings": "Cette séance a des réservations et ne peut pas être supprimée",
+    "serviceHasBookings": "Ce service a des réservations dans ses séances et ne peut pas être supprimé",
+    "bodyTooLarge": "Le corps de la requête est trop volumineux"
   }
 }

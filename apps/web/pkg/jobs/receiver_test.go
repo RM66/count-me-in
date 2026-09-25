@@ -3,7 +3,6 @@ package jobs
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"testing"
@@ -22,6 +21,9 @@ func signQStash(key, body string, claims map[string]any) string {
 	if _, ok := claims["exp"]; !ok {
 		claims["exp"] = time.Now().Add(time.Hour).Unix()
 	}
+	if _, ok := claims["sub"]; !ok {
+		claims["sub"] = testSub
+	}
 	sum := sha256.Sum256([]byte(body))
 	claims["body"] = base64.RawURLEncoding.EncodeToString(sum[:])
 
@@ -36,11 +38,12 @@ func signQStash(key, body string, claims map[string]any) string {
 const (
 	currentKey = "sig-current-key-0000000000000000"
 	nextKey    = "sig-next-key-0000000000000000000000"
+	testSub    = "https://countmein.group/api/jobs/booking.created"
 )
 
 func TestVerifyQStashSignatureCurrentKey(t *testing.T) {
 	sig := signQStash(currentKey, `{"bookingId":"x"}`, nil)
-	if !VerifyQStashSignature([]byte(`{"bookingId":"x"}`), sig, currentKey, nextKey) {
+	if !VerifyQStashSignature([]byte(`{"bookingId":"x"}`), sig, currentKey, nextKey, testSub) {
 		t.Fatal("signature with the current key must verify")
 	}
 }
@@ -48,18 +51,18 @@ func TestVerifyQStashSignatureCurrentKey(t *testing.T) {
 func TestVerifyQStashSignatureRotation(t *testing.T) {
 	// Rotated keys: current no longer matches, next must.
 	sig := signQStash(nextKey, `{"bookingId":"x"}`, nil)
-	if !VerifyQStashSignature([]byte(`{"bookingId":"x"}`), sig, currentKey, nextKey) {
+	if !VerifyQStashSignature([]byte(`{"bookingId":"x"}`), sig, currentKey, nextKey, testSub) {
 		t.Fatal("signature with the next key must verify")
 	}
 	// And it must NOT verify as if it were signed by current.
-	if VerifyQStashSignature([]byte(`{"bookingId":"x"}`), sig, currentKey, "unrelated") {
+	if VerifyQStashSignature([]byte(`{"bookingId":"x"}`), sig, currentKey, "unrelated", testSub) {
 		t.Fatal("next-key signature must not verify against unrelated keys")
 	}
 }
 
 func TestVerifyQStashSignatureBodyMismatch(t *testing.T) {
 	sig := signQStash(currentKey, `{"bookingId":"a"}`, nil)
-	if VerifyQStashSignature([]byte(`{"bookingId":"b"}`), sig, currentKey, nextKey) {
+	if VerifyQStashSignature([]byte(`{"bookingId":"b"}`), sig, currentKey, nextKey, testSub) {
 		t.Fatal("body hash mismatch must fail")
 	}
 }
@@ -68,8 +71,8 @@ func TestVerifyQStashSignatureExpired(t *testing.T) {
 	sig := signQStash(currentKey, "body", map[string]any{
 		"exp": time.Now().Add(-time.Hour).Unix(),
 	})
-	if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey) {
-		t.Fatal("expired signature must fail (0 clock tolerance)")
+	if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey, testSub) {
+		t.Fatal("expired signature must fail (past the 60s clock tolerance)")
 	}
 }
 
@@ -78,16 +81,28 @@ func TestVerifyQStashSignatureWrongIssuer(t *testing.T) {
 	sig := signWithClaims(map[string]any{
 		"iss":  "Someone Else",
 		"exp":  time.Now().Add(time.Hour).Unix(),
+		"sub":  testSub,
 		"body": base64.RawURLEncoding.EncodeToString(sum[:]),
 	}, currentKey)
-	if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey) {
+	if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey, testSub) {
 		t.Fatal("issuer must be Upstash")
+	}
+}
+
+func TestVerifyQStashSignatureWrongSub(t *testing.T) {
+	// The sub claim binds the token to one destination queue; a token
+	// minted for another queue must not verify here.
+	sig := signQStash(currentKey, "body", map[string]any{
+		"sub": "https://countmein.group/api/jobs/booking.cancelled",
+	})
+	if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey, testSub) {
+		t.Fatal("sub mismatch must fail")
 	}
 }
 
 func TestVerifyQStashSignatureGarbage(t *testing.T) {
 	for _, sig := range []string{"", "not-a-jwt", "a.b", "a.b.c.d"} {
-		if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey) {
+		if VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey, testSub) {
 			t.Fatalf("garbage signature %q must fail", sig)
 		}
 	}
@@ -99,9 +114,10 @@ func TestVerifyQStashSignaturePaddedBodyClaim(t *testing.T) {
 	sum := sha256.Sum256([]byte("body"))
 	sig := signWithClaims(map[string]any{
 		"exp":  time.Now().Add(time.Hour).Unix(),
+		"sub":  testSub,
 		"body": base64.URLEncoding.EncodeToString(sum[:]), // padded
 	}, currentKey)
-	if !VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey) {
+	if !VerifyQStashSignature([]byte("body"), sig, currentKey, nextKey, testSub) {
 		t.Fatal("padded body claim must verify")
 	}
 }
@@ -117,5 +133,3 @@ func signWithClaims(claims map[string]any, key string) string {
 	mac.Write([]byte(header + "." + payloadB64))
 	return header + "." + payloadB64 + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
-
-var _ = sha512.New // keep sha512 referenced if algs change

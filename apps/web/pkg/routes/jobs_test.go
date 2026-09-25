@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -25,10 +26,11 @@ const (
 	routesNextKey    = "routes-sig-next-key-00000000000000000"
 )
 
-func signQStash(key, body string) string {
+func signQStash(key, body, sub string) string {
 	claims := map[string]any{
 		"iss":  "Upstash",
 		"exp":  time.Now().Add(time.Hour).Unix(),
+		"sub":  sub,
 		"body": base64.RawURLEncoding.EncodeToString(sha256Sum(body)),
 	}
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
@@ -42,6 +44,12 @@ func signQStash(key, body string) string {
 func sha256Sum(s string) []byte {
 	sum := sha256.Sum256([]byte(s))
 	return sum[:]
+}
+
+// expectedSub mirrors the receiver: APP_URL (trimmed) + "/api/jobs/" +
+// queue. Tests leave APP_URL unset, so the sub is the bare path.
+func expectedSub(queue string) string {
+	return strings.TrimRight(os.Getenv("APP_URL"), "/") + "/api/jobs/" + queue
 }
 
 func postJobs(t *testing.T, queue, body, signature string) *httptest.ResponseRecorder {
@@ -80,7 +88,7 @@ func TestJobsReceiverBadSignature(t *testing.T) {
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("garbage signature must be a 401, got %d", w.Code)
 	}
-	sig := signQStash("wrong-key", "{}")
+	sig := signQStash("wrong-key", "{}", expectedSub(contracts.QueueBookingCreated))
 	w = postJobs(t, contracts.QueueBookingCreated, "{}", sig)
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("signature with a wrong key must be a 401, got %d", w.Code)
@@ -89,7 +97,7 @@ func TestJobsReceiverBadSignature(t *testing.T) {
 
 func TestJobsReceiverUnknownQueue(t *testing.T) {
 	body := `{"x":1}`
-	w := postJobs(t, "some.foreign.queue", body, signQStash(routesCurrentKey, body))
+	w := postJobs(t, "some.foreign.queue", body, signQStash(routesCurrentKey, body, expectedSub("some.foreign.queue")))
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("unknown queue must be a 404 (no retry), got %d", w.Code)
 	}
@@ -98,7 +106,7 @@ func TestJobsReceiverUnknownQueue(t *testing.T) {
 func TestJobsReceiverInvalidPayload(t *testing.T) {
 	// Valid signature, invalid payload → 400, QStash does not retry.
 	body := `{"bookingId":"not-a-uuid"}`
-	w := postJobs(t, contracts.QueueBookingCreated, body, signQStash(routesCurrentKey, body))
+	w := postJobs(t, contracts.QueueBookingCreated, body, signQStash(routesCurrentKey, body, expectedSub(contracts.QueueBookingCreated)))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("malformed payload must be a 400 (no retry), got %d", w.Code)
 	}
@@ -106,7 +114,7 @@ func TestJobsReceiverInvalidPayload(t *testing.T) {
 
 func TestJobsReceiverInvalidJSON(t *testing.T) {
 	body := `{"bookingId":`
-	w := postJobs(t, contracts.QueueBookingCreated, body, signQStash(routesCurrentKey, body))
+	w := postJobs(t, contracts.QueueBookingCreated, body, signQStash(routesCurrentKey, body, expectedSub(contracts.QueueBookingCreated)))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("broken JSON must be a 400, got %d", w.Code)
 	}
@@ -119,7 +127,7 @@ func TestJobsReceiverHandlerFailureIs500(t *testing.T) {
 	t.Setenv("TELEGRAM_BOT_TOKEN", "")
 	t.Setenv("APP_URL", "")
 	body := `{"bookingId":"01930000-0000-7000-8000-0000000000bb","recipient":"organizer"}`
-	w := postJobs(t, contracts.QueueBookingCreated, body, signQStash(routesCurrentKey, body))
+	w := postJobs(t, contracts.QueueBookingCreated, body, signQStash(routesCurrentKey, body, expectedSub(contracts.QueueBookingCreated)))
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("handler failure must be a 500 (QStash retries), got %d", w.Code)
 	}
@@ -129,7 +137,7 @@ func TestJobsReceiverEmptyBodyIsNotJSON(t *testing.T) {
 	// An empty body is valid for the schedule queues; for booking
 	// queues it must still be a 400 — but the signature check runs on
 	// the raw bytes, so sign the empty body.
-	w := postJobs(t, contracts.QueueBookingCreated, "", signQStash(routesCurrentKey, ""))
+	w := postJobs(t, contracts.QueueBookingCreated, "", signQStash(routesCurrentKey, "", expectedSub(contracts.QueueBookingCreated)))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("empty body for a booking queue must be a 400, got %d", w.Code)
 	}

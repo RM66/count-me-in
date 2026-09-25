@@ -115,6 +115,11 @@ func DecodeCreateServiceInput(body []byte) (gen.CreateServiceInput, *Errors) {
 	}
 	trimServiceKeys(m)
 	e = decodeCollect("CreateServiceInput", m, &out)
+	if out.PhotoURL != nil {
+		if msg := URLRule(string(*out.PhotoURL)); msg != "" {
+			e.Add("photoUrl", msg)
+		}
+	}
 	refineServiceOptions(e, out.Options, out.OptionsSelectMode)
 	return out, e.Finish()
 }
@@ -133,6 +138,11 @@ func DecodeUpdateServiceInput(body []byte) (gen.UpdateServiceInput, *Errors) {
 	}
 	trimServiceKeys(m)
 	e = decodeCollect("UpdateServiceInput", m, &out)
+	if out.PhotoURL != nil {
+		if msg := URLRule(string(*out.PhotoURL)); msg != "" {
+			e.Add("photoUrl", msg)
+		}
+	}
 	refineServiceOptions(e, out.Options, out.OptionsSelectMode)
 	return out, e.Finish()
 }
@@ -309,6 +319,11 @@ func DecodeMergedServiceInput(merged []byte) (gen.UpdateServiceInput, *Errors) {
 	}
 	trimServiceKeys(m)
 	e = decodeCollect("UpdateServiceInput", m, &out)
+	if out.PhotoURL != nil {
+		if msg := URLRule(string(*out.PhotoURL)); msg != "" {
+			e.Add("photoUrl", msg)
+		}
+	}
 	RefineServiceMergedState(e, &out)
 	return out, e.Finish()
 }

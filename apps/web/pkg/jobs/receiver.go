@@ -3,28 +3,35 @@ package jobs
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
+
+	"countmein/pkg/logx"
 )
 
 // QStash signature verification (port of @upstash/qstash@2.11.3's
 // Receiver, which verifies via jose with the signing key as the HMAC
 // secret). The upstash-signature header is a JWT:
 //
-//   - HS256 (or HS384/HS512) over "header.payload", the secret being
-//     the raw UTF-8 bytes of the current or next signing key;
+//   - HS256 over "header.payload", the secret being the raw UTF-8
+//     bytes of the current or next signing key. The algorithm is
+//     pinned: this account's QStash signs HS256, and accepting
+//     HS384/HS512 with the same secret only widens the surface —
+//     a forged header must not be able to pick its own algorithm;
 //   - issuer claim "Upstash";
-//   - exp claim checked with no clock tolerance (the TS route passes
-//     none — jose defaults to 0);
+//   - exp claim checked with a 60s clock tolerance (function clocks may
+//     lag seconds behind the signer; skew use is logged throttled);
 //   - body claim = base64url(SHA-256(request body)); trailing "="
 //     padding stripped on both sides before comparing.
 //
 // Try currentSigningKey first, then nextSigningKey (key rotation).
+// The signature comparison is over the raw decoded bytes, not the
+// base64 strings — comparing encoded strings leaks length before
+// content.
 
 type qstashHeader struct {
 	Alg string `json:"alg"`
@@ -39,10 +46,20 @@ type qstashClaims struct {
 	Body string `json:"body"`
 }
 
+// qstashExpSkew — clock tolerance on the exp claim: QStash mints exp at
+// sign time and the function clock may lag seconds behind. A token past
+// exp but within the skew still verifies (with a throttled log so skew
+// use is visible in metrics); past exp+skew it is dead.
+const qstashExpSkew = 60 * time.Second
+
 // VerifyQStashSignature checks a delivery's upstash-signature against
 // the raw body bytes. The signature covers the exact bytes of the body,
-// so callers must pass them unmodified.
-func VerifyQStashSignature(body []byte, signature, currentSigningKey, nextSigningKey string) bool {
+// so callers must pass them unmodified. expectedSub binds the token to
+// this deployment's destination URL ({APP_URL}/api/jobs/{queue}): the
+// signing keys are account-scoped, so without the check a delivery
+// signed for another destination in the same QStash account could be
+// replayed here. Empty expectedSub skips the check (tests, legacy).
+func VerifyQStashSignature(body []byte, signature, currentSigningKey, nextSigningKey, expectedSub string) bool {
 	if signature == "" {
 		return false
 	}
@@ -51,6 +68,12 @@ func VerifyQStashSignature(body []byte, signature, currentSigningKey, nextSignin
 		claims, ok = verifyWithKey(signature, nextSigningKey)
 	}
 	if !ok {
+		return false
+	}
+	// Destination binding: the sub claim names the URL QStash was told
+	// to deliver to. A token minted for a different destination in the
+	// same account must not verify here.
+	if expectedSub != "" && claims.Sub != expectedSub {
 		return false
 	}
 	// Body hash: base64url(SHA-256(body)), padding-insensitive compare.
@@ -75,11 +98,20 @@ func verifyWithKey(signature, key string) (*qstashClaims, bool) {
 	if err := json.Unmarshal(headerJSON, &header); err != nil {
 		return nil, false
 	}
-	mac, ok := hmacForAlg(header.Alg, key, parts[0]+"."+parts[1])
-	if !ok {
+	// Algorithm pinned to HS256: this account's QStash signs HS256, and
+	// a verifier that honors whatever alg the (attacker-supplied)
+	// header names invites algorithm-confusion. aud/typ are not checked
+	// — QStash does not set them meaningfully for this flow.
+	if header.Alg != "HS256" {
 		return nil, false
 	}
-	if subtle.ConstantTimeCompare([]byte(mac), []byte(parts[2])) != 1 {
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write([]byte(parts[0] + "." + parts[1]))
+	expected := mac.Sum(nil)
+	// Compare raw decoded bytes — comparing the base64 strings would
+	// leak the encoded length before the content.
+	got, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil || subtle.ConstantTimeCompare(expected, got) != 1 {
 		return nil, false
 	}
 
@@ -97,8 +129,14 @@ func verifyWithKey(signature, key string) (*qstashClaims, bool) {
 		return nil, false
 	}
 	now := time.Now().Unix()
-	if claims.Exp != 0 && now > claims.Exp {
-		return nil, false
+	if claims.Exp != 0 {
+		if skew := now - claims.Exp; skew > int64(qstashExpSkew.Seconds()) {
+			return nil, false
+		} else if skew > 0 {
+			logx.WarnEvery(5*time.Minute, "qstash signature accepted within exp skew", map[string]any{
+				"skewS": skew,
+			})
+		}
 	}
 	if claims.Nbf != 0 && now < claims.Nbf {
 		return nil, false
@@ -106,23 +144,9 @@ func verifyWithKey(signature, key string) (*qstashClaims, bool) {
 	return &claims, true
 }
 
-func hmacForAlg(alg, key, msg string) (sig string, ok bool) {
-	switch alg {
-	case "HS256":
-		m := hmac.New(sha256.New, []byte(key))
-		m.Write([]byte(msg))
-		return base64.RawURLEncoding.EncodeToString(m.Sum(nil)), true
-	case "HS384":
-		m := hmac.New(sha512.New384, []byte(key))
-		m.Write([]byte(msg))
-		return base64.RawURLEncoding.EncodeToString(m.Sum(nil)), true
-	case "HS512":
-		m := hmac.New(sha512.New, []byte(key))
-		m.Write([]byte(msg))
-		return base64.RawURLEncoding.EncodeToString(m.Sum(nil)), true
-	}
-	return "", false
-}
+// hmacForAlg was removed when the algorithm was pinned to HS256 — a
+// verifier that honors the alg the (attacker-supplied) header names
+// invites algorithm confusion.
 
 // TraceIDFromRequest reads the trace-id header forwarded by QStash.
 // The publisher sets Upstash-Trace-Id on

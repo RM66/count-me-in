@@ -95,8 +95,21 @@ export const uuid = z.uuid()
 /** Service id: short URL-friendly text id (nanoid alphabet). */
 export const serviceId = z.string().regex(SERVICE_ID_PATTERN, 'Invalid service id')
 
-/** HTTP(S) URL (avatar / cover photo). */
-export const httpUrl = z.url()
+/** HTTP(S) URL (avatar / cover photo). Scheme-whitelisted to http/https
+ * with a host — parity with Go URLRule: bare `z.url()` accepts
+ * `javascript:`/`data:`/`ftp:`, which must never reach a rendered
+ * `<img src>` or link. */
+export const httpUrl = z.url().refine(
+  (v) => {
+    try {
+      const u = new URL(v)
+      return (u.protocol === 'http:' || u.protocol === 'https:') && u.host !== ''
+    } catch {
+      return false
+    }
+  },
+  { message: 'Must be an http(s) URL' },
+)
 
 export const displayName = z.string().trim().min(BOUNDS.displayName.min).max(BOUNDS.displayName.max)
 

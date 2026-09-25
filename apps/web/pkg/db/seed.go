@@ -213,8 +213,11 @@ var demoSlotTemplates = []slotTemplate{
 }
 
 // Illustrative bookings for the cabinet's bookings table and analytics.
-// manageTokens are deterministic and publicly known — acceptable only
-// because every write path rejects the demo account (ADR-010).
+// Manage tokens are generated fresh on every seed run (never committed
+// constants): the demo account rejects every write path (ADR-010), but
+// committed tokens still end up in backups and logs — random per run is
+// strictly better and costs nothing, since slots+bookings are replaced
+// wholesale on each refresh.
 type bookingTemplate struct {
 	ID               string
 	TimeSlotID       string
@@ -223,55 +226,54 @@ type bookingTemplate struct {
 	GuestName        string
 	GuestMessengerID string
 	GuestLogin       *string
-	ManageToken      string
 	SelectedOptions  []string
 	DaysAgo          int
 }
 
 var demoBookingTemplates = []bookingTemplate{
 	// ── Recent (last 7 days) — drives the trend chart. ─────────────────
-	{demoBooking01, slotY1, false, 2, "Mila Petrović", "demo-guest-1", strPtr("@milapetrovic"), "demo-manage-token-1", []string{"Downtown studio"}, 2},
-	{demoBooking02, slotP1, false, 1, "Noah Ellis", "demo-guest-2", nil, "demo-manage-token-2", []string{"Take-home glaze kit", "Photo of your piece"}, 3},
-	{demoBooking03, slotB1, false, 1, "Ana Kovač", "demo-guest-3", strPtr("@ana_kovac"), "demo-manage-token-3", nil, 1},
-	{demoBooking04, slotY3, false, 3, "Luka Jovanović", "demo-guest-4", strPtr("@lukajovanovic"), "demo-manage-token-4", []string{"Riverside studio"}, 1},
-	{demoBooking05, slotP1, true, 1, "Sara Nikolić", "demo-guest-5", strPtr("@sara_nikolic"), "demo-manage-token-5", nil, 4},
-	{demoBooking06, slotB2, false, 1, "Elena Marković", "demo-guest-6", strPtr("@elenamarkovic"), "demo-manage-token-6", nil, 5},
-	{demoBooking07, slotB2, false, 1, "Filip Stanković", "demo-guest-7", strPtr("@filips"), "demo-manage-token-7", nil, 6},
-	{demoBooking08, slotY2, false, 2, "Jelena Popović", "demo-guest-8", strPtr("@jelenap"), "demo-manage-token-8", []string{"Downtown studio"}, 6},
+	{demoBooking01, slotY1, false, 2, "Mila Petrović", "demo-guest-1", strPtr("@milapetrovic"), []string{"Downtown studio"}, 2},
+	{demoBooking02, slotP1, false, 1, "Noah Ellis", "demo-guest-2", nil, []string{"Take-home glaze kit", "Photo of your piece"}, 3},
+	{demoBooking03, slotB1, false, 1, "Ana Kovač", "demo-guest-3", strPtr("@ana_kovac"), nil, 1},
+	{demoBooking04, slotY3, false, 3, "Luka Jovanović", "demo-guest-4", strPtr("@lukajovanovic"), []string{"Riverside studio"}, 1},
+	{demoBooking05, slotP1, true, 1, "Sara Nikolić", "demo-guest-5", strPtr("@sara_nikolic"), nil, 4},
+	{demoBooking06, slotB2, false, 1, "Elena Marković", "demo-guest-6", strPtr("@elenamarkovic"), nil, 5},
+	{demoBooking07, slotB2, false, 1, "Filip Stanković", "demo-guest-7", strPtr("@filips"), nil, 6},
+	{demoBooking08, slotY2, false, 2, "Jelena Popović", "demo-guest-8", strPtr("@jelenap"), []string{"Downtown studio"}, 6},
 	// ── 8–30 days ago — fills the 30-day window. ──────────────────────
-	{demoBooking09, slotY5, false, 2, "Marko Đorđević", "demo-guest-9", strPtr("@markod"), "demo-manage-token-9", []string{"Riverside studio"}, 8},
-	{demoBooking10, slotB3, false, 1, "Tijana Radosavljević", "demo-guest-10", strPtr("@tijanar"), "demo-manage-token-10", nil, 9},
-	{demoBooking11, slotP4, false, 2, "Andrej Simić", "demo-guest-11", strPtr("@andrejs"), "demo-manage-token-11", []string{"Bring a friend (+1 seat)"}, 10},
-	{demoBooking12, slotY6, false, 1, "Katarina Lukić", "demo-guest-12", strPtr("@katarinal"), "demo-manage-token-12", []string{"Downtown studio"}, 12},
-	{demoBooking13, slotB5, false, 1, "Nikola Vuković", "demo-guest-13", strPtr("@nikolav"), "demo-manage-token-13", nil, 13},
-	{demoBooking14, slotY5, true, 1, "Petra Janković", "demo-guest-14", strPtr("@petraj"), "demo-manage-token-14", []string{"Downtown studio"}, 14},
-	{demoBooking15, slotP4, false, 1, "Stefan Antić", "demo-guest-15", strPtr("@stefana"), "demo-manage-token-15", []string{"Photo of your piece"}, 15},
-	{demoBooking16, slotY6, false, 2, "Olga Branković", "demo-guest-16", strPtr("@olgab"), "demo-manage-token-16", []string{"Riverside studio"}, 16},
-	{demoBooking17, slotB5, false, 1, "Dušan Pavlović", "demo-guest-17", strPtr("@dusanp"), "demo-manage-token-17", nil, 17},
-	{demoBooking18, slotY7, false, 1, "Maja Ilić", "demo-guest-18", strPtr("@majailic"), "demo-manage-token-18", []string{"Downtown studio"}, 18},
-	{demoBooking19, slotP5, false, 2, "Bogdan Zarić", "demo-guest-19", strPtr("@bogdanz"), "demo-manage-token-19", []string{"Bring a friend (+1 seat)", "Take-home glaze kit"}, 19},
-	{demoBooking20, slotB6, false, 1, "Tamara Cvetković", "demo-guest-20", strPtr("@tamarac"), "demo-manage-token-20", nil, 20},
-	{demoBooking21, slotY7, false, 2, "Vladimir Nikolić", "demo-guest-21", strPtr("@vladimirn"), "demo-manage-token-21", []string{"Riverside studio"}, 21},
-	{demoBooking22, slotP5, true, 1, "Isidora Milovanović", "demo-guest-22", strPtr("@isidoram"), "demo-manage-token-22", nil, 22},
-	{demoBooking23, slotY8, false, 1, "Aleksandar Tomić", "demo-guest-23", strPtr("@aleksandart"), "demo-manage-token-23", []string{"Downtown studio"}, 23},
-	{demoBooking24, slotB6, false, 1, "Natalija Pavlović", "demo-guest-24", strPtr("@natalijap"), "demo-manage-token-24", nil, 24},
-	{demoBooking25, slotY8, false, 2, "Goran Stevanović", "demo-guest-25", strPtr("@gorans"), "demo-manage-token-25", []string{"Riverside studio"}, 25},
+	{demoBooking09, slotY5, false, 2, "Marko Đorđević", "demo-guest-9", strPtr("@markod"), []string{"Riverside studio"}, 8},
+	{demoBooking10, slotB3, false, 1, "Tijana Radosavljević", "demo-guest-10", strPtr("@tijanar"), nil, 9},
+	{demoBooking11, slotP4, false, 2, "Andrej Simić", "demo-guest-11", strPtr("@andrejs"), []string{"Bring a friend (+1 seat)"}, 10},
+	{demoBooking12, slotY6, false, 1, "Katarina Lukić", "demo-guest-12", strPtr("@katarinal"), []string{"Downtown studio"}, 12},
+	{demoBooking13, slotB5, false, 1, "Nikola Vuković", "demo-guest-13", strPtr("@nikolav"), nil, 13},
+	{demoBooking14, slotY5, true, 1, "Petra Janković", "demo-guest-14", strPtr("@petraj"), []string{"Downtown studio"}, 14},
+	{demoBooking15, slotP4, false, 1, "Stefan Antić", "demo-guest-15", strPtr("@stefana"), []string{"Photo of your piece"}, 15},
+	{demoBooking16, slotY6, false, 2, "Olga Branković", "demo-guest-16", strPtr("@olgab"), []string{"Riverside studio"}, 16},
+	{demoBooking17, slotB5, false, 1, "Dušan Pavlović", "demo-guest-17", strPtr("@dusanp"), nil, 17},
+	{demoBooking18, slotY7, false, 1, "Maja Ilić", "demo-guest-18", strPtr("@majailic"), []string{"Downtown studio"}, 18},
+	{demoBooking19, slotP5, false, 2, "Bogdan Zarić", "demo-guest-19", strPtr("@bogdanz"), []string{"Bring a friend (+1 seat)", "Take-home glaze kit"}, 19},
+	{demoBooking20, slotB6, false, 1, "Tamara Cvetković", "demo-guest-20", strPtr("@tamarac"), nil, 20},
+	{demoBooking21, slotY7, false, 2, "Vladimir Nikolić", "demo-guest-21", strPtr("@vladimirn"), []string{"Riverside studio"}, 21},
+	{demoBooking22, slotP5, true, 1, "Isidora Milovanović", "demo-guest-22", strPtr("@isidoram"), nil, 22},
+	{demoBooking23, slotY8, false, 1, "Aleksandar Tomić", "demo-guest-23", strPtr("@aleksandart"), []string{"Downtown studio"}, 23},
+	{demoBooking24, slotB6, false, 1, "Natalija Pavlović", "demo-guest-24", strPtr("@natalijap"), nil, 24},
+	{demoBooking25, slotY8, false, 2, "Goran Stevanović", "demo-guest-25", strPtr("@gorans"), []string{"Riverside studio"}, 25},
 	// ── 31–60 days ago — the previous 30-day window. ──────────────────
-	{demoBooking26, slotY8, false, 1, "Milica Radović", "demo-guest-26", strPtr("@milicar"), "demo-manage-token-26", []string{"Downtown studio"}, 32},
-	{demoBooking27, slotB6, false, 1, "Radovan Knežević", "demo-guest-27", strPtr("@radovank"), "demo-manage-token-27", nil, 34},
-	{demoBooking28, slotP5, false, 1, "Sofija Marić", "demo-guest-28", strPtr("@sofijam"), "demo-manage-token-28", []string{"Take-home glaze kit"}, 36},
-	{demoBooking29, slotY7, false, 1, "Todor Jovanović", "demo-guest-29", strPtr("@todorj"), "demo-manage-token-29", []string{"Downtown studio"}, 38},
-	{demoBooking30, slotB5, false, 1, "Anastasija Milošević", "demo-guest-30", strPtr("@anastasijam"), "demo-manage-token-30", nil, 40},
-	{demoBooking31, slotY6, false, 2, "Lazar Gagić", "demo-guest-31", strPtr("@lazarg"), "demo-manage-token-31", []string{"Riverside studio"}, 42},
-	{demoBooking32, slotP4, false, 1, "Vesna Protić", "demo-guest-32", strPtr("@vesnap"), "demo-manage-token-32", []string{"Photo of your piece"}, 44},
-	{demoBooking33, slotB3, false, 1, "Bojan Janković", "demo-guest-33", strPtr("@bojanj"), "demo-manage-token-33", nil, 46},
-	{demoBooking34, slotY5, false, 1, "Ivana Dragović", "demo-guest-34", strPtr("@ivanad"), "demo-manage-token-34", []string{"Downtown studio"}, 48},
-	{demoBooking35, slotB6, true, 1, "Miloš Arsić", "demo-guest-35", strPtr("@milosa"), "demo-manage-token-35", nil, 50},
-	{demoBooking36, slotP5, false, 2, "Jelena Cvetanović", "demo-guest-36", strPtr("@jelenac"), "demo-manage-token-36", []string{"Bring a friend (+1 seat)"}, 52},
-	{demoBooking37, slotY8, false, 1, "Nemanja Kostić", "demo-guest-37", strPtr("@nemanjak"), "demo-manage-token-37", []string{"Riverside studio"}, 54},
-	{demoBooking38, slotB3, false, 1, "Milica Zorić", "demo-guest-38", strPtr("@milicaz"), "demo-manage-token-38", nil, 56},
-	{demoBooking39, slotY7, false, 1, "Aleksa Mitrović", "demo-guest-39", strPtr("@aleksam"), "demo-manage-token-39", []string{"Downtown studio"}, 58},
-	{demoBooking40, slotP4, false, 1, "Tamara Bogdanović", "demo-guest-40", strPtr("@tamarab"), "demo-manage-token-40", []string{"Take-home glaze kit"}, 60},
+	{demoBooking26, slotY8, false, 1, "Milica Radović", "demo-guest-26", strPtr("@milicar"), []string{"Downtown studio"}, 32},
+	{demoBooking27, slotB6, false, 1, "Radovan Knežević", "demo-guest-27", strPtr("@radovank"), nil, 34},
+	{demoBooking28, slotP5, false, 1, "Sofija Marić", "demo-guest-28", strPtr("@sofijam"), []string{"Take-home glaze kit"}, 36},
+	{demoBooking29, slotY7, false, 1, "Todor Jovanović", "demo-guest-29", strPtr("@todorj"), []string{"Downtown studio"}, 38},
+	{demoBooking30, slotB5, false, 1, "Anastasija Milošević", "demo-guest-30", strPtr("@anastasijam"), nil, 40},
+	{demoBooking31, slotY6, false, 2, "Lazar Gagić", "demo-guest-31", strPtr("@lazarg"), []string{"Riverside studio"}, 42},
+	{demoBooking32, slotP4, false, 1, "Vesna Protić", "demo-guest-32", strPtr("@vesnap"), []string{"Photo of your piece"}, 44},
+	{demoBooking33, slotB3, false, 1, "Bojan Janković", "demo-guest-33", strPtr("@bojanj"), nil, 46},
+	{demoBooking34, slotY5, false, 1, "Ivana Dragović", "demo-guest-34", strPtr("@ivanad"), []string{"Downtown studio"}, 48},
+	{demoBooking35, slotB6, true, 1, "Miloš Arsić", "demo-guest-35", strPtr("@milosa"), nil, 50},
+	{demoBooking36, slotP5, false, 2, "Jelena Cvetanović", "demo-guest-36", strPtr("@jelenac"), []string{"Bring a friend (+1 seat)"}, 52},
+	{demoBooking37, slotY8, false, 1, "Nemanja Kostić", "demo-guest-37", strPtr("@nemanjak"), []string{"Riverside studio"}, 54},
+	{demoBooking38, slotB3, false, 1, "Milica Zorić", "demo-guest-38", strPtr("@milicaz"), nil, 56},
+	{demoBooking39, slotY7, false, 1, "Aleksa Mitrović", "demo-guest-39", strPtr("@aleksam"), []string{"Downtown studio"}, 58},
+	{demoBooking40, slotP4, false, 1, "Tamara Bogdanović", "demo-guest-40", strPtr("@tamarab"), []string{"Take-home glaze kit"}, 60},
 }
 
 // buildDemoSlots resolves the templates against now. bookedCount is
@@ -293,19 +295,34 @@ func buildDemoSlots(now time.Time) []TimeSlotRow {
 	return out
 }
 
-func buildDemoBookings(now time.Time) []BookingRow {
+// buildDemoBookings resolves the templates against now and the freshly
+// built slots. Tokens are random per run and every row carries
+// manage_token_expires_at = slot start + 24h (the production rule):
+// bookings on past slots are born expired, upcoming ones usable — no
+// row recreates the legacy NULL-expiry state migration 0014 removed.
+func buildDemoBookings(now time.Time, slots []TimeSlotRow) []BookingRow {
+	startsAt := map[string]time.Time{}
+	for _, s := range slots {
+		startsAt[s.ID] = s.StartsAt
+	}
 	out := make([]BookingRow, 0, len(demoBookingTemplates))
 	for _, t := range demoBookingTemplates {
 		status := "confirmed"
 		if t.Cancelled {
 			status = "cancelled"
 		}
+		expiresAt := now.Add(manageTokenGracePeriod)
+		if start, ok := startsAt[t.TimeSlotID]; ok {
+			expiresAt = start.Add(manageTokenGracePeriod)
+		}
+		token := newManageToken()
 		out = append(out, BookingRow{
 			ID: t.ID, TimeSlotID: t.TimeSlotID, Status: status, Seats: t.Seats,
 			GuestName: t.GuestName, GuestMessenger: "telegram", GuestMessengerID: t.GuestMessengerID,
 			GuestMessengerLogin: t.GuestLogin, GuestLocale: contracts.DefaultLocale,
-			ManageToken: t.ManageToken, SelectedOptions: t.SelectedOptions,
-			CreatedAt: now.Add(-time.Duration(t.DaysAgo) * 24 * time.Hour),
+			ManageToken: token, SelectedOptions: t.SelectedOptions,
+			CreatedAt:            now.Add(-time.Duration(t.DaysAgo) * 24 * time.Hour),
+			ManageTokenExpiresAt: &expiresAt,
 		})
 	}
 	return out
@@ -318,7 +335,7 @@ func buildDemoBookings(now time.Time) []BookingRow {
 // bookings wholesale.
 func SeedDemo(ctx context.Context, now time.Time) error {
 	slots := buildDemoSlots(now)
-	slotBookings := buildDemoBookings(now)
+	slotBookings := buildDemoBookings(now, slots)
 	demoServiceIDs := []string{}
 	for _, s := range demoServices {
 		demoServiceIDs = append(demoServiceIDs, s.ID)
@@ -352,6 +369,7 @@ func SeedDemo(ctx context.Context, now time.Time) error {
 			ON CONFLICT (id) DO UPDATE SET
 				title = $3, description = $4, photo_url = $5, location = $6, contact = $7,
 				default_price = $8, default_capacity = $9, default_duration_minutes = $10,
+				max_seats_per_booking = $11,
 				options = $12, options_select_mode = $13::options_select_mode`,
 			s.ID, contracts.DemoOrganizerID, s.Title, s.Description, s.PhotoURL, s.Location, s.Contact,
 			s.DefaultPrice, s.DefaultCapacity, s.DefaultDurationMinutes, s.MaxSeatsPerBooking,
@@ -384,11 +402,11 @@ func SeedDemo(ctx context.Context, now time.Time) error {
 
 	for _, b := range slotBookings {
 		_, err = tx.Exec(ctx, `
-			INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
-				guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options)
-			VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11, $12)`,
+		INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
+		guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options, manage_token_expires_at)
+		VALUES ($1::uuid, $2::uuid, $3::booking_status, $4, $5, $6::messenger_kind, $7, $8, $9, $10, $11, $12, $13)`,
 			b.ID, b.TimeSlotID, b.Status, b.Seats, b.GuestName, b.GuestMessenger, b.GuestMessengerID,
-			b.GuestMessengerLogin, b.GuestLocale, b.ManageToken, HashManageToken(b.ManageToken), nullableSlice(b.SelectedOptions))
+			b.GuestMessengerLogin, b.GuestLocale, b.ManageToken, HashManageToken(b.ManageToken), nullableSlice(b.SelectedOptions), b.ManageTokenExpiresAt)
 		if err != nil {
 			return err
 		}

@@ -131,6 +131,7 @@ func sampleGuestBooking() gen.GuestBooking {
 		SelectedOptions: strSlicePtr([]string{"Beginner"}),
 		CreatedAt:       goldenTime(),
 		ManageToken:     "manage-token-1234567890",
+		CanCancel:       true,
 		Slot:            sampleTimeSlotRecord(),
 		Service:         sampleServiceRecord(),
 		Organizer:       samplePublicOrganizer(),

@@ -64,7 +64,9 @@ export function createTelegramProvider() {
       const rawTicket = (credentials as Record<string, unknown>)?.ticket
       if (typeof rawTicket === 'string' && rawTicket.length === TICKET_BASE64URL_LENGTH) {
         const payload = await consumeTicket(rawTicket)
-        if (!payload) {
+        if (!payload || payload.purpose !== 'organizer') {
+          // A guest ticket (booking flow) must never be redeemable for an
+          // organizer session — tickets are bound to one flow by `purpose`.
           return null
         }
         const organizer = await db.query.organizers.findFirst({

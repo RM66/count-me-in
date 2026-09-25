@@ -410,9 +410,10 @@ export function buildDemoSlots(now: Date = new Date()) {
 
 /**
  * Illustrative bookings for the cabinet's bookings table and analytics.
- * `manageToken`s are deterministic and publicly known — acceptable only because
- * every write path rejects the demo account (ADR-010), so a leaked demo token
- * cannot cancel anything.
+ * The `manageToken` literals here are placeholders — the seeder replaces
+ * them with fresh random tokens per run and stamps expiry at slot start
+ * + 24h (ADR-020), so no usable credential is ever deterministic. Every
+ * write path also rejects the demo account (ADR-010).
  *
  * Spread across the last ~25 days so the 30-day analytics window and the 7-day
  * trend chart have real data. Each guest books a given slot at most once

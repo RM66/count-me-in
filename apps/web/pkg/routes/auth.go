@@ -27,7 +27,10 @@ func TelegramGuest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	identity, err := auth.ValidateTelegramWidget(body)
 	switch {
 	case errors.Is(err, auth.ErrTelegramNotConfigured):
@@ -66,7 +69,10 @@ func TelegramSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	identity, err := auth.ValidateTelegramWidget(body)
 	switch {
 	case errors.Is(err, auth.ErrTelegramNotConfigured):

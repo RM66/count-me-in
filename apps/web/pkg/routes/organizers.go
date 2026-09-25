@@ -25,7 +25,17 @@ import (
 func OrganizerRegister(w http.ResponseWriter, r *http.Request) {
 	locale := i18n.DetectLocale(r)
 
-	body, _ := httpx.ReadBody(r)
+	// Registration is the one write reachable without any identity: a
+	// ticket is required to succeed, but the endpoint itself can be
+	// hammered. IP-keyed bucket keeps that cheap.
+	if !httpx.RateLimited(w, r, "rl:register:"+httpx.ClientIP(r), httpx.RateLimitConfig{Limit: 10, Window: time.Hour}) {
+		return
+	}
+
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeRegisterOrganizerInput(body)
 	if errs != nil {
 		httpx.WriteInvalidIssues(w, locale, errs)
@@ -105,7 +115,10 @@ func OrganizerMePut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	if _, errs := validation.DecodeUpdateOrganizerProfileInput(body); errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -226,7 +239,10 @@ func OrganizerMeLanguage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeUpdateOrganizerLanguageInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -234,10 +250,14 @@ func OrganizerMeLanguage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.UpdateOrganizerLanguage(r.Context(), organizerID, string(input.Language)); err != nil {
+		if resp := httpx.OrganizerErrorResponse(err, locale); resp != nil {
+			resp.Write(w)
+			return
+		}
 		httpx.Internal(err).Write(w)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	httpx.Empty(http.StatusNoContent).Write(w)
 }
 
 // OrganizerAvatar — POST /api/organizers/me/avatar: a signed upload URL
@@ -256,7 +276,10 @@ func OrganizerAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCreateAvatarUploadInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -288,7 +311,10 @@ func OrganizerServicePhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCreateServicePhotoUploadInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)

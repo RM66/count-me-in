@@ -36,12 +36,18 @@ type OutboxRow struct {
 // before tx.Commit so the outbox row commits atomically with the
 // booking it describes. The returned row lets the caller publish the
 // exact stored payload and mark it `sent` by id.
-func EnqueueOutbox(ctx context.Context, tx pgx.Tx, queue string, payload any, traceID string) (OutboxRow, error) {
-	body, err := json.Marshal(payload)
+//
+// buildPayload receives the freshly generated outbox row id, so the
+// payload can embed it as the consumer's idempotency key: the job
+// handler SET-NX's on it, which makes a QStash retry or a sweeper
+// re-publish unable to double-notify the same recipient.
+func EnqueueOutbox(ctx context.Context, tx pgx.Tx, queue string, buildPayload func(outboxID string) any, traceID string) (OutboxRow, error) {
+	row := OutboxRow{ID: newID(), Queue: queue, TraceID: traceID}
+	body, err := json.Marshal(buildPayload(row.ID))
 	if err != nil {
 		return OutboxRow{}, err
 	}
-	row := OutboxRow{ID: newID(), Queue: queue, Payload: string(body), TraceID: traceID}
+	row.Payload = string(body)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO notification_outbox (id, queue, payload, trace_id, status, attempts)
 		VALUES ($1::uuid, $2, $3, $4, 'pending', 0)`,
@@ -60,6 +66,31 @@ func MarkOutboxSent(ctx context.Context, id string) error {
 	return err
 }
 
+// MarkOutboxSkipped moves a row to the terminal `skipped` status.
+// Dev-only: without QSTASH_TOKEN the publish is deliberately never
+// attempted (localhost is not routable from Upstash), and recording
+// that as `sent` would lie in the backlog metrics. Skipped rows never
+// match the sweeper's `pending` filter and are removed by retention.
+func MarkOutboxSkipped(ctx context.Context, id string) error {
+	_, err := Pool().Exec(ctx, `
+		UPDATE notification_outbox SET status = 'skipped'
+		WHERE id = $1::uuid AND status = 'pending'`, id)
+	return err
+}
+
+// BumpOutboxAttempts spends one retry-budget unit for a row that was
+// actually processed (published or attempted), returning the
+// post-increment value. Rows the sweeper skips on deadline never reach
+// here, so a slow sweep no longer burns the budget without a send.
+func BumpOutboxAttempts(ctx context.Context, id string) (int, error) {
+	var attempts int
+	err := Pool().QueryRow(ctx, `
+		UPDATE notification_outbox SET attempts = attempts + 1
+		WHERE id = $1::uuid AND status = 'pending'
+		RETURNING attempts`, id).Scan(&attempts)
+	return attempts, err
+}
+
 // MarkOutboxFailed moves a row past the retry budget to the terminal
 // `failed` status. Terminal rows no longer match the sweeper's
 // `pending` filter, so they cannot clog the batch (head-of-line
@@ -71,13 +102,13 @@ func MarkOutboxFailed(ctx context.Context, id string) error {
 	return err
 }
 
-// DeleteSentOutboxBefore removes `sent` rows older than the cutoff —
-// retention so the table does not grow unbounded. Returns the
-// number of deleted rows for the sweeper's log.
+// DeleteSentOutboxBefore removes terminal `sent` and `skipped` rows
+// older than the cutoff — retention so the table does not grow
+// unbounded. Returns the number of deleted rows for the sweeper's log.
 func DeleteSentOutboxBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	tag, err := Pool().Exec(ctx, `
 		DELETE FROM notification_outbox
-		WHERE status = 'sent' AND created_at < $1`, cutoff)
+		WHERE status IN ('sent', 'skipped') AND created_at < $1`, cutoff)
 	if err != nil {
 		return 0, err
 	}
@@ -103,9 +134,14 @@ func OutboxBacklog(ctx context.Context) (pending int64, oldestAge time.Duration,
 }
 
 // SweepOutbox reads up to `limit` `pending` rows older than the grace
-// period, returning them for the sweeper to publish. Each row's
-// `attempts` is incremented atomically (SELECT … FOR UPDATE SKIP LOCKED
-// + UPDATE) so concurrent sweepers do not double-publish.
+// period, returning them for the sweeper to publish. Rows are claimed
+// with SELECT … FOR UPDATE SKIP LOCKED so two concurrent sweepers do
+// not process the same batch while both transactions are open — but the
+// claim spends no retry budget: `attempts` is bumped per row only when
+// the row is actually processed (BumpOutboxAttempts), so rows left
+// behind on deadline keep their budget for the next sweep. A duplicate
+// delivery from overlapping sweeps is suppressed by the dedup id (the
+// outbox row id) plus the consumer's idempotency guard.
 func SweepOutbox(ctx context.Context, gracePeriod time.Duration, limit int) ([]OutboxRow, error) {
 	cutoff := time.Now().Add(-gracePeriod)
 	tx, err := Pool().Begin(ctx)
@@ -136,23 +172,6 @@ func SweepOutbox(ctx context.Context, gracePeriod time.Duration, limit int) ([]O
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return nil, err
-	}
-
-	// Bump attempts for the claimed rows so a failing job does not
-	// retry forever (the sweeper moves rows past maxAttempts to
-	// `failed`). Semantics: `attempts` counts
-	// sweep *claims*, not publish failures — incrementing at claim
-	// time inside the SKIP LOCKED transaction is what makes the budget
-	// race-free (two concurrent sweepers cannot both spend the same
-	// attempt). A row that publishes fine on its first sweep ends at
-	// attempts=1; the budget therefore bounds sweep rounds, which is
-	// the quantity that actually matters for head-of-line blocking.
-	for _, r := range out {
-		if _, err := tx.Exec(ctx, `
-			UPDATE notification_outbox SET attempts = attempts + 1
-			WHERE id = $1::uuid`, r.ID); err != nil {
-			return nil, err
-		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err

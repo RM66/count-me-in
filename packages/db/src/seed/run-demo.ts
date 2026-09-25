@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { DEMO_ORGANIZER_ID } from '@repo/contracts'
 import { hashManageToken } from '@repo/contracts/manage-token'
 import { eq, inArray } from 'drizzle-orm'
@@ -48,6 +49,7 @@ export async function seedDemo(now: Date = new Date()): Promise<void> {
             defaultPrice: service.defaultPrice,
             defaultCapacity: service.defaultCapacity,
             defaultDurationMinutes: service.defaultDurationMinutes,
+            maxSeatsPerBooking: service.maxSeatsPerBooking,
             options: service.options,
             optionsSelectMode: service.optionsSelectMode,
           },
@@ -68,11 +70,28 @@ export async function seedDemo(now: Date = new Date()): Promise<void> {
     }
 
     await tx.insert(timeSlots).values(slots)
-    // manageTokenHash is NOT NULL: compute it at
-    // insert time rather than repeating it in every demo literal.
-    await tx
-      .insert(bookings)
-      .values(slotBookings.map((b) => ({ ...b, manageTokenHash: hashManageToken(b.manageToken) })))
+    // manageTokenHash is NOT NULL and the raw token must never be the
+    // deterministic literal from the seed data: a fresh random token is
+    // minted per booking per run, and it expires at slot start + 24h
+    // grace like any real one (ADR-020). Most demo bookings sit in the
+    // past for analytics, so their tokens are born expired — exactly
+    // right for a read-only account.
+    const slotStart = new Map(slots.map((slot) => [slot.id, slot.startsAt]))
+    await tx.insert(bookings).values(
+      slotBookings.map((b) => {
+        const manageToken = `demo-${randomUUID()}`
+        const startsAt = slotStart.get(b.timeSlotId)
+        const manageTokenExpiresAt = startsAt
+          ? new Date(startsAt.getTime() + 24 * 60 * 60 * 1000)
+          : null
+        return {
+          ...b,
+          manageToken,
+          manageTokenExpiresAt,
+          manageTokenHash: hashManageToken(manageToken),
+        }
+      }),
+    )
   })
 }
 

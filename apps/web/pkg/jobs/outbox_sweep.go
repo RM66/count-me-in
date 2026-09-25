@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"countmein/pkg/contracts"
@@ -39,12 +40,29 @@ const (
 	outboxSentRetention = 7 * 24 * time.Hour
 )
 
+// sweepRowBudget — the per-row publish budget. The function's
+// maxDuration is 10s and the batch can hold 50 rows; a sweep that
+// publishes sequentially without watching the clock gets killed
+// mid-batch. Aborting when the remaining time no longer covers one
+// publish leaves the rest of the batch for the next sweep — with their
+// attempts unspent, because the budget is spent per processed row, not
+// at claim time.
+const sweepRowBudget = 2 * time.Second
+
+// sweepFunctionBudget — the wall-clock budget for one batch. The Go
+// runtime's request context carries no deadline (Vercel enforces
+// maxDuration — 10s in vercel.json — by killing the instance), so a
+// ctx.Deadline() check would never fire; the handler budgets itself
+// instead. var, not const: tests shrink it to pin the abort path.
+var sweepFunctionBudget = 8 * time.Second
+
 // HandleOutboxSweep reads pending outbox rows and re-publishes them.
 // Each row is published to its original queue; on success the row is
 // marked `sent`. Rows past outboxMaxAttempts are moved to `failed`
 // (terminal, logged) so a permanently failing job does not retry
 // forever and does not block the batch.
 func HandleOutboxSweep(ctx context.Context) error {
+	started := time.Now()
 	// Backlog metric: emitted every sweep so
 	// "pending rows growing" and "oldest pending aging" are visible in
 	// the logs — the cheapest alertable signal for the async pipeline.
@@ -62,8 +80,20 @@ func HandleOutboxSweep(ctx context.Context) error {
 		return err
 	}
 
-	for _, row := range rows {
-		if row.Attempts > outboxMaxAttempts {
+	for i, row := range rows {
+		// Deadline discipline: stop before starting a publish the
+		// remaining function budget no longer covers. Rows left
+		// behind keep their attempts unspent — the budget is spent
+		// per processed row below, not at claim time — so the next
+		// sweep (2 minutes later) picks them up on equal terms.
+		if time.Since(started)+sweepRowBudget > sweepFunctionBudget {
+			logx.Info("outbox sweep out of time — leaving the rest for the next sweep", map[string]any{
+				"remaining": len(rows) - i,
+			})
+			break
+		}
+
+		if row.Attempts >= outboxMaxAttempts {
 			logx.Info("outbox row exceeded max attempts — marking failed", map[string]any{
 				"outboxId": row.ID,
 				"queue":    row.Queue,
@@ -78,21 +108,52 @@ func HandleOutboxSweep(ctx context.Context) error {
 			continue
 		}
 
+		// Per-row timeout: one hung publish must not eat the whole
+		// function budget — the 1s QStash client timeout is the usual
+		// bound, this is the backstop.
+		rowCtx, rowCancel := context.WithTimeout(ctx, sweepRowBudget)
 		// Re-publish to the original queue. The payload is the raw JSON
 		// stored in the outbox row — it carries ids only (no secrets).
 		// The row id doubles as the dedup id, so a delivery that
 		// already happened (inline path or an earlier sweep) is
 		// suppressed by QStash instead of duplicated.
-		if err := queue.PublishOutbox(ctx, row.Queue, []byte(row.Payload), row.ID, row.TraceID); err != nil {
+		err := queue.PublishOutbox(rowCtx, row.Queue, []byte(row.Payload), row.ID, row.TraceID)
+		rowCancel()
+		if err != nil {
+			if errors.Is(err, queue.ErrPublishSkipped) {
+				if merr := db.MarkOutboxSkipped(ctx, row.ID); merr != nil {
+					logx.Error(merr, map[string]any{
+						"outboxId": row.ID,
+						"source":   "outbox-mark-skipped",
+					})
+				}
+				continue
+			}
 			logx.Error(err, map[string]any{
 				"outboxId": row.ID,
 				"queue":    row.Queue,
 				"source":   "outbox-sweep",
 			})
+			// Spend the attempt: the row was processed and failed —
+			// leave pending, the next sweep retries within budget.
+			if _, berr := db.BumpOutboxAttempts(ctx, row.ID); berr != nil {
+				logx.Error(berr, map[string]any{
+					"outboxId": row.ID,
+					"source":   "outbox-bump-attempts",
+				})
+			}
 			continue // leave pending — the next sweep retries
 		}
 
-		// Mark sent so the next sweep skips it.
+		// Spend the attempt, then mark sent so the next sweep skips
+		// it. Bump-then-sent keeps the attempts column honest about
+		// how many sweep rounds the row cost.
+		if _, berr := db.BumpOutboxAttempts(ctx, row.ID); berr != nil {
+			logx.Error(berr, map[string]any{
+				"outboxId": row.ID,
+				"source":   "outbox-bump-attempts",
+			})
+		}
 		if err := db.MarkOutboxSent(ctx, row.ID); err != nil {
 			logx.Error(err, map[string]any{
 				"outboxId": row.ID,
