@@ -12,6 +12,7 @@ import (
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
+	"countmein/pkg/logx"
 )
 
 // Key builders and URL mapping, ported from @repo/media-storage/keys.
@@ -106,6 +107,93 @@ func IsOwnMediaURL(organizerID, url string) bool {
 	cleaned := path.Clean("/" + parsed.Path)
 	own := strings.TrimSuffix(path.Clean(prefixURL.Path), "/") // e.g. /organizers/{id}
 	return cleaned == own || strings.HasPrefix(cleaned, own+"/")
+}
+
+// MediaKeyFromURL is the inverse of PublicURL: it maps a public media
+// URL back to its R2 object key (which includes the organizers/{id}/
+// directory — PublicURL is base + "/" + key). It only accepts URLs
+// under this organizer's own prefix (IsOwnMediaURL) — a foreign or
+// malformed URL yields ("", false) and the caller must skip deletion
+// rather than delete something it does not own.
+func MediaKeyFromURL(organizerID, url string) (string, bool) {
+	if !IsOwnMediaURL(organizerID, url) {
+		return "", false
+	}
+	c, err := config()
+	if err != nil {
+		return "", false
+	}
+	baseURL, err := neturl.Parse(c.publicBaseURL)
+	if err != nil {
+		return "", false
+	}
+	parsed, err := neturl.Parse(url)
+	if err != nil {
+		return "", false
+	}
+	// IsOwnMediaURL already guarantees host match and a path under the
+	// organizer's directory; path.Clean resolves any `.`/`..` segments
+	// (they stay inside the directory by construction). The key is the
+	// cleaned path minus the public base's own path prefix.
+	cleaned := path.Clean("/" + parsed.Path) // e.g. /organizers/o1/avatar.png
+	base := strings.TrimSuffix(path.Clean("/"+baseURL.Path), "/")
+	if cleaned == base {
+		return "", false // the base itself, not an object
+	}
+	// The organizer's own directory (or the base) is a prefix, not an
+	// object — never hand back a "directory key" for deletion.
+	if cleaned == base+"/organizers/"+organizerID {
+		return "", false
+	}
+	return strings.TrimPrefix(cleaned, base+"/"), true
+}
+
+// deleteObject is a test seam: it lets the skip decisions of
+// DeleteReplacedMedia be pinned without a network call to R2.
+var deleteObject = DeleteObject
+
+// DeleteReplacedMedia removes the previous image object from R2 after a
+// row's photoUrl has been committed with a new value. Best-effort by
+// design, mirroring the notification publisher (ADR-012): a storage
+// failure must never fail an already-committed update, so errors are
+// logged and swallowed. Skipped when the URL did not change, when the
+// old value is empty (nothing to delete), when the old URL is not this
+// organizer's media (never delete what you do not own — the old URL
+// itself is not logged: it can point at foreign media), and when both
+// URLs resolve to the same key: a query-string cache buster, a fragment
+// or an encoded path is the same object and must not be deleted from
+// under the row that now points at it.
+func DeleteReplacedMedia(ctx context.Context, organizerID, oldURL, newURL string) {
+	if oldURL == "" || oldURL == newURL {
+		return
+	}
+	// Without the R2 env set, MediaKeyFromURL can only answer false —
+	// report the actual cause instead of logging "not-own-media".
+	if _, err := config(); err != nil {
+		logx.Error(err, map[string]any{
+			"organizerId": organizerID,
+			"op":          "delete-replaced-media",
+		})
+		return
+	}
+	key, ok := MediaKeyFromURL(organizerID, oldURL)
+	if !ok {
+		logx.Info("skipped media cleanup", map[string]any{
+			"organizerId": organizerID,
+			"reason":      "not-own-media",
+		})
+		return
+	}
+	if newKey, ok := MediaKeyFromURL(organizerID, newURL); ok && newKey == key {
+		return
+	}
+	if err := deleteObject(ctx, key); err != nil {
+		logx.Error(err, map[string]any{
+			"organizerId": organizerID,
+			"key":         key,
+			"op":          "delete-replaced-media",
+		})
+	}
 }
 
 // CreateAvatarUpload returns a signed upload URL for an organizer's
