@@ -59,19 +59,34 @@ var (
 	presignClient *s3.PresignClient
 )
 
+var (
+	clientOnce sync.Once
+	s3Client   *s3.Client
+)
+
+// client returns the shared S3-compatible API client for R2. The config
+// argument is read only when the client is first built (lazy, like the
+// presigner), so a missing env surfaces as an error on first use rather
+// than at boot.
+func client(c r2Config) *s3.Client {
+	clientOnce.Do(func() {
+		s3Client = s3.New(s3.Options{
+			Region:       "auto",
+			BaseEndpoint: aws.String("https://" + c.accountID + ".r2.cloudflarestorage.com"),
+			Credentials:  credentials.NewStaticCredentialsProvider(c.accessKeyID, c.secretAccess, ""),
+			UsePathStyle: true,
+		})
+	})
+	return s3Client
+}
+
 func presigner() (*s3.PresignClient, error) {
 	c, err := config()
 	if err != nil {
 		return nil, err
 	}
 	presignOnce.Do(func() {
-		client := s3.New(s3.Options{
-			Region:       "auto",
-			BaseEndpoint: aws.String("https://" + c.accountID + ".r2.cloudflarestorage.com"),
-			Credentials:  credentials.NewStaticCredentialsProvider(c.accessKeyID, c.secretAccess, ""),
-			UsePathStyle: true,
-		})
-		presignClient = s3.NewPresignClient(client)
+		presignClient = s3.NewPresignClient(client(c))
 	})
 	return presignClient, nil
 }
@@ -96,4 +111,22 @@ func SignedUploadURL(ctx context.Context, key, contentType string, contentLength
 		return "", time.Time{}, err
 	}
 	return req.URL, time.Now().Add(expiresIn), nil
+}
+
+// DeleteObject removes an object from R2 by key. A missing object is
+// success (S3 delete is idempotent), so a stale URL or an already
+// cleaned-up key is not an error.
+func DeleteObject(ctx context.Context, key string) error {
+	if key == "" {
+		return errors.New("empty object key")
+	}
+	c, err := config()
+	if err != nil {
+		return err
+	}
+	_, err = client(c).DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	})
+	return err
 }

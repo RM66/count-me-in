@@ -245,17 +245,21 @@ func UpdateOwnedServiceTx(ctx context.Context, q Querier, organizerID, serviceID
 
 // DeleteOwnedService — slots and their bookings cascade (the services
 // FK), so this also removes any scheduled sessions. Returns "" when
-// nothing matched.
-func DeleteOwnedService(ctx context.Context, organizerID, serviceID string) (string, error) {
+// nothing matched. The deleted cover URL rides along so the caller can
+// remove the R2 object best-effort after the commit (same pattern as
+// the PUT handlers) — a separate read-then-delete would race with a
+// concurrent PUT pointing the row at a new cover.
+func DeleteOwnedService(ctx context.Context, organizerID, serviceID string) (string, *string, error) {
 	var id string
+	var photoURL *string
 	err := Pool().QueryRow(ctx,
-		`DELETE FROM services WHERE id = $1 AND organizer_id = $2::uuid RETURNING id`,
-		serviceID, organizerID).Scan(&id)
+		`DELETE FROM services WHERE id = $1 AND organizer_id = $2::uuid RETURNING id, photo_url`,
+		serviceID, organizerID).Scan(&id, &photoURL)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
+		return "", nil, nil
 	}
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return id, nil
+	return id, photoURL, nil
 }

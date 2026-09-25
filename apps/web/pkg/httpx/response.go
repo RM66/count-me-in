@@ -9,6 +9,7 @@ package httpx
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
@@ -38,9 +39,29 @@ func (r *Response) Write(w http.ResponseWriter) {
 		w.WriteHeader(r.Status)
 		return
 	}
+	// Marshal before writing the status so an encoding failure can still
+	// be answered cleanly, and set Content-Length so a later Flush does
+	// not turn the response into chunked transfer encoding.
+	body, err := json.Marshal(r.Body)
+	if err != nil {
+		logx.Error(err, map[string]any{"scope": "api", "op": "marshal-response"})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(r.Status)
-	_ = json.NewEncoder(w).Encode(r.Body)
+	_, _ = w.Write(body)
+}
+
+// Flush releases the written response immediately. Best-effort: the Go
+// runtime may buffer responses until the handler returns (it is not a
+// streaming one), so callers must not assume the client has already
+// seen the body — the call only improves the common case.
+func Flush(w http.ResponseWriter) {
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func JSON(status int, body any) *Response { return &Response{Status: status, Body: body} }

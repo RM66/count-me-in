@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	gen "countmein/pkg/api/gen"
+	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/demo"
 	"countmein/pkg/httpx"
@@ -177,7 +178,17 @@ func ServicePut(w http.ResponseWriter, r *http.Request, serviceID string) {
 		httpx.Internal(err).Write(w)
 		return
 	}
+
 	httpx.JSON(http.StatusOK, gen.ServiceEnvelope{Service: db.ToServiceRecord(*row)}).Write(w)
+	httpx.Flush(w)
+
+	// The replaced cover object is removed best-effort after the commit
+	// (see cleanupReplacedMedia) — a storage failure must not fail an
+	// already-committed update.
+	if touched["photoUrl"] {
+		cleanupReplacedMedia(organizerID,
+			contracts.DerefOr(current.PhotoURL, ""), contracts.DerefOr(row.PhotoURL, ""))
+	}
 }
 
 // serviceWritableState renders the writable fields of a service row in
@@ -199,7 +210,10 @@ func serviceWritableState(s db.ServiceRow) map[string]any {
 }
 
 // ServiceDelete — DELETE /api/services/{id}; cascades to slots and their
-// bookings (the services FK).
+// bookings (the services FK). The cover object is removed from R2
+// best-effort after the delete (see cleanupReplacedMedia) — the
+// photo_url rides along in the DELETE … RETURNING so a concurrent PUT
+// cannot slip a new cover in between a read and the delete.
 func ServiceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)
@@ -208,7 +222,7 @@ func ServiceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 		return
 	}
 
-	deletedID, err := db.DeleteOwnedService(r.Context(), organizerID, serviceID)
+	deletedID, photoURL, err := db.DeleteOwnedService(r.Context(), organizerID, serviceID)
 	if err != nil {
 		httpx.Internal(err).Write(w)
 		return
@@ -218,4 +232,7 @@ func ServiceDelete(w http.ResponseWriter, r *http.Request, serviceID string) {
 		return
 	}
 	httpx.JSON(http.StatusOK, gen.DeletedServiceEnvelope{ID: deletedID}).Write(w)
+	httpx.Flush(w)
+
+	cleanupReplacedMedia(organizerID, contracts.DerefOr(photoURL, ""), "")
 }

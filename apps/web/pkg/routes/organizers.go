@@ -8,6 +8,7 @@ import (
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/auth"
+	"countmein/pkg/contracts"
 	"countmein/pkg/db"
 	"countmein/pkg/demo"
 	"countmein/pkg/httpx"
@@ -185,6 +186,15 @@ func OrganizerMePut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(http.StatusOK, gen.OrganizerEnvelope{Organizer: db.ToOrganizerProfile(*row, false)}).Write(w)
+	httpx.Flush(w)
+
+	// The replaced avatar object is removed best-effort after the commit
+	// (see cleanupReplacedMedia) — a storage failure must not fail an
+	// already-committed update.
+	if touched["photoUrl"] {
+		cleanupReplacedMedia(organizerID,
+			contracts.DerefOr(current.PhotoURL, ""), contracts.DerefOr(row.PhotoURL, ""))
+	}
 }
 
 // organizerWritableState renders the writable fields of an organizer row

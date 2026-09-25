@@ -13,7 +13,7 @@ import (
 // path must be a clear error, not a panic — the route surfaces it as a
 // 500 with the variable name, which is the operator's only clue.
 
-// resetR2 clears the package-level config/presigner caches so each test
+// resetR2 clears the package-level config/client caches so each test
 // controls the env it sees. Test-only: same package, direct var access.
 func resetR2() {
 	cfgOnce = sync.Once{}
@@ -21,6 +21,8 @@ func resetR2() {
 	cfgErr = nil
 	presignOnce = sync.Once{}
 	presignClient = nil
+	clientOnce = sync.Once{}
+	s3Client = nil
 }
 
 func TestSignedUploadURLMissingEnvIsErrorNotPanic(t *testing.T) {
@@ -73,5 +75,34 @@ func TestSignedUploadURLShape(t *testing.T) {
 	maxAge := time.Until(expiresAt)
 	if maxAge <= 0 || maxAge > 10*time.Minute || expiresAt.Before(before) {
 		t.Errorf("expiresAt = %v, want ~now+10min", expiresAt)
+	}
+}
+
+// DeleteObject mirrors the upload path: a missing env set must surface
+// as a clear error naming the variable, not a panic or a dial to a
+// half-built endpoint.
+func TestDeleteObjectMissingEnvIsErrorNotPanic(t *testing.T) {
+	resetR2()
+	t.Setenv("R2_ACCOUNT_ID", "")
+	t.Setenv("R2_ACCESS_KEY_ID", "")
+	t.Setenv("R2_SECRET_ACCESS_KEY", "")
+	t.Setenv("R2_BUCKET", "")
+	t.Setenv("R2_PUBLIC_BASE_URL", "")
+	defer resetR2()
+
+	err := DeleteObject(context.Background(), "organizers/o1/avatar.png")
+	if err == nil {
+		t.Fatal("missing R2 env must be an error")
+	}
+	if !strings.Contains(err.Error(), "R2_") {
+		t.Errorf("the error must name the missing variable, got %q", err.Error())
+	}
+}
+
+// An empty key must be refused before config or a request: a bucket-level
+// DELETE is never the intent of a cleanup.
+func TestDeleteObjectEmptyKeyIsError(t *testing.T) {
+	if err := DeleteObject(context.Background(), ""); err == nil {
+		t.Fatal("an empty key must be an error, not a bucket-level request")
 	}
 }
