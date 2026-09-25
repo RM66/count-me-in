@@ -92,7 +92,7 @@
       "outputs": ["pkg/contracts/constants_gen.go"]
     },
     "generate:i18n": {
-      "inputs": ["packages/translations/**/*.json"],
+      "inputs": ["$TURBO_ROOT$/packages/translations/**/*.json"],
       "outputs": ["pkg/i18n/translations_gen.go"]
     },
     "test:watch": {
