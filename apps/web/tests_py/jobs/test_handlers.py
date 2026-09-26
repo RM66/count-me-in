@@ -224,3 +224,82 @@ async def test_handle_booking_missing_is_silent_skip(fake_telegram, fake_redis):
     )
     await handle_booking_created(ENV, missing, "trace-missing")
     assert fake_telegram.calls == []
+
+
+async def test_handle_booking_demo_refused(fake_telegram, fake_redis):
+    """A demo booking is never notified (ADR-010): every recipient path
+    is a silent skip — no Telegram sends, and no one-time login link
+    minted in Redis either."""
+    from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
+    from sqlalchemy import text
+
+    # A booking chain hanging off the demo organizer (the row itself is
+    # seed-owned; the service/slot/booking below are ours to clean up).
+    suffix = uuid.uuid4().hex[-12:]
+    service_id = "svc-demo-" + suffix
+    slot_id = str(uuid.uuid4())
+    booking_id = str(uuid.uuid4())
+    token = "it-demo-token-" + suffix
+    async with engine().begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO services (id, organizer_id, title, default_price, default_capacity, "
+                "default_duration_minutes, max_seats_per_booking) "
+                "VALUES (:id, CAST(:org AS uuid), 'Demo Service', '0', 10, 60, 4)"
+            ),
+            {"id": service_id, "org": DEMO_ORGANIZER_ID},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, capacity, booked_count) "
+                "VALUES (CAST(:id AS uuid), :svc, :starts, 60, 10, 0)"
+            ),
+            {
+                "id": slot_id,
+                "svc": service_id,
+                "starts": datetime.now(tz=UTC) + timedelta(hours=48),
+            },
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, "
+                "guest_messenger_id, guest_locale, manage_token, manage_token_hash) "
+                "VALUES (CAST(:id AS uuid), CAST(:slot AS uuid), 'confirmed', 1, 'Ann', 'telegram', "
+                ":chat, 'en', :token, :hash)"
+            ),
+            {
+                "id": booking_id,
+                "slot": slot_id,
+                "chat": "it-demo-chat-" + suffix[-8:],
+                "token": token,
+                "hash": hash_manage_token(token),
+            },
+        )
+    try:
+        links_before = await fake_redis.keys("auth:login-link:*")
+
+        created = gen.BookingCreatedJob.model_construct(bookingId=booking_id, recipient="organizer")
+        await handle_booking_created(ENV, created, "trace-demo")
+        created.recipient = "guest"
+        await handle_booking_created(ENV, created, "trace-demo")
+        for by in ("guest", "organizer"):
+            cancelled = gen.BookingCancelledJob.model_construct(
+                bookingId=booking_id, cancelledBy=by
+            )
+            await handle_booking_cancelled(ENV, cancelled, "trace-demo")
+
+        assert fake_telegram.calls == [], "demo booking → no sends"
+        # Neither recipient path may mint its one-time login link —
+        # checked by key prefix, not a bare key count (a count could
+        # hide a mint plus an unrelated expiry).
+        links_after = await fake_redis.keys("auth:login-link:*")
+        assert links_after == links_before, "demo booking must mint no login links"
+    finally:
+        async with engine().begin() as conn:
+            await conn.execute(
+                text("DELETE FROM bookings WHERE id = CAST(:id AS uuid)"), {"id": booking_id}
+            )
+            await conn.execute(
+                text("DELETE FROM time_slots WHERE id = CAST(:id AS uuid)"), {"id": slot_id}
+            )
+            await conn.execute(text("DELETE FROM services WHERE id = :id"), {"id": service_id})

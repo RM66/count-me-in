@@ -12,17 +12,23 @@ import sys
 import threading
 import time
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, ClassVar
 
 _LEVELS = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR}
 
 
 class _JsonFormatter(logging.Formatter):
+    # Go's slog JSON handler emits uppercase level names (INFO/WARN/
+    # ERROR — never "WARNING"); the drain's level filters match the
+    # exact string, so the case is part of the wire format.
+    _LEVEL_NAMES: ClassVar[dict[str, str]] = {"WARNING": "WARN"}
+
     def format(self, record: logging.LogRecord) -> str:
+        level = self._LEVEL_NAMES.get(record.levelname, record.levelname)
         out: dict[str, Any] = {
             "time": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(record.created))
             + f".{int(record.msecs):03d}Z",
-            "level": record.levelname.lower(),
+            "level": level,
             "msg": record.getMessage(),
         }
         for key, value in record.__dict__.get("extra_fields", {}).items():

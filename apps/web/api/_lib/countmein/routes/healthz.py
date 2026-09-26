@@ -58,6 +58,15 @@ def _missing_healthz_env() -> list[str]:
     return [name for name in ("POSTGRES_URL", "REDIS_URL") if os.getenv(name, "").strip() == ""]
 
 
+def _panicking_env() -> str | None:
+    """The variable whose absence is the Go probe's panic path. Only
+    Postgres panics on a missing env (the lazy engine raises); Redis
+    unconfigured is the deliberate `skipped` state, not an outage."""
+    if os.getenv("POSTGRES_URL", "").strip() == "":
+        return "POSTGRES_URL"
+    return None
+
+
 def _encoder_body(checks: dict[str, str]) -> bytes:
     """Go writes the probe with json.NewEncoder(w).Encode — compact JSON
     with sorted map keys and a trailing newline (Encoder, not Marshal).
@@ -72,6 +81,35 @@ async def handle_healthz(request: Request) -> Response:
         )
         if limited is not None:
             return limited.to_starlette()
+
+        # A missing POSTGRES_URL is the Go probe's panic path: there the
+        # lazy engine panics inside probePostgres and Recover answers
+        # the full-failure body naming the variables. Reproduced here as
+        # an explicit up-front check — the per-probe except below would
+        # otherwise swallow the env error into a single-dependency
+        # "fail", which is not what Go answers. (Redis unconfigured is
+        # the deliberate `skipped` state, not this path.)
+        panicking = _panicking_env()
+        if panicking is not None:
+            # Go's Recover logs the panic before answering (pkg/api/server.go);
+            # healthz is excluded from the access log, so without this line a
+            # misconfigured production deploy leaves no trace in the drain.
+            logx.error(
+                RuntimeError(f"healthz panic: {panicking} is not set"),
+                {"scope": "healthz"},
+            )
+            return Response(
+                content=_encoder_body(
+                    {
+                        "postgres": "fail",
+                        "redis": "fail",
+                        "error": f"dependency probe panicked: {panicking} is not set",
+                        "missingEnv": _missing_healthz_env(),  # type: ignore[dict-item]
+                    }
+                ),
+                status_code=503,
+                headers={"Content-Type": "application/json"},
+            )
 
         checks: dict[str, str] = {"postgres": "ok", "redis": "ok"}
         status = 200

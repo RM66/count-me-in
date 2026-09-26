@@ -12,6 +12,7 @@ API side must set its own:
 
 from __future__ import annotations
 
+import time
 import traceback
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
@@ -60,10 +61,45 @@ def _go_uuid_parse_error(value: str) -> str | None:
 
 
 class DefaultHeadersAndRecovery(BaseHTTPMiddleware):
-    """Set the default headers on every response and turn an unhandled
-    exception into a logged 500 instead of crashing the function."""
+    """Set the default headers on every response, log one line per
+    request, and turn an unhandled exception into a logged 500 instead
+    of crashing the function."""
 
     async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[StarletteResponse]]
+    ) -> StarletteResponse:
+        started = time.perf_counter()
+        # /api/healthz is mounted on the outer mux in Go, outside
+        # httpx.Recover — the probe answers bare (Content-Type only), so
+        # monitors see dependency state without the API's header set.
+        # It is also outside the access log: external monitors poll it
+        # continuously and would flood the drain (the platform's own
+        # probe logs cover it).
+        is_healthz = request.url.path == "/api/healthz"
+        response: StarletteResponse | None = None
+        try:
+            response = await self._serve(request, call_next)
+        finally:
+            if not is_healthz and response is not None:
+                # One access-log line per request — in a finally, so the
+                # early returns below (the router's UUID-binding 400)
+                # log too. x-vercel-id is Vercel's per-request
+                # correlation id — the same field the platform's own
+                # logs carry, so a function log line and a platform log
+                # line join on it.
+                fields: dict[str, object] = {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+                }
+                request_id = request.headers.get("x-vercel-id", "")
+                if request_id:
+                    fields["request_id"] = request_id
+                logx.info("request", fields)
+        return response
+
+    async def _serve(
         self, request: Request, call_next: Callable[[Request], Awaitable[StarletteResponse]]
     ) -> StarletteResponse:
         # The generated Go router binds uuid path parameters before the
@@ -95,9 +131,6 @@ class DefaultHeadersAndRecovery(BaseHTTPMiddleware):
                 {"method": request.method, "path": request.url.path, "stack": stack},
             )
             response = PlainTextResponse(status_code=500)
-        # /api/healthz is mounted on the outer mux in Go, outside
-        # httpx.Recover — the probe answers bare (Content-Type only), so
-        # monitors see dependency state without the API's header set.
         if request.url.path != "/api/healthz":
             for key, value in DEFAULT_HEADERS.items():
                 response.headers[key] = value
