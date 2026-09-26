@@ -246,7 +246,7 @@
       "sink": []
     },
     {
-      "note": "service not owned → 404",
+      "note": "service id fails shape validation → 400 (never reaches ownership)",
       "request": {
         "method": "POST",
         "path": "/api/slots",

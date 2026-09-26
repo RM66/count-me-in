@@ -213,6 +213,55 @@ def expire_manage_token(booking_id: str) -> None:
     )
 
 
+# Fixed ids for the demo-refusal scenario (§1.4: never use the drifting
+# demo seed as scenario data — the seed relays slots daily from today,
+# so a recorded "first slot" can be in the past and the refusal would be
+# answered by the starts_at > now() predicate instead of the demo guard).
+DEMO_PARITY_SERVICE_ID = "DemoParityService0001"
+DEMO_PARITY_SLOT_ID = "01930000-0000-7000-8000-00000000f001"
+DEMO_PARITY_BOOKING_ID = "01930000-0000-7000-8000-00000000f002"
+DEMO_PARITY_MANAGE_TOKEN = "demo-manage-token-parity-0000000001"
+
+
+def seed_demo_slot(captures: dict) -> None:
+    """A demo-organizer service + a slot 30 days out, inserted directly
+    (the demo guard must be the only reason a booking fails). Captures
+    <serviceId>/<slotId>."""
+    psql(
+        """
+        INSERT INTO services (id, organizer_id, title, default_price, default_capacity,
+            default_duration_minutes, max_seats_per_booking)
+        VALUES (:'sid', :'org', 'Demo Parity Service', '10 EUR', 10, 60, 4)
+        ON CONFLICT (id) DO NOTHING;
+        INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, capacity, booked_count)
+        VALUES (:'slot', :'sid', now() + interval '30 days', 60, 10, 0)
+        ON CONFLICT (id) DO NOTHING;
+        """,
+        {"sid": DEMO_PARITY_SERVICE_ID, "org": DEMO_ORGANIZER_ID, "slot": DEMO_PARITY_SLOT_ID},
+    )
+    captures["serviceId"] = DEMO_PARITY_SERVICE_ID
+    captures["slotId"] = DEMO_PARITY_SLOT_ID
+
+
+def seed_demo_booking(captures: dict) -> None:
+    """A confirmed booking on the demo slot with a known manage token,
+    inserted directly (the demo guard refuses every write path, so no
+    API can create it). Captures <manageToken>."""
+    token_hash = hashlib.sha256(DEMO_PARITY_MANAGE_TOKEN.encode()).hexdigest()
+    psql(
+        """
+        INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger,
+            guest_messenger_id, guest_locale, manage_token, manage_token_hash, manage_token_expires_at)
+        VALUES (:'bid', :'slot', 'confirmed', 1, 'Demo Guest', 'telegram', 'demo-parity-guest', 'en',
+            :'token', :'hash', now() + interval '31 days')
+        ON CONFLICT (id) DO NOTHING;
+        """,
+        {"bid": DEMO_PARITY_BOOKING_ID, "slot": DEMO_PARITY_SLOT_ID,
+         "token": DEMO_PARITY_MANAGE_TOKEN, "hash": token_hash},
+    )
+    captures["manageToken"] = DEMO_PARITY_MANAGE_TOKEN
+
+
 # ── normalization ───────────────────────────────────────────────────────────
 
 
@@ -247,6 +296,10 @@ class Normalizer:
             s,
         )
         s = ISO_TS_RE.sub(self.ts_sub, s)
+        # Media object keys carry a random per-call suffix
+        # (avatar-<hex>.png, photo-<hex>.png) — normalize the filename
+        # so the golden does not pin one particular roll.
+        s = re.sub(r"(avatar|photo)-[0-9a-f]{8}(\.\w+)", r"\1-<media>\2", s)
         # Presigned R2 URLs carry a time-dependent SigV4 signature.
         if "X-Amz-Signature" in s or "X-Amz-Credential" in s:
             return "<presigned-url>"
@@ -396,9 +449,14 @@ def resolve_placeholders(
             return mint_session(DEMO_ORGANIZER_ID, "demo")
         if value == "<widgetPayload>":
             return mint_widget_payload(TELEGRAM_BOT_TOKEN, 900100200, "Parity Guest")
+        # Captured ids also appear INSIDE larger strings — a request
+        # path like /api/slots/<slotId>. Substituting only the exact
+        # string left the literal placeholder in the path, and every
+        # such step hit the router's UUID-parse 400 instead of the
+        # behavior its note claimed.
         for key in ("slotId", "serviceId", "bookingId", "manageToken"):
-            if value == f"<{key}>":
-                return captures[key]
+            if f"<{key}>" in value:
+                return value.replace(f"<{key}>", str(captures[key]))
         return value
     if isinstance(value, dict):
         return {k: resolve_placeholders(v, captures, r, mint_guest) for k, v in value.items()}
@@ -448,6 +506,10 @@ def run_scenario(client: httpx.Client, r: redis_lib.Redis, scenario_path: Path) 
             flush_rate_limits(r)
         if step.get("expireManageToken"):
             expire_manage_token(str(captures["bookingId"]))
+        if step.get("seedDemoSlot"):
+            seed_demo_slot(captures)
+        if step.get("seedDemoBooking"):
+            seed_demo_booking(captures)
         if "request" not in step:
             continue
 

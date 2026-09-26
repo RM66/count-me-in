@@ -29,7 +29,7 @@ steps:
     note: unknown id → 404
   - request:
       { method: GET, path: /api/services/not-a-uuid, headers: { X-Organizer-Auth: <session> } }
-    note: malformed path param → 400/404 per mux
+    note: malformed path param → 404 (mux answers unknown id, never leaks shape)
   - request:
       method: PUT
       path: /api/services/<serviceId>

@@ -66,7 +66,7 @@ at that index must answer exactly that status. Step indices are 1-based.
 | createBooking                  | create booking; capture <bookingId>                               | bookings-cancel-organizer.yaml#3     | 201    |
 | cancelBookingByOrganizer       | anonymous                                                         | bookings-cancel-organizer.yaml#4     | 403    |
 | cancelBookingByOrganizer       | demo session                                                      | bookings-cancel-organizer.yaml#5     | 403    |
-| cancelBookingByOrganizer       | booking not on caller's service                                   | bookings-cancel-organizer.yaml#6     | 400    |
+| cancelBookingByOrganizer       | booking not on caller's service                                   | bookings-cancel-organizer.yaml#6     | 404    |
 | cancelBookingByOrganizer       | happy path                                                        | bookings-cancel-organizer.yaml#7     | 200    |
 | cancelBookingByOrganizer       | already cancelled                                                 | bookings-cancel-organizer.yaml#8     | 409    |
 | cancelBookingByOrganizer       | invalid body                                                      | bookings-cancel-organizer.yaml#9     | 400    |
@@ -84,13 +84,13 @@ at that index must answer exactly that status. Step indices are 1-based.
 | createService                  | seed service; capture <serviceId>                                 | bookings-create.yaml#1               | 201    |
 | createSlot                     | seed slot; capture <slotId>                                       | bookings-create.yaml#2               | 201    |
 | createBooking                  | happy path                                                        | bookings-create.yaml#3               | 201    |
-| createBooking                  | unknown ticket                                                    | bookings-create.yaml#4               | 400    |
+| createBooking                  | unknown ticket                                                    | bookings-create.yaml#4               | 401    |
 | createBooking                  | missing ticket                                                    | bookings-create.yaml#5               | 400    |
 | createBooking                  | invalid body                                                      | bookings-create.yaml#6               | 400    |
 | createBooking                  | party over per-booking cap                                        | bookings-create.yaml#7               | 400    |
 | createBooking                  | duplicate active booking for same guest+slot                      | bookings-create.yaml#8               | 409    |
 | createBooking                  | capacity exhausted (2 booked of 2)                                | bookings-create.yaml#9               | 409    |
-| createBooking                  | unknown slot                                                      | bookings-create.yaml#10              | 400    |
+| createBooking                  | unknown slot                                                      | bookings-create.yaml#10              | 404    |
 | createBooking                  | exhaust the 5/min booking bucket (bogus ticket → 401, no publish) | bookings-create.yaml#11              | 401    |
 | createBooking                  | exhaust the 5/min booking bucket (bogus ticket → 401, no publish) | bookings-create.yaml#12              | 401    |
 | createBooking                  | exhaust the 5/min booking bucket (bogus ticket → 401, no publish) | bookings-create.yaml#13              | 401    |
@@ -105,14 +105,14 @@ at that index must answer exactly that status. Step indices are 1-based.
 | createSlot                     | seed slot; capture <slotId>                                       | bookings-lookup.yaml#2               | 201    |
 | createBooking                  | create a booking for the lookup                                   | bookings-lookup.yaml#3               | 201    |
 | lookupBookings                 | happy path                                                        | bookings-lookup.yaml#4               | 200    |
-| lookupBookings                 | unknown ticket                                                    | bookings-lookup.yaml#5               | 400    |
+| lookupBookings                 | unknown ticket                                                    | bookings-lookup.yaml#5               | 401    |
 | lookupBookings                 | invalid body                                                      | bookings-lookup.yaml#6               | 400    |
 | createService                  | seed service; capture <serviceId>                                 | delete-guards.yaml#1                 | 201    |
 | createSlot                     | seed slot; capture <slotId>                                       | delete-guards.yaml#2                 | 201    |
 | createBooking                  | create a booking referencing the slot                             | delete-guards.yaml#3                 | 201    |
 | cancelBookingByToken           | cancel the booking (row stays, status cancelled)                  | delete-guards.yaml#5                 | 200    |
-| listSlots                      | anonymous                                                         | demo-booking-refusal.yaml#1          | 200    |
-| createBooking                  | booking a demo slot                                               | demo-booking-refusal.yaml#2          | 404    |
+| createBooking                  | demo read-only refusal (ADR-010)                                  | demo-booking-refusal.yaml#1          | 403    |
+| cancelBookingByToken           | demo read-only refusal (ADR-010)                                  | demo-booking-refusal.yaml#2          | 403    |
 | cancelBookingByToken           | unknown token on demo data                                        | demo-booking-refusal.yaml#3          | 404    |
 | healthz                        | warm the bucket (1/30)                                            | healthz-rate-limit.yaml#1            | 200    |
 | healthz                        | TRUST_PROXY_HEADERS is off in the recorder env, so XFF is ig      | healthz-rate-limit.yaml#2            | 200    |
@@ -156,8 +156,8 @@ at that index must answer exactly that status. Step indices are 1-based.
 | runJob                         | duplicate outboxId delivery                                       | jobs-receiver.yaml#6                 | 200    |
 | runJob                         | schedule queue accepts empty body                                 | jobs-receiver.yaml#7                 | 200    |
 | runJob                         | schedule queue accepts empty body                                 | jobs-receiver.yaml#8                 | 200    |
-| createAvatarUploadTarget       | happy path                                                        | media-upload.yaml#1                  | 400    |
-| createServicePhotoUploadTarget | service photo happy path                                          | media-upload.yaml#2                  | 400    |
+| createAvatarUploadTarget       | happy path                                                        | media-upload.yaml#1                  | 200    |
+| createServicePhotoUploadTarget | service photo happy path                                          | media-upload.yaml#2                  | 200    |
 | createAvatarUploadTarget       | non-image content type                                            | media-upload.yaml#3                  | 400    |
 | createAvatarUploadTarget       | demo refused                                                      | media-upload.yaml#4                  | 403    |
 | createAvatarUploadTarget       | anonymous                                                         | media-upload.yaml#5                  | 403    |
@@ -177,7 +177,7 @@ at that index must answer exactly that status. Step indices are 1-based.
 | getMyProfile                   | broken token                                                      | organizers-me.yaml#4                 | 200    |
 | registerOrganizer              | happy path                                                        | organizers-register.yaml#1           | 201    |
 | registerOrganizer              | slug taken                                                        | organizers-register.yaml#2           | 409    |
-| registerOrganizer              | unknown ticket                                                    | organizers-register.yaml#3           | 400    |
+| registerOrganizer              | unknown ticket                                                    | organizers-register.yaml#3           | 401    |
 | registerOrganizer              | slug too short                                                    | organizers-register.yaml#4           | 400    |
 | registerOrganizer              | reserved slug                                                     | organizers-register.yaml#5           | 400    |
 | registerOrganizer              | guest-purpose ticket refused in registration flow                 | organizers-register.yaml#6           | 401    |

@@ -80,7 +80,7 @@
         "method": "POST",
         "path": "/api/organizers",
         "body": {
-          "ticket": "nonexistent-ticket",
+          "ticket": "<token>",
           "slug": "other-org",
           "name": "X",
           "timezone": "Europe/Belgrade",
@@ -88,7 +88,7 @@
         }
       },
       "response": {
-        "status": 400,
+        "status": 401,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -101,14 +101,9 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "error": "Invalid input",
-          "issues": {
-            "ticket": [
-              "minimum string length is 20"
-            ]
-          }
+          "error": "Auth session expired — authenticate with Telegram again"
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"issues\":{\"ticket\":[\"minimum string length is 20\"]}}",
+        "body_raw": "{\"error\":\"Auth session expired — authenticate with Telegram again\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

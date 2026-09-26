@@ -196,17 +196,26 @@
       "note": "slot referenced by a booking (confirmed) → 409",
       "request": {
         "method": "DELETE",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": null
       },
       "response": {
-        "status": 400,
+        "status": 409,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "error": "This session has bookings and cannot be deleted"
+        },
+        "body_raw": "{\"error\":\"This session has bookings and cannot be deleted\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -302,31 +311,11 @@
       "note": "slot referenced by a CANCELLED booking → still 409 (bookings are guest history)",
       "request": {
         "method": "DELETE",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": null
       },
       "response": {
-        "status": 400,
-        "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
-        },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "contentLengthMatchesBody": true,
-        "transferEncodingChunked": false
-      },
-      "sink": []
-    },
-    {
-      "note": "service referenced by a booking → 409",
-      "request": {
-        "method": "DELETE",
-        "path": "/api/services/<serviceId>",
-        "body": null
-      },
-      "response": {
-        "status": 404,
+        "status": 409,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -339,9 +328,38 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "error": "Service not found"
+          "error": "This session has bookings and cannot be deleted"
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"error\":\"This session has bookings and cannot be deleted\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "service referenced by a booking → 409",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/services/<sid:1>",
+        "body": null
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "This service has bookings in its sessions and cannot be deleted"
+        },
+        "body_raw": "{\"error\":\"This service has bookings in its sessions and cannot be deleted\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

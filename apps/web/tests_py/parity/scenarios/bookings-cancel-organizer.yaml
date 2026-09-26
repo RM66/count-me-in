@@ -59,7 +59,7 @@ steps:
       method: POST
       path: /api/bookings/cancel-by-organizer
       headers: { X-Organizer-Auth: <session> }
-      json: { bookingId: 00000000-0000-0000-0000-000000000001 }
+      json: { bookingId: 01930000-0000-7000-8000-00000000beef }
     note: booking not on caller's service → 404
     expectSink: 0
   - request:

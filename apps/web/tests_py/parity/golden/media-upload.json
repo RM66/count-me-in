@@ -7,11 +7,12 @@
         "method": "POST",
         "path": "/api/organizers/me/avatar",
         "body": {
-          "contentType": "image/png"
+          "contentType": "image/png",
+          "size": 1024
         }
       },
       "response": {
-        "status": 400,
+        "status": 200,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -24,17 +25,11 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "details": {
-            "fieldErrors": {
-              "size": [
-                "Required"
-              ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+          "expiresAt": "<ts:1>",
+          "publicUrl": "https://parity.r2.example/organizers/<uuid:1>/avatar-<media>.png",
+          "uploadUrl": "<presigned-url>"
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"size\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "<presigned-url>",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -46,11 +41,12 @@
         "method": "POST",
         "path": "/api/organizers/me/service-photo",
         "body": {
-          "contentType": "image/png"
+          "contentType": "image/png",
+          "size": 2048
         }
       },
       "response": {
-        "status": 400,
+        "status": 200,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -63,17 +59,11 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "details": {
-            "fieldErrors": {
-              "size": [
-                "Required"
-              ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+          "expiresAt": "<ts:2>",
+          "publicUrl": "https://parity.r2.example/organizers/<uuid:1>/services/photo-<media>.png",
+          "uploadUrl": "<presigned-url>"
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"size\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "<presigned-url>",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

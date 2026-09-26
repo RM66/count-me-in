@@ -171,7 +171,11 @@ for (const scenario of scenarioFiles) {
 // Per-step golden invariants: content-length must match the raw body
 // byte count (recorded as a fact — the raw number floats with
 // RFC3339Nano trailing-zero trimming), chunked encoding must be absent,
-// and any Retry-After must sit inside its rate-limit window.
+// any Retry-After must sit inside its rate-limit window, and a note
+// that claims a status ("→ NNN") must match the recorded one — a
+// note/status drift is how a scenario stops testing what it claims
+// (the demo-refusal golden once recorded 404 slotGone under a "→ 403"
+// note and nothing caught it).
 for (const goldenFile of goldenFiles) {
   const golden = JSON.parse(readFileSync(goldenFile, 'utf8'))
   for (const [i, step] of (golden.steps ?? []).entries()) {
@@ -185,6 +189,13 @@ for (const goldenFile of goldenFiles) {
     }
     if (resp.retryAfterWithinWindow === false) {
       fail(`golden: ${goldenFile} step ${i + 1}: Retry-After outside its rate-limit window`)
+    }
+    const claimed = step.note?.match(/→\s*(\d{3})/)
+    if (claimed && Number(claimed[1]) !== resp.status) {
+      fail(
+        `golden: ${goldenFile} step ${i + 1}: note claims ${claimed[1]} ` +
+          `but the recorded status is ${resp.status} (${step.note})`,
+      )
     }
   }
 }

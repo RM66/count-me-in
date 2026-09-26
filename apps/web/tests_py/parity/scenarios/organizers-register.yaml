@@ -32,7 +32,7 @@ steps:
       path: /api/organizers
       json:
         {
-          ticket: nonexistent-ticket,
+          ticket: nonexistent-ticket-0000000000000000,
           slug: other-org,
           name: X,
           timezone: Europe/Belgrade,

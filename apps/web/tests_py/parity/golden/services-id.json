@@ -61,11 +61,11 @@
       "note": "get own service → 200",
       "request": {
         "method": "GET",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": null
       },
       "response": {
-        "status": 404,
+        "status": 200,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -78,9 +78,26 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "error": "Service not found"
+          "service": {
+            "contact": null,
+            "createdAt": "<ts:1>",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "defaultPrice": "20.00",
+            "description": null,
+            "id": "<sid:1>",
+            "location": null,
+            "maxSeatsPerBooking": 4,
+            "options": [
+              "Option A"
+            ],
+            "optionsSelectMode": "single",
+            "organizerId": "<uuid:1>",
+            "photoUrl": null,
+            "title": "Parity Service"
+          }
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":null,\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -116,7 +133,7 @@
       "sink": []
     },
     {
-      "note": "malformed path param → 400/404 per mux",
+      "note": "malformed path param → 404 (mux answers unknown id, never leaks shape)",
       "request": {
         "method": "GET",
         "path": "/api/services/not-a-uuid",
@@ -148,7 +165,7 @@
       "note": "wrong content type → 415",
       "request": {
         "method": "PUT",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": {
           "title": "X"
         }
@@ -179,13 +196,13 @@
       "note": "absent keys kept → 200",
       "request": {
         "method": "PUT",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": {
           "description": "patched"
         }
       },
       "response": {
-        "status": 404,
+        "status": 200,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -198,9 +215,26 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "error": "Service not found"
+          "service": {
+            "contact": null,
+            "createdAt": "<ts:1>",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "defaultPrice": "20.00",
+            "description": "patched",
+            "id": "<sid:1>",
+            "location": null,
+            "maxSeatsPerBooking": 4,
+            "options": [
+              "Option A"
+            ],
+            "optionsSelectMode": "single",
+            "organizerId": "<uuid:1>",
+            "photoUrl": null,
+            "title": "Parity Service"
+          }
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":\"patched\",\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -210,14 +244,14 @@
       "note": "pair cleared together → 200",
       "request": {
         "method": "PUT",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": {
           "options": null,
           "optionsSelectMode": null
         }
       },
       "response": {
-        "status": 404,
+        "status": 200,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -230,9 +264,24 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "error": "Service not found"
+          "service": {
+            "contact": null,
+            "createdAt": "<ts:1>",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "defaultPrice": "20.00",
+            "description": "patched",
+            "id": "<sid:1>",
+            "location": null,
+            "maxSeatsPerBooking": 4,
+            "options": null,
+            "optionsSelectMode": null,
+            "organizerId": "<uuid:1>",
+            "photoUrl": null,
+            "title": "Parity Service"
+          }
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":\"patched\",\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -242,7 +291,7 @@
       "note": "options set without mode → pair rule violation → 400",
       "request": {
         "method": "PUT",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": {
           "options": [
             "Option One"
@@ -283,7 +332,7 @@
       "note": "empty patch → 400 nothing to update",
       "request": {
         "method": "PUT",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": {}
       },
       "response": {
@@ -355,11 +404,11 @@
       "note": "service with a slot but no bookings → 200 (slots cascade)",
       "request": {
         "method": "DELETE",
-        "path": "/api/services/<serviceId>",
+        "path": "/api/services/<sid:1>",
         "body": null
       },
       "response": {
-        "status": 404,
+        "status": 200,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -372,9 +421,9 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "error": "Service not found"
+          "id": "<sid:1>"
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"id\":\"<sid:1>\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

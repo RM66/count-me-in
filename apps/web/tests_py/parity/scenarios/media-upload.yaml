@@ -6,13 +6,13 @@ steps:
       method: POST
       path: /api/organizers/me/avatar
       headers: { X-Organizer-Auth: <session> }
-      json: { contentType: image/png }
+      json: { contentType: image/png, size: 1024 }
     note: happy path → 200 signed upload target (URL normalized)
   - request:
       method: POST
       path: /api/organizers/me/service-photo
       headers: { X-Organizer-Auth: <session> }
-      json: { contentType: image/png }
+      json: { contentType: image/png, size: 2048 }
     note: service photo happy path
   - request:
       method: POST

@@ -198,7 +198,7 @@
         "method": "POST",
         "path": "/api/bookings",
         "body": {
-          "guestTicket": "unknown-ticket",
+          "guestTicket": "<token>",
           "serviceId": "<sid:1>",
           "timeSlotId": "<uuid:2>",
           "seats": 1,
@@ -206,7 +206,7 @@
         }
       },
       "response": {
-        "status": 400,
+        "status": 401,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -219,24 +219,16 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "details": {
-            "fieldErrors": {
-              "guestTicket": [
-                "minimum string length is 20"
-              ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+          "error": "Your Telegram confirmation expired — authenticate again"
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"guestTicket\":[\"minimum string length is 20\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
       "sink": []
     },
     {
-      "note": "missing ticket → 401/400 per decode order",
+      "note": "missing ticket → 400 (decode order: shape before lookup)",
       "request": {
         "method": "POST",
         "path": "/api/bookings",
@@ -440,13 +432,13 @@
         "body": {
           "guestTicket": "<token>",
           "serviceId": "<sid:1>",
-          "timeSlotId": "<uuid:8>",
+          "timeSlotId": "<uuid:6>",
           "seats": 1,
           "guestName": "X"
         }
       },
       "response": {
-        "status": 400,
+        "status": 404,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -459,17 +451,9 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "details": {
-            "fieldErrors": {
-              "timeSlotId": [
-                "string doesn't match the regular expression \"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<uuid:6>|<uuid:7>)$\""
-              ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+          "error": "This session is no longer available"
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"timeSlotId\":[\"string doesn't match the regular expression \\\"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<uuid:6>|<uuid:7>)$\\\"\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "{\"error\":\"This session is no longer available\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

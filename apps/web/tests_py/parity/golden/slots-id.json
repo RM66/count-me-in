@@ -98,17 +98,35 @@
       "note": "get own slot → 200",
       "request": {
         "method": "GET",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": null
       },
       "response": {
-        "status": 400,
+        "status": 200,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "slot": {
+            "bookedCount": 0,
+            "capacity": 2,
+            "createdAt": "<ts:2>",
+            "durationMinutes": 30,
+            "id": "<uuid:2>",
+            "price": null,
+            "serviceId": "<sid:1>",
+            "startsAt": "<ts:3>"
+          }
+        },
+        "body_raw": "{\"slot\":{\"bookedCount\":0,\"capacity\":2,\"createdAt\":\"<ts:2>\",\"durationMinutes\":30,\"id\":\"<uuid:2>\",\"price\":null,\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -147,19 +165,28 @@
       "note": "wrong content type → 415",
       "request": {
         "method": "PUT",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": {
           "capacity": 5
         }
       },
       "response": {
-        "status": 400,
+        "status": 415,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)"
+        },
+        "body_raw": "{\"error\":\"This endpoint accepts only application/merge-patch+json (RFC 7386)\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -169,19 +196,37 @@
       "note": "absent keys kept → 200",
       "request": {
         "method": "PUT",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": {
           "price": "42.00"
         }
       },
       "response": {
-        "status": 400,
+        "status": 200,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "slot": {
+            "bookedCount": 0,
+            "capacity": 2,
+            "createdAt": "<ts:2>",
+            "durationMinutes": 30,
+            "id": "<uuid:2>",
+            "price": "42.00",
+            "serviceId": "<sid:1>",
+            "startsAt": "<ts:3>"
+          }
+        },
+        "body_raw": "{\"slot\":{\"bookedCount\":0,\"capacity\":2,\"createdAt\":\"<ts:2>\",\"durationMinutes\":30,\"id\":\"<uuid:2>\",\"price\":\"42.00\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -191,7 +236,7 @@
       "note": "capacity below booked (0 booked, but below min) → 400",
       "request": {
         "method": "PUT",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": {
           "capacity": 0
         }
@@ -199,11 +244,28 @@
       "response": {
         "status": 400,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "details": {
+            "fieldErrors": {
+              "capacity": [
+                "number must be at least 1"
+              ]
+            },
+            "formErrors": []
+          },
+          "error": "Invalid input"
+        },
+        "body_raw": "{\"details\":{\"fieldErrors\":{\"capacity\":[\"number must be at least 1\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -213,17 +275,26 @@
       "note": "empty patch → 400 nothing to update",
       "request": {
         "method": "PUT",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": {}
       },
       "response": {
         "status": 400,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "error": "No fields to update"
+        },
+        "body_raw": "{\"error\":\"No fields to update\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -233,17 +304,26 @@
       "note": "slot with no bookings → 200",
       "request": {
         "method": "DELETE",
-        "path": "/api/slots/<slotId>",
+        "path": "/api/slots/<uuid:2>",
         "body": null
       },
       "response": {
-        "status": 400,
+        "status": 200,
         "headers": {
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff"
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
         },
-        "body": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
-        "body_raw": "Invalid format for parameter id: error unmarshaling '<slotId>' text as *uuid.UUID: invalid UUID length: 8\n",
+        "body": {
+          "id": "<uuid:2>"
+        },
+        "body_raw": "{\"id\":\"<uuid:2>\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

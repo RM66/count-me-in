@@ -6,7 +6,14 @@ steps:
       method: POST
       path: /api/services
       headers: { X-Organizer-Auth: <session> }
-      json: { title: Slot Host, defaultPrice: '20.00', defaultCapacity: 3, defaultDurationMinutes: 60, maxSeatsPerBooking: 4 }
+      json:
+        {
+          title: Slot Host,
+          defaultPrice: '20.00',
+          defaultCapacity: 3,
+          defaultDurationMinutes: 60,
+          maxSeatsPerBooking: 4,
+        }
     note: seed service; capture <serviceId>
   - request: { method: GET, path: /api/slots, headers: { X-Organizer-Auth: <session> } }
     note: empty slot list
@@ -15,7 +22,12 @@ steps:
       path: /api/slots
       headers: { X-Organizer-Auth: <session> }
       json:
-        { serviceId: <serviceId>, startsAt: '2031-06-01T10:00:00Z', durationMinutes: 60, capacity: 3 }
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-06-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 3,
+        }
     note: create happy path → 201; capture <slotId>
   - request: { method: GET, path: /api/slots, headers: { X-Organizer-Auth: <session> } }
     note: list shows the slot
@@ -27,7 +39,12 @@ steps:
       path: /api/slots
       headers: { X-Organizer-Auth: <session> }
       json:
-        { serviceId: <serviceId>, startsAt: '2001-01-01T10:00:00Z', durationMinutes: 60, capacity: 3 }
+        {
+          serviceId: <serviceId>,
+          startsAt: '2001-01-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 3,
+        }
     note: past start rejected → 400
   - request:
       method: POST
@@ -40,10 +57,15 @@ steps:
           durationMinutes: 60,
           capacity: 3,
         }
-    note: service not owned → 404
+    note: service id fails shape validation → 400 (never reaches ownership)
   - request:
       method: POST
       path: /api/slots
       json:
-        { serviceId: <serviceId>, startsAt: '2031-06-01T10:00:00Z', durationMinutes: 60, capacity: 3 }
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-06-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 3,
+        }
     note: anonymous → 403

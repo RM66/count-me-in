@@ -18,7 +18,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-asyncio",
-    "fakeredis",
+    "fakeredis[lua]",
     "respx",
     "ruff",
     "mypy",
@@ -33,6 +33,14 @@ dev = [
 pythonpath = ["api"]
 testpaths = ["tests_py"]
 asyncio_mode = "auto"
+# importlib mode: test modules with the same basename in different
+# directories (tests_py/auth/test_telegram.py vs tests_py/jobs/…)
+# collide under the default rootdir import mode.
+addopts = "--import-mode=importlib"
+# Pydantic serializer warnings (a UUID/AnyUrl sneaking past the row
+# mappers) are the same class of bug as the demo-guard UUID==str miss —
+# fail the suite instead of letting them scroll by.
+filterwarnings = ["error::UserWarning:pydantic"]
 
 [tool.ruff]
 target-version = "py312"
@@ -47,8 +55,40 @@ extend-exclude = [
 select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-# Asserts are the point of tests.
-"tests_py/**" = ["S101"]
+# `assert x is not None` after the decode error-guard is the mypy
+# narrowing pattern for the decode contract (None only with errors).
+"api/_lib/countmein/routes/**" = ["S101"]
+# The parity harness reads small scenario YAMLs inside its async runner —
+# blocking reads of test fixtures, not production code.
+"tests_py/parity/test_replay.py" = ["ASYNC240"]
+# Asserts are the point of tests; test fixtures carry named fake secrets
+# and intentionally assert broad exceptions; Cyrillic/EN-dash strings are
+# the i18n test data itself.
+"tests_py/**" = [
+    "S101",
+    "S105",
+    "S106",
+    "B017",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "E501",
+]
+# The db layer speaks SQL: text() with named bound params is not an
+# injection vector, and long DRL/DDL lines cannot be wrapped without
+# hurting the queries.
+"api/_lib/countmein/db/**" = ["S608", "E501"]
+# Notification copy embeds real Russian strings on purpose.
+"api/_lib/countmein/jobs/templates.py" = ["RUF001"]
+# `assert x is not None` after `if _init_err is not None: raise` is the
+# mypy type-narrowing pattern for the lazy singletons; decode.py uses
+# the same pattern after `if errs is not None: return`. The singleton
+# reset helpers close best-effort and swallow close errors (S110).
+"api/_lib/countmein/db/client.py" = ["S101", "S110"]
+"api/_lib/countmein/redis.py" = ["S101", "S110"]
+"api/_lib/countmein/storage.py" = ["S101"]
+"api/_lib/countmein/db/booking_writes.py" = ["S101"]
+"api/_lib/countmein/validation/decode.py" = ["S101"]
 
 [tool.mypy]
 strict = true

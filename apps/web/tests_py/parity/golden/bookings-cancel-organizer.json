@@ -262,11 +262,11 @@
         "method": "POST",
         "path": "/api/bookings/cancel-by-organizer",
         "body": {
-          "bookingId": "<uuid:8>"
+          "bookingId": "<uuid:6>"
         }
       },
       "response": {
-        "status": 400,
+        "status": 404,
         "headers": {
           "cache-control": "no-store",
           "content-type": "application/json",
@@ -279,17 +279,9 @@
           "x-robots-tag": "noindex"
         },
         "body": {
-          "details": {
-            "fieldErrors": {
-              "bookingId": [
-                "string doesn't match the regular expression \"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<uuid:6>|<uuid:7>)$\""
-              ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+          "error": "Booking not found"
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"bookingId\":[\"string doesn't match the regular expression \\\"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|<uuid:6>|<uuid:7>)$\\\"\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "{\"error\":\"Booking not found\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -341,7 +333,7 @@
           "body": {
             "bookingId": "<uuid:3>",
             "cancelledBy": "organizer",
-            "outboxId": "<uuid:9>"
+            "outboxId": "<uuid:7>"
           }
         }
       ]

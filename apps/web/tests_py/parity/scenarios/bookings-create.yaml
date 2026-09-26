@@ -46,7 +46,7 @@ steps:
       path: /api/bookings
       json:
         {
-          guestTicket: unknown-ticket,
+          guestTicket: unknown-ticket-0000000000000000,
           serviceId: <serviceId>,
           timeSlotId: <slotId>,
           seats: 1,
@@ -58,7 +58,7 @@ steps:
       method: POST
       path: /api/bookings
       json: { serviceId: <serviceId>, timeSlotId: <slotId>, seats: 1, guestName: X }
-    note: missing ticket → 401/400 per decode order
+    note: 'missing ticket → 400 (decode order: shape before lookup)'
     expectSink: 0
   - request:
       method: POST
@@ -118,7 +118,7 @@ steps:
         {
           guestTicket: <guestTicket>,
           serviceId: <serviceId>,
-          timeSlotId: 00000000-0000-0000-0000-000000000001,
+          timeSlotId: 01930000-0000-7000-8000-00000000dead,
           seats: 1,
           guestName: X,
         }
