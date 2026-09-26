@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"countmein/pkg/contracts"
@@ -33,11 +34,34 @@ func parseLoginLink(raw string, err error) (*contracts.LoginLinkPayload, error) 
 		return nil, err
 	}
 	// `next` is always a relative path built server-side (open-redirect
-	// guard, mirrored from the loginLinkPayload schema).
-	if payload.OrganizerID == "" || len(payload.Next) == 0 || payload.Next[0] != '/' {
+	// guard, mirrored from the loginLinkPayload schema). "//" and "/\"
+	// prefixes are scheme-relative or backslash-trick absolute URLs to
+	// browsers, so they are rejected too.
+	if payload.OrganizerID == "" || !isSafeNextPath(payload.Next) {
 		return nil, nil
 	}
 	return payload, nil
+}
+
+// isSafeNextPath — a relative cabinet path only: starts with "/", but
+// not "//" (scheme-relative URL) or "/\" (backslash trick that
+// browsers normalize to a protocol-relative URL). Backslashes and
+// control characters are rejected anywhere in the value: browsers treat
+// "\foo" as "/foo" and embedded CR/LF/NUL can split responses in
+// downstream consumers.
+func isSafeNextPath(next string) bool {
+	if len(next) == 0 || next[0] != '/' {
+		return false
+	}
+	if strings.HasPrefix(next, "//") || strings.HasPrefix(next, `/\`) {
+		return false
+	}
+	for i := 0; i < len(next); i++ {
+		if c := next[i]; c == '\\' || c < 0x20 || c == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // PeekLoginLink reads without consuming — the landing page must be

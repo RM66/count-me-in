@@ -9,6 +9,7 @@ import (
 
 	gen "countmein/pkg/api/gen"
 	"countmein/pkg/contracts"
+	"countmein/pkg/demo"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -137,6 +138,12 @@ type OrganizerUpdate struct {
 // A 23505 surfaces as the raw *pgconn.PgError for the route to map to
 // slugTaken / accountExists by constraint name.
 func InsertOrganizer(ctx context.Context, input gen.RegisterOrganizerInput, identity contracts.AuthTicketPayload) (gen.RegisteredOrganizer, error) {
+	// The wire schema makes language required, but a nil here must
+	// never panic the function — fall back to the default locale.
+	language := contracts.DefaultLocale
+	if input.Language != nil {
+		language = string(*input.Language)
+	}
 	id := newID()
 	var out gen.RegisteredOrganizer
 	err := Pool().QueryRow(ctx, `
@@ -144,7 +151,7 @@ func InsertOrganizer(ctx context.Context, input gen.RegisterOrganizerInput, iden
 		VALUES ($1::uuid, $2, $3, $4::messenger_kind, $5, $6, $7, $8, $9)
 		RETURNING id, slug`,
 		id, input.Slug, input.Name, identity.Messenger, identity.MessengerID,
-		input.Timezone, string(*input.Language), input.Contact, identity.PhotoURL,
+		input.Timezone, language, input.Contact, identity.PhotoURL,
 	).Scan(&out.ID, &out.Slug)
 	if err != nil {
 		return out, err
@@ -156,14 +163,17 @@ func InsertOrganizer(ctx context.Context, input gen.RegisterOrganizerInput, iden
 // id and createdAt are set at registration and never editable.
 // Absent keys are left untouched, explicit nulls clear the column
 // (merge-patch semantics, ADR-016).
-func UpdateOrganizerProfile(ctx context.Context, organizerID string, update OrganizerUpdate) (*OrganizerRow, error) {
-	return UpdateOrganizerProfileTx(ctx, Pool(), organizerID, update)
-}
 
 // UpdateOrganizerProfileTx is UpdateOrganizerProfile on a caller-supplied
 // querier — the merge-patch route pairs it with GetOrganizerProfileTx on
 // one transaction (P2: read and write must share a snapshot).
 func UpdateOrganizerProfileTx(ctx context.Context, q Querier, organizerID string, update OrganizerUpdate) (*OrganizerRow, error) {
+	// Defense in depth: routes already refuse the demo account via
+	// RequireWritableOrganizer, but a direct db call must not be able
+	// to write the read-only demo organizer either.
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return nil, err
+	}
 	sets := []string{}
 	args := []any{}
 	n := 1
@@ -229,12 +239,27 @@ func UpdateOrganizerProfileTx(ctx context.Context, q Querier, organizerID string
 }
 
 // UpdateOrganizerLanguage — set the organizer's notification language
-// (ADR-011). Called by the language switcher via the Go API. Silent
-// no-op for an unknown id (0 rows affected, no error) — mirrors the
-// original Drizzle behaviour for a stale session.
+// (ADR-011). Called by the language switcher via the Go API. An unknown
+// id (0 rows affected) is an OrganizerNotFoundError so a stale session
+// answers 404 instead of a silent success.
 func UpdateOrganizerLanguage(ctx context.Context, organizerID, language string) error {
-	_, err := Pool().Exec(ctx,
+	if err := demo.AssertNotDemo(organizerID); err != nil {
+		return err
+	}
+	tag, err := Pool().Exec(ctx,
 		`UPDATE organizers SET language = $1 WHERE id = $2::uuid`,
 		language, organizerID)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return OrganizerNotFoundError{}
+	}
+	return nil
 }
+
+// OrganizerNotFoundError — the id does not exist (or was deleted while
+// the session was live).
+type OrganizerNotFoundError struct{}
+
+func (OrganizerNotFoundError) Error() string { return "organizer not found" }

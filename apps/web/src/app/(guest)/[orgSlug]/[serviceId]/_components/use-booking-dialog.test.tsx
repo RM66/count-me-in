@@ -65,6 +65,7 @@ const guestBooking: GuestBooking = {
   guestMessengerId: '67890',
   guestMessengerLogin: 'janedoe',
   manageToken: 'manage-token-123',
+  canCancel: true,
   selectedOptions: ['Beginner'],
   createdAt: '2026-07-20T10:00:00.000Z',
   organizer: {

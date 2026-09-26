@@ -22,9 +22,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { proxy } from './proxy'
 
-function makeRequest(pathname: string): NextRequest {
+function makeRequest(pathname: string, headers: Record<string, string> = {}): NextRequest {
   const url = new URL(`https://countmein.group${pathname}`)
-  return new NextRequest(url, { headers: new Headers({ 'user-agent': 'test' }) })
+  return new NextRequest(url, { headers: new Headers({ 'user-agent': 'test', ...headers }) })
 }
 
 beforeEach(() => {
@@ -76,6 +76,26 @@ describe('proxy — API header minting', () => {
     const res = await proxy(makeRequest('/api/services'))
     expect(mockMint).not.toHaveBeenCalled()
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBeNull()
+  })
+
+  it('strips a client-supplied X-Organizer-Auth when there is no session', async () => {
+    mockAuth.mockResolvedValueOnce(null)
+    const res = await proxy(
+      makeRequest('/api/services', { 'x-organizer-auth': 'forged-by-the-client' }),
+    )
+    expect(mockMint).not.toHaveBeenCalled()
+    // The header is middleware-minted or absent — a forged value must
+    // never reach the Go API.
+    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBeNull()
+  })
+
+  it('overwrites a client-supplied X-Organizer-Auth with the minted token', async () => {
+    mockAuth.mockResolvedValueOnce({ user: { id: 'org-1', slug: 'yoga' } })
+    mockMint.mockResolvedValueOnce('minted-jwt')
+    const res = await proxy(
+      makeRequest('/api/services', { 'x-organizer-auth': 'forged-by-the-client' }),
+    )
+    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe('minted-jwt')
   })
 
   it('skips the Auth.js routes — they stay on Next.js', async () => {

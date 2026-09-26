@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import type { BookingStatus } from './enums'
 import { bookingStatusEnum, messengerEnum } from './enums'
 import { appLocaleEnum, DEFAULT_LOCALE } from './i18n'
 import { selectedOptionsShape } from './options'
@@ -69,6 +70,12 @@ export type BookingRecord = z.infer<typeof bookingRecord>
  * token is the guest's own key to `/booking/{manageToken}`.
  * The slot and service travel with it since a guest has no cabinet lists to
  * join against. `organizer` supplies the timezone and name.
+ *
+ * `canCancel` tells the client whether the manage link is still live: the
+ * token expires at slot start + 24h (ADR-020), and every credential check
+ * goes through the expiry, so an expired row is read-only history. The
+ * row itself is always listed — the guest's booking history (including
+ * cancellations) must not disappear (ADR-002); only the action does.
  */
 export const guestBooking = z.object({
   id: uuid,
@@ -78,8 +85,25 @@ export const guestBooking = z.object({
   selectedOptions: z.array(z.string()).nullable(),
   createdAt: z.string(),
   manageToken,
+  canCancel: z.boolean(),
   slot: timeSlotRecord,
   service: serviceRecord,
   organizer: publicOrganizer,
 })
 export type GuestBooking = z.infer<typeof guestBooking>
+
+/**
+ * Whether the guest can still act on a booking: it is confirmed and its
+ * manage token has not expired. `null` expiry means a legacy row created
+ * before the column existed (ADR-020) and stays cancellable. Mirrors
+ * `CanCancelBooking` in apps/web/pkg/db/booking.go — the Go cancel write
+ * enforces exactly this, so the DTO must not promise more.
+ */
+export function canCancelBooking(
+  status: BookingStatus,
+  manageTokenExpiresAt: Date | null,
+): boolean {
+  return (
+    status === 'confirmed' && (manageTokenExpiresAt === null || manageTokenExpiresAt > new Date())
+  )
+}

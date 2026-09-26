@@ -214,11 +214,13 @@ type AvatarUploadSize = int
 type BookingCancelledJob struct {
 	BookingID   UUID        `json:"bookingId"`
 	CancelledBy CancelActor `json:"cancelledBy"`
+	OutboxID    UUID        `json:"outboxId"`
 }
 
 // BookingCreatedJob defines model for BookingCreatedJob.
 type BookingCreatedJob struct {
 	BookingID UUID                  `json:"bookingId"`
+	OutboxID  UUID                  `json:"outboxId"`
 	Recipient NotificationRecipient `json:"recipient"`
 }
 
@@ -339,6 +341,7 @@ type ErrorBody struct {
 
 // GuestBooking defines model for GuestBooking.
 type GuestBooking struct {
+	CanCancel       bool            `json:"canCancel"`
 	CreatedAt       string          `json:"createdAt"`
 	GuestName       DisplayName     `json:"guestName"`
 	ID              UUID            `json:"id"`

@@ -16,16 +16,24 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
+	"countmein/pkg/config"
 	"countmein/pkg/logx"
 )
+
+// ErrPublishSkipped — dev without QSTASH_TOKEN: the publish is
+// deliberately never attempted (localhost is not routable from Upstash).
+// Callers mark the row `skipped` (terminal, honest in metrics), not
+// `sent`. A sentinel, not a nil, so the caller can tell "deliberately
+// skipped" apart from "delivered".
+var ErrPublishSkipped = errors.New("qstash publish skipped (dev without QSTASH_TOKEN)")
 
 // How hard QStash tries before dropping a message: 5 delivery attempts
 // with exponential backoff. Permanent failures (recipient never
@@ -36,8 +44,10 @@ const jobRetries = 5
 const defaultQStashURL = "https://qstash.upstash.io"
 
 var (
-	warnedAboutMissingToken sync.Once
-	httpClient              = &http.Client{Timeout: 10 * time.Second}
+	// 1s, well under the caller's 1.5s after-commit publish budget: a
+	// hung QStash must fail fast into the sweeper path instead of being
+	// killed mid-request (the sweeper re-publishes the pending row).
+	httpClient = &http.Client{Timeout: 1 * time.Second}
 )
 
 // PublishOutbox publishes one outbox row's payload to its queue and
@@ -47,20 +57,19 @@ var (
 // the inline path and against its own retries. traceID travels
 // as Upstash-Trace-Id so the job handler can correlate the pipeline.
 //
-// In dev without QSTASH_TOKEN the publish is skipped with nil — local
-// deliveries would be unreachable anyway (QStash POSTs to APP_URL;
-// localhost is not routable from Upstash), and the caller marks the row
-// `sent` so the sweeper does not churn on it.
+// In dev without QSTASH_TOKEN the publish is skipped with
+// ErrPublishSkipped — local deliveries would be unreachable anyway
+// (QStash POSTs to APP_URL; localhost is not routable from Upstash),
+// and the caller marks the row `skipped` so the sweeper does not churn
+// on it and the metrics stay honest.
 func PublishOutbox(ctx context.Context, queueName string, payload json.RawMessage, dedupID, traceID string) error {
 	token := os.Getenv("QSTASH_TOKEN")
 	if token == "" {
-		if isProduction() {
+		if config.IsProduction() {
 			return fmt.Errorf("QSTASH_TOKEN is not set")
 		}
-		warnedAboutMissingToken.Do(func() {
-			logx.Info("QSTASH_TOKEN is not set — skipping notification publish (dev only)", nil)
-		})
-		return nil
+		logx.WarnEvery(5*time.Minute, "QSTASH_TOKEN is not set — skipping notification publish (dev only)", nil)
+		return ErrPublishSkipped
 	}
 	base := strings.TrimRight(os.Getenv("QSTASH_URL"), "/")
 	if base == "" {
@@ -118,6 +127,5 @@ func destination(queueName string) (string, error) {
 	return appURL + "/api/jobs/" + queueName, nil
 }
 
-func isProduction() bool {
-	return os.Getenv("NODE_ENV") == "production" || os.Getenv("VERCEL_ENV") == "production"
-}
+// isProduction is config.IsProduction — the single source of truth for
+// "production" lives in pkg/config.

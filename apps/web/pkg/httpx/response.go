@@ -104,15 +104,13 @@ func DemoReadOnly(locale string) *Response {
 		gen.ErrorBody{Code: ptr(contracts.DemoReadOnlyCode)})
 }
 
-// WriteInvalidBody — parseJsonBody's 400: a localized generic as the
+// InvalidBody — parseJsonBody's 400: a localized generic as the
 // top-level error, Zod-style details for logs/devtools only.
-func WriteInvalidBody(w http.ResponseWriter, locale string, errs *validation.Errors) {
+func InvalidBody(locale string, errs *validation.Errors) *Response {
 	if errs == nil {
 		errs = validation.NewErrors()
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(gen.InvalidBody{
+	return JSON(http.StatusBadRequest, gen.InvalidBody{
 		Error: i18n.ApiError(locale, "invalidInput", nil),
 		Details: gen.ValidationErrors{
 			FormErrors:  errs.Form,
@@ -121,17 +119,25 @@ func WriteInvalidBody(w http.ResponseWriter, locale string, errs *validation.Err
 	})
 }
 
-// WriteInvalidIssues — the register route's 400: issues (fieldErrors
+// WriteInvalidBody — kept for call sites that write inline.
+func WriteInvalidBody(w http.ResponseWriter, locale string, errs *validation.Errors) {
+	InvalidBody(locale, errs).Write(w)
+}
+
+// InvalidIssues — the register route's 400: issues (fieldErrors
 // only) instead of details, mirroring its TS shape.
-func WriteInvalidIssues(w http.ResponseWriter, locale string, errs *validation.Errors) {
+func InvalidIssues(locale string, errs *validation.Errors) *Response {
 	fields := map[string][]string{}
 	if errs != nil && errs.Fields != nil {
 		fields = errs.Fields
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(gen.InvalidIssuesBody{
+	return JSON(http.StatusBadRequest, gen.InvalidIssuesBody{
 		Error:  i18n.ApiError(locale, "invalidInput", nil),
 		Issues: fields,
 	})
+}
+
+// WriteInvalidIssues — kept for call sites that write inline.
+func WriteInvalidIssues(w http.ResponseWriter, locale string, errs *validation.Errors) {
+	InvalidIssues(locale, errs).Write(w)
 }

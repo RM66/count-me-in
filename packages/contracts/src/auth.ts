@@ -116,6 +116,21 @@ export function loginLinkKey(token: string): string {
 }
 
 /**
+ * Whether a `next` path is safe to redirect to: a relative path with no
+ * backslashes or control characters. Mirrors Go `isSafeNextPath` — browsers
+ * treat backslashes as slashes, and embedded CR/LF/NUL can split responses in
+ * downstream consumers. Written as a loop because a control-character regex
+ * trips `no-control-regex`.
+ */
+function hasUnsafeNextChars(value: string): boolean {
+  for (const ch of value) {
+    const code = ch.codePointAt(0) ?? 0
+    if (ch === '\\' || code < 0x20 || code === 0x7f) return true
+  }
+  return false
+}
+
+/**
  * What a login link resolves to once consumed.
  * `next` is stored with the token (not in the URL) so the redirect target
  * cannot be rewritten by whoever holds the link — always a relative cabinet
@@ -123,6 +138,14 @@ export function loginLinkKey(token: string): string {
  */
 export const loginLinkPayload = z.object({
   organizerId: uuid,
-  next: z.string().startsWith('/'),
+  next: z
+    .string()
+    .startsWith('/')
+    .refine((v) => !v.startsWith('//') && !v.startsWith('/\\'), {
+      message: 'must be a relative path, not a protocol-relative URL',
+    })
+    .refine((v) => !hasUnsafeNextChars(v), {
+      message: 'must not contain backslashes or control characters',
+    }),
 })
 export type LoginLinkPayload = z.infer<typeof loginLinkPayload>

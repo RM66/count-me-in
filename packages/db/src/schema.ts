@@ -23,9 +23,11 @@ export const messengerKind = pgEnum('messenger_kind', ['telegram'])
  * A row starts `pending`, moves to `sent` once the QStash publish succeeds.
  * The sweeper job reads `pending` rows older than a short grace period
  * and re-publishes them, closing the loss window between commit and
- * the inline publish.
+ * the inline publish. `failed` is terminal for rows past the retry
+ * budget; `skipped` is terminal for rows deliberately never published
+ * (dev without QSTASH_TOKEN) — neither clogs the sweeper batch.
  */
-export const outboxStatus = pgEnum('outbox_status', ['pending', 'sent', 'failed'])
+export const outboxStatus = pgEnum('outbox_status', ['pending', 'sent', 'failed', 'skipped'])
 
 /** The organizer is the Auth.js account itself; `id` is the user subject. */
 export const organizers = pgTable(

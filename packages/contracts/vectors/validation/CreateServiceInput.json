@@ -316,7 +316,7 @@
     {
       "name": "BOM-padded title trims to valid",
       "body": {
-        "title": "\uFEFFYoga\uFEFF",
+        "title": "\ufeffYoga\ufeff",
         "defaultPrice": "10",
         "defaultCapacity": 5,
         "defaultDurationMinutes": 60,
@@ -327,7 +327,7 @@
     {
       "name": "BOM plus max-length title trims to valid",
       "body": {
-        "title": "\uFEFFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "title": "\ufeffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         "defaultPrice": "10",
         "defaultCapacity": 5,
         "defaultDurationMinutes": 60,
@@ -345,6 +345,52 @@
         "maxSeatsPerBooking": 1
       },
       "valid": true
+    },
+    {
+      "name": "photoUrl javascript scheme",
+      "body": {
+        "contact": "+123456",
+        "defaultCapacity": 10,
+        "defaultDurationMinutes": 90,
+        "defaultPrice": "20",
+        "description": "Morning flow",
+        "location": "Hall A",
+        "maxSeatsPerBooking": 4,
+        "options": [
+          "A",
+          "B"
+        ],
+        "optionsSelectMode": "single",
+        "title": "Yoga",
+        "photoUrl": "javascript:alert(1)"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "photoUrl"
+      ]
+    },
+    {
+      "name": "photoUrl data scheme",
+      "body": {
+        "contact": "+123456",
+        "defaultCapacity": 10,
+        "defaultDurationMinutes": 90,
+        "defaultPrice": "20",
+        "description": "Morning flow",
+        "location": "Hall A",
+        "maxSeatsPerBooking": 4,
+        "options": [
+          "A",
+          "B"
+        ],
+        "optionsSelectMode": "single",
+        "title": "Yoga",
+        "photoUrl": "data:text/html,<img src=x onerror=alert(1)>"
+      },
+      "valid": false,
+      "fieldErrors": [
+        "photoUrl"
+      ]
     }
   ],
   "schema": "CreateServiceInput"

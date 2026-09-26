@@ -805,6 +805,8 @@
     "alreadyCancelled": "Diese Buchung wurde bereits storniert",
     "slotGone": "Dieser Termin ist nicht mehr verfügbar",
     "tooManyRequests": "Zu viele Anfragen — bitte versuchen Sie es gleich noch einmal",
-    "slotHasActiveBookings": "Dieser Termin hat noch bestätigte Buchungen — stornieren Sie diese, bevor Sie ihn löschen"
+    "slotHasActiveBookings": "Dieser Termin hat Buchungen und kann nicht gelöscht werden",
+    "serviceHasBookings": "Dieses Angebot hat Buchungen in seinen Terminen und kann nicht gelöscht werden",
+    "bodyTooLarge": "Der Anforderungstext ist zu groß"
   }
 }

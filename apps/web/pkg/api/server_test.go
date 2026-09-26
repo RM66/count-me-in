@@ -1,6 +1,9 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -126,4 +129,99 @@ func TestMuxDispatchesEveryOperation(t *testing.T) {
 // error body rather than the mux's own text/plain 404 page.
 func isJSONError(rec *httptest.ResponseRecorder) bool {
 	return strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json")
+}
+
+// ── healthz ───────────────────────────────────────────────────────────────────
+//
+// The healthz probe must answer a JSON 503 naming the broken dependency
+// when a probe panics (missing connection env in production) — not a
+// bare 500 or a process crash. The probes are injected (server.go) so
+// the test never touches the process-wide pools: db.Pool() caches a
+// missing-env failure for the lifetime of the process, which would
+// poison every later test in this package.
+
+func healthzRequest(t *testing.T) *httptest.ResponseRecorder {
+	t.Helper()
+	// No Redis: the redis branch reports "skipped" instead of probing.
+	t.Setenv("REDIS_URL", "")
+	t.Setenv("VERCEL", "")
+	t.Setenv("TRUST_PROXY_HEADERS", "")
+	r := httptest.NewRequest(http.MethodGet, "/api/healthz", nil)
+	w := httptest.NewRecorder()
+	handleHealthz(w, r)
+	return w
+}
+
+func decodeHealthzBody(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("healthz body must be JSON, got %q: %v", w.Body.String(), err)
+	}
+	return body
+}
+
+func TestHealthzProbePanicAnswers503WithMissingEnv(t *testing.T) {
+	prev := probePostgres
+	probePostgres = func(context.Context) error { panic("POSTGRES_URL is not set") }
+	t.Cleanup(func() { probePostgres = prev })
+	t.Setenv("POSTGRES_URL", "")
+
+	w := healthzRequest(t)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("panicking probe must answer 503, got %d", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+	body := decodeHealthzBody(t, w)
+	if body["postgres"] != "fail" || body["redis"] != "fail" {
+		t.Errorf("body must mark both dependencies failed, got %v", body)
+	}
+	missing, _ := body["missingEnv"].([]any)
+	found := false
+	for _, name := range missing {
+		if name == "POSTGRES_URL" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("missingEnv = %v, want it to name POSTGRES_URL", body["missingEnv"])
+	}
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "POSTGRES_URL is not set") {
+		t.Errorf("error must carry the panic text, got %q", msg)
+	}
+}
+
+func TestHealthzProbeFailureAnswers503(t *testing.T) {
+	prev := probePostgres
+	probePostgres = func(context.Context) error { return errors.New("connection refused") }
+	t.Cleanup(func() { probePostgres = prev })
+
+	w := healthzRequest(t)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("failed probe must answer 503, got %d", w.Code)
+	}
+	body := decodeHealthzBody(t, w)
+	if body["postgres"] != "fail" {
+		t.Errorf("postgres = %v, want fail", body["postgres"])
+	}
+	if body["redis"] != "skipped" {
+		t.Errorf("redis = %v, want skipped without REDIS_URL", body["redis"])
+	}
+}
+
+func TestHealthzHealthyAnswers200(t *testing.T) {
+	prev := probePostgres
+	probePostgres = func(context.Context) error { return nil }
+	t.Cleanup(func() { probePostgres = prev })
+
+	w := healthzRequest(t)
+	if w.Code != http.StatusOK {
+		t.Fatalf("healthy probe must answer 200, got %d (%s)", w.Code, w.Body.String())
+	}
+	body := decodeHealthzBody(t, w)
+	if body["postgres"] != "ok" || body["redis"] != "skipped" {
+		t.Errorf("body = %v, want postgres ok / redis skipped", body)
+	}
 }

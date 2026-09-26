@@ -46,6 +46,7 @@ function makeBooking(overrides: Partial<GuestBooking> = {}): GuestBooking {
     selectedOptions: null,
     createdAt: '2025-01-01T10:00:00.000Z',
     manageToken: 'manage-token-abc',
+    canCancel: true,
     slot: {
       id: 'slot-1',
       serviceId: 'service-1',

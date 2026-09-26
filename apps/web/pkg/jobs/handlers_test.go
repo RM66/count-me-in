@@ -468,7 +468,10 @@ func sweepRow(t *testing.T, payload map[string]string, attempts int) db.OutboxRo
 		t.Fatal(err)
 	}
 	defer tx.Rollback(context.Background()) //nolint
-	row, err := db.EnqueueOutbox(ctx, tx, "booking.created", payload, "trace-sweep")
+	row, err := db.EnqueueOutbox(ctx, tx, "booking.created", func(outboxID string) any {
+		payload["outboxId"] = outboxID
+		return payload
+	}, "trace-sweep")
 	if err != nil {
 		t.Fatalf("EnqueueOutbox: %v", err)
 	}
@@ -563,6 +566,46 @@ func TestHandleOutboxSweepMovesExhaustedToFailed(t *testing.T) {
 	}
 }
 
+// A sweep that runs out of its function budget leaves the remaining
+// rows pending with their attempts unspent — never `failed` — so the
+// next sweep picks them up on equal terms. The budget is shrunk so the
+// abort path is deterministic.
+func TestHandleOutboxSweepStopsOnBudget(t *testing.T) {
+	requirePostgresJobs(t)
+	row := sweepRow(t, map[string]string{"bookingId": "01930000-0000-7000-8000-0000000000ac"}, 0)
+
+	prev := sweepFunctionBudget
+	sweepFunctionBudget = time.Nanosecond
+	t.Cleanup(func() { sweepFunctionBudget = prev })
+
+	var calls int32
+	var dedup string
+	t.Setenv("QSTASH_TOKEN", "test-token")
+	t.Setenv("QSTASH_URL", fakeQStash(t, &calls, &dedup))
+	t.Setenv("APP_URL", "https://example.com")
+	t.Setenv("NODE_ENV", "test")
+	t.Setenv("VERCEL_ENV", "")
+
+	if err := HandleOutboxSweep(context.Background()); err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("out-of-budget sweep must not publish, got %d calls", calls)
+	}
+	var status string
+	var attempts int
+	if err := db.Pool().QueryRow(context.Background(),
+		`SELECT status::text, attempts FROM notification_outbox WHERE id = $1::uuid`, row.ID).Scan(&status, &attempts); err != nil {
+		t.Fatal(err)
+	}
+	if status != "pending" {
+		t.Errorf("out-of-budget row status = %q, want pending", status)
+	}
+	if attempts != 0 {
+		t.Errorf("out-of-budget row attempts = %d, want 0 (budget must stay unspent)", attempts)
+	}
+}
+
 // ── demo.refresh ──────────────────────────────────────────────────────────────
 
 // The daily cron handler reseeds the demo organizer (ADR-010). Smoke
@@ -604,15 +647,34 @@ func TestSendMessageUnreachableIsTerminal(t *testing.T) {
 		t.Fatalf("chat-not-found must be TelegramUnreachableError, got %T: %v", err, err)
 	}
 
-	// A different 400 stays a plain error (a bug on our side — retryable
-	// via the generic path, never silently completed).
+	// A content-rejected 400 (our escaping bug, or an over-long message)
+	// is terminal: retrying cannot fix the payload, so the job completes
+	// with a log instead of burning the retry budget.
 	ft.setStatus(http.StatusBadRequest, "Bad Request: can't parse entities")
 	err = SendMessage(context.Background(), "tok", "chat-1", "hi", nil)
 	if errors.As(err, &unreachable) {
 		t.Fatal("parse-entities 400 must NOT be classified unreachable (it is our escaping bug)")
 	}
+	var terminal *TelegramTerminalError
+	if !errors.As(err, &terminal) {
+		t.Fatalf("parse-entities 400 must be TelegramTerminalError, got %T: %v", err, err)
+	}
+
+	ft.setStatus(http.StatusBadRequest, "Bad Request: message is too long")
+	err = SendMessage(context.Background(), "tok", "chat-1", "hi", nil)
+	if !errors.As(err, &terminal) {
+		t.Fatalf("too-long 400 must be TelegramTerminalError, got %T: %v", err, err)
+	}
+
+	// Any other 400 stays a plain error — never silently completed.
+	ft.setStatus(http.StatusBadRequest, "Bad Request: something unexpected")
+	err = SendMessage(context.Background(), "tok", "chat-1", "hi", nil)
 	if err == nil {
 		t.Fatal("400 must be an error")
+	}
+	var transient *TelegramTransientError
+	if errors.As(err, &unreachable) || errors.As(err, &terminal) || errors.As(err, &transient) {
+		t.Fatalf("unexpected 400 must stay a plain error, got %T: %v", err, err)
 	}
 }
 

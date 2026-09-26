@@ -1,8 +1,9 @@
 import type { BookingRecord, GuestBooking } from '@repo/contracts'
+import { canCancelBooking } from '@repo/contracts'
 import { hashManageToken } from '@repo/contracts/manage-token'
 import type { Booking, Organizer, Service, TimeSlot } from '@repo/db'
 import { bookings, db, organizers, services, timeSlots } from '@repo/db'
-import { and, count, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm'
 
 import { toPublicOrganizer } from './organizer'
 import { toServiceRecord } from './service'
@@ -66,7 +67,9 @@ export function toBookingRecord(row: Booking): BookingRecord {
 /**
  * Normalize a booking and its parent chain into the **guest's** DTO.
  * Keeps `manageToken` — this shape is only ever returned to the guest who owns
- * the booking, identified by that token.
+ * the booking, identified by that token. `canCancel` carries the same
+ * expiry rule the Go cancel write enforces, so the page never offers an
+ * action that is guaranteed to 404.
  */
 export function toGuestBooking(row: {
   booking: Booking
@@ -82,6 +85,7 @@ export function toGuestBooking(row: {
     selectedOptions: row.booking.selectedOptions,
     createdAt: row.booking.createdAt.toISOString(),
     manageToken: row.booking.manageToken,
+    canCancel: canCancelBooking(row.booking.status, row.booking.manageTokenExpiresAt),
     slot: toTimeSlotRecord(row.slot),
     service: toServiceRecord(row.service),
     organizer: toPublicOrganizer(row.organizer),
@@ -159,12 +163,23 @@ export async function countConfirmedBookings(
  * (ADR-002, entry path 1). The token *is* the authorization: it was delivered
  * to the guest's verified messenger account, so no session is involved.
  * Returns `null` for an unknown token, which the page turns into a `404`.
+ *
+ * Expiry is enforced here the same way the Go cancel write enforces it
+ * (ADR-020): a token past `manageTokenExpiresAt` is answered exactly like
+ * an unknown one, so the page cannot offer a Cancel button that is
+ * guaranteed to 404. `NULL` means a legacy row created before the column
+ * existed — those stay non-expiring, matching the Go side.
  */
 export async function getGuestBookingByToken(token: string): Promise<GuestBooking | null> {
   // Credential check goes through the hash:
   // the raw token column is not a lookup key anymore.
   const [row] = await guestBookingQuery()
-    .where(eq(bookings.manageTokenHash, hashManageToken(token)))
+    .where(
+      and(
+        eq(bookings.manageTokenHash, hashManageToken(token)),
+        or(isNull(bookings.manageTokenExpiresAt), gt(bookings.manageTokenExpiresAt, new Date())),
+      ),
+    )
     .limit(1)
 
   return row ? toGuestBooking(row) : null

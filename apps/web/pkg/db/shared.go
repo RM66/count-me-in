@@ -23,9 +23,12 @@ type Querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// Postgres SQLSTATE for a unique constraint violation — the code the
-// postgres driver puts on the error when a unique index rejects a write.
-const uniqueViolation = "23505"
+// Postgres SQLSTATE codes — the codes the postgres driver puts on the
+// error when a constraint rejects a write.
+const (
+	uniqueViolation     = "23505"
+	foreignKeyViolation = "23503"
+)
 
 // UniqueViolation returns the underlying *pgconn.PgError when err (or
 // anything it wraps) is a 23505, else nil.
@@ -37,12 +40,12 @@ func UniqueViolation(err error) *pgconn.PgError {
 	return nil
 }
 
-// NotFound maps pgx.ErrNoRows to (nil, nil) — callers answer 404.
-func NotFound(err error) error {
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	return err
+// isForeignKeyViolation reports whether err (or anything it wraps) is
+// a 23503 — a row still references the deleted row. Used as a backstop
+// on delete paths so a constraint change cannot resurface as a 500.
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolation
 }
 
 // newID generates a uuidv7 — the tables' ids have no DB default

@@ -143,8 +143,10 @@ func CreateGuestBooking(ctx context.Context, data CreateBookingData) (*gen.Guest
 	// `sent` marking.
 	outbox := make([]OutboxRow, 0, 2)
 	for _, recipient := range []gen.NotificationRecipient{gen.NotificationRecipientOrganizer, gen.NotificationRecipientGuest} {
-		row, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, gen.BookingCreatedJob{
-			BookingID: contracts.ToUUID(created.ID), Recipient: recipient,
+		row, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCreated, func(outboxID string) any {
+			return gen.BookingCreatedJob{
+				BookingID: contracts.ToUUID(created.ID), Recipient: recipient, OutboxID: contracts.ToUUID(outboxID),
+			}
 		}, data.TraceID)
 		if err != nil {
 			return nil, nil, err
@@ -223,8 +225,10 @@ func CancelGuestBookingByToken(ctx context.Context, token, traceID string) (*gen
 	// is notified of the guest's cancellation. One row — the counterparty
 	// only (ADR-012). The row travels back to the caller for the inline
 	// publish + `sent` marking.
-	outboxRow, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
-		BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorGuest,
+	outboxRow, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, func(outboxID string) any {
+		return gen.BookingCancelledJob{
+			BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorGuest, OutboxID: contracts.ToUUID(outboxID),
+		}
 	}, traceID)
 	if err != nil {
 		return nil, nil, err
@@ -293,8 +297,10 @@ func CancelOwnedBooking(ctx context.Context, organizerID, bookingID, traceID str
 	// notified of the organizer's cancellation. One row — the
 	// counterparty only (ADR-012). The row travels back to the caller
 	// for the inline publish + `sent` marking.
-	outboxRow, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, gen.BookingCancelledJob{
-		BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorOrganizer,
+	outboxRow, err := EnqueueOutbox(ctx, tx, contracts.QueueBookingCancelled, func(outboxID string) any {
+		return gen.BookingCancelledJob{
+			BookingID: contracts.ToUUID(cancelled.ID), CancelledBy: gen.CancelActorOrganizer, OutboxID: contracts.ToUUID(outboxID),
+		}
 	}, traceID)
 	if err != nil {
 		return nil, nil, err

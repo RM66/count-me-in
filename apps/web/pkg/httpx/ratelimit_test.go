@@ -18,14 +18,24 @@ func TestAllowFailsOpenWithoutRedis(t *testing.T) {
 }
 
 // TestClientIP — the first value of the forwarded-for chain is the
-// original client; RemoteAddr is the dev fallback.
+// original client, but only when proxy headers are trusted (Vercel or
+// TRUST_PROXY_HEADERS=1); otherwise RemoteAddr is the answer, so a
+// spoofed header cannot rotate rate-limit keys.
 func TestClientIP(t *testing.T) {
+	t.Setenv("VERCEL", "")
+	t.Setenv("TRUST_PROXY_HEADERS", "")
 	r := httptest.NewRequest("POST", "/", nil)
 	r.Header.Set("x-forwarded-for", "203.0.113.7, 10.0.0.1")
+	if got := ClientIP(r); got == "203.0.113.7" {
+		t.Fatal("untrusted forwarded-for must be ignored")
+	}
+
+	t.Setenv("TRUST_PROXY_HEADERS", "1")
 	if got := ClientIP(r); got != "203.0.113.7" {
 		t.Fatalf("ClientIP = %q, want 203.0.113.7", got)
 	}
 
+	t.Setenv("TRUST_PROXY_HEADERS", "")
 	r2 := httptest.NewRequest("POST", "/", nil)
 	if got := ClientIP(r2); got == "" {
 		t.Fatal("expected RemoteAddr fallback to be non-empty")

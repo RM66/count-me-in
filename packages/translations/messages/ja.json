@@ -805,6 +805,8 @@
     "alreadyCancelled": "この予約はすでにキャンセルされています",
     "slotGone": "この回は現在予約できません",
     "tooManyRequests": "リクエストが多すぎます — しばらくしてからもう一度お試しください",
-    "slotHasActiveBookings": "この回にはまだ確定予約があります — 削除する前にキャンセルしてください"
+    "slotHasActiveBookings": "この回には予約があるため削除できません",
+    "serviceHasBookings": "このサービスの回には予約があるため削除できません",
+    "bodyTooLarge": "リクエスト本文が大きすぎます"
   }
 }

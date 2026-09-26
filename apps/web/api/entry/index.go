@@ -39,10 +39,37 @@ var mux = func() http.Handler {
 // routes match.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if orig := r.URL.Query().Get("_path"); orig != "" {
+		// _path is an internal rewrite artifact, never a client input:
+		// only /api/... prefixes are ever rewritten here, and anything
+		// else is answered 404 rather than dispatched. It is also
+		// stripped from RawQuery so handlers logging the URL do not
+		// echo the artifact back.
+		if !strings.HasPrefix(orig, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
 		if orig != "/" {
 			orig = strings.TrimSuffix(orig, "/")
 		}
 		r.URL.Path = orig
+		r.URL.RawQuery = stripQueryParam(r.URL.RawQuery, "_path")
 	}
 	mux.ServeHTTP(w, r)
+}
+
+// stripQueryParam removes one key (and its value) from a raw query
+// string, preserving the rest verbatim.
+func stripQueryParam(rawQuery, key string) string {
+	parts := strings.Split(rawQuery, "&")
+	kept := parts[:0]
+	for _, part := range parts {
+		if k, _, ok := strings.Cut(part, "="); ok && k == key {
+			continue
+		}
+		if part == key {
+			continue
+		}
+		kept = append(kept, part)
+	}
+	return strings.Join(kept, "&")
 }

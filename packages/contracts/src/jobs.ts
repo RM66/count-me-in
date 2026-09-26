@@ -66,21 +66,30 @@ export type NotificationRecipient = z.infer<typeof notificationRecipientEnum>
 export const cancelActorEnum = z.enum(['guest', 'organizer'])
 export type CancelActor = z.infer<typeof cancelActorEnum>
 
-/** Payload of a {@link QUEUE_BOOKING_CREATED} job. */
+/**
+ * Payload of a {@link QUEUE_BOOKING_CREATED} job. `outboxId` is the
+ * notification_outbox row the job was published from: the consumer uses
+ * it as its idempotency key (Redis SET NX), so a QStash retry after a
+ * Telegram timeout — or a sweeper re-publish outside QStash's dedup
+ * window — cannot double-notify the same recipient.
+ */
 export const bookingCreatedJob = z.object({
   bookingId: uuid,
   recipient: notificationRecipientEnum,
+  outboxId: uuid,
 })
 export type BookingCreatedJob = z.infer<typeof bookingCreatedJob>
 
 /**
  * Payload of a {@link QUEUE_BOOKING_CANCELLED} job.
  * Only `cancelledBy` is stored; the handler derives the single recipient by
- * taking the counterparty.
+ * taking the counterparty. `outboxId` is the consumer idempotency key —
+ * see {@link bookingCreatedJob}.
  */
 export const bookingCancelledJob = z.object({
   bookingId: uuid,
   cancelledBy: cancelActorEnum,
+  outboxId: uuid,
 })
 export type BookingCancelledJob = z.infer<typeof bookingCancelledJob>
 

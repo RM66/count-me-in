@@ -1,19 +1,17 @@
 'use client'
 
 import type { GuestBooking } from '@repo/contracts'
-import { ArrowRightIcon, CalendarIcon, SearchIcon } from 'lucide-react'
-import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { SearchIcon } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { useLookupBookings } from '@/api-client'
 import { TelegramLoginButton } from '@/components/telegram-login-button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { formatDateTime } from '@/helpers/date'
+import { BookingListItem } from './booking-list-item'
 
 /**
  * "Find my booking" — the fallback when the messenger deep link is lost
@@ -28,7 +26,6 @@ import { formatDateTime } from '@/helpers/date'
 export function FindBooking() {
   const lookupBookings = useLookupBookings()
   const t = useTranslations('MyBookings')
-  const locale = useLocale()
 
   /**
    * `null` before the first lookup, an array after — the distinction is what
@@ -93,32 +90,7 @@ export function FindBooking() {
             {t('bookingsFound', { count: found.length })}
           </p>
           {found.map((booking) => (
-            <Link key={booking.id} href={`/booking/${booking.manageToken}`} className="group block">
-              <Card className="transition-colors group-hover:border-primary/40">
-                <CardContent className="flex items-center gap-4 py-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted">
-                    <CalendarIcon className="size-5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{booking.service.title}</p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {/* The organizer's zone — the guest booked a wall-clock time. */}
-                      {formatDateTime(booking.slot.startsAt, booking.organizer.timezone, locale)}
-                    </p>
-                  </div>
-                  {/*
-                    Cancelled bookings stay in the list: a guest checking whether
-                    a cancellation went through needs to see it.
-                  */}
-                  <Badge variant={booking.status === 'confirmed' ? 'secondary' : 'outline'}>
-                    {booking.status === 'confirmed'
-                      ? t('seats', { count: booking.seats })
-                      : t('cancelled')}
-                  </Badge>
-                  <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </CardContent>
-              </Card>
-            </Link>
+            <BookingListItem key={booking.id} booking={booking} />
           ))}
         </div>
       )}

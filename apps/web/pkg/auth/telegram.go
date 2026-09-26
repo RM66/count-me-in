@@ -69,6 +69,13 @@ func (t TelegramIdentity) ToTicketPayload(purpose string) contracts.AuthTicketPa
 // fresh single-use tickets for that identity.
 const widgetDataValidAfter = 86400
 
+// widgetFutureSkew — how far in the future auth_date may lie. The past
+// window is a generous 24h (a guest may take a while between opening the
+// widget and completing signup), but the future direction gets only clock
+// skew: Telegram signs the current time, so auth_date an hour ahead is a
+// forged or replayed claim, not a slow clock.
+const widgetFutureSkew = 300
+
 // ValidateTelegramWidget shape-checks and HMAC-verifies a widget body.
 // Errors: ErrTelegramNotConfigured (500 at the route),
 // ErrTelegramInvalid (400 telegramInvalid) for malformed payloads,
@@ -125,7 +132,11 @@ func ValidateTelegramWidget(body []byte) (*TelegramIdentity, error) {
 
 	// Freshness (hasDataExpired in the TS validator): the HMAC proves
 	// the payload came from Telegram, not that it was sent recently.
-	if time.Now().Unix()-int64(payload.AuthDate) > widgetDataValidAfter {
+	// Asymmetric: stale payloads are rejected past 24h, future ones past
+	// clock skew — a future auth_date is a forged claim, not a slow
+	// guest.
+	age := time.Now().Unix() - int64(payload.AuthDate)
+	if age > widgetDataValidAfter || age < -widgetFutureSkew {
 		return nil, ErrTelegramValidationFailed
 	}
 

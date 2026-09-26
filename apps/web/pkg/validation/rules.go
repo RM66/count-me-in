@@ -81,7 +81,16 @@ func canonicalizeTimezone(v string) string {
 
 func ValidURL(v string) bool {
 	u, err := url.Parse(v)
-	return err == nil && u.Scheme != "" && (u.Host != "" || u.Opaque != "")
+	if err != nil {
+		return false
+	}
+	// http/https only: the value is rendered as a link, and other
+	// schemes (javascript:, data:, mailto:) are either dangerous or
+	// not a web link at all.
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	return u.Host != ""
 }
 
 // URLRule — the spec carries only `format: uri`, which kin-openapi does not

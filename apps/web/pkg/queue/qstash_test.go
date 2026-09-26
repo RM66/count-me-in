@@ -2,6 +2,7 @@ package queue
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -71,10 +72,11 @@ func TestPublishOutboxDevSkipsWithoutToken(t *testing.T) {
 	t.Setenv("VERCEL_ENV", "")
 
 	// Local deliveries would be unreachable anyway (QStash POSTs to
-	// APP_URL; localhost is not routable) — skipped with nil so the
-	// caller marks the row `sent` instead of churning in the sweeper.
-	if err := PublishOutbox(t.Context(), "booking.created", json.RawMessage(`{}`), "row-id", "trace"); err != nil {
-		t.Fatalf("dev skip must return nil, got %v", err)
+	// APP_URL; localhost is not routable) — skipped with the sentinel so
+	// the caller marks the row `skipped` (honest terminal state) instead
+	// of `sent`.
+	if err := PublishOutbox(t.Context(), "booking.created", json.RawMessage(`{}`), "row-id", "trace"); !errors.Is(err, ErrPublishSkipped) {
+		t.Fatalf("dev skip must return ErrPublishSkipped, got %v", err)
 	}
 	if calls != 0 {
 		t.Fatalf("dev skip must not touch HTTP, got %d calls", calls)

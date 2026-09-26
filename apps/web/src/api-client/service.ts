@@ -40,7 +40,8 @@ export function useUpdateService(serviceId: string) {
   })
 }
 
-/** Delete one service. Slots and bookings cascade server-side. */
+/** Delete one service. Slots cascade server-side; a service whose
+ * sessions were ever booked answers 409 and is not deleted. */
 export function useDeleteService(serviceId: string) {
   return useMutation({
     mutationFn: () => del(`/api/services/${serviceId}`, deletedServiceEnvelope),

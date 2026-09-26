@@ -45,7 +45,10 @@ func SlotsCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	input, errs := validation.DecodeCreateTimeSlotInput(body)
 	if errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
@@ -98,7 +101,10 @@ func SlotPut(w http.ResponseWriter, r *http.Request, slotID string) {
 		return
 	}
 
-	body, _ := httpx.ReadBody(r)
+	body, ok := httpx.ReadBodyOr413(w, r)
+	if !ok {
+		return
+	}
 	if _, errs := validation.DecodeUpdateTimeSlotInput(body); errs != nil {
 		httpx.WriteInvalidBody(w, locale, errs)
 		return
@@ -175,10 +181,12 @@ func slotWritableState(s db.TimeSlotRow) map[string]any {
 	}
 }
 
-// SlotDelete — DELETE /api/slots/{id}. Refuses a slot that still has
-// confirmed bookings (409 — the organizer must cancel them first); the
-// time_slots FK is RESTRICT, so the database would reject the delete
-// anyway. Guests are not notified from here.
+// SlotDelete — DELETE /api/slots/{id}. Refuses a slot that is
+// referenced by any booking row, confirmed or cancelled (409 — the
+// time_slots FK is ON DELETE RESTRICT, so the database would reject
+// the delete anyway; the guard turns the opaque FK error into a clear
+// refusal). The rows are guest history and nothing removes them, so
+// the 409 is terminal for MVP. Guests are not notified from here.
 func SlotDelete(w http.ResponseWriter, r *http.Request, slotID string) {
 	locale := i18n.DetectLocale(r)
 	organizerID, resp := httpx.RequireWritableOrganizer(r)

@@ -15,11 +15,11 @@ import (
 // in CI, Skip locally without a DB).
 //
 // The outbox table is shared: these tests run against the same dev/test
-// database as the app, so a sweep may claim ambient pending rows (bumping
-// their `attempts` — SweepOutbox never changes a status) and retention may
-// delete ambient `sent` rows (their retention window has passed; the trace
-// id lives in logs, not the table). Both are the production semantics being
-// tested, not corruption.
+// database as the app, so a sweep may claim ambient pending rows (the
+// claim spends no budget — SweepOutbox never changes attempts or status)
+// and retention may delete ambient `sent`/`skipped` rows (their retention
+// window has passed; the trace id lives in logs, not the table). Both
+// are the production semantics being tested, not corruption.
 
 // sweepBatchLimit is deliberately far above any plausible ambient backlog:
 // SweepOutbox returns the OLDEST pending rows first, so a tight limit would
@@ -35,7 +35,9 @@ func enqueueCommitted(t *testing.T, queue, payload, traceID string) OutboxRow {
 	}
 	// Rollback is a no-op after Commit; keeps the tx from leaking on failure.
 	defer tx.Rollback(context.Background()) //nolint
-	row, err := EnqueueOutbox(ctx, tx, queue, map[string]string{"bookingId": payload}, traceID)
+	row, err := EnqueueOutbox(ctx, tx, queue, func(outboxID string) any {
+		return map[string]string{"bookingId": payload, "outboxId": outboxID}
+	}, traceID)
 	if err != nil {
 		t.Fatalf("EnqueueOutbox: %v", err)
 	}
@@ -103,7 +105,7 @@ func TestOutboxFailedIsTerminal(t *testing.T) {
 	}
 }
 
-func TestSweepOutboxClaimsPendingAndBumpsAttempts(t *testing.T) {
+func TestSweepOutboxClaimsPendingWithoutSpendingBudget(t *testing.T) {
 	requirePostgres(t)
 	bookingID := uuid.Must(uuid.NewV7()).String()
 	row := enqueueCommitted(t, "booking.cancelled", bookingID, "trace-3")
@@ -127,16 +129,43 @@ func TestSweepOutboxClaimsPendingAndBumpsAttempts(t *testing.T) {
 	if found.Queue != "booking.cancelled" || found.TraceID != "trace-3" {
 		t.Errorf("swept row = %+v, want queue/trace preserved", found)
 	}
-	// SweepOutbox returns the pre-claim snapshot — the attempts bump is
-	// only visible when re-read: the UPDATE runs inside the claim
-	// transaction after the SELECT.
+	// The claim spends no budget: attempts is bumped per processed row
+	// (BumpOutboxAttempts), so a sweep that aborts on deadline leaves
+	// the row's budget untouched for the next sweep.
 	var attempts int
 	if err := Pool().QueryRow(context.Background(),
 		`SELECT attempts FROM notification_outbox WHERE id = $1::uuid`, row.ID).Scan(&attempts); err != nil {
 		t.Fatal(err)
 	}
-	if attempts < 1 {
-		t.Errorf("swept row attempts = %d, want >= 1 (claim bump)", attempts)
+	if attempts != 0 {
+		t.Errorf("swept-but-unprocessed row attempts = %d, want 0 (budget spent at process time)", attempts)
+	}
+	if n, err := BumpOutboxAttempts(context.Background(), row.ID); err != nil {
+		t.Fatalf("BumpOutboxAttempts: %v", err)
+	} else if n != 1 {
+		t.Errorf("after one processed round attempts = %d, want 1", n)
+	}
+}
+
+func TestOutboxSkippedIsTerminal(t *testing.T) {
+	requirePostgres(t)
+	bookingID := uuid.Must(uuid.NewV7()).String()
+	row := enqueueCommitted(t, "booking.created", bookingID, "trace-5")
+
+	if err := MarkOutboxSkipped(context.Background(), row.ID); err != nil {
+		t.Fatalf("MarkOutboxSkipped: %v", err)
+	}
+	if got := outboxStatus(t, row.ID); got != "skipped" {
+		t.Fatalf("after mark-skipped status = %q, want skipped", got)
+	}
+	rows, err := SweepOutbox(context.Background(), -time.Minute, sweepBatchLimit)
+	if err != nil {
+		t.Fatalf("SweepOutbox: %v", err)
+	}
+	for _, r := range rows {
+		if r.ID == row.ID {
+			t.Fatalf("skipped row %s must not be swept", row.ID)
+		}
 	}
 }
 

@@ -42,6 +42,10 @@ func TestMain(m *testing.M) {
 	defer testRedis.Close()
 	os.Setenv("REDIS_URL", "redis://"+testRedis.Addr())
 	os.Setenv("AUTH_SECRET", "routes-test-golden-secret")
+	// The booking tests key rate buckets by distinct X-Forwarded-For
+	// IPs; outside Vercel that header is only honored with the
+	// explicit opt-in.
+	os.Setenv("TRUST_PROXY_HEADERS", "1")
 	os.Exit(m.Run())
 }
 

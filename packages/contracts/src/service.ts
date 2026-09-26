@@ -33,6 +33,15 @@ const serviceFields = {
  * `optionsSelectMode` is required iff the service defines options.
  * `null` counts as "no options": the cabinet clears an option list by sending
  * `options: null` together with `optionsSelectMode: null`.
+ *
+ * On the merge-patch (`PUT …/services/{id}`) this refinement runs on the
+ * **patch**, not on the merged row — deliberately stricter than RFC 7386
+ * (ADR-016): a patch that sets a non-empty `options` must carry
+ * `optionsSelectMode` in the same document, and a mode without options is
+ * rejected. The Go endpoint then validates the merged state as well
+ * (`RefineServiceMergedState`), so a patch that clears `options` without
+ * clearing the mode still answers 400 — the pair is one value split across
+ * two columns and clients send it together (see `service-form.ts`).
  */
 function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
   return schema.superRefine((value, ctx) => {
