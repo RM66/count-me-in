@@ -1,0 +1,34 @@
+name: media-upload
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/organizers/me/avatar
+      headers: { X-Organizer-Auth: <session> }
+      json: { contentType: image/png }
+    note: happy path → 200 signed upload target (URL normalized)
+  - request:
+      method: POST
+      path: /api/organizers/me/service-photo
+      headers: { X-Organizer-Auth: <session> }
+      json: { contentType: image/png }
+    note: service photo happy path
+  - request:
+      method: POST
+      path: /api/organizers/me/avatar
+      headers: { X-Organizer-Auth: <session> }
+      json: { contentType: application/pdf }
+    note: non-image content type → 400
+  - mint: demoSession
+    request:
+      method: POST
+      path: /api/organizers/me/avatar
+      headers: { X-Organizer-Auth: <demoSession> }
+      json: { contentType: image/png }
+    note: demo refused → 403
+  - request:
+      method: POST
+      path: /api/organizers/me/avatar
+      json: { contentType: image/png }
+    note: anonymous → 403

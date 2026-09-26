@@ -1,0 +1,9 @@
+name: jobs-bad-signature
+steps:
+  - reset: true
+  - mint: qstashSignatureBad
+    request:
+      method: POST
+      path: /api/jobs/booking.created
+      body_raw: '{"bookingId":"00000000-0000-0000-0000-000000000001","recipient":"organizer","outboxId":"00000000-0000-0000-0000-000000000002"}'
+    note: signature minted over a DIFFERENT body (recorder mints over mismatched bytes) → 401 body-hash mismatch

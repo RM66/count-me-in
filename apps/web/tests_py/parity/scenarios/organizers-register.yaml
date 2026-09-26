@@ -1,0 +1,66 @@
+name: organizers-register
+steps:
+  - reset: true
+    mint: signupTicket
+    request:
+      method: POST
+      path: /api/organizers
+      json:
+        {
+          ticket: <signupTicket>,
+          slug: parity-org,
+          name: Parity Org,
+          timezone: Europe/Belgrade,
+          language: en,
+        }
+    note: happy path → 201 registered
+  - mint: signupTicket
+    request:
+      method: POST
+      path: /api/organizers
+      json:
+        {
+          ticket: <signupTicket>,
+          slug: parity-org,
+          name: Dup,
+          timezone: Europe/Belgrade,
+          language: en,
+        }
+    note: slug taken → 409
+  - request:
+      method: POST
+      path: /api/organizers
+      json:
+        {
+          ticket: nonexistent-ticket,
+          slug: other-org,
+          name: X,
+          timezone: Europe/Belgrade,
+          language: en,
+        }
+    note: unknown ticket → 401
+  - mint: signupTicket
+    request:
+      method: POST
+      path: /api/organizers
+      json: { ticket: <signupTicket>, slug: ab, name: X, timezone: Europe/Belgrade, language: en }
+    note: slug too short → 400 field issues
+  - mint: signupTicket
+    request:
+      method: POST
+      path: /api/organizers
+      json: { ticket: <signupTicket>, slug: api, name: X, timezone: Europe/Belgrade, language: en }
+    note: reserved slug → 400 field issues
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/organizers
+      json:
+        {
+          ticket: <guestTicket>,
+          slug: guest-flow,
+          name: X,
+          timezone: Europe/Belgrade,
+          language: en,
+        }
+    note: guest-purpose ticket refused in registration flow → 401

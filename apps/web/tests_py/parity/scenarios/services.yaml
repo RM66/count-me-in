@@ -1,0 +1,32 @@
+name: services
+steps:
+  - reset: true
+    request: { method: GET, path: /api/services }
+    note: anonymous → demo services (sessionOrDemoRead)
+  - mint: session
+    request: { method: GET, path: /api/services, headers: { X-Organizer-Auth: <session> } }
+    note: signed-in → own (empty) list
+  - request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json: { title: Parity Yoga, defaultPrice: '20.00', defaultCapacity: 10, defaultDurationMinutes: 60, maxSeatsPerBooking: 4 }
+    note: create happy path → 201; capture <serviceId>
+  - request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json: { title: Bad }
+    note: missing required fields → 400 validation error
+  - request:
+      method: POST
+      path: /api/services
+      json: { title: Anon }
+    note: anonymous → 403
+  - mint: demoSession
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <demoSession> }
+      json: { title: Demo Write }
+    note: demo refused → 403

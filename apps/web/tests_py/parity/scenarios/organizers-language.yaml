@@ -1,0 +1,23 @@
+name: organizers-language
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: PATCH
+      path: /api/organizers/me/language
+      headers: { X-Organizer-Auth: <session> }
+      json: { language: ru }
+    note: happy path → 204 no body
+  - request:
+      method: PATCH
+      path: /api/organizers/me/language
+      headers: { X-Organizer-Auth: <session> }
+      json: { language: xx }
+    note: unsupported locale → 400
+  - mint: demoSession
+    request:
+      method: PATCH
+      path: /api/organizers/me/language
+      headers: { X-Organizer-Auth: <demoSession> }
+      json: { language: ru }
+    note: demo refused → 403

@@ -1,0 +1,189 @@
+{
+  "scenario": "media-upload",
+  "steps": [
+    {
+      "note": "happy path → 200 signed upload target (URL normalized)",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "image/png"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "details": {
+            "fieldErrors": {
+              "size": [
+                "Required"
+              ]
+            },
+            "formErrors": []
+          },
+          "error": "Invalid input"
+        },
+        "body_raw": "{\"details\":{\"fieldErrors\":{\"size\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "service photo happy path",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/service-photo",
+        "body": {
+          "contentType": "image/png"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "details": {
+            "fieldErrors": {
+              "size": [
+                "Required"
+              ]
+            },
+            "formErrors": []
+          },
+          "error": "Invalid input"
+        },
+        "body_raw": "{\"details\":{\"fieldErrors\":{\"size\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "non-image content type → 400",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "application/pdf"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "details": {
+            "fieldErrors": {
+              "contentType": [
+                "value is not one of the allowed values [\"image/jpeg\",\"image/png\",\"image/webp\"]"
+              ],
+              "size": [
+                "Required"
+              ]
+            },
+            "formErrors": []
+          },
+          "error": "Invalid input"
+        },
+        "body_raw": "{\"details\":{\"fieldErrors\":{\"contentType\":[\"value is not one of the allowed values [\\\"image/jpeg\\\",\\\"image/png\\\",\\\"image/webp\\\"]\"],\"size\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "demo refused → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "image/png"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "code": "DEMO_READ_ONLY",
+          "error": "This is a read-only demo account — sign up to create your own bookable services."
+        },
+        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "anonymous → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "image/png"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "code": "DEMO_READ_ONLY",
+          "error": "This is a read-only demo account — sign up to create your own bookable services."
+        },
+        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

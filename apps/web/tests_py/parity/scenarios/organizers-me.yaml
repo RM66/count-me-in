@@ -1,0 +1,14 @@
+name: organizers-me
+steps:
+  - reset: true
+    request: { method: GET, path: /api/organizers/me }
+    note: anonymous → demo organizer profile (sessionOrDemoRead, never 401)
+  - mint: session
+    request: { method: GET, path: /api/organizers/me, headers: { X-Organizer-Auth: <session> } }
+    note: signed-in → own profile
+  - mint: demoSession
+    request: { method: GET, path: /api/organizers/me, headers: { X-Organizer-Auth: <demoSession> } }
+    note: demo session → demo profile
+  - request:
+      { method: GET, path: /api/organizers/me, headers: { X-Organizer-Auth: garbage.token.here } }
+    note: broken token → treated as anonymous → demo profile

@@ -1,0 +1,49 @@
+name: slots
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json: { title: Slot Host, defaultPrice: '20.00', defaultCapacity: 3, defaultDurationMinutes: 60, maxSeatsPerBooking: 4 }
+    note: seed service; capture <serviceId>
+  - request: { method: GET, path: /api/slots, headers: { X-Organizer-Auth: <session> } }
+    note: empty slot list
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        { serviceId: <serviceId>, startsAt: '2031-06-01T10:00:00Z', durationMinutes: 60, capacity: 3 }
+    note: create happy path → 201; capture <slotId>
+  - request: { method: GET, path: /api/slots, headers: { X-Organizer-Auth: <session> } }
+    note: list shows the slot
+  - request:
+      { method: GET, path: '/api/slots?upcoming=1', headers: { X-Organizer-Auth: <session> } }
+    note: upcoming filter
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        { serviceId: <serviceId>, startsAt: '2001-01-01T10:00:00Z', durationMinutes: 60, capacity: 3 }
+    note: past start rejected → 400
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          serviceId: 00000000-0000-0000-0000-000000000001,
+          startsAt: '2031-06-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 3,
+        }
+    note: service not owned → 404
+  - request:
+      method: POST
+      path: /api/slots
+      json:
+        { serviceId: <serviceId>, startsAt: '2031-06-01T10:00:00Z', durationMinutes: 60, capacity: 3 }
+    note: anonymous → 403

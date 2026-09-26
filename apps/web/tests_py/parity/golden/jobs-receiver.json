@@ -1,0 +1,213 @@
+{
+  "scenario": "jobs-receiver",
+  "steps": [
+    {
+      "note": "missing upstash-signature → 401",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/booking.created",
+        "body": "{\"bookingId\":\"<uuid:1>\",\"recipient\":\"organizer\",\"outboxId\":\"<uuid:2>\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "malformed signature → 401",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/booking.created",
+        "body": "{\"bookingId\":\"<uuid:1>\",\"recipient\":\"organizer\",\"outboxId\":\"<uuid:2>\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown queue → 404",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/unknown.queue",
+        "body": "{}"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "invalid payload → 400 (retrying would resend the same bytes)",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/booking.created",
+        "body": "{\"bookingId\":\"not-a-uuid\",\"recipient\":\"organizer\",\"outboxId\":\"<uuid:2>\"}"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "valid signed delivery, unknown booking → 200 silent skip (no resend)",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/booking.created",
+        "body": "{\"bookingId\":\"<uuid:1>\",\"recipient\":\"organizer\",\"outboxId\":\"<uuid:2>\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "duplicate outboxId delivery → 200, no second send (idempotency claim)",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/booking.created",
+        "body": "{\"bookingId\":\"<uuid:1>\",\"recipient\":\"organizer\",\"outboxId\":\"<uuid:2>\"}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "schedule queue accepts empty body → 200 (reseed)",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/demo.refresh",
+        "body": "{}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "schedule queue accepts empty body → 200",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/notification.outbox.sweep",
+        "body": "{}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

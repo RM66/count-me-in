@@ -1,0 +1,233 @@
+{
+  "scenario": "organizers-register",
+  "steps": [
+    {
+      "note": "happy path → 201 registered",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "parity-org",
+          "name": "Parity Org",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "organizer": {
+            "id": "<uuid:1>",
+            "slug": "parity-org"
+          }
+        },
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "slug taken → 409",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "parity-org",
+          "name": "Dup",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "This handle is already taken — pick another one"
+        },
+        "body_raw": "{\"error\":\"This handle is already taken — pick another one\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown ticket → 401",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "nonexistent-ticket",
+          "slug": "other-org",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "Invalid input",
+          "issues": {
+            "ticket": [
+              "minimum string length is 20"
+            ]
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"issues\":{\"ticket\":[\"minimum string length is 20\"]}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "slug too short → 400 field issues",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "ab",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "Invalid input",
+          "issues": {
+            "slug": [
+              "minimum string length is 4"
+            ]
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"issues\":{\"slug\":[\"minimum string length is 4\"]}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "reserved slug → 400 field issues",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "api",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "Invalid input",
+          "issues": {
+            "slug": [
+              "minimum string length is 4"
+            ]
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"issues\":{\"slug\":[\"minimum string length is 4\"]}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "guest-purpose ticket refused in registration flow → 401",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "guest-flow",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "Auth session expired — authenticate with Telegram again"
+        },
+        "body_raw": "{\"error\":\"Auth session expired — authenticate with Telegram again\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+name: bookings-lookup
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          title: Lookup Host,
+          defaultPrice: '20.00',
+          defaultCapacity: 5,
+          defaultDurationMinutes: 60,
+          maxSeatsPerBooking: 4,
+        }
+    note: seed service; capture <serviceId>
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-09-15T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 5,
+        }
+    note: seed slot; capture <slotId>
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 2,
+          guestName: Lookup Guest,
+        }
+    note: create a booking for the lookup
+    expectSink: 2
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings/lookup
+      json: { guestTicket: <guestTicket> }
+    note: happy path → 200 guest bookings list
+  - request:
+      method: POST
+      path: /api/bookings/lookup
+      json: { guestTicket: unknown }
+    note: unknown ticket → 401
+  - request:
+      method: POST
+      path: /api/bookings/lookup
+      json: {}
+    note: invalid body → 400

@@ -1,0 +1,47 @@
+name: organizers-me-write
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/json }
+      json: { name: Updated Name }
+    note: wrong content type for merge-patch endpoint → 415
+  - request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { description: parity-updated }
+    note: absent keys kept, description set → 200
+  - request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { description: null }
+    note: explicit null clears → 200
+  - request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: {}
+    note: empty patch → 400 nothing to update
+  - request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { timezone: Not/AZone }
+    note: invalid timezone → 400 validation error
+  - mint: demoSession
+    request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { X-Organizer-Auth: <demoSession>, Content-Type: application/merge-patch+json }
+      json: { name: Nope }
+    note: demo organizer refused on write → 403
+  - request:
+      method: PUT
+      path: /api/organizers/me
+      headers: { Content-Type: application/merge-patch+json }
+      json: { name: Nope }
+    note: anonymous → 403 (never 401)

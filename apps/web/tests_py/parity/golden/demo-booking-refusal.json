@@ -1,0 +1,291 @@
+{
+  "scenario": "demo-booking-refusal",
+  "steps": [
+    {
+      "note": "anonymous → demo slots; capture a demo <slotId>",
+      "request": {
+        "method": "GET",
+        "path": "/api/slots",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "slots": [
+            {
+              "bookedCount": 11,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:1>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:2>"
+            },
+            {
+              "bookedCount": 6,
+              "capacity": 8,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 120,
+              "id": "<uuid:2>",
+              "price": null,
+              "serviceId": "demo-pottery",
+              "startsAt": "<ts:3>"
+            },
+            {
+              "bookedCount": 8,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:3>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:4>"
+            },
+            {
+              "bookedCount": 13,
+              "capacity": 16,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 45,
+              "id": "<uuid:4>",
+              "price": null,
+              "serviceId": "demo-breathwork",
+              "startsAt": "<ts:5>"
+            },
+            {
+              "bookedCount": 10,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:5>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:6>"
+            },
+            {
+              "bookedCount": 14,
+              "capacity": 16,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 45,
+              "id": "<uuid:6>",
+              "price": null,
+              "serviceId": "demo-breathwork",
+              "startsAt": "<ts:7>"
+            },
+            {
+              "bookedCount": 8,
+              "capacity": 8,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 120,
+              "id": "<uuid:7>",
+              "price": null,
+              "serviceId": "demo-pottery",
+              "startsAt": "<ts:8>"
+            },
+            {
+              "bookedCount": 12,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:8>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:9>"
+            },
+            {
+              "bookedCount": 16,
+              "capacity": 16,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 45,
+              "id": "<uuid:9>",
+              "price": null,
+              "serviceId": "demo-breathwork",
+              "startsAt": "<ts:10>"
+            },
+            {
+              "bookedCount": 9,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:10>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:11>"
+            },
+            {
+              "bookedCount": 11,
+              "capacity": 16,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 45,
+              "id": "<uuid:11>",
+              "price": null,
+              "serviceId": "demo-breathwork",
+              "startsAt": "<ts:12>"
+            },
+            {
+              "bookedCount": 12,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:12>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:13>"
+            },
+            {
+              "bookedCount": 5,
+              "capacity": 8,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 120,
+              "id": "<uuid:13>",
+              "price": null,
+              "serviceId": "demo-pottery",
+              "startsAt": "<ts:14>"
+            },
+            {
+              "bookedCount": 4,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:14>",
+              "price": null,
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:15>"
+            },
+            {
+              "bookedCount": 16,
+              "capacity": 16,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 45,
+              "id": "<uuid:15>",
+              "price": null,
+              "serviceId": "demo-breathwork",
+              "startsAt": "<ts:16>"
+            },
+            {
+              "bookedCount": 1,
+              "capacity": 12,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 60,
+              "id": "<uuid:16>",
+              "price": "$14",
+              "serviceId": "demo-yoga",
+              "startsAt": "<ts:17>"
+            },
+            {
+              "bookedCount": 8,
+              "capacity": 8,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 120,
+              "id": "<uuid:17>",
+              "price": null,
+              "serviceId": "demo-pottery",
+              "startsAt": "<ts:18>"
+            },
+            {
+              "bookedCount": 6,
+              "capacity": 16,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 45,
+              "id": "<uuid:18>",
+              "price": null,
+              "serviceId": "demo-breathwork",
+              "startsAt": "<ts:19>"
+            },
+            {
+              "bookedCount": 2,
+              "capacity": 8,
+              "createdAt": "<ts:1>",
+              "durationMinutes": 120,
+              "id": "<uuid:19>",
+              "price": null,
+              "serviceId": "demo-pottery",
+              "startsAt": "<ts:20>"
+            }
+          ]
+        },
+        "body_raw": "{\"slots\":[{\"bookedCount\":11,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:1>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:2>\"},{\"bookedCount\":6,\"capacity\":8,\"createdAt\":\"<ts:1>\",\"durationMinutes\":120,\"id\":\"<uuid:2>\",\"price\":null,\"serviceId\":\"demo-pottery\",\"startsAt\":\"<ts:3>\"},{\"bookedCount\":8,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:3>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:4>\"},{\"bookedCount\":13,\"capacity\":16,\"createdAt\":\"<ts:1>\",\"durationMinutes\":45,\"id\":\"<uuid:4>\",\"price\":null,\"serviceId\":\"demo-breathwork\",\"startsAt\":\"<ts:5>\"},{\"bookedCount\":10,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:5>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:6>\"},{\"bookedCount\":14,\"capacity\":16,\"createdAt\":\"<ts:1>\",\"durationMinutes\":45,\"id\":\"<uuid:6>\",\"price\":null,\"serviceId\":\"demo-breathwork\",\"startsAt\":\"<ts:7>\"},{\"bookedCount\":8,\"capacity\":8,\"createdAt\":\"<ts:1>\",\"durationMinutes\":120,\"id\":\"<uuid:7>\",\"price\":null,\"serviceId\":\"demo-pottery\",\"startsAt\":\"<ts:8>\"},{\"bookedCount\":12,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:8>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:9>\"},{\"bookedCount\":16,\"capacity\":16,\"createdAt\":\"<ts:1>\",\"durationMinutes\":45,\"id\":\"<uuid:9>\",\"price\":null,\"serviceId\":\"demo-breathwork\",\"startsAt\":\"<ts:10>\"},{\"bookedCount\":9,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:10>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:11>\"},{\"bookedCount\":11,\"capacity\":16,\"createdAt\":\"<ts:1>\",\"durationMinutes\":45,\"id\":\"<uuid:11>\",\"price\":null,\"serviceId\":\"demo-breathwork\",\"startsAt\":\"<ts:12>\"},{\"bookedCount\":12,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:12>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:13>\"},{\"bookedCount\":5,\"capacity\":8,\"createdAt\":\"<ts:1>\",\"durationMinutes\":120,\"id\":\"<uuid:13>\",\"price\":null,\"serviceId\":\"demo-pottery\",\"startsAt\":\"<ts:14>\"},{\"bookedCount\":4,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:14>\",\"price\":null,\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:15>\"},{\"bookedCount\":16,\"capacity\":16,\"createdAt\":\"<ts:1>\",\"durationMinutes\":45,\"id\":\"<uuid:15>\",\"price\":null,\"serviceId\":\"demo-breathwork\",\"startsAt\":\"<ts:16>\"},{\"bookedCount\":1,\"capacity\":12,\"createdAt\":\"<ts:1>\",\"durationMinutes\":60,\"id\":\"<uuid:16>\",\"price\":\"$14\",\"serviceId\":\"demo-yoga\",\"startsAt\":\"<ts:17>\"},{\"bookedCount\":8,\"capacity\":8,\"createdAt\":\"<ts:1>\",\"durationMinutes\":120,\"id\":\"<uuid:17>\",\"price\":null,\"serviceId\":\"demo-pottery\",\"startsAt\":\"<ts:18>\"},{\"bookedCount\":6,\"capacity\":16,\"createdAt\":\"<ts:1>\",\"durationMinutes\":45,\"id\":\"<uuid:18>\",\"price\":null,\"serviceId\":\"demo-breathwork\",\"startsAt\":\"<ts:19>\"},{\"bookedCount\":2,\"capacity\":8,\"createdAt\":\"<ts:1>\",\"durationMinutes\":120,\"id\":\"<uuid:19>\",\"price\":null,\"serviceId\":\"demo-pottery\",\"startsAt\":\"<ts:20>\"}]}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "booking a demo slot → 403 (demo organizer is read-only, ADR-010)",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings",
+        "body": {
+          "guestTicket": "<token>",
+          "serviceId": "demo-yoga",
+          "timeSlotId": "<uuid:1>",
+          "seats": 1,
+          "guestName": "Demo Try"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "This session is no longer available"
+        },
+        "body_raw": "{\"error\":\"This session is no longer available\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown token on demo data → 404 (never leaks existence)",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {
+          "manageToken": "demo-manage-token"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "error": "Booking not found"
+        },
+        "body_raw": "{\"error\":\"Booking not found\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

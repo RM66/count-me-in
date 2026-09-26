@@ -1,0 +1,25 @@
+name: demo-booking-refusal
+steps:
+  - reset: true
+  - request: { method: GET, path: /api/slots }
+    note: anonymous → demo slots; capture a demo <slotId>
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: Demo Try,
+        }
+    note: booking a demo slot → 403 (demo organizer is read-only, ADR-010)
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: { manageToken: demo-manage-token }
+    note: unknown token on demo data → 404 (never leaks existence)
+    expectSink: 0

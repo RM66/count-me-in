@@ -1,0 +1,84 @@
+name: services-id
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          title: Parity Service,
+          defaultPrice: '20.00',
+          defaultCapacity: 5,
+          defaultDurationMinutes: 45,
+          maxSeatsPerBooking: 4,
+          options: [Option A],
+          optionsSelectMode: single,
+        }
+    note: seed a service with options; capture <serviceId>
+  - request:
+      { method: GET, path: /api/services/<serviceId>, headers: { X-Organizer-Auth: <session> } }
+    note: get own service → 200
+  - request:
+      {
+        method: GET,
+        path: /api/services/00000000-0000-0000-0000-000000000001,
+        headers: { X-Organizer-Auth: <session> },
+      }
+    note: unknown id → 404
+  - request:
+      { method: GET, path: /api/services/not-a-uuid, headers: { X-Organizer-Auth: <session> } }
+    note: malformed path param → 400/404 per mux
+  - request:
+      method: PUT
+      path: /api/services/<serviceId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/json }
+      json: { title: X }
+    note: wrong content type → 415
+  - request:
+      method: PUT
+      path: /api/services/<serviceId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { description: patched }
+    note: absent keys kept → 200
+  - request:
+      method: PUT
+      path: /api/services/<serviceId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { options: null, optionsSelectMode: null }
+    note: pair cleared together → 200
+  - request:
+      method: PUT
+      path: /api/services/<serviceId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { options: [Option One] }
+    note: options set without mode → pair rule violation → 400
+  - request:
+      method: PUT
+      path: /api/services/<serviceId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: {}
+    note: empty patch → 400 nothing to update
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-06-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 2,
+        }
+    note: seed a slot under the service (for the delete guard)
+  - request:
+      method: DELETE
+      path: /api/services/<serviceId>
+      headers: { X-Organizer-Auth: <session> }
+    note: service with a slot but no bookings → 200 (slots cascade)
+  - request:
+      method: DELETE
+      path: /api/services/00000000-0000-0000-0000-000000000001
+      headers: { X-Organizer-Auth: <session> }
+    note: unknown id → 404

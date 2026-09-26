@@ -1,0 +1,281 @@
+{
+  "scenario": "services",
+  "steps": [
+    {
+      "note": "anonymous → demo services (sessionOrDemoRead)",
+      "request": {
+        "method": "GET",
+        "path": "/api/services",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "services": [
+            {
+              "contact": null,
+              "createdAt": "<ts:1>",
+              "defaultCapacity": 12,
+              "defaultDurationMinutes": 60,
+              "defaultPrice": "$12",
+              "description": "A dynamic 60-minute flow to wake up the body and mind. Suitable for all levels. Mats and props provided.",
+              "id": "demo-yoga",
+              "location": null,
+              "maxSeatsPerBooking": 2,
+              "options": [
+                "Downtown studio",
+                "Riverside studio"
+              ],
+              "optionsSelectMode": "single",
+              "organizerId": "<uuid:1>",
+              "photoUrl": "/service-yoga.png",
+              "title": "Morning Vinyasa Flow"
+            },
+            {
+              "contact": "+381 64 999 1234",
+              "createdAt": "<ts:1>",
+              "defaultCapacity": 8,
+              "defaultDurationMinutes": 120,
+              "defaultPrice": "from $25",
+              "description": "Shape your own mug or bowl from scratch. All clay, tools, and firing included. Great for a creative afternoon with friends.",
+              "id": "demo-pottery",
+              "location": "Ceramics Loft, Cetinjska 15, Belgrade",
+              "maxSeatsPerBooking": 4,
+              "options": [
+                "Bring a friend (+1 seat)",
+                "Take-home glaze kit",
+                "Photo of your piece"
+              ],
+              "optionsSelectMode": "multi",
+              "organizerId": "<uuid:1>",
+              "photoUrl": "/service-workshop.png",
+              "title": "Hand-Building Pottery Workshop"
+            },
+            {
+              "contact": null,
+              "createdAt": "<ts:1>",
+              "defaultCapacity": 16,
+              "defaultDurationMinutes": 45,
+              "defaultPrice": "$9",
+              "description": "A calming 45-minute guided breathwork session to close out your day. Dim lights, warm blankets, deep rest.",
+              "id": "demo-breathwork",
+              "location": null,
+              "maxSeatsPerBooking": 1,
+              "options": null,
+              "optionsSelectMode": null,
+              "organizerId": "<uuid:1>",
+              "photoUrl": "/service-breathwork.png",
+              "title": "Evening Breathwork Circle"
+            }
+          ]
+        },
+        "body_raw": "{\"services\":[{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":12,\"defaultDurationMinutes\":60,\"defaultPrice\":\"$12\",\"description\":\"A dynamic 60-minute flow to wake up the body and mind. Suitable for all levels. Mats and props provided.\",\"id\":\"demo-yoga\",\"location\":null,\"maxSeatsPerBooking\":2,\"options\":[\"Downtown studio\",\"Riverside studio\"],\"optionsSelectMode\":\"single\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":\"/service-yoga.png\",\"title\":\"Morning Vinyasa Flow\"},{\"contact\":\"+381 64 999 1234\",\"createdAt\":\"<ts:1>\",\"defaultCapacity\":8,\"defaultDurationMinutes\":120,\"defaultPrice\":\"from $25\",\"description\":\"Shape your own mug or bowl from scratch. All clay, tools, and firing included. Great for a creative afternoon with friends.\",\"id\":\"demo-pottery\",\"location\":\"Ceramics Loft, Cetinjska 15, Belgrade\",\"maxSeatsPerBooking\":4,\"options\":[\"Bring a friend (+1 seat)\",\"Take-home glaze kit\",\"Photo of your piece\"],\"optionsSelectMode\":\"multi\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":\"/service-workshop.png\",\"title\":\"Hand-Building Pottery Workshop\"},{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":16,\"defaultDurationMinutes\":45,\"defaultPrice\":\"$9\",\"description\":\"A calming 45-minute guided breathwork session to close out your day. Dim lights, warm blankets, deep rest.\",\"id\":\"demo-breathwork\",\"location\":null,\"maxSeatsPerBooking\":1,\"options\":null,\"optionsSelectMode\":null,\"organizerId\":\"<uuid:1>\",\"photoUrl\":\"/service-breathwork.png\",\"title\":\"Evening Breathwork Circle\"}]}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "signed-in → own (empty) list",
+      "request": {
+        "method": "GET",
+        "path": "/api/services",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "services": []
+        },
+        "body_raw": "{\"services\":[]}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "create happy path → 201; capture <serviceId>",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Parity Yoga",
+          "defaultPrice": "20.00",
+          "defaultCapacity": 10,
+          "defaultDurationMinutes": 60,
+          "maxSeatsPerBooking": 4
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "service": {
+            "contact": null,
+            "createdAt": "<ts:2>",
+            "defaultCapacity": 10,
+            "defaultDurationMinutes": 60,
+            "defaultPrice": "20.00",
+            "description": null,
+            "id": "<sid:1>",
+            "location": null,
+            "maxSeatsPerBooking": 4,
+            "options": null,
+            "optionsSelectMode": null,
+            "organizerId": "<uuid:2>",
+            "photoUrl": null,
+            "title": "Parity Yoga"
+          }
+        },
+        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:2>\",\"defaultCapacity\":10,\"defaultDurationMinutes\":60,\"defaultPrice\":\"20.00\",\"description\":null,\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"organizerId\":\"<uuid:2>\",\"photoUrl\":null,\"title\":\"Parity Yoga\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "missing required fields → 400 validation error",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Bad"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "details": {
+            "fieldErrors": {
+              "defaultCapacity": [
+                "Required"
+              ],
+              "defaultDurationMinutes": [
+                "Required"
+              ],
+              "defaultPrice": [
+                "Required"
+              ],
+              "maxSeatsPerBooking": [
+                "Required"
+              ]
+            },
+            "formErrors": []
+          },
+          "error": "Invalid input"
+        },
+        "body_raw": "{\"details\":{\"fieldErrors\":{\"defaultCapacity\":[\"Required\"],\"defaultDurationMinutes\":[\"Required\"],\"defaultPrice\":[\"Required\"],\"maxSeatsPerBooking\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "anonymous → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Anon"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "code": "DEMO_READ_ONLY",
+          "error": "This is a read-only demo account — sign up to create your own bookable services."
+        },
+        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "demo refused → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Demo Write"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "cache-control": "no-store",
+          "content-type": "application/json",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "vary": "Accept-Language",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "x-robots-tag": "noindex"
+        },
+        "body": {
+          "code": "DEMO_READ_ONLY",
+          "error": "This is a read-only demo account — sign up to create your own bookable services."
+        },
+        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+name: bookings-cancel-organizer
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          title: OrgCancel Host,
+          defaultPrice: '20.00',
+          defaultCapacity: 5,
+          defaultDurationMinutes: 60,
+          maxSeatsPerBooking: 4,
+        }
+    note: seed service; capture <serviceId>
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-11-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 5,
+        }
+    note: seed slot; capture <slotId>
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: OrgCancel Guest,
+        }
+    note: create booking; capture <bookingId>
+    expectSink: 2
+  - request:
+      method: POST
+      path: /api/bookings/cancel-by-organizer
+      json: { bookingId: <bookingId> }
+    note: anonymous → 403
+    expectSink: 0
+  - mint: demoSession
+    request:
+      method: POST
+      path: /api/bookings/cancel-by-organizer
+      headers: { X-Organizer-Auth: <demoSession> }
+      json: { bookingId: <bookingId> }
+    note: demo session → 403
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel-by-organizer
+      headers: { X-Organizer-Auth: <session> }
+      json: { bookingId: 00000000-0000-0000-0000-000000000001 }
+    note: booking not on caller's service → 404
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel-by-organizer
+      headers: { X-Organizer-Auth: <session> }
+      json: { bookingId: <bookingId> }
+    note: happy path → 200 cancelled
+    expectSink: 1
+  - request:
+      method: POST
+      path: /api/bookings/cancel-by-organizer
+      headers: { X-Organizer-Auth: <session> }
+      json: { bookingId: <bookingId> }
+    note: already cancelled → 409
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel-by-organizer
+      headers: { X-Organizer-Auth: <session> }
+      json: {}
+    note: invalid body → 400
+    expectSink: 0

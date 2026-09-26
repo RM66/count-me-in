@@ -1,0 +1,148 @@
+name: bookings-create
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          title: Bookable,
+          defaultPrice: '20.00',
+          defaultCapacity: 2,
+          defaultDurationMinutes: 60,
+          maxSeatsPerBooking: 4,
+        }
+    note: seed service; capture <serviceId>
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-08-01T18:00:00Z',
+          durationMinutes: 60,
+          capacity: 2,
+        }
+    note: seed slot; capture <slotId>
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: Guest One,
+        }
+    note: happy path → 201; capture <bookingId> + <manageToken>
+    expectSink: 2
+  - request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: unknown-ticket,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: X,
+        }
+    note: unknown ticket → 401
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings
+      json: { serviceId: <serviceId>, timeSlotId: <slotId>, seats: 1, guestName: X }
+    note: missing ticket → 401/400 per decode order
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings
+      json: { guestTicket: whatever, serviceId: <serviceId>, timeSlotId: <slotId> }
+    note: invalid body → 400
+    expectSink: 0
+  - flushRateLimits: true
+    mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 5,
+          guestName: Too Many,
+        }
+    note: party over per-booking cap → 400
+    expectSink: 0
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: Guest One,
+        }
+    note: duplicate active booking for same guest+slot → 409
+    expectSink: 0
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 2,
+          guestName: Sold Out Try,
+        }
+    note: capacity exhausted (2 booked of 2) → 409
+    expectSink: 0
+  - flushRateLimits: true
+    mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: 00000000-0000-0000-0000-000000000001,
+          seats: 1,
+          guestName: X,
+        }
+    note: unknown slot → 404
+    expectSink: 0
+  - flushRateLimits: true
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: rl-noise-token-000000,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: RL,
+        }
+    repeat: 5
+    note: exhaust the 5/min booking bucket with 401s (bogus ticket — a real one would create a booking on the first call and publish)
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings
+      json:
+        { guestTicket: x, serviceId: <serviceId>, timeSlotId: <slotId>, seats: 1, guestName: RL }
+    note: 6th call → 429
+    expectSink: 0

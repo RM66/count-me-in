@@ -1,0 +1,60 @@
+name: slots-id
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json: { title: Slot Host 2, defaultPrice: '20.00', defaultCapacity: 2, defaultDurationMinutes: 30, maxSeatsPerBooking: 4 }
+    note: seed service; capture <serviceId>
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        { serviceId: <serviceId>, startsAt: '2031-07-01T09:00:00Z', durationMinutes: 30, capacity: 2 }
+    note: seed slot; capture <slotId>
+  - request: { method: GET, path: /api/slots/<slotId>, headers: { X-Organizer-Auth: <session> } }
+    note: get own slot → 200
+  - request:
+      {
+        method: GET,
+        path: /api/slots/00000000-0000-0000-0000-000000000001,
+        headers: { X-Organizer-Auth: <session> },
+      }
+    note: unknown slot → 404
+  - request:
+      method: PUT
+      path: /api/slots/<slotId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/json }
+      json: { capacity: 5 }
+    note: wrong content type → 415
+  - request:
+      method: PUT
+      path: /api/slots/<slotId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { price: '42.00' }
+    note: absent keys kept → 200
+  - request:
+      method: PUT
+      path: /api/slots/<slotId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: { capacity: 0 }
+    note: capacity below booked (0 booked, but below min) → 400
+  - request:
+      method: PUT
+      path: /api/slots/<slotId>
+      headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
+      json: {}
+    note: empty patch → 400 nothing to update
+  - request:
+      method: DELETE
+      path: /api/slots/<slotId>
+      headers: { X-Organizer-Auth: <session> }
+    note: slot with no bookings → 200
+  - request:
+      method: DELETE
+      path: /api/slots/00000000-0000-0000-0000-000000000001
+      headers: { X-Organizer-Auth: <session> }
+    note: unknown slot → 404

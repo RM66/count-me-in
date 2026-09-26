@@ -1,0 +1,711 @@
+{
+  "scenario": "healthz-rate-limit",
+  "steps": [
+    {
+      "note": "warm the bucket (1/30)",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "TRUST_PROXY_HEADERS is off in the recorder env, so XFF is ignored and this hits the same bucket (2/30)",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 30/min bucket",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "content-type": "application/json",
+          "retry-after": "<retry-after:seconds>"
+        },
+        "body": {
+          "error": "Too many requests — please try again in a moment"
+        },
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false,
+        "retryAfterWithinWindow": true
+      },
+      "sink": []
+    },
+    {
+      "note": "31st call within the window → 429 with Retry-After",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "content-type": "application/json",
+          "retry-after": "<retry-after:seconds>"
+        },
+        "body": {
+          "error": "Too many requests — please try again in a moment"
+        },
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false,
+        "retryAfterWithinWindow": true
+      },
+      "sink": []
+    }
+  ]
+}
