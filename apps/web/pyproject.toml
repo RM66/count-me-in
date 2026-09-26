@@ -1,0 +1,65 @@
+[project]
+name = "countmein-api"
+version = "0.1.0"
+description = "CountMeIn API — FastAPI implementation of the Zod-owned OpenAPI contract"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.7",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "psycopg[binary]>=3.2",
+    "redis>=5",
+    "httpx",
+    "qstash>=2",
+    "boto3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "fakeredis",
+    "respx",
+    "ruff",
+    "mypy",
+    "datamodel-code-generator[black,isort]",
+    "uvicorn[standard]",
+    "boto3-stubs[s3]",
+    "pyyaml",
+    "types-pyyaml",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["api"]
+testpaths = ["tests_py"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [
+    "**/*_gen.py",
+    # Phase 1 recorder tooling — a separate uv project with its own pyproject.
+    "scripts/migration",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Asserts are the point of tests.
+"tests_py/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+mypy_path = "api"
+packages = ["_lib.countmein"]
+exclude = ["_gen\\.py$"]
+
+[[tool.mypy.overrides]]
+module = [
+    "_lib.countmein.contracts.models_gen",
+    "_lib.countmein.contracts.constants_gen",
+    "_lib.countmein.i18n.translations_gen",
+]
+ignore_errors = true

@@ -1,6 +1,6 @@
 # ADR-013: Go API rewrite (`apps/web/api`)
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-021
 - **Date:** 2026-09-13
 - **Partially relaxed by:** [ADR-016](016-standard-openapi-codegen.md) — the "net/http only, no frameworks" rule now admits Go **library** dependencies (`kin-openapi`, `oapi-codegen/runtime`, `evanphx/json-patch`); the router stays std `net/http`
 

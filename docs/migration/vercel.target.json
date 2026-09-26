@@ -1,0 +1,44 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 10,
+      "includeFiles": "api/_lib/**",
+      "excludeFiles": "{tests_py,node_modules,.next,src,public}/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/auth/telegram-guest",
+      "destination": "/api/index?_path=/api/auth/telegram-guest"
+    },
+    {
+      "source": "/api/auth/telegram-signup",
+      "destination": "/api/index?_path=/api/auth/telegram-signup"
+    },
+    {
+      "source": "/api/organizers/:path*",
+      "destination": "/api/index?_path=/api/organizers/:path*"
+    },
+    {
+      "source": "/api/services/:path*",
+      "destination": "/api/index?_path=/api/services/:path*"
+    },
+    {
+      "source": "/api/slots/:path*",
+      "destination": "/api/index?_path=/api/slots/:path*"
+    },
+    {
+      "source": "/api/bookings/:path*",
+      "destination": "/api/index?_path=/api/bookings/:path*"
+    },
+    {
+      "source": "/api/jobs/:path*",
+      "destination": "/api/index?_path=/api/jobs/:path*"
+    },
+    {
+      "source": "/api/healthz",
+      "destination": "/api/index?_path=/api/healthz"
+    }
+  ]
+}
