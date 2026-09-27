@@ -1,5 +1,8 @@
-"""Demo-account error (ADR-010)."""
+"""Demo-account error (ADR-010). The error is an ApiError
+subclass rendered by the app-level handler; the historical name stays."""
 
+from __future__ import annotations
 
-class DemoReadOnlyError(Exception):
-    """A write was attempted against the read-only demo account."""
+from ..errors import DemoReadOnly
+
+DemoReadOnlyError = DemoReadOnly

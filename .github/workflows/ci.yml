@@ -65,14 +65,8 @@ jobs:
           # Keep in sync with "packageManager" in package.json.
           bun-version: 1.3.14
 
-      - name: Set up uv
-        # `bun run test` includes test:py (the Python API suite) — the
-        # test task needs the Python toolchain too.
-        if: matrix.task == 'test'
-        uses: astral-sh/setup-uv@v6
-        with:
-          python-version: '3.12'
-          enable-cache: true
+      # No uv here: `bun run test` is vitest-only — pytest runs once, in
+      # the python-api job (test:py is a turbo task there).
 
       - name: Cache turbo
         uses: actions/cache@v4
@@ -238,7 +232,7 @@ jobs:
 
       - name: Contract check
         # Bidirectional breaking-diff = equivalence at the breaking
-        # level (plan §1.5); the route-set pytest pins the exact set.
+        # level; the route-set pytest pins the exact set.
         working-directory: apps/web
         run: |
           uv run python scripts/export-py-openapi.py
@@ -246,8 +240,10 @@ jobs:
           oasdiff breaking openapi.py.yaml openapi.yaml --fail-on ERR
 
       - name: Run pytest suite
+        # Via the turbo task so the generate:py dependency (models,
+        # constants, i18n, spec) is part of the cache key.
         working-directory: apps/web
-        run: uv run pytest -q
+        run: bun run test:py
 
   # E2E smoke: three scenarios against
   # the dev topology — `next dev` + the Python API (uvicorn, ADR-021) +
@@ -326,7 +322,7 @@ jobs:
   migrate:
     name: Apply DB migrations
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, python-api, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     env:
       POSTGRES_URL: ${{ secrets.POSTGRES_URL }}

@@ -671,8 +671,8 @@
       "response": {
         "status": 429,
         "headers": {
-          "content-type": "application/json",
-          "retry-after": "<retry-after:seconds>"
+          "retry-after": "<retry-after:seconds>",
+          "content-type": "application/json"
         },
         "body": {
           "error": "Too many requests — please try again in a moment"
@@ -694,8 +694,8 @@
       "response": {
         "status": 429,
         "headers": {
-          "content-type": "application/json",
-          "retry-after": "<retry-after:seconds>"
+          "retry-after": "<retry-after:seconds>",
+          "content-type": "application/json"
         },
         "body": {
           "error": "Too many requests — please try again in a moment"

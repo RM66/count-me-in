@@ -73,8 +73,8 @@ def notification_locale(recipient: str, view: BookingView) -> str:
     return domain.DEFAULT_LOCALE
 
 
-# Per-locale short weekday and month names for format_instant — the Go
-# side has no localized time formatting; these cover the app's eight
+# Per-locale short weekday and month names for format_instant —
+# these cover the app's eight
 # locales (approximate ICU shapes; message text only, not a wire
 # contract). Ported verbatim so the golden files match byte for byte.
 _CALENDARS: dict[str, tuple[tuple[str, ...], tuple[str, ...], str]] = {

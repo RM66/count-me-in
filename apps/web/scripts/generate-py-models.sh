@@ -16,6 +16,7 @@ uv run datamodel-codegen \
   --output api/_lib/countmein/contracts/models_gen.py \
   --output-model-type pydantic_v2.BaseModel \
   --use-annotated \
+  --collapse-root-models \
   --field-constraints \
   --use-standard-collections \
   --use-union-operator \

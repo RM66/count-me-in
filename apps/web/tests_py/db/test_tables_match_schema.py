@@ -1,78 +1,138 @@
-"""Port of the schema-match check: every column declared in
-db/tables.py must match the migrated Postgres (packages/db owns the
-schema; these declarations mirror it for query building). Requires
-POSTGRES_URL — skipped locally without it, failed in CI.
+"""The SQL strategy is raw text() with hand-maintained column lists
+(ADR-021): db/tables.py was deleted — packages/db owns
+the schema, and the query layer pins its own column lists. This test
+reflects the live Postgres and asserts every column the constants and
+the chain-SELECT projections mention exists, so a schema drift breaks
+loudly here instead of as a runtime SQL error. Requires POSTGRES_URL —
+skipped locally without it, failed in CI.
 """
 
 from __future__ import annotations
 
-import os
-
-import pytest
 from _lib.countmein.db.client import engine
-from _lib.countmein.db.tables import (
-    booking_status_enum,
-    messenger_kind_enum,
-    options_select_mode_enum,
-    outbox_status_enum,
+from _lib.countmein.db.rows import (
+    BOOKING_CHAIN_SELECT,
+    BOOKING_COLUMNS,
+    ORGANIZER_COLUMNS,
+    SERVICE_COLUMNS,
+    SLOT_CHAIN_SELECT,
+    SLOT_COLUMNS,
 )
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
-TABLES = ["organizers", "services", "time_slots", "bookings", "notification_outbox"]
+# table → the column-list constant the query layer uses.
+TABLE_COLUMNS = {
+    "bookings": BOOKING_COLUMNS,
+    "time_slots": SLOT_COLUMNS,
+    "services": SERVICE_COLUMNS,
+    "organizers": ORGANIZER_COLUMNS,
+}
+
 ENUMS = {
-    "options_select_mode": options_select_mode_enum,
-    "booking_status": booking_status_enum,
-    "messenger_kind": messenger_kind_enum,
-    "outbox_status": outbox_status_enum,
+    "options_select_mode": {"single", "multi"},
+    "booking_status": {"confirmed", "cancelled"},
+    "messenger_kind": {"telegram"},
+    "outbox_status": {"pending", "sent", "failed", "skipped"},
 }
 
 
 def require_postgres() -> None:
-    if os.getenv("POSTGRES_URL", "") == "":
-        if os.getenv("CI") == "true":
-            pytest.fail("POSTGRES_URL is not set in CI — refusing silent skip")
-        pytest.skip("POSTGRES_URL is not set — schema check needs the docker Postgres")
+    from _env import require_postgres as _require
+
+    _require()
 
 
-async def test_tables_match_schema():
+def _column_names(column_list: str) -> set[str]:
+    """The constant is a projection list: split on commas and strip the
+    ::text casts and array_to_json() wrappers the mappers rely on."""
+    names: set[str] = set()
+    for part in column_list.split(","):
+        part = part.strip()
+        if "::" in part:
+            part = part.split("::", 1)[0]
+        if part.startswith("array_to_json("):
+            part = part[len("array_to_json(") : -1]
+        names.add(part)
+    return names
+
+
+# The chain SELECTs project the same columns, prefixed by table alias;
+# the alias maps each projected column back to its table for the check.
+CHAIN_SELECTS = {
+    "SLOT_CHAIN_SELECT": (
+        SLOT_CHAIN_SELECT,
+        {"ts": "time_slots", "s": "services", "o": "organizers"},
+    ),
+    "BOOKING_CHAIN_SELECT": (
+        BOOKING_CHAIN_SELECT,
+        {"b": "bookings", "ts": "time_slots", "s": "services", "o": "organizers"},
+    ),
+}
+
+
+async def test_column_lists_match_schema():
     require_postgres()
-    # tables.py declares via SQLAlchemy Core; reflect the live DB and
-    # compare column names per table.
-    from _lib.countmein.db import tables as declared
-
     async with engine().connect() as conn:
+        for table, column_list in TABLE_COLUMNS.items():
+            rows = await conn.execute(
+                text("SELECT column_name FROM information_schema.columns WHERE table_name = :t"),
+                {"t": table},
+            )
+            live = {r[0] for r in rows.fetchall()}
+            assert live, f"table {table} missing from live schema"
+            used = _column_names(column_list)
+            assert used <= live, (
+                f"{table}: query-layer columns missing from live schema: {sorted(used - live)}"
+            )
 
-        def _check(sync_conn) -> None:
-            # Reflection is sync IO — it must run inside run_sync, or
-            # SQLAlchemy raises MissingGreenlet on the first query.
-            deflector = inspect(sync_conn)
-            for name in TABLES:
-                live = {c["name"] for c in deflector.get_columns(name)}
-                decl = set(getattr(declared, name).columns.keys())
-                # Declared must exist live (a missing column breaks every
-                # query the module builds). Extra live columns are legacy
-                # leftovers the queries never mention — not this test's
-                # business (packages/db owns the schema).
-                assert decl <= live, (
-                    f"{name}: declared columns missing from live schema: {sorted(decl - live)}"
-                )
 
-            # Enum values must match the DB types. get_enums reflection is
-            # unreliable for types outside the search path — read the
-            # catalog directly instead.
-            for enum_name, enum in ENUMS.items():
-                rows = sync_conn.execute(
+async def test_chain_selects_match_schema():
+    """The chain SELECTs are hand-maintained like the column constants —
+    every projected column must name a real column of its table
+    (matched via the alias prefix)."""
+    require_postgres()
+    async with engine().connect() as conn:
+        for name, (sql, aliases) in CHAIN_SELECTS.items():
+            projection = sql.split("FROM", 1)[0].strip()
+            body = projection[len("SELECT") :].strip()
+            for part in body.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                # Unwrap array_to_json(alias.col) before splitting on the
+                # alias dot — the wrapper's own dot is not the separator.
+                wrapped = part.startswith("array_to_json(") and part.endswith(")")
+                inner = part[len("array_to_json(") : -1] if wrapped else part
+                alias, _, column = inner.partition(".")
+                assert column, f"{name}: unprefixed projection item {part!r}"
+                assert alias in aliases, f"{name}: unknown alias {alias!r}"
+                if "::" in column:
+                    column = column.split("::", 1)[0]
+                table = aliases[alias]
+                rows = await conn.execute(
                     text(
-                        "SELECT e.enumlabel FROM pg_enum e "
-                        "JOIN pg_type t ON t.oid = e.enumtypid "
-                        "WHERE t.typname = :name ORDER BY e.oid"
+                        "SELECT column_name FROM information_schema.columns WHERE table_name = :t"
                     ),
-                    {"name": enum_name},
-                ).fetchall()
-                live = {r[0] for r in rows}
-                assert live, f"enum {enum_name} missing in live schema"
-                assert live == set(enum.enums), (
-                    f"enum {enum_name}: declared {sorted(enum.enums)} vs live {sorted(live)}"
+                    {"t": table},
                 )
+                live = {r[0] for r in rows.fetchall()}
+                assert column in live, f"{name}/{table}: no such column {column!r}"
 
-        await conn.run_sync(_check)
+
+async def test_enums_match_schema():
+    require_postgres()
+    async with engine().connect() as conn:
+        for enum_name, expected in ENUMS.items():
+            rows = await conn.execute(
+                text(
+                    "SELECT e.enumlabel FROM pg_enum e "
+                    "JOIN pg_type t ON t.oid = e.enumtypid "
+                    "WHERE t.typname = :name ORDER BY e.oid"
+                ),
+                {"name": enum_name},
+            )
+            live = {r[0] for r in rows.fetchall()}
+            assert live, f"enum {enum_name} missing in live schema"
+            assert live == expected, (
+                f"enum {enum_name}: expected {sorted(expected)} vs live {sorted(live)}"
+            )

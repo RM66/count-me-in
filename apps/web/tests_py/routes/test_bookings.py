@@ -1,16 +1,19 @@
-"""The booking routes'
-request-level contracts: rate limits, body validation, the ticket door,
-the demo/anonymous refusal, and the after-commit publish absorbing its
-own errors. The DB-dependent paths (sold-out mapping, 201 happy path)
-are pinned by the integration tests in tests_py/db against a real
-Postgres; mocks would hide exactly the class of bugs those exist for."""
+"""Booking route tests — through the FastAPI app (the handlers'
+preamble is a set of dependencies, so the app is the only faithful way
+to invoke them; direct calls would bypass the rate limiter and the
+ticket consumption order).
 
+Redis-backed state (rate buckets, tickets) runs against fakeredis.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
 import json
-import os
 import time
-from collections.abc import Mapping
 
-import _lib.countmein.routes.bookings as bookings_route
+import httpx
 import pytest
 from _lib.countmein import redis as redis_mod
 from _lib.countmein.auth.session import ORGANIZER_AUTH_HEADER
@@ -20,7 +23,8 @@ from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_
 from _lib.countmein.contracts.payloads import AuthTicketPayload
 from _lib.countmein.db.outbox import OutboxRow
 
-TEST_SECRET = "routes-test-golden-secret"
+TEST_SECRET = "guards-test-golden-secret"
+BASE = "http://testserver"
 
 # A schema-valid booking body: everything the spec requires, with the
 # ticket swapped per test.
@@ -51,37 +55,24 @@ def _trust_proxy(monkeypatch):
     monkeypatch.setenv("AUTH_SECRET", TEST_SECRET)
 
 
-def make_request(path: str, body: bytes, headers: Mapping[str, str]):
-    from starlette.requests import Request
+@pytest.fixture()
+async def app(fake_redis):
+    from _lib.countmein.app import create_app
 
-    scope = {
-        "type": "http",
-        "method": "POST",
-        "path": path,
-        "raw_path": path.encode(),
-        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
-        "query_string": b"",
-        "client": ("127.0.0.1", 12345),
-        "scheme": "http",
-        "server": ("testserver", 80),
-        "http_version": "1.1",
-    }
-    request = Request(scope)
-    request._body = body
-    return request
+    yield create_app()
 
 
-def decode_body_error(response) -> dict:
-    body = response.body.decode() if getattr(response, "body", None) else ""
-    return json.loads(body)
+@pytest.fixture()
+async def client(app):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url=BASE, timeout=30.0) as c:
+        yield c
 
 
 def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     """The shared organizer-auth mint (the derivation itself is pinned
     by the golden test in tests_py/auth/test_session.py)."""
     import base64
-    import hashlib
-    import hmac
 
     from _lib.countmein.auth.session import derived_signing_key
 
@@ -102,138 +93,177 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     return f"{signing_input}.{base64.urlsafe_b64encode(sig).rstrip(b'=').decode()}"
 
 
+def decode_body_error(response: httpx.Response) -> dict:
+    body = response.content.decode() if response.content else ""
+    return json.loads(body) if body else {}
+
+
 # ── BookingCreate ────────────────────────────────────────────────────────────
 
 
-async def test_booking_create_rate_limit(fake_redis):
+async def test_booking_create_rate_limit(client):
     # 5/min per IP. The first five requests burn the bucket (each fails
     # body validation — 400, but AFTER the limiter), the sixth is a 429.
     for i in range(5):
-        request = make_request("/api/bookings", b"", {"x-forwarded-for": "198.51.100.1"})
-        response = await bookings_route.booking_create(request)
-        assert response.status_code == 400, f"request {i + 1}"
-    request = make_request("/api/bookings", b"", {"x-forwarded-for": "198.51.100.1"})
-    response = await bookings_route.booking_create(request)
-    assert response.status_code == 429
-    assert "retry-after" in {k.lower() for k in response.headers.keys()}
+        r = await client.post(
+            "/api/bookings", content=b"", headers={"x-forwarded-for": "198.51.100.1"}
+        )
+        assert r.status_code == 400, f"request {i + 1}"
+    r = await client.post("/api/bookings", content=b"", headers={"x-forwarded-for": "198.51.100.1"})
+    assert r.status_code == 429
+    assert "retry-after" in {k.lower() for k in r.headers.keys()}
 
 
-async def test_booking_create_invalid_body(fake_redis):
-    request = make_request("/api/bookings", b'{"guestName":', {"x-forwarded-for": "198.51.100.2"})
-    response = await bookings_route.booking_create(request)
-    assert response.status_code == 400
-    body = decode_body_error(response)
+async def test_booking_create_invalid_body(client):
+    r = await client.post(
+        "/api/bookings", content=b'{"guestName":', headers={"x-forwarded-for": "198.51.100.2"}
+    )
+    assert r.status_code == 400
+    body = decode_body_error(r)
     assert body.get("error"), "400 must carry localized error copy"
 
 
-async def test_booking_create_unknown_ticket(fake_redis):
+async def test_booking_create_unknown_ticket(client):
     # Schema-valid body, unknown ticket: the guest identity door refuses
     # before any DB access — a replayed or forged ticket must never
     # reach the booking transaction.
     body = (VALID_BOOKING_BODY % "unknown-ticket-aaaaaaaaaaaaaaaaaaaaaaaaa").encode()
-    request = make_request("/api/bookings", body, {"x-forwarded-for": "198.51.100.3"})
-    response = await bookings_route.booking_create(request)
-    assert response.status_code == 401
+    r = await client.post(
+        "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.3"}
+    )
+    assert r.status_code == 401
 
 
-async def test_booking_create_raw_messenger_id_ignored(fake_redis):
+async def test_booking_create_raw_messenger_id_ignored(client):
     # Invariant 8: identity comes only from the ticket. A body claiming
     # a messengerId must not authenticate the request — the unknown
     # ticket still refuses it with a 401.
     body = (VALID_BOOKING_BODY % "unknown-ticket-bbbbbbbbbbbbbbbbbbbbbbbbb").encode()
     body = body[:-1] + b',"messengerId":"999999"}'
-    request = make_request("/api/bookings", body, {"x-forwarded-for": "198.51.100.4"})
-    response = await bookings_route.booking_create(request)
-    assert response.status_code == 401
+    r = await client.post(
+        "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.4"}
+    )
+    assert r.status_code == 401
+
+
+async def test_validation_error_does_not_consume_guest_ticket(client, fake_redis):
+    """Order pin: the decode dependency runs BEFORE the ticket is
+    consumed — a body that fails validation must leave the ticket
+    redeemable, and a body that validates must burn it."""
+    ticket = await issue_ticket(
+        AuthTicketPayload(
+            messenger="telegram",
+            messenger_id="123456789",
+            display_name="Ann",
+            messenger_login=None,
+            purpose=TICKET_PURPOSE_GUEST,
+        )
+    )
+    # Invalid body carrying a valid ticket: 400, ticket still there.
+    bad = b'{"serviceId": "x", "guestTicket": "' + ticket.encode() + b'"}'
+    r = await client.post("/api/bookings", content=bad, headers={"x-forwarded-for": "198.51.100.9"})
+    assert r.status_code == 400
+    assert await fake_redis.exists(f"auth:ticket:{ticket}") == 1, (
+        "a validation error must not consume the guest ticket"
+    )
+    # Valid body with the same ticket: passes validation, consumes it
+    # (whatever the booking transaction then answers — without a DB it
+    # is a 500; the point here is the ticket is single-use).
+    body = (VALID_BOOKING_BODY % ticket).encode()
+    r = await client.post(
+        "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.9"}
+    )
+    assert r.status_code != 400, "the valid body must pass validation"
+    assert await fake_redis.exists(f"auth:ticket:{ticket}") == 0, (
+        "a validated request must consume the ticket (single-use)"
+    )
 
 
 # ── BookingLookup ────────────────────────────────────────────────────────────
 
 
-async def test_booking_lookup_invalid_body(fake_redis):
-    request = make_request("/api/bookings/lookup", b"{", {"x-forwarded-for": "198.51.100.5"})
-    response = await bookings_route.booking_lookup(request)
-    assert response.status_code == 400
-
-
-async def test_booking_lookup_unknown_ticket(fake_redis):
-    request = make_request(
-        "/api/bookings/lookup",
-        b'{"guestTicket":"unknown-ticket-ccccccccccccccccccccccc"}',
-        {"x-forwarded-for": "198.51.100.6"},
+async def test_booking_lookup_invalid_body(client):
+    r = await client.post(
+        "/api/bookings/lookup", content=b"{", headers={"x-forwarded-for": "198.51.100.5"}
     )
-    response = await bookings_route.booking_lookup(request)
-    assert response.status_code == 401
+    assert r.status_code == 400
+
+
+async def test_booking_lookup_unknown_ticket(client):
+    r = await client.post(
+        "/api/bookings/lookup",
+        content=b'{"guestTicket":"unknown-ticket-ccccccccccccccccccccccc"}',
+        headers={"x-forwarded-for": "198.51.100.6"},
+    )
+    assert r.status_code == 401
 
 
 # ── BookingCancel ────────────────────────────────────────────────────────────
 
 
-async def test_booking_cancel_rate_limit(fake_redis):
+async def test_booking_cancel_rate_limit(client):
     # 10/min per IP — the manageToken is a brute-forceable credential,
     # so cancel is throttled like booking creation.
     for i in range(10):
-        request = make_request("/api/bookings/cancel", b"", {"x-forwarded-for": "198.51.100.7"})
-        response = await bookings_route.booking_cancel(request)
-        assert response.status_code == 400, f"request {i + 1}"
-    request = make_request("/api/bookings/cancel", b"", {"x-forwarded-for": "198.51.100.7"})
-    response = await bookings_route.booking_cancel(request)
-    assert response.status_code == 429
-
-
-async def test_booking_cancel_invalid_body(fake_redis):
-    request = make_request(
-        "/api/bookings/cancel", b'{"manageToken":', {"x-forwarded-for": "198.51.100.8"}
+        r = await client.post(
+            "/api/bookings/cancel", content=b"", headers={"x-forwarded-for": "198.51.100.7"}
+        )
+        assert r.status_code == 400, f"request {i + 1}"
+    r = await client.post(
+        "/api/bookings/cancel", content=b"", headers={"x-forwarded-for": "198.51.100.7"}
     )
-    response = await bookings_route.booking_cancel(request)
-    assert response.status_code == 400
+    assert r.status_code == 429
+
+
+async def test_booking_cancel_invalid_body(client):
+    r = await client.post(
+        "/api/bookings/cancel",
+        content=b'{"manageToken":',
+        headers={"x-forwarded-for": "198.51.100.8"},
+    )
+    assert r.status_code == 400
 
 
 # ── BookingCancelByOrganizer ─────────────────────────────────────────────────
 
 
-def organizer_request(path: str, body: bytes, organizer_id: str):
-    headers = {}
-    if organizer_id:
-        token = mint_test_token(TEST_SECRET, organizer_id, "studio", int(time.time()) + 60)
-        headers[ORGANIZER_AUTH_HEADER] = token
-    return make_request(path, body, headers)
+def organizer_headers(organizer_id: str) -> dict[str, str]:
+    if not organizer_id:
+        return {}
+    token = mint_test_token(TEST_SECRET, organizer_id, "studio", int(time.time()) + 60)
+    return {ORGANIZER_AUTH_HEADER: token}
 
 
-async def test_booking_cancel_by_organizer_anonymous(fake_redis):
+async def test_booking_cancel_by_organizer_anonymous(client):
     # /cabinet needs no session (ADR-010) — an anonymous visitor is a
     # demo-cabinet visitor and must not cancel anyone's booking.
-    request = organizer_request(
+    r = await client.post(
         "/api/bookings/cancel-by-organizer",
-        b'{"bookingId":"01930000-0000-7000-8000-000000000001"}',
-        "",
+        content=b'{"bookingId":"01930000-0000-7000-8000-000000000001"}',
     )
-    response = await bookings_route.booking_cancel_by_organizer(request)
-    assert response.status_code == 403
-    body = decode_body_error(response)
+    assert r.status_code == 403
+    body = decode_body_error(r)
     assert body.get("code") == DEMO_READ_ONLY_CODE
 
 
-async def test_booking_cancel_by_organizer_demo_session(fake_redis):
-    request = organizer_request(
+async def test_booking_cancel_by_organizer_demo_session(client):
+    r = await client.post(
         "/api/bookings/cancel-by-organizer",
-        b'{"bookingId":"01930000-0000-7000-8000-000000000001"}',
-        DEMO_ORGANIZER_ID,
+        content=b'{"bookingId":"01930000-0000-7000-8000-000000000001"}',
+        headers=organizer_headers(DEMO_ORGANIZER_ID),
     )
-    response = await bookings_route.booking_cancel_by_organizer(request)
-    assert response.status_code == 403
+    assert r.status_code == 403
 
 
-async def test_booking_cancel_by_organizer_invalid_body(fake_redis):
+async def test_booking_cancel_by_organizer_invalid_body(client):
     # A signed-in organizer passes the guard, then fails body validation
     # — proving the guard and the decode are separate doors.
-    request = organizer_request(
+    r = await client.post(
         "/api/bookings/cancel-by-organizer",
-        b'{"bookingId":',
-        "01930000-0000-7000-8000-0000000000c1",
+        content=b'{"bookingId":',
+        headers=organizer_headers("01930000-0000-7000-8000-0000000000c1"),
     )
-    response = await bookings_route.booking_cancel_by_organizer(request)
-    assert response.status_code == 400
+    assert r.status_code == 400
 
 
 # ── publish_outbox_rows ──────────────────────────────────────────────────────
@@ -243,6 +273,8 @@ async def test_publish_outbox_rows_absorbs_publish_errors(monkeypatch):
     """The publisher absorbs its own errors (ADR-012): the booking is
     already committed, so a failing publish must not fail anything — the
     row stays `pending` and the sweeper retries it."""
+    from _lib.countmein.routes import bookings as bookings_route
+
     monkeypatch.setenv("QSTASH_TOKEN", "test-token")
     monkeypatch.setenv("QSTASH_URL", "http://127.0.0.1:1")  # unreachable — fails fast
     monkeypatch.setenv("APP_URL", "https://example.com")
@@ -273,13 +305,9 @@ async def test_publish_outbox_rows_absorbs_publish_errors(monkeypatch):
 
 
 def require_postgres():
-    if not os.environ.get("POSTGRES_URL"):
-        if os.environ.get("CI") == "true":
-            pytest.fail(
-                "POSTGRES_URL is not set in CI — Postgres service misconfigured, "
-                "refusing silent skip"
-            )
-        pytest.skip("POSTGRES_URL is not set — integration test needs the docker Postgres")
+    from _env import require_postgres as _require
+
+    return _require()
 
 
 async def guest_ticket(messenger_id: str) -> str:
@@ -366,15 +394,15 @@ async def _cleanup_route_fixture(fixture: RouteFixture) -> None:
         )
 
 
-async def test_booking_create_happy_path(fake_redis, monkeypatch):
+async def test_booking_create_happy_path(client, monkeypatch):
     fixture = await new_route_fixture(10, 0)
     try:
-        await _happy_path(fixture, monkeypatch)
+        await _happy_path(fixture, monkeypatch, client)
     finally:
         await _cleanup_route_fixture(fixture)
 
 
-async def _happy_path(fixture, monkeypatch):
+async def _happy_path(fixture, monkeypatch, client):
     monkeypatch.setenv("QSTASH_TOKEN", "test-token")
     monkeypatch.setenv("QSTASH_URL", "http://127.0.0.1:1")  # unreachable — rows stay pending
     monkeypatch.setenv("APP_URL", "https://example.com")
@@ -388,11 +416,12 @@ async def _happy_path(fixture, monkeypatch):
             "guestTicket": await guest_ticket("rt-happy-1"),
         }
     ).encode()
-    request = make_request("/api/bookings", body, {"x-forwarded-for": "203.0.113.21"})
-    response = await bookings_route.booking_create(request)
+    r = await client.post(
+        "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.21"}
+    )
 
-    assert response.status_code == 201, response.body
-    envelope = json.loads(response.body)
+    assert r.status_code == 201, r.text
+    envelope = json.loads(r.content)
     booking = envelope["booking"]
     assert booking["manageToken"], "the guest DTO must carry the manageToken"
     booking_id = booking["id"]
@@ -425,15 +454,15 @@ async def _happy_path(fixture, monkeypatch):
     assert pending == 2, "want 2 pending outbox rows (organizer + guest)"
 
 
-async def test_booking_create_sold_out_maps_409(fake_redis, monkeypatch):
+async def test_booking_create_sold_out_maps_409(client, monkeypatch):
     fixture = await new_route_fixture(2, 2)  # full slot
     try:
-        await _sold_out(fixture, monkeypatch)
+        await _sold_out(fixture, monkeypatch, client)
     finally:
         await _cleanup_route_fixture(fixture)
 
 
-async def _sold_out(fixture, monkeypatch):
+async def _sold_out(fixture, monkeypatch, client):
     monkeypatch.setenv("QSTASH_TOKEN", "test-token")
     monkeypatch.setenv("QSTASH_URL", "http://127.0.0.1:1")
     monkeypatch.setenv("APP_URL", "https://example.com")
@@ -447,30 +476,26 @@ async def _sold_out(fixture, monkeypatch):
             "guestTicket": await guest_ticket("rt-soldout-1"),
         }
     ).encode()
-    request = make_request("/api/bookings", body, {"x-forwarded-for": "203.0.113.22"})
-    response = await bookings_route.booking_create(request)
+    r = await client.post(
+        "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.22"}
+    )
 
-    assert response.status_code == 409, response.body
+    assert r.status_code == 409, r.text
     # The dialog renders "how many are left" from the extras, not just
     # the localized copy — the wiring must carry seatsLeft through.
-    b = json.loads(response.body)
+    b = json.loads(r.content)
     assert b.get("seatsLeft") == 0
     assert b.get("error"), "409 must carry localized error copy"
 
 
-async def test_booking_cancel_unknown_token_is_404(fake_redis):
+async def test_booking_cancel_unknown_token_is_404(client):
     fixture = await new_route_fixture(10, 0)  # schema must exist; token matches nothing
     try:
-        await _cancel_unknown_token()
+        r = await client.post(
+            "/api/bookings/cancel",
+            content=b'{"manageToken":"' + b"a" * 43 + b'"}',
+            headers={"x-forwarded-for": "203.0.113.23"},
+        )
+        assert r.status_code == 404, r.text
     finally:
         await _cleanup_route_fixture(fixture)
-
-
-async def _cancel_unknown_token():
-    request = make_request(
-        "/api/bookings/cancel",
-        b'{"manageToken":"' + b"a" * 43 + b'"}',
-        {"x-forwarded-for": "203.0.113.23"},
-    )
-    response = await bookings_route.booking_cancel(request)
-    assert response.status_code == 404, response.body

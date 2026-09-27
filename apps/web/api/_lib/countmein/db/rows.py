@@ -17,6 +17,7 @@ from typing import Any
 
 from ..contracts import domain
 from ..contracts import models_gen as gen
+from ..contracts.models import unwrap_root
 from .shared import parse_string_array
 
 # array_to_json projections make NULL arrays explicit.
@@ -134,19 +135,13 @@ class BookingRow:
     manage_token_expires_at: datetime | None = None
 
 
-def _root(value: Any) -> Any:
-    while hasattr(value, "root"):
-        value = value.root
-    return value
-
-
 def _str(value: Any) -> str:
     """Canonical string for an id column: psycopg hands back UUID
     objects, seed templates hand strings — both must land as the same
     plain str on the row, or every downstream comparison against a
     string constant (the demo guard's DEMO_ORGANIZER_ID check, fixture
     ids in tests) silently misses."""
-    return str(_root(value))
+    return str(unwrap_root(value))
 
 
 def scan_organizer(row: Any) -> OrganizerRow | None:
@@ -338,24 +333,26 @@ def scan_booking_chain(
 # ── DTO mappers ──────────────────────────────────────────────────────────────
 
 
-def _uuid(value: Any) -> gen.UUIDModel:
-    """Wrap a plain uuid string into the generated UUIDModel. The
-    generated model carries a pattern constraint that pydantic-core
-    cannot apply to a coerced UUID (TypeError on every construct), so
-    the wrapper is built without re-validation — the id comes from the
-    database and is already canonical. Idempotent for wrapped values."""
-    if isinstance(value, gen.UUIDModel):
-        return value
-    return gen.UUIDModel.model_construct(root=value)
+def _uuid(value: Any) -> str:
+    """Render a uuid column as its canonical string — the wire form of
+    an id. The mappers build records with model_construct (no
+    validation), so this is also where the canonical form is fixed."""
+    return str(value)
+
+
+# model_construct (not model_validate) in every mapper below: the
+# generated UUID fields carry a pattern constraint pydantic-core cannot
+# apply to a UUID schema (TypeError on every construct), and the rows
+# come straight from the database — already canonical.
 
 
 def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
-    return gen.TimeSlotRecord(
+    return gen.TimeSlotRecord.model_construct(
         id=_uuid(s.id),
-        serviceId=s.service_id,  # type: ignore[arg-type]
+        serviceId=s.service_id,
         startsAt=domain.iso_date(s.starts_at),
-        durationMinutes=s.duration_minutes,  # type: ignore[arg-type]
-        capacity=s.capacity,  # type: ignore[arg-type]
+        durationMinutes=s.duration_minutes,
+        capacity=s.capacity,
         bookedCount=s.booked_count,
         price=s.price,
         createdAt=domain.iso_date(s.created_at),  # type: ignore[arg-type]
@@ -363,30 +360,30 @@ def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
 
 
 def to_service_record(s: ServiceRow) -> gen.ServiceRecord:
-    return gen.ServiceRecord(
-        id=s.id,  # type: ignore[arg-type]
+    return gen.ServiceRecord.model_construct(
+        id=s.id,
         organizerId=_uuid(s.organizer_id),
-        title=s.title,  # type: ignore[arg-type]
+        title=s.title,
         description=s.description,
         photoUrl=s.photo_url,
         location=s.location,
         contact=s.contact,
-        defaultPrice=s.default_price,  # type: ignore[arg-type]
-        defaultCapacity=s.default_capacity,  # type: ignore[arg-type]
-        defaultDurationMinutes=s.default_duration_minutes,  # type: ignore[arg-type]
-        maxSeatsPerBooking=s.max_seats_per_booking,  # type: ignore[arg-type]
+        defaultPrice=s.default_price,
+        defaultCapacity=s.default_capacity,
+        defaultDurationMinutes=s.default_duration_minutes,
+        maxSeatsPerBooking=s.max_seats_per_booking,
         options=s.options,
-        optionsSelectMode=s.options_select_mode,  # type: ignore[arg-type]
+        optionsSelectMode=s.options_select_mode,
         createdAt=domain.iso_date(s.created_at),  # type: ignore[arg-type]
     )
 
 
 def to_public_organizer(o: OrganizerRow) -> gen.PublicOrganizer:
-    return gen.PublicOrganizer(
+    return gen.PublicOrganizer.model_construct(
         id=_uuid(o.id),
-        slug=o.slug,  # type: ignore[arg-type]
-        name=o.name,  # type: ignore[arg-type]
-        timezone=o.timezone,  # type: ignore[arg-type]
+        slug=o.slug,
+        name=o.name,
+        timezone=o.timezone,
         description=o.description,
         photoUrl=o.photo_url,
         location=o.location,
@@ -399,31 +396,31 @@ def to_organizer_profile(o: OrganizerRow, is_demo: bool) -> gen.OrganizerProfile
     # Language clamped to the supported set (a stale column value must
     # not break rendering).
     language = o.language if domain.is_app_locale(o.language) else domain.DEFAULT_LOCALE
-    return gen.OrganizerProfile(
+    return gen.OrganizerProfile.model_construct(
         id=_uuid(o.id),
-        slug=o.slug,  # type: ignore[arg-type]
-        name=o.name,  # type: ignore[arg-type]
-        messenger=o.messenger,  # type: ignore[arg-type]
+        slug=o.slug,
+        name=o.name,
+        messenger=o.messenger,
         messengerId=o.messenger_id,
-        timezone=o.timezone,  # type: ignore[arg-type]
+        timezone=o.timezone,
         description=o.description,
         photoUrl=o.photo_url,
         location=o.location,
         contact=o.contact,
-        language=language,  # type: ignore[arg-type]
+        language=language,
         createdAt=domain.iso_date(o.created_at),  # type: ignore[arg-type]
         isDemo=is_demo,
     )
 
 
 def to_booking_record(b: BookingRow) -> gen.BookingRecord:
-    return gen.BookingRecord(
+    return gen.BookingRecord.model_construct(
         id=_uuid(b.id),
         timeSlotId=_uuid(b.time_slot_id),
-        status=b.status,  # type: ignore[arg-type]
-        seats=b.seats,  # type: ignore[arg-type]
-        guestName=b.guest_name,  # type: ignore[arg-type]
-        guestMessenger=b.guest_messenger,  # type: ignore[arg-type]
+        status=b.status,
+        seats=b.seats,
+        guestName=b.guest_name,
+        guestMessenger=b.guest_messenger,
         guestMessengerId=b.guest_messenger_id,
         guestMessengerLogin=b.guest_messenger_login,
         selectedOptions=b.selected_options,
@@ -452,14 +449,14 @@ def can_cancel_booking(b: BookingRow, now: datetime | None = None) -> bool:
 def to_guest_booking(
     b: BookingRow, slot: TimeSlotRow, service: ServiceRow, organizer: OrganizerRow
 ) -> gen.GuestBooking:
-    return gen.GuestBooking(
+    return gen.GuestBooking.model_construct(
         id=_uuid(b.id),
-        status=b.status,  # type: ignore[arg-type]
-        seats=b.seats,  # type: ignore[arg-type]
-        guestName=b.guest_name,  # type: ignore[arg-type]
+        status=b.status,
+        seats=b.seats,
+        guestName=b.guest_name,
         selectedOptions=b.selected_options,
         createdAt=domain.iso_date(b.created_at),  # type: ignore[arg-type]
-        manageToken=b.manage_token,  # type: ignore[arg-type]
+        manageToken=b.manage_token,
         canCancel=can_cancel_booking(b),
         slot=to_time_slot_record(slot),
         service=to_service_record(service),

@@ -105,7 +105,7 @@ def hash_manage_token(token: str) -> str:
 
 
 def parse_string_array(raw: str | list[str] | None) -> list[str] | None:
-    """Decode the options column: None → None; a JSON string (Go's
+    """Decode the options column: None → None; a JSON string (the
     array_to_json projection) or a Python list (psycopg's text[]
     adaptation) → the list of strings. A malformed value is logged, not
     silently swallowed: "no options" and "corrupt options" must be

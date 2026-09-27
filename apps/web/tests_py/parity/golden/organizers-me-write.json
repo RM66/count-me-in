@@ -13,15 +13,15 @@
       "response": {
         "status": 415,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)"
@@ -44,34 +44,34 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "organizer": {
-            "contact": null,
-            "createdAt": "<ts:1>",
-            "description": "parity-updated",
             "id": "<uuid:1>",
-            "isDemo": false,
-            "language": "en",
-            "location": null,
+            "slug": "parity-org",
+            "name": "Parity Organizer",
             "messenger": "telegram",
             "messengerId": "900100201",
-            "name": "Parity Organizer",
+            "timezone": "Europe/Belgrade",
+            "description": "parity-updated",
             "photoUrl": null,
-            "slug": "parity-org",
-            "timezone": "Europe/Belgrade"
+            "location": null,
+            "contact": null,
+            "language": "en",
+            "createdAt": "<ts:1>",
+            "isDemo": false
           }
         },
-        "body_raw": "{\"organizer\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"description\":\"parity-updated\",\"id\":\"<uuid:1>\",\"isDemo\":false,\"language\":\"en\",\"location\":null,\"messenger\":\"telegram\",\"messengerId\":\"900100201\",\"name\":\"Parity Organizer\",\"photoUrl\":null,\"slug\":\"parity-org\",\"timezone\":\"Europe/Belgrade\"}}",
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"messenger\":\"telegram\",\"messengerId\":\"900100201\",\"timezone\":\"Europe/Belgrade\",\"description\":\"parity-updated\",\"photoUrl\":null,\"location\":null,\"contact\":null,\"language\":\"en\",\"createdAt\":\"<ts:1>\",\"isDemo\":false}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -89,34 +89,34 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "organizer": {
-            "contact": null,
-            "createdAt": "<ts:1>",
-            "description": null,
             "id": "<uuid:1>",
-            "isDemo": false,
-            "language": "en",
-            "location": null,
+            "slug": "parity-org",
+            "name": "Parity Organizer",
             "messenger": "telegram",
             "messengerId": "900100201",
-            "name": "Parity Organizer",
+            "timezone": "Europe/Belgrade",
+            "description": null,
             "photoUrl": null,
-            "slug": "parity-org",
-            "timezone": "Europe/Belgrade"
+            "location": null,
+            "contact": null,
+            "language": "en",
+            "createdAt": "<ts:1>",
+            "isDemo": false
           }
         },
-        "body_raw": "{\"organizer\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"description\":null,\"id\":\"<uuid:1>\",\"isDemo\":false,\"language\":\"en\",\"location\":null,\"messenger\":\"telegram\",\"messengerId\":\"900100201\",\"name\":\"Parity Organizer\",\"photoUrl\":null,\"slug\":\"parity-org\",\"timezone\":\"Europe/Belgrade\"}}",
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"messenger\":\"telegram\",\"messengerId\":\"900100201\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"language\":\"en\",\"createdAt\":\"<ts:1>\",\"isDemo\":false}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -132,15 +132,15 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "No fields to update"
@@ -163,28 +163,28 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
+          "error": "Invalid input",
           "details": {
+            "formErrors": [],
             "fieldErrors": {
               "timezone": [
                 "Invalid IANA timezone"
               ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+            }
+          }
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"timezone\":[\"Invalid IANA timezone\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"timezone\":[\"Invalid IANA timezone\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -202,21 +202,21 @@
       "response": {
         "status": 403,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "code": "DEMO_READ_ONLY",
-          "error": "This is a read-only demo account — sign up to create your own bookable services."
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
         },
-        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -234,21 +234,21 @@
       "response": {
         "status": 403,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "code": "DEMO_READ_ONLY",
-          "error": "This is a read-only demo account — sign up to create your own bookable services."
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
         },
-        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

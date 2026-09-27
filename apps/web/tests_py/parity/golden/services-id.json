@@ -21,37 +21,37 @@
       "response": {
         "status": 201,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
             "contact": null,
-            "createdAt": "<ts:1>",
+            "defaultPrice": "20.00",
             "defaultCapacity": 5,
             "defaultDurationMinutes": 45,
-            "defaultPrice": "20.00",
-            "description": null,
-            "id": "<sid:1>",
-            "location": null,
             "maxSeatsPerBooking": 4,
             "options": [
               "Option A"
             ],
             "optionsSelectMode": "single",
-            "organizerId": "<uuid:1>",
-            "photoUrl": null,
-            "title": "Parity Service"
+            "createdAt": "<ts:1>"
           }
         },
-        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":null,\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"createdAt\":\"<ts:1>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -67,37 +67,37 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
             "contact": null,
-            "createdAt": "<ts:1>",
+            "defaultPrice": "20.00",
             "defaultCapacity": 5,
             "defaultDurationMinutes": 45,
-            "defaultPrice": "20.00",
-            "description": null,
-            "id": "<sid:1>",
-            "location": null,
             "maxSeatsPerBooking": 4,
             "options": [
               "Option A"
             ],
             "optionsSelectMode": "single",
-            "organizerId": "<uuid:1>",
-            "photoUrl": null,
-            "title": "Parity Service"
+            "createdAt": "<ts:1>"
           }
         },
-        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":null,\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"createdAt\":\"<ts:1>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -113,15 +113,15 @@
       "response": {
         "status": 404,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Service not found"
@@ -142,15 +142,15 @@
       "response": {
         "status": 404,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Service not found"
@@ -173,15 +173,15 @@
       "response": {
         "status": 415,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)"
@@ -204,37 +204,37 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": "patched",
+            "photoUrl": null,
+            "location": null,
             "contact": null,
-            "createdAt": "<ts:1>",
+            "defaultPrice": "20.00",
             "defaultCapacity": 5,
             "defaultDurationMinutes": 45,
-            "defaultPrice": "20.00",
-            "description": "patched",
-            "id": "<sid:1>",
-            "location": null,
             "maxSeatsPerBooking": 4,
             "options": [
               "Option A"
             ],
             "optionsSelectMode": "single",
-            "organizerId": "<uuid:1>",
-            "photoUrl": null,
-            "title": "Parity Service"
+            "createdAt": "<ts:1>"
           }
         },
-        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":\"patched\",\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":\"patched\",\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"createdAt\":\"<ts:1>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -253,35 +253,35 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": "patched",
+            "photoUrl": null,
+            "location": null,
             "contact": null,
-            "createdAt": "<ts:1>",
+            "defaultPrice": "20.00",
             "defaultCapacity": 5,
             "defaultDurationMinutes": 45,
-            "defaultPrice": "20.00",
-            "description": "patched",
-            "id": "<sid:1>",
-            "location": null,
             "maxSeatsPerBooking": 4,
             "options": null,
             "optionsSelectMode": null,
-            "organizerId": "<uuid:1>",
-            "photoUrl": null,
-            "title": "Parity Service"
+            "createdAt": "<ts:1>"
           }
         },
-        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"defaultPrice\":\"20.00\",\"description\":\"patched\",\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Parity Service\"}}",
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":\"patched\",\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -301,28 +301,28 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
+          "error": "Invalid input",
           "details": {
+            "formErrors": [],
             "fieldErrors": {
               "optionsSelectMode": [
                 "optionsSelectMode is required when options are set"
               ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+            }
+          }
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"optionsSelectMode\":[\"optionsSelectMode is required when options are set\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"optionsSelectMode\":[\"optionsSelectMode is required when options are set\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -338,15 +338,15 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "No fields to update"
@@ -372,29 +372,29 @@
       "response": {
         "status": 201,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "slot": {
-            "bookedCount": 0,
-            "capacity": 2,
-            "createdAt": "<ts:2>",
-            "durationMinutes": 60,
             "id": "<uuid:3>",
-            "price": null,
             "serviceId": "<sid:1>",
-            "startsAt": "<ts:3>"
+            "startsAt": "<ts:2>",
+            "durationMinutes": 60,
+            "capacity": 2,
+            "bookedCount": 0,
+            "price": null,
+            "createdAt": "<ts:3>"
           }
         },
-        "body_raw": "{\"slot\":{\"bookedCount\":0,\"capacity\":2,\"createdAt\":\"<ts:2>\",\"durationMinutes\":60,\"id\":\"<uuid:3>\",\"price\":null,\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:3>\"}}",
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:3>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":2,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -410,15 +410,15 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "id": "<sid:1>"
@@ -439,15 +439,15 @@
       "response": {
         "status": 404,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Service not found"

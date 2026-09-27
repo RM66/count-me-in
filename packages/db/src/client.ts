@@ -12,7 +12,7 @@ if (!connectionString) {
 // Serverless pool protection (Phase 2.4): cap the connection count at 1 so a
 // burst of serverless instances cannot exhaust the database's connection
 // limit. Next.js server components read Postgres directly; a single pooled
-// connection per instance is enough for that traffic, and the Go API keeps
+// connection per instance is enough for that traffic, and the Python API keeps
 // its own small pool for writes. `idle_timeout` recycles idle connections.
 //
 // In dev, the module is re-evaluated on hot reload; caching the client on

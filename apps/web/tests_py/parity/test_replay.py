@@ -1,4 +1,4 @@
-"""Parity replay (migration plan §3.14).
+"""Parity replay.
 
 Replays every scenario in tests_py/parity/scenarios/ against the Python
 ASGI app and asserts the normalized transcript equals the golden one
@@ -64,8 +64,8 @@ GOLDEN = HERE / "golden"
 BASE = "http://127.0.0.1:3101"
 AUTH_SECRET = "parity-recorder-secret"
 TELEGRAM_BOT_TOKEN = "123456:parity-recorder-bot-token"
-QSTASH_CURRENT_KEY = "parity_current_signing_key"
-QSTASH_NEXT_KEY = "parity_next_signing_key"
+QSTASH_CURRENT_KEY = "parity_current_signing_key_000000000000"
+QSTASH_NEXT_KEY = "parity_next_signing_key_00000000000000"
 POSTGRES_URL = os.environ.get(
     "POSTGRES_URL", "postgresql://countmein:countmein@localhost:5432/countmein"
 )
@@ -234,8 +234,8 @@ async def expire_manage_token(booking_id: str) -> None:
         )
 
 
-# Fixed ids for the demo-refusal scenario — mirrors record.py (§1.4:
-# never use the drifting demo seed as scenario data).
+# Fixed ids for the demo-refusal scenario — mirrors record.py (never
+# use the drifting demo seed as scenario data).
 DEMO_PARITY_SERVICE_ID = "DemoParityService0001"
 DEMO_PARITY_SLOT_ID = "01930000-0000-7000-8000-00000000f001"
 DEMO_PARITY_BOOKING_ID = "01930000-0000-7000-8000-00000000f002"
@@ -408,10 +408,10 @@ class Sink:
             return httpx.Response(200, json={"ok": True, "result": {"message_id": 1}})
         return httpx.Response(200, json={"messageId": "sink-recorded"})
 
-    def qstash_post(self, url, *, content=None, headers=None, timeout=None):  # type: ignore[no-untyped-def]
+    async def qstash_post(self, url, *, content=None, headers=None, **kwargs):  # type: ignore[no-untyped-def]
         return self._record(str(url), content or b"")
 
-    def telegram_post(self, url, *, content=None, headers=None, timeout=None):  # type: ignore[no-untyped-def]
+    async def telegram_post(self, url, *, content=None, headers=None, **kwargs):  # type: ignore[no-untyped-def]
         return self._record(str(url), content or b"")
 
     def install(self) -> None:
@@ -677,9 +677,12 @@ def _reachable(url: str, default_port: int) -> bool:
 @pytest.fixture(scope="module")
 def parity_env():
     """Pin the recorder env, build the app once, wire the sink into the
-    transport seams. Skips the module when Postgres/Redis are down."""
+    transport seams. Skips the module when Postgres/Redis are down —
+    but fails (not skips) under CI, where the services must be up."""
     if not _reachable(POSTGRES_URL, 5432) or not _reachable(REDIS_URL, 6379):
-        pytest.skip("parity replay needs Postgres and Redis (docker compose up)")
+        from _env import skip_or_fail_ci
+
+        skip_or_fail_ci("parity replay needs Postgres and Redis (docker compose up)")
 
     saved = {k: os.environ.get(k) for k in ENV_OVERRIDES}
     removed = {k: os.environ[k] for k in ENV_REMOVED if k in os.environ}

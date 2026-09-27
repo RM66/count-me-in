@@ -1,4 +1,4 @@
-"""The invariant index (plan §4.3): one named test per AGENTS.md
+"""The invariant index: one named test per AGENTS.md
 "Conventions" rule.
 
 This file is the auditable checklist, not the coverage. Most entries
@@ -101,7 +101,7 @@ def test_guest_ticket_purpose_is_enforced():
     """Invariant: a ticket minted for organizer signup is not
     redeemable in the booking flow."""
     _assert_test_exists(
-        "tests_py.httpx_.test_guards", "test_require_guest_identity_signup_purpose_refused"
+        "tests_py.web.test_guards", "test_require_guest_identity_signup_purpose_refused"
     )
 
 
@@ -151,6 +151,16 @@ def test_jobs_receiver_verifies_signature_before_anything():
     )
 
 
+def test_qstash_empty_key_forgery_rejected():
+    """Invariant: an empty signing key is never tried — HMAC-SHA256
+    with "" is computable by anyone, so a token forged with the empty
+    next key must not verify (and a token without exp must not replay
+    forever)."""
+    _assert_test_exists("tests_py.jobs.test_receiver", "test_empty_next_key_is_not_a_valid_key")
+    _assert_test_exists("tests_py.jobs.test_receiver", "test_token_without_exp_rejected")
+    _assert_test_exists("tests_py.jobs.test_receiver", "test_both_keys_empty_rejected")
+
+
 # ── manageToken: hashed credential, expiry, canCancel ─────────────────────────
 
 
@@ -195,15 +205,15 @@ def test_delete_slot_with_cancelled_booking_is_409():
 def test_rate_limiter_fails_open():
     """Invariant: the limiter fails open on a Redis outage (ADR-019) —
     an observability outage must never block traffic."""
-    _assert_test_exists("tests_py.httpx_.test_ratelimit", "test_allow_fails_open_on_redis_error")
+    _assert_test_exists("tests_py.web.test_ratelimit", "test_allow_fails_open_on_redis_error")
 
 
 def test_forwarded_for_ignored_without_trust():
     """Invariant: X-Forwarded-For is honored only on Vercel or with
     TRUST_PROXY_HEADERS=1 — otherwise a spoofed header cannot rotate
     rate-limit keys."""
-    _assert_test_exists("tests_py.httpx_.test_ratelimit", "test_client_ip_untrusted_forwarded_for")
-    _assert_test_exists("tests_py.httpx_.test_ratelimit", "test_client_ip_trusted_forwarded_for")
+    _assert_test_exists("tests_py.web.test_ratelimit", "test_client_ip_untrusted_forwarded_for")
+    _assert_test_exists("tests_py.web.test_ratelimit", "test_client_ip_trusted_forwarded_for")
 
 
 # ── Media cleanup ─────────────────────────────────────────────────────────────
@@ -248,8 +258,19 @@ def test_merge_patch_pair_rule_both_directions():
 
 def test_body_bound_is_1mb():
     """Invariant: request bodies are bounded at 1MB → 413 (a truncated
-    body must not surface as a confusing 400)."""
-    _assert_test_exists("tests_py.httpx_.test_guards", "test_read_body_or_413")
+    body must not surface as a confusing 400), refused incrementally —
+    a huge body is never buffered whole first."""
+    _assert_test_exists("tests_py.web.test_guards", "test_read_body_or_413")
+    _assert_test_exists("tests_py.web.test_guards", "test_body_over_1mb_rejected_without_full_read")
+
+
+def test_validation_error_does_not_consume_guest_ticket():
+    """Invariant: the guest ticket is consumed only after the body
+    validates (dependency order) — a validation failure must not
+    burn the single-use credential."""
+    _assert_test_exists(
+        "tests_py.routes.test_bookings", "test_validation_error_does_not_consume_guest_ticket"
+    )
 
 
 # ── Env & cold start ──────────────────────────────────────────────────────────
@@ -279,17 +300,17 @@ def test_cold_import_stays_lean():
 def test_api_errors_are_localized():
     """Invariant: API error copy is localized per request (ApiErrors
     dictionaries); error classes keep EN messages for logs."""
-    _assert_test_exists("tests_py.httpx_.test_errors", "test_booking_error_response_localized")
+    _assert_test_exists("tests_py.web.test_errors", "test_booking_error_response_localized")
     _assert_test_exists("tests_py.i18n.test_i18n", "test_every_locale_has_api_errors")
 
 
 # ── Parity ────────────────────────────────────────────────────────────────────
 
 
-def test_http_behavior_matches_go_goldens():
-    """Invariant: byte-compatible HTTP behavior with the Go baseline —
-    every parity scenario replays against the Python app and matches
-    the golden transcript recorded from Go."""
+def test_http_behavior_matches_parity_goldens():
+    """Invariant: every parity scenario replays against the Python app
+    and matches the golden transcript (re-recorded from the Python app
+    itself — tests_py/parity/record.py is the regenerator)."""
     _assert_test_exists("tests_py.parity.test_replay", "test_replay_matches_golden")
 
 
@@ -370,6 +391,7 @@ EXPECTED_ENTRIES = {
     "test_duplicate_outbox_delivery_not_resent",
     "test_unreachable_recipient_completes_delivery",
     "test_jobs_receiver_verifies_signature_before_anything",
+    "test_qstash_empty_key_forgery_rejected",
     "test_manage_token_hash_is_the_only_lookup_key",
     "test_expired_manage_token_refused_on_read_and_cancel",
     "test_delete_slot_with_cancelled_booking_is_409",
@@ -382,10 +404,11 @@ EXPECTED_ENTRIES = {
     "test_route_set_equals_spec",
     "test_merge_patch_pair_rule_both_directions",
     "test_body_bound_is_1mb",
+    "test_validation_error_does_not_consume_guest_ticket",
     "test_production_env_validation_is_loud",
     "test_cold_import_stays_lean",
     "test_api_errors_are_localized",
-    "test_http_behavior_matches_go_goldens",
+    "test_http_behavior_matches_parity_goldens",
     "test_healthz_recovers_own_panics_and_names_missing_env",
     "test_dev_without_qstash_token_marks_rows_skipped",
     "test_booking_created_fans_out_one_job_per_recipient",

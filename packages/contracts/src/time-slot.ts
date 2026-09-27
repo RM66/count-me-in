@@ -25,7 +25,7 @@ export function isAcceptableSlotStart(startsAt: Date, now: Date = new Date()): b
   return startsAt.getTime() > now.getTime() - SLOT_START_TOLERANCE_MS
 }
 
-/** Slot start instant (ISO string or epoch); FlexTime on the Go side. */
+/** Slot start instant (ISO string or epoch); FlexTime on the API. */
 export const slotStartsAt = z.coerce.date()
 
 export const createTimeSlotInput = z

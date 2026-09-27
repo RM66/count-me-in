@@ -84,6 +84,40 @@ def test_verify_garbage():
         )
 
 
+def test_verify_non_ascii_signature_is_not_a_500():
+    """A non-ASCII byte in the signature segment must fail verification
+    cleanly (None), not raise: hmac.compare_digest on str raises
+    TypeError on non-ASCII, which would surface as a 500 on every
+    request carrying a crafted X-Organizer-Auth header."""
+    token = mint_test_token(
+        TEST_SECRET, "01930000-0000-7000-8000-000000000001", "studio", int(time.time()) + 60
+    )
+    header, payload, _sig = token.split(".")
+    forged = f"{header}.{payload}.подпись-не-ascii"
+    assert verify_organizer_auth(forged, TEST_SECRET) is None
+    # And through the request path too — the header value is raw str.
+    import os
+
+    from starlette.requests import Request
+
+    saved = os.environ.get("AUTH_SECRET")
+    os.environ["AUTH_SECRET"] = TEST_SECRET
+    try:
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/organizers/me",
+            "headers": [(ORGANIZER_AUTH_HEADER.encode(), forged.encode())],
+            "query_string": b"",
+        }
+        assert session_from_request(Request(scope)) is None
+    finally:
+        if saved is None:
+            os.environ.pop("AUTH_SECRET", None)
+        else:
+            os.environ["AUTH_SECRET"] = saved
+
+
 def test_verify_wrong_alg():
     # Build a token with alg "none" — must be rejected.
     header = base64.urlsafe_b64encode(b'{"alg":"none","typ":"JWT"}').rstrip(b"=").decode()
@@ -94,6 +128,24 @@ def test_verify_wrong_alg():
     ).digest()
     token = f"{signing_input}.{base64.urlsafe_b64encode(sig).rstrip(b'=').decode()}"
     assert verify_organizer_auth(token, TEST_SECRET) is None, "non-HS256 alg must be rejected"
+
+
+def test_non_numeric_exp_is_anonymous():
+    """A non-int exp claim is a malformed/forged token — it must be
+    treated as an invalid session (anonymous), never a TypeError → 500
+    (plan 0.6)."""
+    token = mint_test_token(TEST_SECRET, "org-1", "slug", int(time.time()) + 60)
+    # Re-sign with a string exp.
+    header, payload, _ = token.split(".")
+    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    claims["exp"] = "not-a-number"
+    new_payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
+    signing_input = f"{header}.{new_payload}"
+    sig = hmac.new(
+        derived_signing_key(TEST_SECRET), signing_input.encode(), hashlib.sha256
+    ).digest()
+    forged = f"{signing_input}.{base64.urlsafe_b64encode(sig).rstrip(b'=').decode()}"
+    assert verify_organizer_auth(forged, TEST_SECRET) is None
 
 
 def test_verify_empty_sub():

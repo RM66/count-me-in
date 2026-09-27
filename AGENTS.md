@@ -42,11 +42,10 @@ apps/
       instrumentation.ts # Sentry server-side init
     public/            # Static assets
     pyproject.toml / uv.lock / requirements.txt / .python-version  # uv-managed Python deps; requirements.txt is the Vercel install input
-    vercel.json        # function maxDuration config + rewrites routing /api/* to the single entry (Python target staged in docs/migration/vercel.target.json until Phase 6)
+    vercel.json        # function maxDuration config + rewrites routing /api/* to the single Python entry (api/index.py)
     api/               # Python API — a single Vercel Function: api/index.py re-exports the FastAPI app from api/_lib/countmein/app.py (one "fat lambda", not one function per route; _lib/ is not auto-discovered as functions)
     tests_py/          # pytest suite (mirrors the package tree) + parity goldens
     scripts/           # ensure-qstash.ts, generate-openapi.ts, generate-constants.ts, generate-i18n-py.ts, generate-py-models.sh
-    cmd/ (deleted)     # the retired local dev server lived here; dev now runs uvicorn via `bun run dev:api:py`
 packages/
   db/                  # Drizzle schema, migrations
   redis/               # ioredis singleton (tickets, login links, rate limits)
@@ -74,7 +73,7 @@ docs/
 
 **No `lib/domain/`** — deleted as dead code. Entity invariants live in `server/db/` or `packages/contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
 
-**No mock data** — `lib/mock-data.ts` was deleted. Sample content is the **demo seed** (`packages/db/src/seed/`), real rows behind `/demo` (ADR-010). Do not reintroduce fixtures.
+**No mock data** — `lib/mock-data.ts` was deleted. Sample content is the **demo seed** (`apps/web/api/_lib/countmein/db/seed.py`, invoked by `bun run db:seed:demo`), real rows behind `/demo` (ADR-010). Do not reintroduce fixtures.
 
 **Wall-clock time is a contract.** A slot is stored as `timestamptz` but authored in the organizer's timezone. Both directions live in `packages/contracts/src/timezone.ts` (`wallClockToInstant`, `instantToWallClockInputs`); `helpers/date.ts` stays purely about rendering an instant that already exists.
 
@@ -126,7 +125,7 @@ Per-package: `cd <package> && bun run test`. In `apps/web`: `bun run test:web` (
 - Optional display `location` and `contact` on `Organizer` and `Service`; `Service.*` overrides the organizer's — [domain](docs/domain.md).
 - Read-only **demo organizer** seeded at `/demo`; identity is `DEMO_ORGANIZER_ID` in `packages/contracts`. Every write path must reject it, including guest booking + cancel, and notifications must never be sent for it — [ADR-010](docs/decisions/010-demo-organizer-account.md). The seed is refreshed daily by a QStash schedule, kept in sync by CI (`apps/web/scripts/ensure-qstash.ts`).
 - **`/cabinet` requires no session:** anonymous visitors get the read-only demo cabinet, signed-in organizers get their own. Scope every cabinet read through `resolveCabinetOrganizerId()` and guard every write server-side. `/cabinet/*` is `noindex` — [ADR-010](docs/decisions/010-demo-organizer-account.md).
-- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `require_guest_identity()` in the Python API (`apps/web/api/_lib/countmein/httpx_`) is the only way it enters a write; single-use, so a replayed booking fails.
+- Guest identity is a **consumed** auth ticket, never a client-supplied `messengerId`. `require_guest_identity()` in the Python API (`apps/web/api/_lib/countmein/web`) is the only way it enters a write; single-use, so a replayed booking fails.
 - **Notifications are published to QStash after the booking/cancel transaction commits** (ADR-012), via the Python publisher (`apps/web/api/_lib/countmein/queue.py`), inline after the DB commit. The publisher absorbs its own errors — a notification must never fail a committed booking. Queue names and payloads in `packages/contracts/src/jobs.ts`; jobs carry **ids only**, and the handler refetches at send time. `booking.created` fans out to one job **per recipient**. The job payload's `outboxId` is the consumer idempotency key: `run_job` claims it in Redis (`SET NX`), a duplicate delivery completes without sending, and a **retryable send failure releases the claim** so QStash's retry is processed (at-least-once, duplicates suppressed on success). Dev without `QSTASH_TOKEN` marks rows `skipped` (terminal, honest in the backlog metrics), not `sent`.
 - **Deleting a slot or service is refused (409) as soon as any booking row references it — confirmed or cancelled.** Bookings are guest history and no path removes them, so for MVP the 409 is terminal; the copy must not tell the organizer to cancel first. The guards (`delete_owned_slot`, `delete_owned_service`) count every referencing row and map a stray `23503` to the same 409, so ordinary data never yields a 500.
 - **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Python: `apps/web/api/_lib/countmein/routes/jobs.py`, routed via the single entry + `vercel.json` rewrite): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/web/api/_lib/countmein/jobs/run.py`.

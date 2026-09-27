@@ -1,5 +1,4 @@
-"""The Python app's route set must equal openapi.yaml's (migration plan
-3.13): every (method, path) pair in the Zod-rendered spec has a
+"""The Python app's route set must equal openapi.yaml's: every (method, path) pair in the Zod-rendered spec has a
 registered handler, and every registered route is in the spec.
 /api/healthz is infrastructure outside the spec (mounted in the app
 factory like Go's NewMux mounts it outside the generated router)."""

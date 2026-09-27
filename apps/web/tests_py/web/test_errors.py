@@ -1,0 +1,141 @@
+"""The error→HTTP mapping.
+
+Status codes carry meaning (403 demo, 404 gone, 409 conflict, 400
+shape) and the body carries localized copy while the error class keeps
+its EN message for logs (ADR-011). Every domain error is an
+ApiError subclass that renders itself via `to_response(locale)`; the
+app-level exception handler calls it. Anything that is not an ApiError
+propagates to the 500 recovery — a wrapped error must never be
+flattened into a misleading 4xx.
+"""
+
+import pytest
+from _lib.countmein.contracts.constants_gen import (
+    DEFAULT_LOCALE,
+    DEMO_READ_ONLY_CODE,
+    LOCALES,
+)
+from _lib.countmein.db.errors import (
+    BookingAlreadyCancelledError,
+    DuplicateBookingError,
+    InvalidOptionSelectionError,
+    ManageTokenExpiredError,
+    NoOrganizerUpdatesError,
+    NoServiceUpdatesError,
+    NoSlotUpdatesError,
+    OrganizerNotFoundError,
+    PartyTooLargeError,
+    SlotCapacityBelowBookedError,
+    SlotHasActiveBookingsError,
+    SlotNotBookableError,
+    SlotSoldOutError,
+)
+from _lib.countmein.demo import DemoReadOnlyError
+from _lib.countmein.errors import ApiError, RateLimited
+from _lib.countmein.web.response import internal
+
+
+def _body(resp) -> dict:
+    return resp.body.model_dump()
+
+
+@pytest.mark.parametrize(
+    ("err", "want_status", "want_code", "want_seats", "want_max"),
+    [
+        (DemoReadOnlyError(), 403, DEMO_READ_ONLY_CODE, None, None),
+        (SlotNotBookableError(), 404, "", None, None),
+        (SlotSoldOutError(0), 409, "", 0, None),
+        (SlotSoldOutError(3), 409, "", 3, None),
+        (DuplicateBookingError(), 409, "duplicate_booking", None, None),
+        (BookingAlreadyCancelledError(), 409, "", None, None),
+        (ManageTokenExpiredError(), 404, "", None, None),
+        (InvalidOptionSelectionError("bad"), 400, "invalid_option", None, None),
+        (PartyTooLargeError(4), 400, "", None, 4),
+    ],
+    ids=[
+        "demo read-only",
+        "slot gone",
+        "sold out (0 left)",
+        "seats left",
+        "duplicate booking",
+        "already cancelled",
+        "manage token expired → 404 like unknown",
+        "invalid options",
+        "party too large",
+    ],
+)
+def test_error_response(err, want_status, want_code, want_seats, want_max):
+    for locale in LOCALES:
+        resp = err.to_response(locale)
+        assert resp.status == want_status
+        body = _body(resp)
+        assert body["error"], f"{locale}: localized error copy must not be empty"
+        if want_code:
+            assert body["code"] == want_code
+        if want_seats is not None:
+            assert body["seatsLeft"] == want_seats
+        if want_max is not None:
+            assert body["maxSeats"] == want_max
+
+
+@pytest.mark.parametrize(
+    ("err", "want_status"),
+    [
+        (NoSlotUpdatesError(), 400),
+        (SlotCapacityBelowBookedError(3), 409),
+        (SlotHasActiveBookingsError(), 409),
+        (NoServiceUpdatesError(), 400),
+        (NoOrganizerUpdatesError(), 400),
+        (OrganizerNotFoundError(), 404),
+    ],
+    ids=[
+        "no slot updates",
+        "capacity below booked",
+        "slot has active bookings",
+        "no service updates",
+        "no organizer updates",
+        "organizer not found",
+    ],
+)
+def test_cabinet_error_response(err, want_status):
+    for locale in LOCALES:
+        resp = err.to_response(locale)
+        assert resp.status == want_status
+        assert _body(resp)["error"], f"{locale}: localized copy must not be empty"
+
+
+def test_rate_limited_headers():
+    resp = RateLimited(7).to_response("en")
+    assert resp.status == 429
+    assert resp.headers["Retry-After"] == "7"
+
+
+def test_wrapped_errors_are_not_flattened():
+    # A wrapped ApiError must NOT be answered as its cause's 4xx: only a
+    # real ApiError instance gets the mapped response, everything else
+    # keeps propagating to the 500 recovery.
+    wrapped = RuntimeError("booking tx")
+    wrapped.__cause__ = SlotSoldOutError(2)
+    assert not isinstance(wrapped, ApiError)
+    assert isinstance(wrapped.__cause__, ApiError)
+
+
+def test_booking_error_response_localized():
+    # The body is actually localized (ADR-011): at least one locale must
+    # render different copy from English for the same key.
+    err = SlotSoldOutError(0)
+    en = _body(err.to_response("en"))["error"]
+    differs = any(
+        _body(err.to_response(locale))["error"] != en
+        for locale in LOCALES
+        if locale != DEFAULT_LOCALE
+    )
+    assert differs, "localized copy must differ from English in at least one locale"
+
+
+def test_internal_leaks_nothing():
+    # Internal must not leak error details into the body — the class stays
+    # in the log, the response is an empty 500.
+    resp = internal(RuntimeError("secret db password: hunter2"))
+    assert resp.status == 500
+    assert resp.body is None

@@ -32,8 +32,13 @@ def redis_configured() -> bool:
     return os.getenv("REDIS_URL", "").strip() != ""
 
 
-def validate() -> Exception | None:
+class ConfigError(Exception):
+    """The environment the API needs is missing or malformed."""
+
+
+def validate() -> None:
     """Check the environment the API needs; called at app construction.
+    Raises ConfigError on failure.
 
     Production-only: in development (no VERCEL_ENV/NODE_ENV=production)
     the API runs against local docker-compose services where secrets are
@@ -42,10 +47,10 @@ def validate() -> Exception | None:
     non-production environment into the same validation.
     """
     if not is_production() and os.getenv("STRICT_ENV") != "1":
-        return None
+        return
     missing = [name for name in _REQUIRED if os.getenv(name, "").strip() == ""]
     if missing:
-        return ValueError("missing required environment variables: " + ", ".join(missing))
+        raise ConfigError("missing required environment variables: " + ", ".join(missing))
 
     # APP_URL shape: publish destinations concatenate it into the QStash
     # URL, so a malformed value must fail the cold start, not publish
@@ -67,7 +72,7 @@ def validate() -> Exception | None:
         and "@" not in value.split("//", 1)[-1].split("/", 1)[0]
     )
     if not ok:
-        return ValueError(
+        raise ConfigError(
             "APP_URL must be an absolute http(s) URL without a path, "
             f"query or fragment, got {raw!r}"
         )

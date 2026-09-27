@@ -59,7 +59,7 @@ async def enqueue_outbox(
         id=new_id(), queue=queue, trace_id=trace_id, status="pending", attempts=0, created_at=None
     )
     # default=str: row ids arrive as uuid.UUID from the database —
-    # on the wire they are their canonical string form, like Go's.
+    # on the wire they are their canonical string form.
     row.payload = json.dumps(build_payload(row.id), separators=(",", ":"), default=str)
     await conn.execute(
         text(

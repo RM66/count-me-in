@@ -1,4 +1,4 @@
-"""Cold-start rules (migration plan 2.3).
+"""Cold-start rules.
 
 Importing the app must stay cheap: no boto3, no qstash, no network
 connections. Engine/Redis clients are module-level lazy singletons

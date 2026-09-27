@@ -13,10 +13,12 @@ cannot deliver the same notification twice. The caller marks the row
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import httpx
 
 from . import config, logx
+from .web.asynclient import client as async_client
 
 # ErrPublishSkipped — dev without QSTASH_TOKEN: the publish is
 # deliberately never attempted (localhost is not routable from Upstash).
@@ -44,7 +46,7 @@ DEFAULT_QSTASH_URL = "https://qstash.upstash.io"
 _HTTP_TIMEOUT = 1.0
 
 
-def publish_outbox(
+async def publish_outbox(
     queue_name: str,
     payload: bytes | str,
     dedup_id: str,
@@ -76,10 +78,10 @@ def publish_outbox(
     if base == "":
         base = DEFAULT_QSTASH_URL
     destination = _destination(queue_name)
-    _publish_body(token, base, destination, queue_name, payload, dedup_id, trace_id)
+    await _publish_body(token, base, destination, queue_name, payload, dedup_id, trace_id)
 
 
-def _publish_body(
+async def _publish_body(
     token: str,
     base: str,
     destination: str,
@@ -104,15 +106,14 @@ def _publish_body(
         headers["Upstash-Deduplication-Id"] = dedup_id
     if trace_id != "":
         headers["Upstash-Trace-Id"] = trace_id
-    try:
-        res = _post(
-            base + "/v2/publish/" + destination,
-            content=body,
-            headers=headers,
-            timeout=_HTTP_TIMEOUT,
-        )
-    except httpx.HTTPError as err:
-        raise err
+    # A transport error propagates as httpx.HTTPError — callers catch
+    # Exception and leave the row pending for the sweeper.
+    res = await _post(
+        base + "/v2/publish/" + destination,
+        content=body,
+        headers=headers,
+        timeout=_HTTP_TIMEOUT,
+    )
     if res.status_code >= 300:
         raise RuntimeError(f"qstash publish {queue_name}: HTTP {res.status_code}")
 
@@ -126,11 +127,16 @@ def _destination(queue_name: str) -> str:
     return app_url + "/api/jobs/" + queue_name
 
 
-# Test seam: the transport, so tests can pin headers without a network.
-_post = httpx.post
+async def _default_post(url: str, **kwargs: Any) -> httpx.Response:
+    return await async_client().post(url, **kwargs)
+
+
+# Test seam: the transport (async — the publish runs on the event loop,
+# so the caller's asyncio.timeout can actually cancel it).
+_post = _default_post
 
 
 def _reset_for_test() -> None:
     """Restore the default transport after a test patched it."""
     global _post
-    _post = httpx.post
+    _post = _default_post

@@ -27,20 +27,24 @@ async def cleanup_replaced_media(organizer_id: str, old_url: str, new_url: str) 
     The reference check exists because is_own_media_url validates only
     the organizer's prefix, not uniqueness: one object can back the
     avatar and a cover, or two covers, so the delete is skipped while
-    any row still points at old_url."""
+    any row still points at old_url.
+
+    The boto3 delete is blocking, so it runs in a worker thread INSIDE
+    the timeout — asyncio.timeout cannot cancel a thread, so the
+    botocore client carries its own connect/read timeouts and a single
+    attempt to guarantee the thread finishes on its own."""
     if old_url == "" or old_url == new_url:
         return
     try:
         async with asyncio.timeout(_MEDIA_CLEANUP_TIMEOUT):
             async with engine().connect() as conn:
                 referenced = await photo_url_referenced(conn, organizer_id, old_url)
+            if referenced:
+                logx.info(
+                    "skipped media cleanup",
+                    {"organizerId": organizer_id, "reason": "still-referenced"},
+                )
+                return
+            await asyncio.to_thread(storage.delete_replaced_media, organizer_id, old_url, new_url)
     except Exception as err:
         logx.error(err, {"organizerId": organizer_id, "op": "media-reference-check"})
-        return
-    if referenced:
-        logx.info(
-            "skipped media cleanup",
-            {"organizerId": organizer_id, "reason": "still-referenced"},
-        )
-        return
-    storage.delete_replaced_media(organizer_id, old_url, new_url)

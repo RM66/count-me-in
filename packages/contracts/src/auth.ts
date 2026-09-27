@@ -6,7 +6,7 @@ import { authTicket, httpUrl, messengerId, uuid } from './primitives'
 /**
  * Auth.js session cookie names, most-secure first. Auth.js itself reads only
  * the `__Secure-` name on HTTPS; both are listed because local development
- * serves plain HTTP, and the Go API accepts either.
+ * serves plain HTTP, and the Python API accepts either.
  */
 export const SESSION_COOKIE_NAMES = [
   '__Secure-authjs.session-token',
@@ -105,7 +105,7 @@ export const LOGIN_LINK_TTL_S = 30 * 24 * 60 * 60
 
 /**
  * Redis key prefix for login links. Exported separately from
- * {@link loginLinkKey} because the Go API is code-generated from this file:
+ * {@link loginLinkKey} because the Python API is code-generated from this file:
  * the generator interpolates the prefix into `contracts.LoginLinkKey`, so the
  * two sides cannot drift.
  */

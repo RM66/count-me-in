@@ -17,7 +17,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "qstash:schedules": "bun scripts/ensure-qstash.ts",
-    "test": "bun run test:web && bun run test:py",
+    "test": "bun run test:web",
     "test:web": "vitest run",
     "test:py": "uv run pytest",
     "lint:py": "uv run ruff check . && uv run ruff format --check . && uv run mypy",

@@ -13,30 +13,21 @@ fail loudly.
 
 from __future__ import annotations
 
-import threading
+import functools
 from pathlib import Path
 from typing import Any
-
-_spec: dict[str, Any] | None = None
-_spec_err: Exception | None = None
-_lock = threading.Lock()
 
 _SPEC_PATH = Path(__file__).resolve().parents[4] / "openapi.yaml"
 
 
+@functools.cache
 def _load() -> dict[str, Any] | None:
-    global _spec, _spec_err
-    with _lock:
-        if _spec is None and _spec_err is None:
-            try:
-                import yaml
+    try:
+        import yaml
 
-                _spec = yaml.safe_load(_SPEC_PATH.read_text())
-            except Exception as err:  # pragma: no cover - generated+committed
-                _spec_err = err
-        if _spec_err is not None:
-            return None
-        return _spec
+        return yaml.safe_load(_SPEC_PATH.read_text())  # type: ignore[no-any-return]
+    except Exception:  # pragma: no cover - generated+committed
+        return None
 
 
 def _schema(name: str) -> dict[str, Any] | None:

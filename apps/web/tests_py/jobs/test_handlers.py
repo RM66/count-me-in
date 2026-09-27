@@ -23,10 +23,7 @@ from _lib.countmein.jobs.booking_created import handle_booking_created
 from _lib.countmein.jobs.env import Env
 from _lib.countmein.jobs.links import cabinet_slot_path
 
-pytestmark = pytest.mark.skipif(
-    os.getenv("POSTGRES_URL", "") == "" and os.getenv("CI") != "true",
-    reason="POSTGRES_URL is not set — integration test needs the docker Postgres",
-)
+pytestmark = pytest.mark.usefixtures("_require_postgres")
 
 
 @pytest.fixture(scope="module")
@@ -45,7 +42,7 @@ class FakeTelegram:
     def __init__(self):
         self.calls: list[dict] = []
 
-    def __call__(self, url, content=None, headers=None, timeout=None):
+    async def __call__(self, url, content=None, headers=None, **kwargs):
         import json
 
         body = json.loads(content or b"{}")

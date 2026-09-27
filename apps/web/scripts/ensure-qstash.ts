@@ -24,10 +24,9 @@
  * hand-run with different variables manages a different schedule and never
  * touches the production one.
  *
- * `CHECK=1` (or `--check`) is the read-only mode used by the migration
- * cutover (§6.3): it verifies the schedules already match the desired
- * state and exits non-zero on any drift, without creating or deleting
- * anything in Upstash.
+ * `CHECK=1` (or `--check`) is the read-only mode: it verifies the
+ * schedules already match the desired state and exits non-zero on any
+ * drift, without creating or deleting anything in Upstash.
  */
 
 import {

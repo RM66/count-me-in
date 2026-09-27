@@ -16,23 +16,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -53,21 +53,21 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "organizerExists": false,
-          "ticket": "<token>"
+          "ticket": "<token>",
+          "organizerExists": false
         },
-        "body_raw": "{\"organizerExists\":false,\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"organizerExists\":false}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -88,15 +88,15 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Telegram auth validation failed"
@@ -117,15 +117,15 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Invalid Telegram auth data"
@@ -151,23 +151,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -188,23 +188,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -225,23 +225,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -262,23 +262,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -299,23 +299,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -336,23 +336,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -373,23 +373,23 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "displayName": "Parity Guest",
+          "ticket": "<token>",
           "messenger": "telegram",
           "messengerId": "900100200",
-          "ticket": "<token>"
+          "displayName": "Parity Guest"
         },
-        "body_raw": "{\"displayName\":\"Parity Guest\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"ticket\":\"<token>\"}",
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -410,16 +410,16 @@
       "response": {
         "status": 429,
         "headers": {
-          "cache-control": "no-store",
-          "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
           "retry-after": "<retry-after:seconds>",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-type": "application/json",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Too many requests — please try again in a moment"
@@ -446,16 +446,16 @@
       "response": {
         "status": 429,
         "headers": {
-          "cache-control": "no-store",
-          "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
           "retry-after": "<retry-after:seconds>",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-type": "application/json",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Too many requests — please try again in a moment"
@@ -482,16 +482,16 @@
       "response": {
         "status": 429,
         "headers": {
-          "cache-control": "no-store",
-          "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
           "retry-after": "<retry-after:seconds>",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-type": "application/json",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Too many requests — please try again in a moment"
@@ -518,16 +518,16 @@
       "response": {
         "status": 429,
         "headers": {
-          "cache-control": "no-store",
-          "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
           "retry-after": "<retry-after:seconds>",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-type": "application/json",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Too many requests — please try again in a moment"

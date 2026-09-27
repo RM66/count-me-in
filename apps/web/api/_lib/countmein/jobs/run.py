@@ -36,6 +36,7 @@ from ..contracts.constants_gen import (
     QUEUE_DEMO_REFRESH,
     QUEUE_OUTBOX_SWEEP,
 )
+from ..contracts.models import unwrap_root
 from .booking_cancelled import handle_booking_cancelled
 from .booking_created import handle_booking_created
 from .demo_refresh import handle_demo_refresh
@@ -70,12 +71,6 @@ class ParsedJob:
 
     booking_created: Any = None
     booking_cancelled: Any = None
-
-
-def _root(value: Any) -> Any:
-    while hasattr(value, "root"):
-        value = value.root
-    return value
 
 
 def _valid_recipient(v: str) -> bool:
@@ -125,8 +120,8 @@ def parse_job(queue: str, body: bytes | None) -> ParsedJob:
         # coerced UUID — the same quirk decode.py works around.
         if (
             not _valid_booking_id(m.get("bookingId", ""))
-            # A missing outboxId marshals as the zero uuid in Go and
-            # parses fine — parity means the same acceptance here.
+            # A missing outboxId defaults to the zero uuid and parses
+            # fine — the acceptance is pinned by the parity goldens.
             or not _valid_booking_id(m.get("outboxId", "00000000-0000-0000-0000-000000000000"))
             or not _valid_recipient(str(m.get("recipient", "")))
         ):
@@ -260,7 +255,7 @@ async def run_job(queue: str, body: bytes | None, trace_id: str) -> None:
     job = parse_job(queue, body)
     if queue == QUEUE_BOOKING_CREATED:
         env = read_env()
-        outbox_id = str(_root(job.booking_created.outboxId))
+        outbox_id = str(unwrap_root(job.booking_created.outboxId))
 
         async def _run() -> None:
             await handle_booking_created(env, job.booking_created, trace_id)
@@ -269,7 +264,7 @@ async def run_job(queue: str, body: bytes | None, trace_id: str) -> None:
         return
     if queue == QUEUE_BOOKING_CANCELLED:
         env = read_env()
-        outbox_id = str(_root(job.booking_cancelled.outboxId))
+        outbox_id = str(unwrap_root(job.booking_cancelled.outboxId))
 
         async def _run() -> None:
             await handle_booking_cancelled(env, job.booking_cancelled, trace_id)

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 from . import logx
 from .contracts import models_gen as gen
 from .contracts.domain import iso_date
+from .contracts.models import unwrap_root
 
 # ── Config (lazy, cached like every other singleton) ─────────────────────────
 
@@ -35,32 +36,35 @@ _ENV_NAMES = (
     "R2_PUBLIC_BASE_URL",
 )
 
-_cfg_lock = threading.Lock()
 _cfg: dict[str, str] | None = None
 _cfg_err: Exception | None = None
 
 
 def config() -> dict[str, str]:
     """Validate lazily (raise on first use). The variable list is ordered
-    so the reported error is deterministic."""
+    so the reported error is deterministic. No lock needed: the cache is
+    only written with env-derived values, and a concurrent write stores
+    the same data."""
     global _cfg, _cfg_err
-    with _cfg_lock:
-        if _cfg is None and _cfg_err is None:
-            _cfg = {
-                "account_id": os.getenv("R2_ACCOUNT_ID", ""),
-                "access_key_id": os.getenv("R2_ACCESS_KEY_ID", ""),
-                "secret_access": os.getenv("R2_SECRET_ACCESS_KEY", ""),
-                "bucket": os.getenv("R2_BUCKET", ""),
-                "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", ""),
-            }
-            for name in _ENV_NAMES:
-                if os.getenv(name, "") == "":
-                    _cfg_err = RuntimeError(f"{name} is not set")
-                    break
-        if _cfg_err is not None:
-            raise _cfg_err
-        assert _cfg is not None
-        return _cfg
+    if _cfg is None and _cfg_err is None:
+        _cfg = {
+            "account_id": os.getenv("R2_ACCOUNT_ID", ""),
+            "access_key_id": os.getenv("R2_ACCESS_KEY_ID", ""),
+            "secret_access": os.getenv("R2_SECRET_ACCESS_KEY", ""),
+            "bucket": os.getenv("R2_BUCKET", ""),
+            "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", ""),
+        }
+        for name in _ENV_NAMES:
+            if os.getenv(name, "") == "":
+                _cfg_err = RuntimeError(f"{name} is not set")
+                break
+    if _cfg_err is not None:
+        raise _cfg_err
+    if _cfg is None:
+        # Unreachable by the decode/guard contract; a real None
+        # here is a bug, and python -O must not strip the check.
+        raise RuntimeError("_cfg is None after its error guard")
+    return _cfg
 
 
 def reset_for_test() -> None:
@@ -69,46 +73,63 @@ def reset_for_test() -> None:
     so clearing only the config leaves a stale endpoint under a new
     account."""
     global _cfg, _cfg_err, _s3_client, _presigner
-    with _cfg_lock:
-        _cfg = None
-        _cfg_err = None
-        _s3_client = None
-        _presigner = None
+    _cfg = None
+    _cfg_err = None
+    _s3_client = None
+    _presigner = None
 
 
 # ── S3 client + presigner (lazy) ─────────────────────────────────────────────
 
-_client_lock = threading.RLock()
 _s3_client: S3Client | None = None
 _presigner: Callable[..., str] | None = None
+# boto3.client() builds on the process-wide default session, which is
+# not thread-safe. Media cleanup runs in a worker thread (to_thread),
+# so two parallel cleanups can race the lazy init — the lock makes the
+# check-and-create atomic across threads.
+_client_lock = threading.Lock()
 
 
 def _client() -> S3Client:
     global _s3_client
-    with _client_lock:
-        if _s3_client is None:
-            import boto3
-            from botocore.config import Config as BotocoreConfig
+    if _s3_client is None:
+        import boto3
+        from botocore.config import Config as BotocoreConfig
 
-            c = config()
-            _s3_client = boto3.client(
-                "s3",
-                region_name="auto",
-                endpoint_url=f"https://{c['account_id']}.r2.cloudflarestorage.com",
-                aws_access_key_id=c["access_key_id"],
-                aws_secret_access_key=c["secret_access"],
-                config=BotocoreConfig(s3={"addressing_style": "path"}),
-            )
-        assert _s3_client is not None
-        return _s3_client
+        c = config()
+        with _client_lock:
+            if _s3_client is None:
+                _s3_client = boto3.client(
+                    "s3",
+                    region_name="auto",
+                    endpoint_url=f"https://{c['account_id']}.r2.cloudflarestorage.com",
+                    aws_access_key_id=c["access_key_id"],
+                    aws_secret_access_key=c["secret_access"],
+                    # The delete runs in a worker thread inside a 3s
+                    # asyncio.timeout, which cannot cancel a thread — the
+                    # client's own timeouts guarantee the thread finishes.
+                    # total_max_attempts=1: exactly one attempt, no
+                    # botocore-internal retries (max_attempts counts
+                    # retries *after* the first try, so it would give 2).
+                    config=BotocoreConfig(
+                        s3={"addressing_style": "path"},
+                        connect_timeout=2,
+                        read_timeout=2,
+                        retries={"total_max_attempts": 1},
+                    ),
+                )
+    if _s3_client is None:
+        # Unreachable by the decode/guard contract; a real None
+        # here is a bug, and python -O must not strip the check.
+        raise RuntimeError("_s3_client is None after its error guard")
+    return _s3_client
 
 
 def _presign_client() -> Callable[..., str]:
     global _presigner
-    with _client_lock:
-        if _presigner is None:
-            _presigner = _client().generate_presigned_url
-        return _presigner
+    if _presigner is None:
+        _presigner = _client().generate_presigned_url
+    return _presigner
 
 
 # ── Signed URLs and deletes ──────────────────────────────────────────────────
@@ -227,26 +248,26 @@ def is_own_media_url(organizer_id: str, url: str) -> bool:
     return cleaned == own or cleaned.startswith(own + "/")
 
 
-def media_key_from_url(organizer_id: str, url: str) -> tuple[str, bool]:
+def media_key_from_url(organizer_id: str, url: str) -> str | None:
     """The inverse of public_url: map a public media URL back to its R2
     object key. It only accepts URLs under this organizer's own prefix —
-    a foreign or malformed URL yields ("", False) and the caller must
+    a foreign or malformed URL yields None and the caller must
     skip deletion rather than delete something it does not own."""
     if not is_own_media_url(organizer_id, url):
-        return "", False
+        return None
     c = config()
     base_url = urlsplit(c["public_base_url"])
     parsed = urlsplit(url)
     cleaned = _clean_path(unquote(parsed.path))
     base = _clean_path(base_url.path).rstrip("/")
     if cleaned == base:
-        return "", False  # the base itself, not an object
+        return None  # the base itself, not an object
     # The organizer's own directory (or the base) is a prefix, not an
     # object — never hand back a "directory key" for deletion.
     if cleaned == base + "/organizers/" + organizer_id:
-        return "", False
+        return None
     key = cleaned[len(base) + 1 :] if cleaned.startswith(base + "/") else cleaned.lstrip("/")
-    return key, True
+    return key
 
 
 # Test seam: lets the skip decisions of delete_replaced_media be pinned
@@ -275,12 +296,11 @@ def delete_replaced_media(organizer_id: str, old_url: str, new_url: str) -> None
     except Exception as err:
         logx.error(err, {"organizerId": organizer_id, "op": "delete-replaced-media"})
         return
-    key, ok = media_key_from_url(organizer_id, old_url)
-    if not ok:
+    key = media_key_from_url(organizer_id, old_url)
+    if key is None:
         logx.info("skipped media cleanup", {"organizerId": organizer_id, "reason": "not-own-media"})
         return
-    new_key, new_ok = media_key_from_url(organizer_id, new_url)
-    if new_ok and new_key == key:
+    if media_key_from_url(organizer_id, new_url) == key:
         return
     try:
         _delete_object(key)
@@ -303,23 +323,21 @@ def _signed_target(key: str, content_type: str, size: int) -> gen.ImageUploadTar
     )
 
 
-def _root(value: Any) -> Any:
-    while hasattr(value, "root"):
-        value = value.root
-    return value
-
-
-def create_avatar_upload(organizer_id: str, input: Any) -> gen.ImageUploadTarget:
+def create_avatar_upload(organizer_id: str, payload: Any) -> gen.ImageUploadTarget:
     """A signed upload URL for an organizer's avatar (browser
     resizes/re-encodes first, then PUTs straight to R2)."""
-    ext = ext_for_content_type(str(_root(input.contentType)))
+    ext = ext_for_content_type(str(unwrap_root(payload.contentType)))
     key = avatar_key(organizer_id, ext)
-    return _signed_target(key, str(_root(input.contentType)), int(_root(input.size)))
+    return _signed_target(
+        key, str(unwrap_root(payload.contentType)), int(unwrap_root(payload.size))
+    )
 
 
-def create_service_photo_upload(organizer_id: str, input: Any) -> gen.ImageUploadTarget:
+def create_service_photo_upload(organizer_id: str, payload: Any) -> gen.ImageUploadTarget:
     """A signed upload URL for a service cover photo (landscape covers
     get their own limits instead of reusing the avatar constants)."""
-    ext = ext_for_content_type(str(_root(input.contentType)))
+    ext = ext_for_content_type(str(unwrap_root(payload.contentType)))
     key = service_photo_key(organizer_id, ext)
-    return _signed_target(key, str(_root(input.contentType)), int(_root(input.size)))
+    return _signed_target(
+        key, str(unwrap_root(payload.contentType)), int(unwrap_root(payload.size))
+    )

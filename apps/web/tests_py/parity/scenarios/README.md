@@ -18,7 +18,7 @@ One YAML file per scenario; each is an ordered list of steps the retired recorde
 - `<manageToken>` — captured from a `createBooking` response
 - `<qstashSignature>` — valid HS256 signature over the step's raw body (current signing key)
 
-## Scenario coverage matrix (plan §1.4)
+## Scenario coverage matrix
 
 | Scenario file                      | Covers                                                                                                                                                                  |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

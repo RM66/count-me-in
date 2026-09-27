@@ -796,6 +796,8 @@
     "accountExists": "Ya existe una cuenta con esta identidad de Telegram; inicia sesión",
     "nothingToUpdate": "No hay campos que actualizar",
     "unsupportedMediaType": "Este endpoint solo acepta application/merge-patch+json (RFC 7386)",
+    "notFound": "No encontrado",
+    "methodNotAllowed": "Método no permitido",
     "capacityBelowBooked": "El aforo no puede ser inferior a {count, plural, =1 {la # plaza ya reservada} other {las # plazas ya reservadas}}",
     "demoReadOnly": "Esta es una cuenta de demostración de solo lectura; regístrate para crear tus propios servicios reservables.",
     "soldOut": "Esta sesión está completa",

@@ -65,11 +65,11 @@ export function toPublicOrganizer(row: Organizer): PublicOrganizer {
  * transforms them), so the lookup lowercases too.
  *
  * Not cached: the `unstable_cache` wrapper and its
- * `public-organizers` tag used to be here, but writes moved to the Go API
+ * `public-organizers` tag used to be here, but writes moved to the Python API
  * (ADR-013), which cannot call `revalidateTag` — the tag was never
  * invalidated, so a renamed organizer served stale pages (and stale 404s for
  * the new slug) for up to 5 minutes. Reading fresh costs one indexed query per
- * render; when read traffic justifies caching again, add a Go → Next
+ * render; when read traffic justifies caching again, add an API → Next
  * revalidation endpoint instead of a tag nothing can invalidate.
  */
 export async function getPublicOrganizerBySlug(slug: string): Promise<PublicOrganizer | null> {

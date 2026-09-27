@@ -27,6 +27,7 @@ from .errors import (
 from .outbox import OutboxRow, enqueue_outbox
 from .rows import (
     BOOKING_CHAIN_SELECT,
+    BOOKING_COLUMNS,
     SLOT_CHAIN_SELECT,
     SLOT_COLUMNS,
     scan_booking,
@@ -142,8 +143,10 @@ async def create_guest_booking(
             # snapshot), and the number is UX copy, not an invariant.
             raise SlotSoldOutError(domain.seats_left(slot.capacity, slot.booked_count))
         claimed = scan_slot(claimed_row)
-        assert claimed is not None
-
+        if claimed is None:
+            # Unreachable by the decode/guard contract; a real None
+            # here is a bug, and python -O must not strip the check.
+            raise RuntimeError("claimed is None after its error guard")
         # manageToken expiry: the token is usable until the slot starts
         # plus a grace period — a past event's booking does not need
         # cancel access.
@@ -152,12 +155,12 @@ async def create_guest_booking(
         try:
             result = await conn.execute(
                 text(
-                    """
+                    f"""
                     INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
                         guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options, manage_token_expires_at)
                     VALUES (:id, :slot_id, 'confirmed', :seats, :guest_name, :messenger, :messenger_id,
                         :messenger_login, :guest_locale, :token, :token_hash, :selected_options, :expires_at)
-                    RETURNING id, time_slot_id, status::text, seats, guest_name, guest_messenger::text, guest_messenger_id, guest_messenger_login, guest_locale, manage_token, manage_token_hash, array_to_json(selected_options), created_at, manage_token_expires_at
+                    RETURNING {BOOKING_COLUMNS}
                     """
                 ),
                 {
@@ -243,9 +246,9 @@ async def cancel_guest_booking_by_token(
 
         result = await conn.execute(
             text(
-                "UPDATE bookings SET status = 'cancelled' "
-                "WHERE id = :booking_id AND status = 'confirmed' "
-                "RETURNING id, time_slot_id, status::text, seats, guest_name, guest_messenger::text, guest_messenger_id, guest_messenger_login, guest_locale, manage_token, manage_token_hash, array_to_json(selected_options), created_at, manage_token_expires_at"
+                f"UPDATE bookings SET status = 'cancelled' "
+                f"WHERE id = :booking_id AND status = 'confirmed' "
+                f"RETURNING {BOOKING_COLUMNS}"
             ),
             {"booking_id": b.id},
         )
@@ -301,7 +304,7 @@ async def cancel_owned_booking(
         # ids.
         result = await conn.execute(
             text(
-                "SELECT id, time_slot_id, status::text, seats, guest_name, guest_messenger::text, guest_messenger_id, guest_messenger_login, guest_locale, manage_token, manage_token_hash, array_to_json(selected_options), created_at, manage_token_expires_at "
+                f"SELECT {BOOKING_COLUMNS} "
                 "FROM bookings "
                 "WHERE id = :booking_id "
                 "AND time_slot_id IN ("
@@ -318,9 +321,9 @@ async def cancel_owned_booking(
 
         result = await conn.execute(
             text(
-                "UPDATE bookings SET status = 'cancelled' "
-                "WHERE id = :booking_id AND status = 'confirmed' "
-                "RETURNING id, time_slot_id, status::text, seats, guest_name, guest_messenger::text, guest_messenger_id, guest_messenger_login, guest_locale, manage_token, manage_token_hash, array_to_json(selected_options), created_at, manage_token_expires_at"
+                f"UPDATE bookings SET status = 'cancelled' "
+                f"WHERE id = :booking_id AND status = 'confirmed' "
+                f"RETURNING {BOOKING_COLUMNS}"
             ),
             {"booking_id": target.id},
         )

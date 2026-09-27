@@ -17,6 +17,8 @@ from typing import Any
 
 import httpx
 
+from ..web.asynclient import client as async_client
+
 # MessageButton is a link rendered as a tappable button under the message.
 
 
@@ -74,16 +76,21 @@ _HTTP_TIMEOUT = 10.0
 # production never sets it.
 telegram_api_base = "https://api.telegram.org"
 
-# Test seam: the transport.
-_post = httpx.post
+
+async def _default_post(url: str, **kwargs: Any) -> httpx.Response:
+    return await async_client().post(url, **kwargs)
+
+
+# Test seam: the transport (async — the handlers run on the event loop).
+_post = _default_post
 
 
 def _reset_for_test() -> None:
     global _post
-    _post = httpx.post
+    _post = _default_post
 
 
-def send_message(
+async def send_message(
     bot_token: str,
     chat_id: str,
     text: str,
@@ -108,7 +115,7 @@ def send_message(
     raw = json.dumps(body)
 
     try:
-        res = _post(
+        res = await _post(
             telegram_api_base + "/bot" + bot_token + "/sendMessage",
             content=raw,
             headers={"Content-Type": "application/json"},

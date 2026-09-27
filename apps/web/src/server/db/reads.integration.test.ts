@@ -1,16 +1,22 @@
+import { execFile } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import { DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG, DEMO_SERVICE_IDS } from '@repo/contracts'
 import { beforeAll, describe, expect, it } from 'vitest'
+
+const execFileAsync = promisify(execFile)
 
 /**
  * Integration tests for the server/db read layer.
  *
  * These reads serve the cabinet, the public pages and the sitemap; the write
- * side lives in the Go API and is covered there. The fixture is the demo seed
+ * side lives in the Python API and is covered there. The fixture is the demo seed
  * (ADR-010): deterministic ids, 3 services, 19 slots, 40 bookings — seeded
  * fresh in `beforeAll` so the assertions are stable regardless of prior
  * local state.
  *
- * Gating follows the Go `requirePostgres` convention: skip locally without
+ * Gating follows the `requirePostgres` convention: skip locally without
  * POSTGRES_URL, fail in CI where the service is guaranteed.
  */
 
@@ -27,7 +33,15 @@ maybeDescribe('server/db reads (integration, real Postgres)', () => {
       throw new Error('POSTGRES_URL is not set — server/db read tests need a real Postgres.')
     }
     dbModule = await import('@repo/db')
-    await dbModule.seedDemo()
+    // The demo seed has one implementation — the Python one the daily
+    // demo-refresh job runs (ADR-021). Shell out to it instead of keeping
+    // a TS copy.
+    const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+    await execFileAsync('uv', ['run', 'python', '-m', '_lib.countmein.db.seed'], {
+      cwd: webRoot,
+      env: { ...process.env, PYTHONPATH: 'api' },
+      timeout: 50_000,
+    })
   }, 60_000)
 
   describe('organizer reads', () => {
@@ -217,7 +231,7 @@ maybeDescribe('server/db reads (integration, real Postgres)', () => {
       const { eq } = await import('drizzle-orm')
       // demo-guest-9's booking sits on a past slot: the token was born
       // expired (slot start + 24h), so the manage page must 404 exactly
-      // like an unknown token — parity with the Go cancel write.
+      // like an unknown token — parity with the API cancel write.
       const [row] = await dbModule!.db
         .select({ manageToken: dbModule!.bookings.manageToken })
         .from(dbModule!.bookings)

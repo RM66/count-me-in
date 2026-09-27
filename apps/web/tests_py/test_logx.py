@@ -1,4 +1,4 @@
-"""logx — the observability floor (plan §4.1).
+"""logx — the observability floor.
 
 One JSON object per line on stdout, field names matching the Go
 implementation (time, level, msg + extras). These tests pin the wire

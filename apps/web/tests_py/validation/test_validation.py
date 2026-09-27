@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from _lib.countmein.contracts import domain
+from _lib.countmein.errors import ValidationFailed
 from _lib.countmein.validation.decode import DECODERS
 
 VECTORS_DIR = (
@@ -44,12 +45,14 @@ def _load():
 
 @pytest.mark.parametrize(("schema", "c"), list(_load()))
 def test_validation_vectors(schema, c):
-    if c.get("skip", {}).get("go"):
-        pytest.skip(c["skip"]["go"])
     parse = DECODERS.get(schema)
     assert parse is not None, f"no decoder dispatch for schema {schema}"
     body = json.dumps(_replace_now_markers(c["body"])).encode()
-    _out, errs = parse(body)
+    try:
+        parse(body)
+        errs = None
+    except ValidationFailed as exc:
+        errs = exc.errors
     valid = errs is None
     if c.get("valid") is not None:
         assert valid == c["valid"], f"{c.get('name')}: valid={valid}, want {c['valid']} ({errs})"

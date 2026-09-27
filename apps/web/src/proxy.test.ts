@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // 1. A signed-in organizer never sees /login or /signup (redirect to the
 //    cabinet) — if this file stops being picked up as middleware, this
 //    silently breaks (see the header comment in proxy.ts).
-// 2. /api/* requests carry the minted X-Organizer-Auth header for the Go
+// 2. /api/* requests carry the minted X-Organizer-Auth header for the
 //    API — in the *request* headers, never the response.
 
 const mockAuth = vi.fn()
@@ -64,14 +64,14 @@ describe('proxy — API header minting', () => {
     const res = await proxy(makeRequest('/api/services'))
     expect(res).toBeInstanceOf(NextResponse)
     expect(mockMint).toHaveBeenCalledWith('org-1', 'yoga')
-    // The minted token must reach the Go handler: NextResponse.next with
+    // The minted token must reach the API handler: NextResponse.next with
     // request headers encodes the override as `x-middleware-request-*` on
     // the response, which is what Next forwards to the handler. Setting
     // the header on the response itself (the old bug) never did.
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe('minted-jwt')
   })
 
-  it('does not mint for anonymous API requests (the Go API sees no header)', async () => {
+  it('does not mint for anonymous API requests (the Python API sees no header)', async () => {
     mockAuth.mockResolvedValueOnce(null)
     const res = await proxy(makeRequest('/api/services'))
     expect(mockMint).not.toHaveBeenCalled()
@@ -85,7 +85,7 @@ describe('proxy — API header minting', () => {
     )
     expect(mockMint).not.toHaveBeenCalled()
     // The header is middleware-minted or absent — a forged value must
-    // never reach the Go API.
+    // never reach the Python API.
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBeNull()
   })
 

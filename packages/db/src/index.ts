@@ -1,6 +1,5 @@
 export { client, db, schema } from './client'
 export * from './schema'
-export { removeDemo, seedDemo } from './seed/run-demo'
 
 import type { bookings, organizers, services, timeSlots } from './schema'
 

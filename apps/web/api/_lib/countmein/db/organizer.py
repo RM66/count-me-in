@@ -16,11 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ..contracts import domain
 from ..contracts import models_gen as gen
+from ..contracts.models import unwrap_root
 from ..contracts.payloads import AuthTicketPayload
 from ..demo import refuse_demo_write
 from .client import engine
 from .errors import NoOrganizerUpdatesError, OrganizerNotFoundError
-from .rows import ORGANIZER_COLUMNS, OrganizerRow, _root, scan_organizer
+from .rows import ORGANIZER_COLUMNS, OrganizerRow, scan_organizer
 from .shared import new_id
 
 
@@ -52,7 +53,7 @@ async def exists_organizer_by_messenger(messenger: str, messenger_id: str) -> bo
 
 
 async def insert_organizer(
-    input: gen.RegisterOrganizerInput, identity: AuthTicketPayload
+    payload: gen.RegisterOrganizerInput, identity: AuthTicketPayload
 ) -> gen.RegisteredOrganizer:
     """Register an organizer; the messenger identity comes from the
     peeked ticket (validated server-side), never from the body. A 23505
@@ -62,7 +63,7 @@ async def insert_organizer(
     # never crash the function — fall back to the default locale. The
     # generated models wrap scalars in RootModel subclasses — unwrap
     # before they reach SQL (psycopg cannot adapt the wrappers).
-    language = domain.deref_or(_root(input.language), domain.DEFAULT_LOCALE)
+    language = domain.deref_or(unwrap_root(payload.language), domain.DEFAULT_LOCALE)
     async with engine().begin() as conn:
         result = await conn.execute(
             text(
@@ -75,14 +76,14 @@ async def insert_organizer(
             ),
             {
                 "id": new_id(),
-                "slug": str(_root(input.slug)),
-                "name": str(_root(input.name)),
+                "slug": str(unwrap_root(payload.slug)),
+                "name": str(unwrap_root(payload.name)),
                 "messenger": identity.messenger,
                 "mid": identity.messenger_id,
-                "tz": str(_root(input.timezone)),
+                "tz": str(unwrap_root(payload.timezone)),
                 "lang": language,
-                "contact": _root(input.contact),
-                "photo": _root(identity.photo_url),
+                "contact": unwrap_root(payload.contact),
+                "photo": unwrap_root(identity.photo_url),
             },
         )
         row = result.first()
@@ -92,7 +93,11 @@ async def insert_organizer(
     # str(): psycopg hands back a UUID object; the wrapper's root must
     # hold the canonical string (a UUID root trips pydantic's
     # serializer on every response marshal).
-    return gen.RegisteredOrganizer(id=gen.UUIDModel.model_construct(root=str(row[0])), slug=row[1])  # type: ignore[arg-type, index]
+    # model_construct (not model_validate): the generated pattern
+    # constraint cannot be applied to a UUID schema by pydantic-core
+    # (TypeError on every construct), and the id comes straight from
+    # the database and is already canonical.
+    return gen.RegisteredOrganizer.model_construct(id=str(row[0]), slug=row[1])  # type: ignore[index]
 
 
 async def update_organizer_profile_tx(
@@ -116,29 +121,29 @@ async def update_organizer_profile_tx(
     state = update.state
     touched = update.touched
     if touched.get("name") and state.name is not None:
-        add("name", "name", str(_root(state.name)))
+        add("name", "name", str(unwrap_root(state.name)))
     if touched.get("slug") and state.slug is not None:
-        add("slug", "slug", str(_root(state.slug)))
+        add("slug", "slug", str(unwrap_root(state.slug)))
     if touched.get("timezone") and state.timezone is not None:
-        add("timezone", "timezone", str(_root(state.timezone)))
+        add("timezone", "timezone", str(unwrap_root(state.timezone)))
     if touched.get("description"):
         if state.description is not None:
-            add("description", "description", str(_root(state.description)))
+            add("description", "description", str(unwrap_root(state.description)))
         else:
             sets.append("description = NULL")
     if touched.get("location"):
         if state.location is not None:
-            add("location", "location", str(_root(state.location)))
+            add("location", "location", str(unwrap_root(state.location)))
         else:
             sets.append("location = NULL")
     if touched.get("contact"):
         if state.contact is not None:
-            add("contact", "contact", str(_root(state.contact)))
+            add("contact", "contact", str(unwrap_root(state.contact)))
         else:
             sets.append("contact = NULL")
     if touched.get("photoUrl"):
         if state.photoUrl is not None:
-            add("photo_url", "photo_url", str(_root(state.photoUrl)))
+            add("photo_url", "photo_url", str(unwrap_root(state.photoUrl)))
         else:
             sets.append("photo_url = NULL")
     if not sets:

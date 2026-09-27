@@ -86,8 +86,10 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
     sig = hmac.new(
         derived_signing_key(secret), f"{parts[0]}.{parts[1]}".encode(), hashlib.sha256
     ).digest()
-    expected_sig = _B64(sig).rstrip(b"=").decode()
-    if not hmac.compare_digest(expected_sig, parts[2]):
+    # Compare bytes: the header value may carry non-ASCII characters,
+    # and compare_digest on str raises TypeError on them (→ 500).
+    expected_sig = _B64(sig).rstrip(b"=")
+    if not hmac.compare_digest(expected_sig, parts[2].encode()):
         return None
 
     try:
@@ -103,8 +105,12 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
     # Expiry (15s clock tolerance, matching the old decoder). exp is
     # required: a token without it used to be treated as non-expiring,
     # but the mint always sets it — an absent exp means a forged or
-    # malformed token, not a legacy one.
+    # malformed token, not a legacy one. A non-numeric exp is the same
+    # class of malformed token — treated as invalid (anonymous), never
+    # a TypeError → 500.
     exp = claims.get("exp", 0)
+    if not isinstance(exp, int) or isinstance(exp, bool):
+        return None
     if exp == 0 or int(time.time()) - 15 > exp:
         return None
     return claims

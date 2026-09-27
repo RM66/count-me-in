@@ -1,12 +1,11 @@
 """Golden wire samples for every record schema (ADR-014/ADR-021).
 
-Each sample is a full wire shape rendered with the Go-compatible
-MarshalIndent encoding and compared byte for byte against the committed
-golden file (tests_py/contracts/golden/*.json) — a change to field
-names, nullability, key order or escaping shows up as a diff. The
-goldens were recorded from the retired Go implementation and are frozen
-(migration plan §5.0): regenerate nothing, change the wire on purpose
-and update the goldens by hand.
+Each sample is a full wire shape rendered with the compact indented
+encoder and compared byte for byte against the committed golden file
+(tests_py/contracts/golden/*.json) — a change to field names,
+nullability, key order or escaping shows up as a diff. Regenerate with
+--update-goldens only together with a deliberate wire change recorded
+in ADR-021.
 
 Every sample is also validated against the generated Pydantic model, so
 spec ↔ model drift fails here, not in production.
@@ -15,12 +14,12 @@ spec ↔ model drift fails here, not in production.
 from __future__ import annotations
 
 import json
+import json as _json
 import sys
 from pathlib import Path
 from typing import Any
 
 from _lib.countmein.contracts import models_gen as gen
-from _lib.countmein.httpx_.gojson import _encode_string
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 UPDATE_GOLDENS = "--update-goldens" in sys.argv
@@ -357,8 +356,8 @@ def _model_for(key: str) -> type[gen.BaseModel] | None:
     }.get(base)
 
 
-# ── Go-compatible MarshalIndent ──────────────────────────────────────────────
-# The retired implementation's encoding/json: HTML-escapes < > &, keeps
+# ── Indented marshal for the golden files ────────────────────────────────────
+# stdlib json string encoding: no HTML escaping, UTF-8 text;
 # non-ASCII raw, sorts keys (the generated structs were alphabetical),
 # two-space indent, ": " after every key, [] / {} for empty containers.
 
@@ -374,7 +373,7 @@ def _marshal_indent(value: Any, out: list[str], depth: int, sort_keys: bool) -> 
         keys = sorted(value.keys()) if sort_keys else list(value.keys())
         for i, key in enumerate(keys):
             out.append(pad_inner)
-            _encode_string(str(key), out)
+            out.append(_json.dumps(str(key), ensure_ascii=False))
             out.append(": ")
             _marshal_indent(value[key], out, depth + 1, sort_keys)
             out.append(",\n" if i < len(keys) - 1 else "\n")
@@ -394,7 +393,7 @@ def _marshal_indent(value: Any, out: list[str], depth: int, sort_keys: bool) -> 
     elif isinstance(value, bool):
         out.append("true" if value else "false")
     elif isinstance(value, str):
-        _encode_string(value, out)
+        out.append(_json.dumps(value, ensure_ascii=False))
     elif isinstance(value, int):
         out.append(str(value))
     else:
@@ -450,7 +449,7 @@ def test_golden():
         want = path.read_bytes()
         assert data == want, (
             f"{key}: golden mismatch — if the wire change is intentional, "
-            "update the golden by hand (the goldens are frozen, migration plan §5.0)"
+            "update the golden by hand (the goldens are frozen)"
         )
 
 

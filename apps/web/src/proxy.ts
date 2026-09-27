@@ -26,9 +26,9 @@ import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organize
  *
  * 2. **API routes** (`/api/*`, except the Auth.js routes that stay on
  *    Next.js): mint a short-lived HS256 JWT into the `X-Organizer-Auth`
- *    header so the Go API can identify the signed-in organizer **without
+ *    header so the Python API can identify the signed-in organizer **without
  *    decrypting the Auth.js session cookie** (architecture review fix #1).
- *    The Go API used to hand-roll `@auth/core`'s internal JWE format — a
+ *    The Python API used to hand-roll `@auth/core`'s internal JWE format — a
  *    coupling that a minor Auth.js upgrade could break silently. This
  *    middleware already runs on every matched request and already reads
  *    Auth.js sessions, so it is the natural place to translate the
@@ -52,9 +52,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
     return NextResponse.next()
   }
 
-  // API routes: mint the organizer-auth header for the Go API.
-  // The token must travel in the *request* headers — the Go handler
-  // reads r.Header.Get(ORGANIZER_AUTH_HEADER). Setting it on the
+  // API routes: mint the organizer-auth header for the Python API.
+  // The token must travel in the *request* headers — the API handler
+  // reads the ORGANIZER_AUTH_HEADER request header. Setting it on the
   // response (as this code once did) never reaches the handler, and
   // every browser-side organizer write arrived anonymous (403
   // DEMO_READ_ONLY).
@@ -63,7 +63,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
     // The organizer-auth header is a middleware-minted credential and
     // nothing else: strip any client-supplied value before minting, so
     // an anonymous request can never carry a forged header through to
-    // the Go API. The trust boundary is the topology (this edge always
+    // the Python API. The trust boundary is the topology (this edge always
     // overwrites the header), not only the signing secret.
     requestHeaders.delete(ORGANIZER_AUTH_HEADER)
     const session = await auth()
@@ -80,7 +80,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
 }
 
 /**
- * Match the auth pages (redirect) and the Go-owned API routes (header
+ * Match the auth pages (redirect) and the API-owned routes (header
  * minting). The Auth.js routes (`/api/auth/*`) stay on Next.js and need no
  * organizer-auth header — they are excluded so the middleware does not
  * run on them.

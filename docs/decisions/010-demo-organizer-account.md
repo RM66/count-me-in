@@ -161,8 +161,9 @@ indistinguishable from real data at read time, which is the entire point.
    message, `isDemoOrganizerId()` / `isDemoOrganizerSlug()`.
 2. `packages/contracts/src/primitives.ts` — add `demo` to `RESERVED_SLUGS`.
 3. `packages/contracts/src/organizer.ts` — add `isDemo: boolean` to `organizerProfile`.
-4. `packages/db/src/seed/demo.ts` + `run-demo.ts` — seed data and idempotent upsert; exposed as
-   `bun run --filter @repo/db db:seed:demo` and as `seedDemo()` for the worker.
+4. Seed data and idempotent upsert — originally `packages/db/src/seed/`, since the Python API
+   rewrite (ADR-021) the single implementation is `apps/web/api/_lib/countmein/db/seed.py`,
+   exposed as `bun run db:seed:demo` and run daily by the QStash `demo-refresh` job.
 5. `apps/web/lib/server/demo.ts` — `resolveCabinetOrganizerId()` (per-request "whose cabinet is
    this?"), `rejectDemoWrite()` (route handlers), `assertNotDemo()` / `DemoReadOnlyError` (service
    layer), `isDemoSession()` (server components). Guards treat anonymous as demo.

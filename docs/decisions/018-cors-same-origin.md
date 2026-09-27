@@ -12,7 +12,7 @@ The Go API (`/api/*` via the `vercel.json` rewrite) and the Next.js app are serv
 
 **The API is same-origin only.** No `Access-Control-Allow-Origin` headers are emitted by either runtime:
 
-- the Go API never adds CORS headers ([`pkg/httpx/middleware.go`](../../apps/web/pkg/httpx/middleware.go) sets security headers only);
+- the API never adds CORS headers (the security-headers middleware sets them only; Go `pkg/httpx/middleware.go`, removed in ADR-021 — now `apps/web/api/_lib/countmein/web/middleware.py`);
 - Next.js route handlers and `next.config.js` set no CORS headers either.
 
 Consequences of this choice, by construction:

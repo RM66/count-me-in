@@ -1,15 +1,21 @@
-"""Time-slot routes — the organizer's schedule CRUD. Ported from the
-retired implementation."""
+"""Slot routes: the cabinet's slot CRUD.
+
+The handlers lean on the exception hierarchy: guards and
+decoders raise, the db layer raises ApiError subclasses, and the
+app-level handler renders them. The 404s that are *answers* (unknown or
+foreign slot/service id) stay as explicit raises of the matching
+ApiError subclass. The shared preamble is a set of FastAPI
+dependencies (web/deps.py) declared in the handler signature.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from fastapi import Depends
 from starlette.requests import Request
-
-if TYPE_CHECKING:
-    from starlette.responses import Response as StarletteResponse
+from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
 from ..contracts.domain import iso_date
@@ -23,20 +29,26 @@ from ..db.timeslot import (
     list_slots,
     update_owned_slot_tx,
 )
-from ..demo.resolve import resolve_cabinet_organizer_id
-from ..httpx_ import error, internal, invalid_body, json_response, slot_error_response
-from ..httpx_.guards import read_body_or_413, require_writable_organizer
-from ..i18n.locale import detect_locale
+from ..errors import InvalidInput, NothingToUpdate, ServiceNotFound, SlotNotFound
 from ..validation.decode import (
     decode_create_time_slot_input,
     decode_merged_slot_input,
     decode_update_time_slot_input,
 )
-from .mergepatch import merge_patch, patch_keys, require_merge_patch_content_type
+from ..web import json_response
+from ..web.deps import (
+    ValidatedBody,
+    cabinet_organizer,
+    decoded,
+    merge_patch_content_type,
+    uuid_path_param,
+)
+from ..web.guards import require_writable_organizer
+from .mergepatch import merge_patch, patch_keys
 
-
-def _locale(request: Request) -> str:
-    return detect_locale(request.cookies, request.headers.get("accept-language", ""))
+# One malformed-UUID rule for every /api/slots/{id} route: the
+# JSON error envelope, never a bare 500 from Postgres.
+_uuid_id = uuid_path_param("id")
 
 
 @dataclass
@@ -59,150 +71,113 @@ def slot_writable_state(s: TimeSlotRow) -> dict[str, Any]:
     }
 
 
-async def slots_list(request: Request, upcoming: str | None = None) -> StarletteResponse:
+async def slots_list(
+    request: Request,
+    scope: tuple[str, bool] = Depends(cabinet_organizer),
+    upcoming: str | None = None,
+) -> StarletteResponse:
     """GET /api/slots: lists slots across every service of the organizer
     this request may view (signed-in, or demo for anonymous visitors,
     ADR-010). ?upcoming=1 drops slots that have already started."""
-    organizer_id, _ = resolve_cabinet_organizer_id(request)
+    organizer_id, _ = scope
     upcoming_only = upcoming is not None and upcoming == "1"
 
-    try:
-        rows = await list_slots(organizer_id, upcoming_only)
-    except Exception as err:
-        return internal(err).to_starlette()
+    rows = await list_slots(organizer_id, upcoming_only)
     slots = [to_time_slot_record(row) for row in rows]
     return json_response(200, gen.SlotsEnvelope(slots=slots)).to_starlette()
 
 
-async def slots_create(request: Request) -> StarletteResponse:
+_create_slot_dep = decoded(decode_create_time_slot_input)
+
+
+async def slots_create(
+    request: Request,
+    organizer_id: str = Depends(require_writable_organizer),
+    body: ValidatedBody[gen.CreateTimeSlotInput] = Depends(_create_slot_dep),
+) -> StarletteResponse:
     """POST /api/slots: creates a slot under one of the signed-in
     organizer's services — ownership comes from the session, never the
     body: a serviceId belonging to someone else answers 404."""
-    locale = _locale(request)
-    organizer_id, resp = await require_writable_organizer(request)
-    if resp is not None:
-        return resp.to_starlette()
-
-    body, r = await read_body_or_413(request)
-    if r is not None:
-        return r.to_starlette()
-    input, errs = decode_create_time_slot_input(body)  # type: ignore[arg-type]
-    if errs is not None:
-        return invalid_body(locale, errs).to_starlette()
-
-    assert input is not None
-
-    try:
-        row = await create_slot(organizer_id, input)
-    except Exception as err:
-        return internal(err).to_starlette()
+    row = await create_slot(organizer_id, body.model)
     if row is None:
-        return error(404, locale, "serviceNotFound").to_starlette()
+        raise ServiceNotFound()
     return json_response(201, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
 
 
-async def slot_get(request: Request, id: str) -> StarletteResponse:
+async def slot_get(
+    request: Request,
+    id: str = Depends(_uuid_id),
+    scope: tuple[str, bool] = Depends(cabinet_organizer),
+) -> StarletteResponse:
     """GET /api/slots/{id}, scoped to the organizer this request may
     view through the parent service."""
-    locale = _locale(request)
-    organizer_id, _ = resolve_cabinet_organizer_id(request)
+    organizer_id, _ = scope
 
-    try:
-        row = await get_owned_slot(organizer_id, id)
-    except Exception as err:
-        return internal(err).to_starlette()
+    row = await get_owned_slot(organizer_id, id)
     if row is None:
-        return error(404, locale, "slotNotFound").to_starlette()
+        raise SlotNotFound()
     return json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
 
 
-async def slot_put(request: Request, id: str) -> StarletteResponse:
+_update_slot_dep = decoded(decode_update_time_slot_input)
+
+
+async def slot_put(
+    request: Request,
+    id: str = Depends(_uuid_id),
+    organizer_id: str = Depends(require_writable_organizer),
+    _ct: None = Depends(merge_patch_content_type),
+    body: ValidatedBody[gen.UpdateTimeSlotInput] = Depends(_update_slot_dep),
+) -> StarletteResponse:
     """PUT /api/slots/{id}. Cannot move a slot to another service and
     never touches bookedCount (seats change only through the booking
     flow's atomic reserve); shrinking capacity below the seats already
     sold answers 409. Takes a JSON Merge Patch body (RFC 7386/ADR-016):
     the patch is validated, merged into the current state, and the
     result re-validated."""
-    locale = _locale(request)
-    organizer_id, resp = await require_writable_organizer(request)
-    if resp is not None:
-        return resp.to_starlette()
-    ct = require_merge_patch_content_type(request, locale)
-    if ct is not None:
-        return ct.to_starlette()
-
-    body, r = await read_body_or_413(request)
-    if r is not None:
-        return r.to_starlette()
-    _, errs = decode_update_time_slot_input(body)  # type: ignore[arg-type]
-    if errs is not None:
-        return invalid_body(locale, errs).to_starlette()
-
-    assert _ is not None
-    touched = patch_keys(body)  # type: ignore[arg-type]
+    touched = patch_keys(body.raw)
     if touched is None:
-        return error(400, locale, "nothingToUpdate").to_starlette()
+        raise NothingToUpdate()
 
     # Read → merge → write on one transaction.
-    try:
-        async with engine().begin() as conn:
-            current = await get_owned_slot_tx(conn, organizer_id, id)
-            if current is None:
-                return error(404, locale, "slotNotFound").to_starlette()
+    async with engine().begin() as conn:
+        current = await get_owned_slot_tx(conn, organizer_id, id)
+        if current is None:
+            raise SlotNotFound()
 
-            try:
-                merged = merge_patch(slot_writable_state(current), body)  # type: ignore[arg-type]
-            except ValueError:
-                return error(400, locale, "invalidInput").to_starlette()
-            state, errs = decode_merged_slot_input(merged, bool(touched.get("startsAt")))
-            if errs is not None:
-                return invalid_body(locale, errs).to_starlette()
+        try:
+            merged = merge_patch(slot_writable_state(current), body.raw)
+        except ValueError:
+            raise InvalidInput() from None
+        state = decode_merged_slot_input(merged, bool(touched.get("startsAt")))
 
-            try:
-                row = await update_owned_slot_tx(
-                    conn, organizer_id, id, SlotUpdate(state=state, touched=touched)
-                )
-            except Exception as err:
-                # One handler, two inline errors — no risk of disagreeing
-                # with itself, so these live here instead of a shared
-                # mapper.
-                mapped = slot_error_response(err, locale)
-                if mapped is not None:
-                    return mapped.to_starlette()
-                raise
-            if row is None:
-                return error(404, locale, "slotNotFound").to_starlette()
-    except Exception as err:
-        return internal(err).to_starlette()
+        row = await update_owned_slot_tx(
+            conn, organizer_id, id, SlotUpdate(state=state, touched=touched)
+        )
+        if row is None:
+            raise SlotNotFound()
 
     return json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
 
 
-async def slot_delete(request: Request, id: str) -> StarletteResponse:
+async def slot_delete(
+    request: Request,
+    id: str = Depends(_uuid_id),
+    organizer_id: str = Depends(require_writable_organizer),
+) -> StarletteResponse:
     """DELETE /api/slots/{id}. Refuses a slot that is referenced by any
     booking row, confirmed or cancelled (409 — the time_slots FK is ON
     DELETE RESTRICT, so the database would reject the delete anyway; the
     guard turns the opaque FK error into a clear refusal). The rows are
     guest history and nothing removes them, so the 409 is terminal for
     MVP. Guests are not notified from here."""
-    locale = _locale(request)
-    organizer_id, resp = await require_writable_organizer(request)
-    if resp is not None:
-        return resp.to_starlette()
-
-    try:
-        deleted_id = await delete_owned_slot(organizer_id, id)
-    except Exception as err:
-        mapped = slot_error_response(err, locale)
-        if mapped is not None:
-            return mapped.to_starlette()
-        return internal(err).to_starlette()
+    deleted_id = await delete_owned_slot(organizer_id, id)
     if not deleted_id:
-        return error(404, locale, "slotNotFound").to_starlette()
+        raise SlotNotFound()
 
-    # DeletedSlotEnvelope.id is UUIDModel — its generated pattern
-    # constraint cannot be applied to a coerced UUID by pydantic-core,
-    # so the wrapper is constructed without re-validation (the id comes
-    # straight from the database and is already canonical).
-    envelope = gen.DeletedSlotEnvelope(id=gen.UUIDModel.model_construct(root=deleted_id))  # type: ignore[arg-type]
+    # model_construct (not model_validate): the generated pattern
+    # constraint cannot be applied to a UUID schema by pydantic-core,
+    # and the id comes straight from the database and is already
+    # canonical.
+    envelope = gen.DeletedSlotEnvelope.model_construct(id=deleted_id)
     return json_response(200, envelope).to_starlette()

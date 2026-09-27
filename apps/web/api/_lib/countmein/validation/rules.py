@@ -36,8 +36,9 @@ def is_reserved_slug(v: str) -> bool:
 def _is_valid_timezone(v: str) -> bool:
     """Mirror Intl.DateTimeFormat's lookup, which matches IANA ids
     case-insensitively: try the exact id, then a re-cased form
-    ("europe/belgrade" → "Europe/Belgrade"). "Local" is Go-specific and
-    deliberately rejected so the two sides accept the same set."""
+    ("europe/belgrade" → "Europe/Belgrade"). "Local" is not an IANA
+    id and is deliberately rejected so the two sides accept the
+    same set."""
     if v == "" or v.lower() == "local":
         return False
     try:

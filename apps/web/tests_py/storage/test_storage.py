@@ -87,9 +87,10 @@ def test_is_own_media_url(r2_env, name, url, want):
     ],
 )
 def test_media_key_from_url(r2_env, name, url, key, ok):
-    got_key, got_ok = storage.media_key_from_url(ID, url)
-    assert got_ok is ok
-    assert got_key == key
+    got = storage.media_key_from_url(ID, url)
+    assert (got is not None) is ok
+    if ok:
+        assert got == key
 
 
 def test_media_key_from_url_with_base_path(monkeypatch):
@@ -103,13 +104,13 @@ def test_media_key_from_url_with_base_path(monkeypatch):
     monkeypatch.setenv("R2_PUBLIC_BASE_URL", "https://cdn.example.com/media")
     storage.reset_for_test()
     try:
-        key, ok = storage.media_key_from_url(
+        key = storage.media_key_from_url(
             ID, f"https://cdn.example.com/media/organizers/{ID}/avatar.png"
         )
-        assert ok and key == f"organizers/{ID}/avatar.png"
-        assert not storage.media_key_from_url(ID, f"https://cdn.example.com/media/organizers/{ID}")[
-            1
-        ], "the organizer directory itself must not map to a key"
+        assert key == f"organizers/{ID}/avatar.png"
+        assert (
+            storage.media_key_from_url(ID, f"https://cdn.example.com/media/organizers/{ID}") is None
+        ), "the organizer directory itself must not map to a key"
     finally:
         storage.reset_for_test()
 
@@ -126,8 +127,8 @@ def test_media_key_round_trips_public_url(monkeypatch):
     try:
         for key in (storage.avatar_key(ID, "webp"), storage.service_photo_key(ID, "png")):
             url = storage.public_url(key)
-            got, ok = storage.media_key_from_url(ID, url)
-            assert ok and got == key, f"round trip {key} → {url} broke"
+            got = storage.media_key_from_url(ID, url)
+            assert got == key, f"round trip {key} → {url} broke"
     finally:
         storage.reset_for_test()
 

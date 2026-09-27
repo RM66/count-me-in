@@ -1,5 +1,4 @@
-"""POST /api/jobs/{queue} — the QStash receiver (ADR-012). Ported from the retired
-implementation.
+"""POST /api/jobs/{queue} — the QStash receiver (ADR-012).
 
 Everything QStash delivers lands here: booking.created and
 booking.cancelled published after the booking transaction commits, and
@@ -31,14 +30,14 @@ if TYPE_CHECKING:
     from starlette.responses import Response as StarletteResponse
 
 from .. import config, logx
-from ..httpx_ import empty
-from ..httpx_.guards import read_body_or_413
 from ..jobs.receiver import trace_id_from_headers, verify_qstash_signature
 from ..jobs.run import (
     InvalidJobPayloadError,
     UnknownJobQueueError,
     run_job,
 )
+from ..web import empty
+from ..web.guards import read_body_or_413
 
 # replayTTL — how long a successfully processed delivery's signature is
 # remembered. Short-lived relative to the consumer idempotency window
@@ -49,10 +48,11 @@ from ..jobs.run import (
 REPLAY_TTL_SECONDS = 3600
 
 
-def _errors_as(err: BaseException, cls: type) -> BaseException | None:
-    """The Go errors.As analogue: walk the exception chain (cause/context),
-    not just the outermost type — a wrapped error must not slip past the
-    mapping into a bare 500."""
+def _find_in_chain(err: BaseException, cls: type) -> BaseException | None:
+    """Walk the exception chain (cause/context), not just the outermost
+    type — a wrapped error must not slip past the mapping into a bare
+    500 (which would make QStash retry a delivery that can never
+    succeed)."""
     seen: set[int] = set()
     current: BaseException | None = err
     while current is not None and id(current) not in seen:
@@ -109,8 +109,9 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
     # Only the current signing key is required. The next key exists
     # solely for QStash's key-rotation window and is legitimately empty
     # outside it — requiring it non-empty would 500 every delivery (and
-    # burn QStash's retry budget) for no reason. The verifier simply
-    # tries the empty key and fails to match, which is correct.
+    # burn QStash's retry budget) for no reason. The verifier skips an
+    # empty key entirely: HMAC with "" is computable by anyone, so a
+    # token forged with the empty key must not verify.
     current_signing_key = os.getenv("QSTASH_CURRENT_SIGNING_KEY", "")
     if current_signing_key == "":
         logx.error(RuntimeError("QSTASH_CURRENT_SIGNING_KEY is not set"), {"queue": queue})
@@ -122,16 +123,14 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
     signature = request.headers.get("upstash-signature", "")
     if signature == "":
         return empty(401).to_starlette()
-    body, r = await read_body_or_413(request)
-    if r is not None:
-        return r.to_starlette()
+    body = await read_body_or_413(request)
     # Destination binding: the sub claim must name this deployment's
     # receiver URL — the signing keys are account-scoped, so a delivery
     # signed for another destination in the same account must not
     # verify here.
     expected_sub = os.getenv("APP_URL", "").rstrip("/") + "/api/jobs/" + queue
     if not verify_qstash_signature(
-        body,  # type: ignore[arg-type]
+        body,
         signature,
         current_signing_key,
         next_signing_key,
@@ -153,9 +152,9 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
     # An empty body (the demo-refresh schedule sends no payload) stays
     # None; a non-empty one must be valid JSON.
     payload: bytes | None = None
-    if len(body) > 0:  # type: ignore[arg-type]
+    if len(body) > 0:
         try:
-            json.loads(body)  # type: ignore[arg-type]
+            json.loads(body)
         except ValueError:
             return empty(400).to_starlette()
         payload = body
@@ -167,9 +166,9 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
         # The chain is walked, not a type switch: a wrapped error must
         # not slip past the mapping into a bare 500 (which would make
         # QStash retry a delivery that can never succeed).
-        if _errors_as(err, UnknownJobQueueError) is not None:
+        if _find_in_chain(err, UnknownJobQueueError) is not None:
             return empty(404).to_starlette()
-        if _errors_as(err, InvalidJobPayloadError) is not None:
+        if _find_in_chain(err, InvalidJobPayloadError) is not None:
             return empty(400).to_starlette()
         # Anything else is a handler failure — a 500 so QStash retries
         # the delivery.

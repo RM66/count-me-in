@@ -105,7 +105,7 @@ export type ApiResponse = {
 export type ApiRoute = {
   operationId: string
   method: 'get' | 'post' | 'put' | 'patch' | 'delete'
-  /** OpenAPI and Go 1.22 mux share the `{param}` spelling. */
+  /** OpenAPI and the retired Go mux share the `{param}` spelling. */
   path: string
   summary: string
   auth: ApiAuth

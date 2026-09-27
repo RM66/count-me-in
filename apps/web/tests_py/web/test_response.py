@@ -7,15 +7,15 @@ route handler sits on, so their contracts are pinned here.
 
 import httpx
 from _lib.countmein.contracts.constants_gen import LOCALES
-from _lib.countmein.httpx_.gojson import dumps_go
-from _lib.countmein.httpx_.response import (
+from _lib.countmein.validation.errors import Errors
+from _lib.countmein.web.jsonenc import dumps_compact
+from _lib.countmein.web.response import (
     empty,
     error,
     invalid_body,
     invalid_issues,
     json_response,
 )
-from _lib.countmein.validation.errors import Errors
 
 
 def test_response_write_nil_body_writes_only_status():
@@ -47,13 +47,13 @@ def test_response_marshal_failure_answers_500():
     assert star.status_code == 500
 
 
-def test_gojson_html_escapes_and_sorts():
-    # Go's encoding/json HTML-escapes < > & and sorts map keys.
-    assert dumps_go({"b": 1, "a": "<x>&"}) == '{"a":"\\u003cx\\u003e\\u0026","b":1}'
+def test_jsonenc_keeps_text_verbatim():
+    # stdlib compact JSON — no HTML escaping, insertion key order.
+    assert dumps_compact({"b": 1, "a": "<x>&"}) == '{"b":1,"a":"<x>&"}'
 
 
-def test_gojson_compact_separators():
-    assert dumps_go({"x": [1, 2], "y": "z"}) == '{"x":[1,2],"y":"z"}'
+def test_jsonenc_compact_separators():
+    assert dumps_compact({"x": [1, 2], "y": "z"}) == '{"x":[1,2],"y":"z"}'
 
 
 def test_invalid_body_renderers():
@@ -108,7 +108,7 @@ async def test_middleware_sets_headers_and_recovers():
     async def boom():
         raise RuntimeError("kaboom")
 
-    from _lib.countmein.httpx_.middleware import DefaultHeadersAndRecovery
+    from _lib.countmein.web.middleware import DefaultHeadersAndRecovery
 
     app.add_middleware(DefaultHeadersAndRecovery)
     async with _client(app) as client:
@@ -127,14 +127,15 @@ async def test_middleware_sets_headers_and_recovers():
         assert r.status_code == 500
 
 
-async def test_unknown_route_answers_go_mux_404():
+async def test_unknown_route_answers_json_404():
     from _lib.countmein.app import create_app
 
     app = create_app()
     async with _client(app) as client:
         r = await client.get("/api/does-not-exist")
         assert r.status_code == 404
-        assert r.text == "404 page not found\n"
+        assert r.json() == {"error": "Not found"}
+        assert r.headers["content-type"] == "application/json"
 
 
 async def test_path_restoration_middleware():
@@ -147,11 +148,11 @@ async def test_path_restoration_middleware():
         assert r.status_code in (200, 503)
         r = await client.get("/api/index", params={"_path": "/evil/thing"})
         assert r.status_code == 404
-        assert r.text == "404 page not found\n"
+        assert r.json() == {"error": "Not found"}
 
 
 def test_strip_query_param():
-    from _lib.countmein.httpx_.middleware import strip_query_param
+    from _lib.countmein.web.middleware import strip_query_param
 
     assert strip_query_param("a=1&_path=/x&b=2", "_path") == "a=1&b=2"
     assert strip_query_param("_path=/x", "_path") == ""

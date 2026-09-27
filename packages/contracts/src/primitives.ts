@@ -53,7 +53,7 @@ export const BOUNDS = {
  * that Zod rejects some astral-heavy strings Go would accept (e.g. 60 emoji
  * in a 100-char name); the browser client always validates with Zod first,
  * so users never see the gap. Do not "fix" this by dropping `.max()` — it is
- * what emits `maxLength` into the OpenAPI spec for the Go side.
+ * what emits `maxLength` into the OpenAPI spec for the API.
  */
 
 /**

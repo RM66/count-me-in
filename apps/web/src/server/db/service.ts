@@ -38,7 +38,7 @@ export function toServiceRecord(row: Service): ServiceRecord {
 /**
  * All services belonging to an organizer, oldest first.
  *
- * Read fresh: writes happen in Go and cannot invalidate the Next.js cache.
+ * Read fresh: writes happen in the Python API and cannot invalidate the Next.js cache.
  */
 export async function listServices(organizerId: string): Promise<ServiceRecord[]> {
   const rows = await db

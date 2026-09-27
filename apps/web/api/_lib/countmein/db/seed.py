@@ -1,5 +1,5 @@
-"""Demo organizer seed data (ADR-010), ported from packages/db/src/seed
-— the only copy of the sample content in Python.
+"""Demo organizer seed data (ADR-010) — the only copy of the sample
+content in Python.
 
 Two rules keep this seed usable long-term:
 1. Deterministic ids — re-seeding replaces rows in place instead of
@@ -756,9 +756,9 @@ async def seed_demo(now: datetime) -> None:
                 text(
                     """
                     INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
-                    guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options, manage_token_expires_at)
+                    guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options, manage_token_expires_at, created_at)
                     VALUES (:id, :slot_id, :status, :seats, :guest_name, 'telegram', :guest_messenger_id,
-                        :guest_login, :guest_locale, :token, :token_hash, :selected_options, :expires_at)
+                        :guest_login, :guest_locale, :token, :token_hash, :selected_options, :expires_at, :created_at)
                     """
                 ),
                 {
@@ -774,5 +774,17 @@ async def seed_demo(now: datetime) -> None:
                     "token_hash": b.manage_token_hash,
                     "selected_options": b.selected_options,
                     "expires_at": b.manage_token_expires_at,
+                    "created_at": b.created_at,
                 },
             )
+
+
+if __name__ == "__main__":
+    # CLI entry: `uv run --app-dir api python -m _lib.countmein.db.seed`
+    # (run from apps/web). The only copy of the demo seed (ADR-021) —
+    # `bun run db:seed:demo` delegates here.
+    import asyncio
+    from datetime import UTC
+
+    asyncio.run(seed_demo(datetime.now(tz=UTC)))
+    print("[seed] demo organizer seeded — https://countmein.group/demo")

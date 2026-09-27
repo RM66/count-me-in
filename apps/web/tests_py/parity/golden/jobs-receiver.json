@@ -11,14 +11,14 @@
       "response": {
         "status": 401,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -37,14 +37,14 @@
       "response": {
         "status": 401,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -63,14 +63,14 @@
       "response": {
         "status": 404,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -89,14 +89,14 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -115,14 +115,14 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -141,14 +141,14 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -167,14 +167,14 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",
@@ -193,14 +193,14 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": "",
         "body_raw": "",

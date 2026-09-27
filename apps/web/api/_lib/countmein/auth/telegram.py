@@ -15,7 +15,9 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from ..contracts.models import unwrap_root
 from ..contracts.payloads import AuthTicketPayload
+from ..errors import ValidationFailed
 from ..validation.decode import decode_telegram_widget_payload
 
 
@@ -79,12 +81,6 @@ WIDGET_DATA_VALID_AFTER = 86400
 WIDGET_FUTURE_SKEW = 300
 
 
-def _root(value: Any) -> Any:
-    while hasattr(value, "root"):
-        value = value.root
-    return value
-
-
 def _scalar_string(v: Any) -> str | None:
     """Render a widget value for the data-check-string: strings as-is,
     numbers via their literal (objectToAuthDataMap)."""
@@ -111,9 +107,10 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     if bot_token == "":
         raise TelegramNotConfiguredError()
 
-    payload, errs = decode_telegram_widget_payload(body)
-    if payload is None or errs is not None:
-        raise TelegramInvalidError()
+    try:
+        payload = decode_telegram_widget_payload(body)
+    except ValidationFailed:
+        raise TelegramInvalidError() from None
 
     # The data-check-string covers every field the widget sent, including
     # any the schema does not model — it is computed from the raw body,
@@ -148,7 +145,7 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     # secret = SHA256(bot_token); hash = HMAC-SHA256(secret, dcs) hex.
     secret = hashlib.sha256(bot_token.encode()).digest()
     expected = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, _root(payload.hash)):
+    if not hmac.compare_digest(expected, unwrap_root(payload.hash)):
         raise TelegramValidationFailedError()
 
     # Freshness (hasDataExpired in the TS validator): the HMAC proves
@@ -156,19 +153,19 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     # Asymmetric: stale payloads are rejected past 24h, future ones past
     # clock skew — a future auth_date is a forged claim, not a slow
     # guest.
-    age = int(time.time()) - int(_root(payload.auth_date))
+    age = int(time.time()) - int(unwrap_root(payload.auth_date))
     if age > WIDGET_DATA_VALID_AFTER or age < -WIDGET_FUTURE_SKEW:
         raise TelegramValidationFailedError()
 
-    first = _root(payload.first_name).strip()
-    last = (_root(payload.last_name) or "").strip()
+    first = unwrap_root(payload.first_name).strip()
+    last = (unwrap_root(payload.last_name) or "").strip()
     identity = TelegramIdentity(
         messenger="telegram",
-        messenger_id=str(int(_root(payload.id))),
+        messenger_id=str(int(unwrap_root(payload.id))),
         display_name=f"{first} {last}".strip(),
-        photo_url=_nil_if_empty(_root(payload.photo_url)),
+        photo_url=_nil_if_empty(unwrap_root(payload.photo_url)),
     )
-    username = _root(payload.username)
+    username = unwrap_root(payload.username)
     if username:
         identity.messenger_login = "@" + username
     return identity

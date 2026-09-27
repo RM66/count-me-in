@@ -796,6 +796,8 @@
     "accountExists": "このTelegramアカウントではすでに登録されています。ログインしてください",
     "nothingToUpdate": "更新する項目がありません",
     "unsupportedMediaType": "このエンドポイントは application/merge-patch+json (RFC 7386) のみを受け付けます",
+    "notFound": "見つかりません",
+    "methodNotAllowed": "メソッドは許可されていません",
     "capacityBelowBooked": "定員を予約済みの{count, plural, =1 {#名} other {#名}}より少なくすることはできません",
     "demoReadOnly": "これは閲覧専用のデモアカウントです。アカウントを作成すると、ご自身の予約可能なサービスを公開できます。",
     "soldOut": "この回は満席です",

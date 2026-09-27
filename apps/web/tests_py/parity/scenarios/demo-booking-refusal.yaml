@@ -2,7 +2,7 @@ name: demo-booking-refusal
 steps:
   - reset: true
   - seedDemoSlot: true
-    note: own demo service + slot 30 days out (never the drifting demo seed, §1.4)
+    note: own demo service + slot 30 days out (never the drifting demo seed)
   - mint: guestTicket
     request:
       method: POST

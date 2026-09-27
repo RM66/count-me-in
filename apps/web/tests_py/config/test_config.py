@@ -55,9 +55,9 @@ def test_validate_production_full(monkeypatch):
 def test_validate_production_refusals(monkeypatch, name):
     full_prod_env(monkeypatch)
     monkeypatch.setenv(name, "  ")  # whitespace-only counts as missing
-    err = config.validate()
-    assert err is not None, f"production without {name} must fail validation"
-    assert name in str(err)
+    with pytest.raises(config.ConfigError) as exc_info:
+        config.validate()
+    assert name in str(exc_info.value), f"production without {name} must fail validation"
 
 
 @pytest.mark.parametrize(
@@ -90,11 +90,11 @@ def test_validate_production_refusals(monkeypatch, name):
 def test_validate_app_url_shapes(monkeypatch, app_url, want_err):
     full_prod_env(monkeypatch)
     monkeypatch.setenv("APP_URL", app_url)
-    err = config.validate()
     if want_err:
-        assert err is not None, f"APP_URL={app_url!r} must fail validation"
+        with pytest.raises(config.ConfigError):
+            config.validate()
     else:
-        assert err is None, f"APP_URL={app_url!r} must validate, got {err}"
+        config.validate()  # must not raise
 
 
 def test_validate_strict_env_opts_in(monkeypatch):
@@ -103,12 +103,13 @@ def test_validate_strict_env_opts_in(monkeypatch):
     monkeypatch.setenv("STRICT_ENV", "")
     clear_prod_flags(monkeypatch)
     monkeypatch.setenv("AUTH_SECRET", "")
-    assert config.validate() is None
+    config.validate()  # skipped outside production — must not raise
 
     monkeypatch.setenv("STRICT_ENV", "1")
-    assert config.validate() is not None, "STRICT_ENV=1 must enforce validation outside production"
+    with pytest.raises(config.ConfigError):
+        config.validate()
     full_prod_env(monkeypatch)
-    assert config.validate() is None
+    config.validate()  # full env under STRICT_ENV — must not raise
 
 
 def test_validate_next_signing_key_optional(monkeypatch):
@@ -122,9 +123,8 @@ def test_validate_vercel_env_counts_as_production(monkeypatch):
     monkeypatch.setenv("NODE_ENV", "")
     monkeypatch.setenv("VERCEL_ENV", "production")
     monkeypatch.setenv("APP_URL", "")
-    assert config.validate() is not None, (
-        "VERCEL_ENV=production without APP_URL must fail validation"
-    )
+    with pytest.raises(config.ConfigError):
+        config.validate()
 
 
 def test_redis_configured(monkeypatch):

@@ -56,11 +56,15 @@ async def handle_booking_created(env: Env, job: Any, trace_id: str) -> None:
         token = await issue_login_link(organizer.id, cabinet_slot_path(slot.id))
         locale = notification_locale("organizer", view)
         message = booking_created_for_organizer(view, login_link_url(env.app_url, token), locale)
-        send_message(env.telegram_bot_token, organizer.messenger_id, message.text, message.button)
+        await send_message(
+            env.telegram_bot_token, organizer.messenger_id, message.text, message.button
+        )
         return
 
     locale = notification_locale("guest", view)
     message = booking_created_for_guest(
         view, manage_booking_url(env.app_url, booking.manage_token), locale
     )
-    send_message(env.telegram_bot_token, booking.guest_messenger_id, message.text, message.button)
+    await send_message(
+        env.telegram_bot_token, booking.guest_messenger_id, message.text, message.button
+    )

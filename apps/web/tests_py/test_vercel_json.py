@@ -97,3 +97,20 @@ def test_healthz_rewrite():
     assert any(source == "/api/healthz" for source, _ in vercel_rewrites()), (
         "vercel.json has no /api/healthz rewrite — the probe would 404 in production"
     )
+
+
+def test_bundle_excludes():
+    """The function bundle must exclude everything that is not the API:
+    tests, tooling, e2e, coverage artifacts, storybook. The list is
+    pinned so a new top-level directory does not silently ride into the
+    bundle (the 200MB budget)."""
+    cfg = json.loads((WEB / "vercel.json").read_text())
+    fn = cfg["functions"]["api/index.py"]
+    excluded = fn["excludeFiles"]
+    want = (
+        "{tests_py,node_modules,.next,src,public,scripts,e2e,coverage,test-results,.storybook}/**"
+    )
+    assert excluded == want, f"excludeFiles must stay pinned to the full list (got {excluded!r})"
+    # openapi*.yaml must not be pulled in either — the spec is a build
+    # input, not runtime code.
+    assert fn["includeFiles"] == "api/_lib/**"

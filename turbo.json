@@ -55,6 +55,45 @@
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/contracts/vectors/**"],
       "outputs": ["coverage/**"]
     },
+    "test:py": {
+      "dependsOn": ["generate:py"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "api/**",
+        "tests_py/**",
+        "pyproject.toml",
+        "uv.lock",
+        "requirements.txt"
+      ],
+      "outputs": []
+    },
+    "lint:py": {
+      "dependsOn": ["generate:py"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "api/**",
+        "tests_py/**",
+        "pyproject.toml",
+        "uv.lock",
+        "requirements.txt"
+      ],
+      "outputs": []
+    },
+    "generate:py": {
+      "dependsOn": ["generate:i18n:py", "generate:openapi", "generate:constants"],
+      "inputs": [
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
+        "$TURBO_ROOT$/packages/translations/**",
+        "scripts/**",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": [
+        "api/_lib/countmein/contracts/models_gen.py",
+        "api/_lib/countmein/contracts/constants_gen.py",
+        "api/_lib/countmein/i18n/translations_gen.py",
+        "openapi.yaml"
+      ]
+    },
     "@repo/db#test": {
       "outputs": []
     },

@@ -39,7 +39,7 @@ export default [
   },
   {
     // CQRS boundary (Phase 3.1): `src/server/db/*` is read-only — the write
-    // side lives in the Go API. Forbid Drizzle's mutating methods here so a
+    // side lives in the Python API. Forbid Drizzle's mutating methods here so a
     // stray `.insert/.update/.delete/.set` cannot slip a write past the
     // server-render layer. Reads (`.select`, `.query`) stay legal.
     files: ['src/server/db/**/*.ts'],
@@ -49,7 +49,7 @@ export default [
         {
           selector: 'CallExpression[callee.property.name=/^(insert|update|delete|set)$/]',
           message:
-            'src/server/db is read-only — writes go through the Go API. Use .select() for reads.',
+            'src/server/db is read-only — writes go through the Python API. Use .select() for reads.',
         },
       ],
     },

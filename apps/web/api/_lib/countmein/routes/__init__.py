@@ -2,8 +2,8 @@
 
 The path/method set must equal openapi.yaml (pinned by
 tests_py/test_route_set.py). Handlers return plain Starlette responses
-built through the shared httpx_ layer — FastAPI's own validation and
-serialization are bypassed so the wire bytes stay Go-identical."""
+built through the shared web layer — FastAPI's own validation and
+serialization are bypassed so the wire bytes stay exactly what the frozen goldens pin."""
 
 from __future__ import annotations
 

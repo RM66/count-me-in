@@ -65,9 +65,12 @@ async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
     member = f"{now}-{random.getrandbits(63)}"
     try:
         r = redis_mod.client()
-        res = await r.eval(
-            SLIDING_WINDOW_LUA, 1, key, now, int(cfg.window * 1e9), cfg.limit, member
-        )
+        # register_script: EVALSHA with automatic NOSCRIPT fallback to
+        # EVAL — the Lua body stops traveling on every request.
+        # The Script object is local: it is cheap to build and stays
+        # correct when tests swap the underlying client.
+        script = r.register_script(SLIDING_WINDOW_LUA)
+        res = await script(keys=[key], args=[now, int(cfg.window * 1e9), cfg.limit, member])
     except Exception as err:
         logx.warn_every(
             300,
@@ -94,14 +97,6 @@ async def rate_limited(request: Request, key: str, cfg: RateLimitConfig) -> Resp
     if allowed:
         return None
     locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
-    resp = error(429, locale, "tooManyRequests")
-    resp.headers = {"Retry-After": str(math.ceil(retry_after))}
-    return resp
-
-
-def too_many_requests(locale: str, retry_after: float) -> Response:
-    """The 429 Response for guards that return a *Response instead of
-    writing to the socket, carrying the Retry-After header."""
     resp = error(429, locale, "tooManyRequests")
     resp.headers = {"Retry-After": str(math.ceil(retry_after))}
     return resp

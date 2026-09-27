@@ -14,20 +14,20 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "expiresAt": "<ts:1>",
+          "uploadUrl": "<presigned-url>",
           "publicUrl": "https://parity.r2.example/organizers/<uuid:1>/avatar-<media>.png",
-          "uploadUrl": "<presigned-url>"
+          "expiresAt": "<ts:1>"
         },
         "body_raw": "<presigned-url>",
         "contentLengthMatchesBody": true,
@@ -48,20 +48,20 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "expiresAt": "<ts:2>",
+          "uploadUrl": "<presigned-url>",
           "publicUrl": "https://parity.r2.example/organizers/<uuid:1>/services/photo-<media>.png",
-          "uploadUrl": "<presigned-url>"
+          "expiresAt": "<ts:2>"
         },
         "body_raw": "<presigned-url>",
         "contentLengthMatchesBody": true,
@@ -81,18 +81,20 @@
       "response": {
         "status": 400,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
+          "error": "Invalid input",
           "details": {
+            "formErrors": [],
             "fieldErrors": {
               "contentType": [
                 "value is not one of the allowed values [\"image/jpeg\",\"image/png\",\"image/webp\"]"
@@ -100,12 +102,10 @@
               "size": [
                 "Required"
               ]
-            },
-            "formErrors": []
-          },
-          "error": "Invalid input"
+            }
+          }
         },
-        "body_raw": "{\"details\":{\"fieldErrors\":{\"contentType\":[\"value is not one of the allowed values [\\\"image/jpeg\\\",\\\"image/png\\\",\\\"image/webp\\\"]\"],\"size\":[\"Required\"]},\"formErrors\":[]},\"error\":\"Invalid input\"}",
+        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"contentType\":[\"value is not one of the allowed values [\\\"image/jpeg\\\",\\\"image/png\\\",\\\"image/webp\\\"]\"],\"size\":[\"Required\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -123,21 +123,21 @@
       "response": {
         "status": 403,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "code": "DEMO_READ_ONLY",
-          "error": "This is a read-only demo account — sign up to create your own bookable services."
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
         },
-        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -155,21 +155,21 @@
       "response": {
         "status": 403,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "code": "DEMO_READ_ONLY",
-          "error": "This is a read-only demo account — sign up to create your own bookable services."
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
         },
-        "body_raw": "{\"code\":\"DEMO_READ_ONLY\",\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\"}",
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

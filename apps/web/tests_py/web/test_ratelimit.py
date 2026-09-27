@@ -6,7 +6,7 @@ in miniredis in the routes tests)."""
 from __future__ import annotations
 
 import pytest
-from _lib.countmein.httpx_.ratelimit import RateLimitConfig, allow, client_ip
+from _lib.countmein.web.ratelimit import RateLimitConfig, allow, client_ip
 
 
 @pytest.fixture()

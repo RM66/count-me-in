@@ -1,13 +1,13 @@
 /**
- * Mints a short-lived HS256 JWT that the Go API verifies to identify the
+ * Mints a short-lived HS256 JWT that the Python API verifies to identify the
  * signed-in organizer (architecture review fix #1).
  *
- * The Go API used to decrypt the Auth.js session cookie by hand — a
+ * The Python API used to decrypt the Auth.js session cookie by hand — a
  * reverse-engineering of `@auth/core`'s internal JWE format that a minor
  * Auth.js upgrade could break silently. Instead, the Next.js edge
  * middleware (`proxy.ts`, which already runs on every request and already
  * reads Auth.js sessions) mints this **self-controlled, documented** token
- * into the `X-Organizer-Auth` header. The Go side verifies HS256 — a
+ * into the `X-Organizer-Auth` header. The API verifies HS256 — a
  * stable format we own, not one we chase.
  *
  * **No separate secret.** The signing key is derived from the existing
@@ -79,7 +79,7 @@ async function derivedSigningKey(secret: string): Promise<ArrayBuffer> {
 /**
  * Mint a short-lived organizer-auth token for the given organizer id/slug.
  * Returns the compact JWT string, or `null` when `AUTH_SECRET` is not
- * configured (the Go API then sees no header and treats the caller as
+ * configured (the Python API then sees no header and treats the caller as
  * anonymous — the same outcome as a missing session).
  *
  * Async because Web Crypto (`crypto.subtle`) is async in both the edge and

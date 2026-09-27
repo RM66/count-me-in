@@ -11,34 +11,34 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "organizer": {
-            "contact": "studio@studiodemo.rs",
-            "createdAt": "<ts:1>",
-            "description": "**Boutique movement studio** in the heart of Belgrade.\n\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\n\nWhat we offer:\n\n- 🧘 Morning Vinyasa flow\n- 🌬️ Evening breathwork circles\n- 🏺 Hand-building pottery workshops\n\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._",
             "id": "<uuid:1>",
-            "isDemo": true,
-            "language": "en",
-            "location": "Kralja Petra 123, Belgrade",
+            "slug": "demo",
+            "name": "Studio Demo",
             "messenger": "telegram",
             "messengerId": "demo-account",
-            "name": "Studio Demo",
+            "timezone": "Europe/Belgrade",
+            "description": "**Boutique movement studio** in the heart of Belgrade.\n\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\n\nWhat we offer:\n\n- 🧘 Morning Vinyasa flow\n- 🌬️ Evening breathwork circles\n- 🏺 Hand-building pottery workshops\n\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._",
             "photoUrl": "/organizer-avatar.png",
-            "slug": "demo",
-            "timezone": "Europe/Belgrade"
+            "location": "Kralja Petra 123, Belgrade",
+            "contact": "studio@studiodemo.rs",
+            "language": "en",
+            "createdAt": "<ts:1>",
+            "isDemo": true
           }
         },
-        "body_raw": "{\"organizer\":{\"contact\":\"studio@studiodemo.rs\",\"createdAt\":\"<ts:1>\",\"description\":\"**Boutique movement studio** in the heart of Belgrade.\\n\\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\\n\\nWhat we offer:\\n\\n- 🧘 Morning Vinyasa flow\\n- 🌬️ Evening breathwork circles\\n- 🏺 Hand-building pottery workshops\\n\\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._\",\"id\":\"<uuid:1>\",\"isDemo\":true,\"language\":\"en\",\"location\":\"Kralja Petra 123, Belgrade\",\"messenger\":\"telegram\",\"messengerId\":\"demo-account\",\"name\":\"Studio Demo\",\"photoUrl\":\"/organizer-avatar.png\",\"slug\":\"demo\",\"timezone\":\"Europe/Belgrade\"}}",
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"demo\",\"name\":\"Studio Demo\",\"messenger\":\"telegram\",\"messengerId\":\"demo-account\",\"timezone\":\"Europe/Belgrade\",\"description\":\"**Boutique movement studio** in the heart of Belgrade.\\n\\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\\n\\nWhat we offer:\\n\\n- 🧘 Morning Vinyasa flow\\n- 🌬️ Evening breathwork circles\\n- 🏺 Hand-building pottery workshops\\n\\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._\",\"photoUrl\":\"/organizer-avatar.png\",\"location\":\"Kralja Petra 123, Belgrade\",\"contact\":\"studio@studiodemo.rs\",\"language\":\"en\",\"createdAt\":\"<ts:1>\",\"isDemo\":true}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -54,34 +54,34 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "organizer": {
-            "contact": null,
-            "createdAt": "<ts:2>",
-            "description": null,
             "id": "<uuid:2>",
-            "isDemo": false,
-            "language": "en",
-            "location": null,
+            "slug": "parity-org",
+            "name": "Parity Organizer",
             "messenger": "telegram",
             "messengerId": "900100201",
-            "name": "Parity Organizer",
+            "timezone": "Europe/Belgrade",
+            "description": null,
             "photoUrl": null,
-            "slug": "parity-org",
-            "timezone": "Europe/Belgrade"
+            "location": null,
+            "contact": null,
+            "language": "en",
+            "createdAt": "<ts:2>",
+            "isDemo": false
           }
         },
-        "body_raw": "{\"organizer\":{\"contact\":null,\"createdAt\":\"<ts:2>\",\"description\":null,\"id\":\"<uuid:2>\",\"isDemo\":false,\"language\":\"en\",\"location\":null,\"messenger\":\"telegram\",\"messengerId\":\"900100201\",\"name\":\"Parity Organizer\",\"photoUrl\":null,\"slug\":\"parity-org\",\"timezone\":\"Europe/Belgrade\"}}",
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:2>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"messenger\":\"telegram\",\"messengerId\":\"900100201\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"language\":\"en\",\"createdAt\":\"<ts:2>\",\"isDemo\":false}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -97,34 +97,34 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "organizer": {
-            "contact": "studio@studiodemo.rs",
-            "createdAt": "<ts:1>",
-            "description": "**Boutique movement studio** in the heart of Belgrade.\n\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\n\nWhat we offer:\n\n- 🧘 Morning Vinyasa flow\n- 🌬️ Evening breathwork circles\n- 🏺 Hand-building pottery workshops\n\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._",
             "id": "<uuid:1>",
-            "isDemo": true,
-            "language": "en",
-            "location": "Kralja Petra 123, Belgrade",
+            "slug": "demo",
+            "name": "Studio Demo",
             "messenger": "telegram",
             "messengerId": "demo-account",
-            "name": "Studio Demo",
+            "timezone": "Europe/Belgrade",
+            "description": "**Boutique movement studio** in the heart of Belgrade.\n\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\n\nWhat we offer:\n\n- 🧘 Morning Vinyasa flow\n- 🌬️ Evening breathwork circles\n- 🏺 Hand-building pottery workshops\n\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._",
             "photoUrl": "/organizer-avatar.png",
-            "slug": "demo",
-            "timezone": "Europe/Belgrade"
+            "location": "Kralja Petra 123, Belgrade",
+            "contact": "studio@studiodemo.rs",
+            "language": "en",
+            "createdAt": "<ts:1>",
+            "isDemo": true
           }
         },
-        "body_raw": "{\"organizer\":{\"contact\":\"studio@studiodemo.rs\",\"createdAt\":\"<ts:1>\",\"description\":\"**Boutique movement studio** in the heart of Belgrade.\\n\\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\\n\\nWhat we offer:\\n\\n- 🧘 Morning Vinyasa flow\\n- 🌬️ Evening breathwork circles\\n- 🏺 Hand-building pottery workshops\\n\\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._\",\"id\":\"<uuid:1>\",\"isDemo\":true,\"language\":\"en\",\"location\":\"Kralja Petra 123, Belgrade\",\"messenger\":\"telegram\",\"messengerId\":\"demo-account\",\"name\":\"Studio Demo\",\"photoUrl\":\"/organizer-avatar.png\",\"slug\":\"demo\",\"timezone\":\"Europe/Belgrade\"}}",
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"demo\",\"name\":\"Studio Demo\",\"messenger\":\"telegram\",\"messengerId\":\"demo-account\",\"timezone\":\"Europe/Belgrade\",\"description\":\"**Boutique movement studio** in the heart of Belgrade.\\n\\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\\n\\nWhat we offer:\\n\\n- 🧘 Morning Vinyasa flow\\n- 🌬️ Evening breathwork circles\\n- 🏺 Hand-building pottery workshops\\n\\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._\",\"photoUrl\":\"/organizer-avatar.png\",\"location\":\"Kralja Petra 123, Belgrade\",\"contact\":\"studio@studiodemo.rs\",\"language\":\"en\",\"createdAt\":\"<ts:1>\",\"isDemo\":true}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -140,34 +140,34 @@
       "response": {
         "status": 200,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "organizer": {
-            "contact": "studio@studiodemo.rs",
-            "createdAt": "<ts:1>",
-            "description": "**Boutique movement studio** in the heart of Belgrade.\n\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\n\nWhat we offer:\n\n- 🧘 Morning Vinyasa flow\n- 🌬️ Evening breathwork circles\n- 🏺 Hand-building pottery workshops\n\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._",
             "id": "<uuid:1>",
-            "isDemo": true,
-            "language": "en",
-            "location": "Kralja Petra 123, Belgrade",
+            "slug": "demo",
+            "name": "Studio Demo",
             "messenger": "telegram",
             "messengerId": "demo-account",
-            "name": "Studio Demo",
+            "timezone": "Europe/Belgrade",
+            "description": "**Boutique movement studio** in the heart of Belgrade.\n\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\n\nWhat we offer:\n\n- 🧘 Morning Vinyasa flow\n- 🌬️ Evening breathwork circles\n- 🏺 Hand-building pottery workshops\n\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._",
             "photoUrl": "/organizer-avatar.png",
-            "slug": "demo",
-            "timezone": "Europe/Belgrade"
+            "location": "Kralja Petra 123, Belgrade",
+            "contact": "studio@studiodemo.rs",
+            "language": "en",
+            "createdAt": "<ts:1>",
+            "isDemo": true
           }
         },
-        "body_raw": "{\"organizer\":{\"contact\":\"studio@studiodemo.rs\",\"createdAt\":\"<ts:1>\",\"description\":\"**Boutique movement studio** in the heart of Belgrade.\\n\\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\\n\\nWhat we offer:\\n\\n- 🧘 Morning Vinyasa flow\\n- 🌬️ Evening breathwork circles\\n- 🏺 Hand-building pottery workshops\\n\\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._\",\"id\":\"<uuid:1>\",\"isDemo\":true,\"language\":\"en\",\"location\":\"Kralja Petra 123, Belgrade\",\"messenger\":\"telegram\",\"messengerId\":\"demo-account\",\"name\":\"Studio Demo\",\"photoUrl\":\"/organizer-avatar.png\",\"slug\":\"demo\",\"timezone\":\"Europe/Belgrade\"}}",
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"demo\",\"name\":\"Studio Demo\",\"messenger\":\"telegram\",\"messengerId\":\"demo-account\",\"timezone\":\"Europe/Belgrade\",\"description\":\"**Boutique movement studio** in the heart of Belgrade.\\n\\nSmall-group **yoga**, **breathwork**, and **pottery** — come as you are, _beginners always welcome_.\\n\\nWhat we offer:\\n\\n- 🧘 Morning Vinyasa flow\\n- 🌬️ Evening breathwork circles\\n- 🏺 Hand-building pottery workshops\\n\\n_This is a read-only demo page — [create your own](https://countmein.group/signup) in minutes._\",\"photoUrl\":\"/organizer-avatar.png\",\"location\":\"Kralja Petra 123, Belgrade\",\"contact\":\"studio@studiodemo.rs\",\"language\":\"en\",\"createdAt\":\"<ts:1>\",\"isDemo\":true}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

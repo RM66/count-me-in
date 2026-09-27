@@ -9,45 +9,13 @@ from uuid import UUID
 from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
-class AppLocale(RootModel[Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja']]):
-    root: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja']
-
-
-class AuthTicket(RootModel[str]):
-    root: Annotated[str, Field(max_length=200, min_length=20)]
-
-
 class AuthTicketResponse(BaseModel):
-    ticket: AuthTicket
+    ticket: Annotated[str, Field(max_length=200, min_length=20)]
     organizerExists: bool
-
-
-class AvatarUploadSize(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=1048576)]
-
-
-class BookingStatus(RootModel[Literal['confirmed', 'cancelled']]):
-    root: Literal['confirmed', 'cancelled']
-
-
-class CancelActor(RootModel[Literal['guest', 'organizer']]):
-    root: Literal['guest', 'organizer']
-
-
-class Capacity(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=100000)]
 
 
 class Contact(RootModel[str]):
     root: Annotated[str, Field(max_length=300, min_length=1)]
-
-
-class DisplayName(RootModel[str]):
-    root: Annotated[str, Field(max_length=100, min_length=1)]
-
-
-class DurationMinutes(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=1440)]
 
 
 class ErrorBody(BaseModel):
@@ -67,10 +35,6 @@ class ErrorBody(BaseModel):
     ] = None
 
 
-class ImageContentType(RootModel[Literal['image/jpeg', 'image/png', 'image/webp']]):
-    root: Literal['image/jpeg', 'image/png', 'image/webp']
-
-
 class ImageUploadTarget(BaseModel):
     uploadUrl: AnyUrl
     publicUrl: AnyUrl
@@ -87,27 +51,7 @@ class Location(RootModel[str]):
 
 
 class LookupBookingsInput(BaseModel):
-    guestTicket: AuthTicket
-
-
-class ManageToken(RootModel[str]):
-    root: Annotated[str, Field(max_length=200, min_length=10)]
-
-
-class MaxSeatsPerBooking(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=1000)]
-
-
-class Messenger(RootModel[Literal['telegram']]):
-    root: Literal['telegram']
-
-
-class MessengerID(RootModel[str]):
-    root: Annotated[str, Field(max_length=100, min_length=1)]
-
-
-class NotificationRecipient(RootModel[Literal['organizer', 'guest']]):
-    root: Literal['organizer', 'guest']
+    guestTicket: Annotated[str, Field(max_length=200, min_length=20)]
 
 
 class OptionLabel(RootModel[str]):
@@ -118,10 +62,6 @@ class OptionsList(RootModel[list[OptionLabel]]):
     root: Annotated[list[OptionLabel], Field(max_length=50, min_length=1)]
 
 
-class OptionsSelectMode(RootModel[Literal['single', 'multi']]):
-    root: Literal['single', 'multi']
-
-
 class OrganizerDescription(RootModel[str]):
     root: Annotated[str, Field(max_length=4000)]
 
@@ -130,98 +70,35 @@ class PriceText(RootModel[str]):
     root: Annotated[str, Field(max_length=50, min_length=1)]
 
 
-class Seats(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=1000)]
-
-
-class SelectedOptions(RootModel[list[OptionLabel]]):
-    root: Annotated[list[OptionLabel], Field(max_length=50)]
-
-
 class ServiceDescription(RootModel[str]):
     root: Annotated[str, Field(max_length=2000)]
 
 
-class ServiceID(RootModel[str]):
-    root: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
-
-
-class ServicePhotoUploadSize(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=2097152)]
-
-
-class SlotStartsAt(RootModel[AwareDatetime | int]):
-    root: Annotated[
-        AwareDatetime | int,
-        Field(description='Date-only strings are rejected with 400.'),
-    ]
-
-
-class SlugShape(RootModel[str]):
-    root: Annotated[
-        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
-    ]
-
-
-class TelegramAuthDate(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=4102444800)]
-
-
-class TelegramHash(RootModel[str]):
-    root: Annotated[str, Field(max_length=64, min_length=64)]
-
-
-class TelegramName(RootModel[str]):
-    root: Annotated[str, Field(max_length=256, min_length=1)]
-
-
-class TelegramOptionalName(RootModel[str]):
-    root: Annotated[str, Field(max_length=256)]
-
-
-class TelegramUserID(RootModel[int]):
-    root: Annotated[int, Field(ge=1, le=9007199254740991)]
-
-
-class Timezone(RootModel[str]):
-    root: str
-
-
-class URL(RootModel[AnyUrl]):
-    root: AnyUrl
-
-
-class UUIDModel(RootModel[UUID]):
-    root: Annotated[
-        UUID,
-        Field(
-            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
-        ),
-    ]
-
-
 class UpdateOrganizerLanguageInput(BaseModel):
-    language: AppLocale
+    language: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja']
 
 
 class UpdateServiceInput(BaseModel):
-    title: DisplayName | None = None
+    title: Annotated[str | None, Field(max_length=100, min_length=1)] = None
     description: ServiceDescription | None = None
     location: Location | None = None
     contact: Contact | None = None
-    defaultPrice: PriceText | None = None
-    defaultCapacity: Capacity | None = None
-    defaultDurationMinutes: DurationMinutes | None = None
-    maxSeatsPerBooking: MaxSeatsPerBooking | None = None
+    defaultPrice: Annotated[str | None, Field(max_length=50, min_length=1)] = None
+    defaultCapacity: Annotated[int | None, Field(ge=1, le=100000)] = None
+    defaultDurationMinutes: Annotated[int | None, Field(ge=1, le=1440)] = None
+    maxSeatsPerBooking: Annotated[int | None, Field(ge=1, le=1000)] = None
     options: OptionsList | None = None
-    optionsSelectMode: OptionsSelectMode | None = None
-    photoUrl: URL | None = None
+    optionsSelectMode: Literal['single', 'multi'] | None = None
+    photoUrl: AnyUrl | None = None
 
 
 class UpdateTimeSlotInput(BaseModel):
-    startsAt: SlotStartsAt | None = None
-    durationMinutes: DurationMinutes | None = None
-    capacity: Capacity | None = None
+    startsAt: Annotated[
+        AwareDatetime | int | None,
+        Field(description='Date-only strings are rejected with 400.'),
+    ] = None
+    durationMinutes: Annotated[int | None, Field(ge=1, le=1440)] = None
+    capacity: Annotated[int | None, Field(ge=1, le=100000)] = None
     price: PriceText | None = None
 
 
@@ -231,8 +108,8 @@ class ValidationErrors(BaseModel):
 
 
 class AuthTicketPayload(BaseModel):
-    messenger: Messenger
-    messengerId: MessengerID
+    messenger: Literal['telegram']
+    messengerId: Annotated[str, Field(max_length=100, min_length=1)]
     displayName: str
     photoUrl: AnyUrl | None = None
     messengerLogin: str | None = None
@@ -240,24 +117,54 @@ class AuthTicketPayload(BaseModel):
 
 
 class BookingCancelledJob(BaseModel):
-    bookingId: UUIDModel
-    cancelledBy: CancelActor
-    outboxId: UUIDModel
+    bookingId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    cancelledBy: Literal['guest', 'organizer']
+    outboxId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
 
 
 class BookingCreatedJob(BaseModel):
-    bookingId: UUIDModel
-    recipient: NotificationRecipient
-    outboxId: UUIDModel
+    bookingId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    recipient: Literal['organizer', 'guest']
+    outboxId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
 
 
 class BookingRecord(BaseModel):
-    id: UUIDModel
-    timeSlotId: UUIDModel
-    status: BookingStatus
-    seats: Seats
-    guestName: DisplayName
-    guestMessenger: Messenger
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    timeSlotId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    status: Literal['confirmed', 'cancelled']
+    seats: Annotated[int, Field(ge=1, le=1000)]
+    guestName: Annotated[str, Field(max_length=100, min_length=1)]
+    guestMessenger: Literal['telegram']
     guestMessengerId: str
     guestMessengerLogin: str | None
     selectedOptions: list[str] | None
@@ -265,67 +172,87 @@ class BookingRecord(BaseModel):
 
 
 class CancelBookingByOrganizerInput(BaseModel):
-    bookingId: UUIDModel
+    bookingId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
 
 
 class CancelBookingByTokenInput(BaseModel):
-    manageToken: ManageToken
+    manageToken: Annotated[str, Field(max_length=200, min_length=10)]
 
 
 class CreateAvatarUploadInput(BaseModel):
-    contentType: ImageContentType
-    size: AvatarUploadSize
+    contentType: Literal['image/jpeg', 'image/png', 'image/webp']
+    size: Annotated[int, Field(ge=1, le=1048576)]
 
 
 class CreateBookingInput(BaseModel):
-    serviceId: ServiceID
-    timeSlotId: UUIDModel
-    seats: Seats
-    guestName: DisplayName
-    guestTicket: AuthTicket
-    selectedOptions: SelectedOptions | None = None
-    guestLocale: Annotated[AppLocale, Field(validate_default=True)] = 'en'
+    serviceId: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
+    timeSlotId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    seats: Annotated[int, Field(ge=1, le=1000)]
+    guestName: Annotated[str, Field(max_length=100, min_length=1)]
+    guestTicket: Annotated[str, Field(max_length=200, min_length=20)]
+    selectedOptions: Annotated[list[OptionLabel] | None, Field(max_length=50)] = None
+    guestLocale: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja'] = 'en'
 
 
 class CreateServiceInput(BaseModel):
-    title: DisplayName
-    description: ServiceDescription | None = None
-    location: Location | None = None
-    contact: Contact | None = None
-    defaultPrice: PriceText
-    defaultCapacity: Capacity
-    defaultDurationMinutes: DurationMinutes
-    maxSeatsPerBooking: MaxSeatsPerBooking
-    options: OptionsList | None = None
-    optionsSelectMode: OptionsSelectMode | None = None
-    photoUrl: URL | None = None
+    title: Annotated[str, Field(max_length=100, min_length=1)]
+    description: Annotated[str | None, Field(max_length=2000)] = None
+    location: Annotated[str | None, Field(max_length=300, min_length=1)] = None
+    contact: Annotated[str | None, Field(max_length=300, min_length=1)] = None
+    defaultPrice: Annotated[str, Field(max_length=50, min_length=1)]
+    defaultCapacity: Annotated[int, Field(ge=1, le=100000)]
+    defaultDurationMinutes: Annotated[int, Field(ge=1, le=1440)]
+    maxSeatsPerBooking: Annotated[int, Field(ge=1, le=1000)]
+    options: Annotated[list[OptionLabel] | None, Field(max_length=50, min_length=1)] = (
+        None
+    )
+    optionsSelectMode: Literal['single', 'multi'] | None = None
+    photoUrl: AnyUrl | None = None
 
 
 class CreateServicePhotoUploadInput(BaseModel):
-    contentType: ImageContentType
-    size: ServicePhotoUploadSize
+    contentType: Literal['image/jpeg', 'image/png', 'image/webp']
+    size: Annotated[int, Field(ge=1, le=2097152)]
 
 
 class CreateTimeSlotInput(BaseModel):
-    serviceId: ServiceID
-    startsAt: SlotStartsAt
-    durationMinutes: DurationMinutes
-    capacity: Capacity
-    price: PriceText | None = None
+    serviceId: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
+    startsAt: Annotated[
+        AwareDatetime | int,
+        Field(description='Date-only strings are rejected with 400.'),
+    ]
+    durationMinutes: Annotated[int, Field(ge=1, le=1440)]
+    capacity: Annotated[int, Field(ge=1, le=100000)]
+    price: Annotated[str | None, Field(max_length=50, min_length=1)] = None
 
 
 class DeletedServiceEnvelope(BaseModel):
-    id: ServiceID
+    id: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
 
 
 class DeletedSlotEnvelope(BaseModel):
-    id: UUIDModel
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
 
 
 class GuestTicketResponse(BaseModel):
-    ticket: AuthTicket
-    messenger: Messenger
-    messengerId: MessengerID
+    ticket: Annotated[str, Field(max_length=200, min_length=20)]
+    messenger: Literal['telegram']
+    messengerId: Annotated[str, Field(max_length=100, min_length=1)]
     displayName: str
 
 
@@ -335,31 +262,50 @@ class InvalidBody(BaseModel):
 
 
 class LoginLinkPayload(BaseModel):
-    organizerId: UUIDModel
+    organizerId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
     next: Annotated[str, Field(pattern='^\\/.*')]
 
 
 class OrganizerProfile(BaseModel):
-    id: UUIDModel
-    slug: SlugShape
-    name: DisplayName
-    messenger: Messenger
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    slug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
+    name: Annotated[str, Field(max_length=100, min_length=1)]
+    messenger: Literal['telegram']
     messengerId: str
-    timezone: Timezone
+    timezone: str
     description: str | None
     photoUrl: str | None
     location: str | None
     contact: str | None
-    language: AppLocale
+    language: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja']
     createdAt: str
     isDemo: bool
 
 
 class PublicOrganizer(BaseModel):
-    id: UUIDModel
-    slug: SlugShape
-    name: DisplayName
-    timezone: Timezone
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    slug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
+    name: Annotated[str, Field(max_length=100, min_length=1)]
+    timezone: str
     description: str | None
     photoUrl: str | None
     location: str | None
@@ -368,24 +314,36 @@ class PublicOrganizer(BaseModel):
 
 
 class RegisteredOrganizer(BaseModel):
-    id: UUIDModel
-    slug: SlugShape
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    slug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
 
 
 class ServiceRecord(BaseModel):
-    id: ServiceID
-    organizerId: UUIDModel
-    title: DisplayName
+    id: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
+    organizerId: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    title: Annotated[str, Field(max_length=100, min_length=1)]
     description: str | None
     photoUrl: str | None
     location: str | None
     contact: str | None
-    defaultPrice: PriceText
-    defaultCapacity: Capacity
-    defaultDurationMinutes: DurationMinutes
-    maxSeatsPerBooking: MaxSeatsPerBooking
+    defaultPrice: Annotated[str, Field(max_length=50, min_length=1)]
+    defaultCapacity: Annotated[int, Field(ge=1, le=100000)]
+    defaultDurationMinutes: Annotated[int, Field(ge=1, le=1440)]
+    maxSeatsPerBooking: Annotated[int, Field(ge=1, le=1000)]
     options: list[str] | None
-    optionsSelectMode: OptionsSelectMode | None
+    optionsSelectMode: Literal['single', 'multi'] | None
     createdAt: str
 
 
@@ -393,39 +351,43 @@ class ServicesEnvelope(BaseModel):
     services: list[ServiceRecord]
 
 
-class Slug(RootModel[SlugShape]):
-    root: SlugShape
-
-
 class TelegramWidgetPayload(BaseModel):
-    id: TelegramUserID
-    first_name: TelegramName
-    last_name: TelegramOptionalName | None = None
-    username: TelegramOptionalName | None = None
-    photo_url: URL | None = None
-    auth_date: TelegramAuthDate
-    hash: TelegramHash
+    id: Annotated[int, Field(ge=1, le=9007199254740991)]
+    first_name: Annotated[str, Field(max_length=256, min_length=1)]
+    last_name: Annotated[str | None, Field(max_length=256)] = None
+    username: Annotated[str | None, Field(max_length=256)] = None
+    photo_url: AnyUrl | None = None
+    auth_date: Annotated[int, Field(ge=1, le=4102444800)]
+    hash: Annotated[str, Field(max_length=64, min_length=64)]
 
 
 class TimeSlotRecord(BaseModel):
-    id: UUIDModel
-    serviceId: ServiceID
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    serviceId: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
     startsAt: str
-    durationMinutes: DurationMinutes
-    capacity: Capacity
+    durationMinutes: Annotated[int, Field(ge=1, le=1440)]
+    capacity: Annotated[int, Field(ge=1, le=100000)]
     bookedCount: Annotated[int, Field(ge=0, le=9007199254740991)]
     price: str | None
     createdAt: str
 
 
 class UpdateOrganizerProfileInput(BaseModel):
-    name: DisplayName | None = None
-    slug: Slug | None = None
-    timezone: Timezone | None = None
+    name: Annotated[str | None, Field(max_length=100, min_length=1)] = None
+    slug: Annotated[
+        str | None,
+        Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$'),
+    ] = None
+    timezone: str | None = None
     description: OrganizerDescription | None = None
     location: Location | None = None
     contact: Contact | None = None
-    photoUrl: URL | None = None
+    photoUrl: AnyUrl | None = None
 
 
 class BookingEnvelope(BaseModel):
@@ -433,13 +395,18 @@ class BookingEnvelope(BaseModel):
 
 
 class GuestBooking(BaseModel):
-    id: UUIDModel
-    status: BookingStatus
-    seats: Seats
-    guestName: DisplayName
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    status: Literal['confirmed', 'cancelled']
+    seats: Annotated[int, Field(ge=1, le=1000)]
+    guestName: Annotated[str, Field(max_length=100, min_length=1)]
     selectedOptions: list[str] | None
     createdAt: str
-    manageToken: ManageToken
+    manageToken: Annotated[str, Field(max_length=200, min_length=10)]
     canCancel: bool
     slot: TimeSlotRecord
     service: ServiceRecord
@@ -459,12 +426,14 @@ class OrganizerEnvelope(BaseModel):
 
 
 class RegisterOrganizerInput(BaseModel):
-    ticket: AuthTicket
-    slug: Slug
-    name: DisplayName
-    timezone: Timezone
-    contact: Contact | None = None
-    language: Annotated[AppLocale, Field(validate_default=True)] = 'en'
+    ticket: Annotated[str, Field(max_length=200, min_length=20)]
+    slug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
+    name: Annotated[str, Field(max_length=100, min_length=1)]
+    timezone: str
+    contact: Annotated[str | None, Field(max_length=300, min_length=1)] = None
+    language: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja'] = 'en'
 
 
 class Registered(BaseModel):

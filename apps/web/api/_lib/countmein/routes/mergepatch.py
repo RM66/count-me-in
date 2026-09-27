@@ -16,7 +16,7 @@ from starlette.requests import Request
 if TYPE_CHECKING:
     pass
 
-from ..httpx_.response import Response, error
+from ..web.response import Response, error
 
 
 def require_merge_patch_content_type(request: Request, locale: str) -> Response | None:

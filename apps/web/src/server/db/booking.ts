@@ -68,7 +68,7 @@ export function toBookingRecord(row: Booking): BookingRecord {
  * Normalize a booking and its parent chain into the **guest's** DTO.
  * Keeps `manageToken` — this shape is only ever returned to the guest who owns
  * the booking, identified by that token. `canCancel` carries the same
- * expiry rule the Go cancel write enforces, so the page never offers an
+ * expiry rule the API cancel write enforces, so the page never offers an
  * action that is guaranteed to 404.
  */
 export function toGuestBooking(row: {
@@ -164,11 +164,11 @@ export async function countConfirmedBookings(
  * to the guest's verified messenger account, so no session is involved.
  * Returns `null` for an unknown token, which the page turns into a `404`.
  *
- * Expiry is enforced here the same way the Go cancel write enforces it
+ * Expiry is enforced here the same way the API cancel write enforces it
  * (ADR-020): a token past `manageTokenExpiresAt` is answered exactly like
  * an unknown one, so the page cannot offer a Cancel button that is
  * guaranteed to 404. `NULL` means a legacy row created before the column
- * existed — those stay non-expiring, matching the Go side.
+ * existed — those stay non-expiring, matching the API.
  */
 export async function getGuestBookingByToken(token: string): Promise<GuestBooking | null> {
   // Credential check goes through the hash:

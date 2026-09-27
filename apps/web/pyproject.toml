@@ -53,9 +53,6 @@ extend-exclude = [
 select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-# `assert x is not None` after the decode error-guard is the mypy
-# narrowing pattern for the decode contract (None only with errors).
-"api/_lib/countmein/routes/**" = ["S101"]
 # The parity harness reads small scenario YAMLs inside its async runner —
 # blocking reads of test fixtures, not production code.
 "tests_py/parity/test_replay.py" = ["ASYNC240"]
@@ -76,17 +73,17 @@ select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
 # injection vector, and long DRL/DDL lines cannot be wrapped without
 # hurting the queries.
 "api/_lib/countmein/db/**" = ["S608", "E501"]
+# FastAPI's dependency injection is declared as calls in argument
+# defaults (Depends(...) / the deps.py factories) — B008's "no function
+# call in defaults" is the framework's own idiom.
+"api/_lib/countmein/routes/**" = ["B008"]
+"api/_lib/countmein/web/deps.py" = ["B008"]
 # Notification copy embeds real Russian strings on purpose.
 "api/_lib/countmein/jobs/templates.py" = ["RUF001"]
-# `assert x is not None` after `if _init_err is not None: raise` is the
-# mypy type-narrowing pattern for the lazy singletons; decode.py uses
-# the same pattern after `if errs is not None: return`. The singleton
-# reset helpers close best-effort and swallow close errors (S110).
-"api/_lib/countmein/db/client.py" = ["S101", "S110"]
-"api/_lib/countmein/redis.py" = ["S101", "S110"]
-"api/_lib/countmein/storage.py" = ["S101"]
-"api/_lib/countmein/db/booking_writes.py" = ["S101"]
-"api/_lib/countmein/validation/decode.py" = ["S101"]
+# The singleton reset helpers close best-effort and swallow close
+# errors (S110).
+"api/_lib/countmein/db/client.py" = ["S110"]
+"api/_lib/countmein/redis.py" = ["S110"]
 
 [tool.mypy]
 strict = true

@@ -195,7 +195,7 @@ def can_cancel_booking(
     starts_at: datetime,
     now: datetime | None = None,
 ) -> bool:
-    """The shared cancel rule (Go CanCancelBooking / TS canCancelBooking):
+    """The shared cancel rule (Python can_cancel_booking / TS canCancelBooking):
     a confirmed booking whose slot has not started yet.
 
     The manage-token expiry (+24h grace past slot start) is enforced

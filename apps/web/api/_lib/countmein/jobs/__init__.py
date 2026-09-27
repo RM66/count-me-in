@@ -1,6 +1,6 @@
 """Job handlers — the consumer side of the QStash pipeline (ADR-012).
 
-Submodules mirror the Go package one file per concern:
+Submodules follow one file per concern:
 - receiver: QStash signature verification (Receiver port)
 - run: dispatch, payload validation, consumer idempotency
 - telegram: Bot API client + error classification

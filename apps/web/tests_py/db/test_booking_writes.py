@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
@@ -64,18 +63,12 @@ from sqlalchemy import text
 
 
 def require_postgres() -> None:
-    if os.getenv("POSTGRES_URL", "") == "":
-        # A silent skip in CI would leave the booking invariants
-        # unverified while the pipeline stays green — fail loudly
-        # instead (the CI jobs provide an ephemeral Postgres).
-        if os.getenv("CI") == "true":
-            pytest.fail(
-                "POSTGRES_URL is not set in CI — Postgres service misconfigured, refusing silent skip"
-            )
-        pytest.skip(
-            "POSTGRES_URL is not set — integration test needs the docker Postgres "
-            "(set -a; source ../../.env, see docker-compose.yml)"
-        )
+    # The shared rule: skip locally, fail in CI (a silent skip would
+    # leave the booking invariants unverified while the pipeline stays
+    # green).
+    from _env import require_postgres as _require
+
+    _require()
 
 
 @dataclass

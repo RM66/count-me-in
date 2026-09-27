@@ -1,5 +1,4 @@
-"""Export the Python app's route surface as an OpenAPI document
-(migration plan 3.13).
+"""Export the Python app's route surface as an OpenAPI document.
 
 Builds the spec from the FastAPI routes with openapi_url enabled in a
 test-only factory (the production app never serves its own spec — the

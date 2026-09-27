@@ -111,7 +111,7 @@ async def handle_outbox_sweep() -> None:
         # already happened (inline path or an earlier sweep) is
         # suppressed by QStash instead of duplicated.
         try:
-            publish_outbox(row.queue, row.payload, row.id, row.trace_id)
+            await publish_outbox(row.queue, row.payload, row.id, row.trace_id)
         except PublishSkipped:
             try:
                 await mark_outbox_skipped(row.id)

@@ -4,9 +4,10 @@ The plan's §6.2 called for a cold-start and warm p50 record from the preview
 deploy. The production/preview Vercel measurements were not preserved at
 cutover time; the numbers below are the local equivalents, measured on
 2026-09-27 (macOS, uvicorn, local Postgres 17 + Redis 7 via docker compose) so
-the record is honest about what was actually measured. Re-run
-`scripts/migration/smoke.py <preview-url>` on the next deploy to capture the
-serverless figures and replace this note.
+the record is honest about what was actually measured. To re-capture the
+serverless figures on a future deploy: time the first request to a fresh
+deployment's `/api/healthz` (cold start) and take the p50 of ~20 warm
+repeats of the same endpoint, then replace this note with those numbers.
 
 | Metric                         | Value (local uvicorn) | Plan budget |
 | ------------------------------ | --------------------- | ----------- |

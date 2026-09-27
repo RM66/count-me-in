@@ -1,4 +1,4 @@
-"""Log redaction (plan §4.1): secrets never reach the log lines.
+"""Log redaction: secrets never reach the log lines.
 
 Two doors, both enforced here:
 
@@ -107,7 +107,7 @@ def capture():
 
 
 MARKERS = {
-    # The real session bearer the Go API reads (auth/session.py) — the
+    # The real session bearer the API reads (auth/session.py) — the
     # header a signed-in organizer actually sends.
     "organizer_auth": "SECRETMARK-organizer-auth",
     "cookie": "SECRETMARK-cookie-value",

@@ -92,7 +92,7 @@ import { createTimeSlotInput, slotStartsAt, timeSlotRecord, updateTimeSlotInput 
  * registered under the id it carries in the OpenAPI document. The old
  * `x-go-*` metadata and the `kind` tags fed the retired hand-written
  * generator; the OpenAPI spec is now rendered by zod-openapi from this
- * registry alone ([`openapi.ts`](./openapi.ts)), and the Go side is
+ * registry alone ([`openapi.ts`](./openapi.ts)), and the API is
  * generated from the spec by datamodel-code-generator.
  */
 

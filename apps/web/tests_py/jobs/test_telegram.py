@@ -1,6 +1,6 @@
 """The Telegram error-classification tests — the retry budget
-(ADR-012). The fake Bot
-API is an httpx MockTransport instead of an httptest server."""
+(ADR-012). The fake Bot API is an async transport seam instead of an
+httptest server."""
 
 import json
 
@@ -21,7 +21,7 @@ class FakeTelegram:
         self.status = 0
         self.desc = ""
 
-    def __call__(self, url, content=None, headers=None, timeout=None):
+    async def __call__(self, url, content=None, headers=None, **kwargs):
         body = json.loads(content or b"{}")
         markup = body.get("reply_markup")
         button = ""
@@ -45,48 +45,48 @@ def fake(monkeypatch):
     telegram._reset_for_test()
 
 
-def test_send_message_unreachable_is_terminal(fake):
+async def test_send_message_unreachable_is_terminal(fake):
     # 403 — the recipient never pressed Start.
     fake.status, fake.desc = 403, "Forbidden: bot was blocked by the user"
     with pytest.raises(TelegramUnreachableError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
     # 400 "chat not found" — same event for the receiver.
     fake.status, fake.desc = 400, "Bad Request: chat not found"
     with pytest.raises(TelegramUnreachableError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
     # A content-rejected 400 (our escaping bug, or an over-long message)
     # is terminal: retrying cannot fix the payload, so the job completes
     # with a log instead of burning the retry budget.
     fake.status, fake.desc = 400, "Bad Request: can't parse entities"
     with pytest.raises(TelegramTerminalError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
     fake.status, fake.desc = 400, "Bad Request: message is too long"
     with pytest.raises(TelegramTerminalError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
     # Any other 400 stays a plain error — never silently completed.
     fake.status, fake.desc = 400, "Bad Request: something unexpected"
     with pytest.raises(SendMessageError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
 
-def test_send_message_transient_is_retryable(fake):
+async def test_send_message_transient_is_retryable(fake):
     # 429 — rate limit, worth retrying.
     fake.status, fake.desc = 429, "Too Many Requests: retry after 5"
     with pytest.raises(TelegramTransientError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
     # 5xx — outage, worth retrying.
     fake.status, fake.desc = 500, "Internal Server Error"
     with pytest.raises(TelegramTransientError):
-        telegram.send_message("tok", "chat-1", "hi")
+        await telegram.send_message("tok", "chat-1", "hi")
 
 
-def test_send_message_success_records_call(fake):
-    telegram.send_message(
+async def test_send_message_success_records_call(fake):
+    await telegram.send_message(
         "tok",
         "chat-9",
         "hi",

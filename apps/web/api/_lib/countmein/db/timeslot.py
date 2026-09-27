@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ..contracts import domain
+from ..contracts.models import unwrap_root
 from ..demo import refuse_demo_write
 from .client import engine
 from .errors import (
@@ -25,16 +26,10 @@ from .shared import is_foreign_key_violation, new_id
 _OWNED_SERVICES = "SELECT id FROM services WHERE organizer_id = :org_id"
 
 
-def _root(value: Any) -> Any:
-    while hasattr(value, "root"):
-        value = value.root
-    return value
-
-
 def _slot_starts_at_time(s: Any) -> Any:
     """Extract the instant behind the generated oneOf wrapper (ISO string
     or epoch)."""
-    return domain.parse_flex_time(_root(s))
+    return domain.parse_flex_time(unwrap_root(s))
 
 
 async def list_slots(organizer_id: str, upcoming_only: bool) -> list[TimeSlotRow]:
@@ -80,7 +75,7 @@ async def get_owned_slot_tx(
     return scan_slot(result.first())
 
 
-async def create_slot(organizer_id: str, input: Any) -> TimeSlotRow | None:
+async def create_slot(organizer_id: str, payload: Any) -> TimeSlotRow | None:
     """Under a service owned by organizer_id; None when the parent
     service does not exist or belongs to someone else (the caller
     answers 404 without ever confirming a foreign id). Ownership is
@@ -94,13 +89,13 @@ async def create_slot(organizer_id: str, input: Any) -> TimeSlotRow | None:
     async with engine().begin() as conn:
         result = await conn.execute(
             text("SELECT id FROM services WHERE id = :sid AND organizer_id = :org_id LIMIT 1"),
-            {"sid": str(_root(input.serviceId)), "org_id": organizer_id},
+            {"sid": str(unwrap_root(payload.serviceId)), "org_id": organizer_id},
         )
         owned = result.first()
         if owned is None:
             return None
 
-        starts_at = _slot_starts_at_time(input.startsAt)
+        starts_at = _slot_starts_at_time(payload.startsAt)
         try:
             result = await conn.execute(
                 text(
@@ -114,9 +109,9 @@ async def create_slot(organizer_id: str, input: Any) -> TimeSlotRow | None:
                     "id": new_id(),
                     "sid": owned[0],
                     "starts_at": starts_at,
-                    "duration": int(_root(input.durationMinutes)),
-                    "capacity": int(_root(input.capacity)),
-                    "price": _root(input.price),
+                    "duration": int(unwrap_root(payload.durationMinutes)),
+                    "capacity": int(unwrap_root(payload.capacity)),
+                    "price": unwrap_root(payload.price),
                 },
             )
         except Exception as err:
@@ -152,12 +147,12 @@ async def update_owned_slot_tx(
     if touched.get("startsAt") and state.startsAt is not None:
         add("starts_at", "starts_at", _slot_starts_at_time(state.startsAt))
     if touched.get("durationMinutes") and state.durationMinutes is not None:
-        add("duration_minutes", "duration", int(_root(state.durationMinutes)))
+        add("duration_minutes", "duration", int(unwrap_root(state.durationMinutes)))
     if touched.get("capacity") and state.capacity is not None:
-        add("capacity", "capacity", int(_root(state.capacity)))
+        add("capacity", "capacity", int(unwrap_root(state.capacity)))
     if touched.get("price"):
         if state.price is not None:
-            add("price", "price", str(_root(state.price)))
+            add("price", "price", str(unwrap_root(state.price)))
         else:
             sets.append("price = NULL")
     if not sets:

@@ -75,7 +75,7 @@ maybeDescribe('auth tickets and login links (integration, real Redis)', () => {
       const { peekLoginLink, consumeLoginLink } = await import('@/server/auth/login-link')
       const { getRedis } = await import('@repo/redis')
 
-      // Mint a link the way the Go API does: { organizerId, next } under the
+      // Mint a link the way the Python API does: { organizerId, next } under the
       // shared key format.
       const token = 'test-login-link-token-1'
       const payload = { organizerId: '01930000-0000-7000-8000-0000000000de', next: '/cabinet' }

@@ -17,35 +17,35 @@
       "response": {
         "status": 201,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Expired Host",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
             "contact": null,
-            "createdAt": "<ts:1>",
+            "defaultPrice": "20.00",
             "defaultCapacity": 5,
             "defaultDurationMinutes": 60,
-            "defaultPrice": "20.00",
-            "description": null,
-            "id": "<sid:1>",
-            "location": null,
             "maxSeatsPerBooking": 4,
             "options": null,
             "optionsSelectMode": null,
-            "organizerId": "<uuid:1>",
-            "photoUrl": null,
-            "title": "Expired Host"
+            "createdAt": "<ts:1>"
           }
         },
-        "body_raw": "{\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"defaultPrice\":\"20.00\",\"description\":null,\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Expired Host\"}}",
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Expired Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -66,29 +66,29 @@
       "response": {
         "status": 201,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "slot": {
-            "bookedCount": 0,
-            "capacity": 5,
-            "createdAt": "<ts:2>",
-            "durationMinutes": 60,
             "id": "<uuid:2>",
-            "price": null,
             "serviceId": "<sid:1>",
-            "startsAt": "<ts:3>"
+            "startsAt": "<ts:2>",
+            "durationMinutes": 60,
+            "capacity": 5,
+            "bookedCount": 0,
+            "price": null,
+            "createdAt": "<ts:3>"
           }
         },
-        "body_raw": "{\"slot\":{\"bookedCount\":0,\"capacity\":5,\"createdAt\":\"<ts:2>\",\"durationMinutes\":60,\"id\":\"<uuid:2>\",\"price\":null,\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:3>\"}}",
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -110,66 +110,66 @@
       "response": {
         "status": 201,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "booking": {
-            "canCancel": true,
-            "createdAt": "<ts:5>",
-            "guestName": "Expired Guest",
             "id": "<uuid:3>",
-            "manageToken": "<token>",
-            "organizer": {
-              "contact": null,
-              "description": null,
-              "id": "<uuid:1>",
-              "isDemo": false,
-              "location": null,
-              "name": "Parity Organizer",
-              "photoUrl": null,
-              "slug": "parity-org",
-              "timezone": "Europe/Belgrade"
-            },
+            "status": "confirmed",
             "seats": 1,
+            "guestName": "Expired Guest",
             "selectedOptions": null,
+            "createdAt": "<ts:5>",
+            "manageToken": "<token>",
+            "canCancel": true,
+            "slot": {
+              "id": "<uuid:2>",
+              "serviceId": "<sid:1>",
+              "startsAt": "<ts:2>",
+              "durationMinutes": 60,
+              "capacity": 5,
+              "bookedCount": 1,
+              "price": null,
+              "createdAt": "<ts:3>"
+            },
             "service": {
+              "id": "<sid:1>",
+              "organizerId": "<uuid:1>",
+              "title": "Expired Host",
+              "description": null,
+              "photoUrl": null,
+              "location": null,
               "contact": null,
-              "createdAt": "<ts:1>",
+              "defaultPrice": "20.00",
               "defaultCapacity": 5,
               "defaultDurationMinutes": 60,
-              "defaultPrice": "20.00",
-              "description": null,
-              "id": "<sid:1>",
-              "location": null,
               "maxSeatsPerBooking": 4,
               "options": null,
               "optionsSelectMode": null,
-              "organizerId": "<uuid:1>",
+              "createdAt": "<ts:1>"
+            },
+            "organizer": {
+              "id": "<uuid:1>",
+              "slug": "parity-org",
+              "name": "Parity Organizer",
+              "timezone": "Europe/Belgrade",
+              "description": null,
               "photoUrl": null,
-              "title": "Expired Host"
-            },
-            "slot": {
-              "bookedCount": 1,
-              "capacity": 5,
-              "createdAt": "<ts:2>",
-              "durationMinutes": 60,
-              "id": "<uuid:2>",
-              "price": null,
-              "serviceId": "<sid:1>",
-              "startsAt": "<ts:3>"
-            },
-            "status": "confirmed"
+              "location": null,
+              "contact": null,
+              "isDemo": false
+            }
           }
         },
-        "body_raw": "{\"booking\":{\"canCancel\":true,\"createdAt\":\"<ts:5>\",\"guestName\":\"Expired Guest\",\"id\":\"<uuid:3>\",\"manageToken\":\"<token>\",\"organizer\":{\"contact\":null,\"description\":null,\"id\":\"<uuid:1>\",\"isDemo\":false,\"location\":null,\"name\":\"Parity Organizer\",\"photoUrl\":null,\"slug\":\"parity-org\",\"timezone\":\"Europe/Belgrade\"},\"seats\":1,\"selectedOptions\":null,\"service\":{\"contact\":null,\"createdAt\":\"<ts:1>\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"defaultPrice\":\"20.00\",\"description\":null,\"id\":\"<sid:1>\",\"location\":null,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"organizerId\":\"<uuid:1>\",\"photoUrl\":null,\"title\":\"Expired Host\"},\"slot\":{\"bookedCount\":1,\"capacity\":5,\"createdAt\":\"<ts:2>\",\"durationMinutes\":60,\"id\":\"<uuid:2>\",\"price\":null,\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:3>\"},\"status\":\"confirmed\"}}",
+        "body_raw": "{\"booking\":{\"id\":\"<uuid:3>\",\"status\":\"confirmed\",\"seats\":1,\"guestName\":\"Expired Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":true,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":1,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Expired Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -178,16 +178,16 @@
           "path": "/v2/publish/http://127.0.0.1:3101/api/jobs/booking.created",
           "body": {
             "bookingId": "<uuid:3>",
-            "outboxId": "<uuid:4>",
-            "recipient": "guest"
+            "recipient": "guest",
+            "outboxId": "<uuid:4>"
           }
         },
         {
           "path": "/v2/publish/http://127.0.0.1:3101/api/jobs/booking.created",
           "body": {
             "bookingId": "<uuid:3>",
-            "outboxId": "<uuid:5>",
-            "recipient": "organizer"
+            "recipient": "organizer",
+            "outboxId": "<uuid:5>"
           }
         }
       ]
@@ -204,15 +204,15 @@
       "response": {
         "status": 404,
         "headers": {
-          "cache-control": "no-store",
           "content-type": "application/json",
-          "permissions-policy": "camera=(), microphone=(), geolocation=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
           "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
-          "x-robots-tag": "noindex"
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
           "error": "Booking not found"

@@ -11,17 +11,12 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from ..contracts.models import unwrap_root
 from ..demo import refuse_demo_write
 from .client import engine
 from .errors import NoServiceUpdatesError, ServiceHasBookingsError
 from .rows import SERVICE_COLUMNS, ServiceRow, scan_service
 from .shared import is_foreign_key_violation, new_service_id
-
-
-def _root(value: Any) -> Any:
-    while hasattr(value, "root"):
-        value = value.root
-    return value
 
 
 async def list_services(organizer_id: str) -> list[ServiceRow]:
@@ -58,16 +53,16 @@ async def get_owned_service_tx(
     return scan_service(result.first())
 
 
-async def create_service(organizer_id: str, input: Any) -> ServiceRow | None:
+async def create_service(organizer_id: str, payload: Any) -> ServiceRow | None:
     """The owner always comes from the session, never the payload;
     optional columns are normalized to null."""
     refuse_demo_write(organizer_id)
     mode = None
-    if input.optionsSelectMode is not None:
-        mode = str(_root(input.optionsSelectMode))
+    if payload.optionsSelectMode is not None:
+        mode = str(unwrap_root(payload.optionsSelectMode))
     options = None
-    if input.options is not None:
-        options = [_root(o) for o in _root(input.options)]
+    if payload.options is not None:
+        options = [unwrap_root(o) for o in unwrap_root(payload.options)]
     async with engine().begin() as conn:
         result = await conn.execute(
             text(
@@ -83,15 +78,15 @@ async def create_service(organizer_id: str, input: Any) -> ServiceRow | None:
             {
                 "id": new_service_id(),
                 "org_id": organizer_id,
-                "title": str(_root(input.title)),
-                "description": _root(input.description),
-                "photo": _root(input.photoUrl),
-                "location": _root(input.location),
-                "contact": _root(input.contact),
-                "price": str(_root(input.defaultPrice)),
-                "capacity": int(_root(input.defaultCapacity)),
-                "duration": int(_root(input.defaultDurationMinutes)),
-                "max_seats": int(_root(input.maxSeatsPerBooking)),
+                "title": str(unwrap_root(payload.title)),
+                "description": unwrap_root(payload.description),
+                "photo": unwrap_root(payload.photoUrl),
+                "location": unwrap_root(payload.location),
+                "contact": unwrap_root(payload.contact),
+                "price": str(unwrap_root(payload.defaultPrice)),
+                "capacity": int(unwrap_root(payload.defaultCapacity)),
+                "duration": int(unwrap_root(payload.defaultDurationMinutes)),
+                "max_seats": int(unwrap_root(payload.maxSeatsPerBooking)),
                 "options": options,
                 "mode": mode,
             },
@@ -124,39 +119,39 @@ async def update_owned_service_tx(
     state = update.state
     touched = update.touched
     if touched.get("title") and state.title is not None:
-        add("title", "title", str(_root(state.title)))
+        add("title", "title", str(unwrap_root(state.title)))
     if touched.get("description"):
         if state.description is not None:
-            add("description", "description", str(_root(state.description)))
+            add("description", "description", str(unwrap_root(state.description)))
         else:
             set_null("description")
     if touched.get("location"):
         if state.location is not None:
-            add("location", "location", str(_root(state.location)))
+            add("location", "location", str(unwrap_root(state.location)))
         else:
             set_null("location")
     if touched.get("contact"):
         if state.contact is not None:
-            add("contact", "contact", str(_root(state.contact)))
+            add("contact", "contact", str(unwrap_root(state.contact)))
         else:
             set_null("contact")
     if touched.get("defaultPrice") and state.defaultPrice is not None:
-        add("default_price", "default_price", str(_root(state.defaultPrice)))
+        add("default_price", "default_price", str(unwrap_root(state.defaultPrice)))
     if touched.get("defaultCapacity") and state.defaultCapacity is not None:
-        add("default_capacity", "default_capacity", int(_root(state.defaultCapacity)))
+        add("default_capacity", "default_capacity", int(unwrap_root(state.defaultCapacity)))
     if touched.get("defaultDurationMinutes") and state.defaultDurationMinutes is not None:
-        add("default_duration_minutes", "duration", int(_root(state.defaultDurationMinutes)))
+        add("default_duration_minutes", "duration", int(unwrap_root(state.defaultDurationMinutes)))
     if touched.get("maxSeatsPerBooking") and state.maxSeatsPerBooking is not None:
-        add("max_seats_per_booking", "max_seats", int(_root(state.maxSeatsPerBooking)))
+        add("max_seats_per_booking", "max_seats", int(unwrap_root(state.maxSeatsPerBooking)))
     if touched.get("options"):
         if state.options is not None:
-            add("options", "options", [_root(o) for o in _root(state.options)])
+            add("options", "options", [unwrap_root(o) for o in unwrap_root(state.options)])
         else:
             set_null("options")
     if touched.get("optionsSelectMode"):
         if state.optionsSelectMode is not None:
             sets.append("options_select_mode = CAST(:mode AS options_select_mode)")
-            args["mode"] = str(_root(state.optionsSelectMode))
+            args["mode"] = str(unwrap_root(state.optionsSelectMode))
         else:
             set_null("options_select_mode")
     if touched.get("photoUrl"):

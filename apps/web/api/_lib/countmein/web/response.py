@@ -8,16 +8,31 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from starlette.responses import Response as StarletteResponse
+from starlette.responses import Response as StarletteResponse
 
 from .. import logx
 from ..contracts.constants_gen import DEMO_READ_ONLY_CODE
 from ..contracts.models_gen import ErrorBody, InvalidBody, InvalidIssuesBody, ValidationErrors
 from ..i18n import api_error
-from .gojson import dumps_go
+from .jsonenc import dumps_compact
+
+
+class CompactJSONResponse(StarletteResponse):
+    """A JSON response rendered with the compact encoder: one response
+    class whose render() produces the exact bytes the wire contract
+    pins — compact separators, UTF-8 text, field order from the
+    model, no trailing newline."""
+
+    def __init__(self, body: Any, status: int = 200, headers: Mapping[str, str] | None = None):
+        self._body = body
+        merged = dict(headers or {})
+        merged.setdefault("Content-Type", "application/json")
+        super().__init__(content=None, status_code=status, headers=merged)
+
+    def render(self, content: Any) -> bytes:
+        return dumps_compact(_marshal_body(self._body)).encode("utf-8")
 
 
 @dataclass
@@ -31,30 +46,23 @@ class Response:
     headers: Mapping[str, str] = field(default_factory=dict)
 
     def to_starlette(self) -> StarletteResponse:
-        from starlette.responses import Response as StarletteResponse
-
         headers = dict(self.headers)
         if self.body is None:
             return StarletteResponse(status_code=self.status, headers=headers, background=None)
         try:
-            payload = dumps_go(_marshal_body(self.body))
+            return CompactJSONResponse(self.body, status=self.status, headers=headers)
         except Exception as err:  # encoding failure answered cleanly
             logx.error(err, {"scope": "api", "op": "marshal-response"})
             return StarletteResponse(status_code=500, headers=headers)
-        raw = payload.encode("utf-8")
-        headers["Content-Type"] = "application/json"
-        headers["Content-Length"] = str(len(raw))
-        return StarletteResponse(content=raw, status_code=self.status, headers=headers)
 
 
 def _marshal_body(body: Any) -> Any:
     # mode="json": python-mode dumps keep AnyUrl/UUID objects that the
     # JSON encoder cannot write (a 500 on every media-upload response);
-    # json mode renders them as their canonical strings, matching Go's
-    # marshaling of url.URL / [16]byte.
+    # json mode renders them as their canonical strings.
     if isinstance(body, ErrorBody):
-        # Go's ErrorBody marks code/seatsLeft/maxSeats omitempty — the
-        # plain error body is {"error": …} with the extras only when set.
+        # code/seatsLeft/maxSeats are optional extras — the plain error
+        # body is {"error": …} with the extras only when set.
         dumped = body.model_dump(mode="json", exclude_none=False, by_alias=True)
         return {k: v for k, v in dumped.items() if v is not None or k == "error"}
     if hasattr(body, "model_dump"):
@@ -68,6 +76,18 @@ def json_response(status: int, body: Any) -> Response:
 
 def empty(status: int) -> Response:
     return Response(status=status)
+
+
+def not_found(locale: str) -> Response:
+    """The JSON 404 envelope for unknown routes — localized like every
+    other API error, never plain text."""
+    return error(404, locale, "notFound")
+
+
+def method_not_allowed(locale: str) -> Response:
+    """The JSON 405 envelope for known paths with an unregistered
+    method."""
+    return error(405, locale, "methodNotAllowed")
 
 
 def internal(err: BaseException) -> Response:

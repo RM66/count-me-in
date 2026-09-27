@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 from starlette.responses import Response
 
 from .. import config, logx
-from ..httpx_.gojson import dumps_go
-from ..httpx_.ratelimit import RateLimitConfig, client_ip, rate_limited
+from ..web.jsonenc import dumps_compact
+from ..web.ratelimit import RateLimitConfig, client_ip, rate_limited
 
 _MAX_STACK = 8 << 10
 
@@ -59,8 +59,8 @@ def _missing_healthz_env() -> list[str]:
 
 
 def _panicking_env() -> str | None:
-    """The variable whose absence is the Go probe's panic path. Only
-    Postgres panics on a missing env (the lazy engine raises); Redis
+    """The variable whose absence is the probe's panic path. Only
+    Postgres fails on a missing env (the lazy engine raises); Redis
     unconfigured is the deliberate `skipped` state, not an outage."""
     if os.getenv("POSTGRES_URL", "").strip() == "":
         return "POSTGRES_URL"
@@ -68,10 +68,9 @@ def _panicking_env() -> str | None:
 
 
 def _encoder_body(checks: dict[str, str]) -> bytes:
-    """Go writes the probe with json.NewEncoder(w).Encode — compact JSON
-    with sorted map keys and a trailing newline (Encoder, not Marshal).
-    The parity goldens pin the exact bytes."""
-    return (dumps_go(checks) + "\n").encode("utf-8")
+    """The probe body is compact JSON with sorted map keys and a
+    trailing newline — the exact bytes the parity goldens pin."""
+    return (dumps_compact(checks) + "\n").encode("utf-8")
 
 
 async def handle_healthz(request: Request) -> Response:
@@ -82,17 +81,15 @@ async def handle_healthz(request: Request) -> Response:
         if limited is not None:
             return limited.to_starlette()
 
-        # A missing POSTGRES_URL is the Go probe's panic path: there the
-        # lazy engine panics inside probePostgres and Recover answers
-        # the full-failure body naming the variables. Reproduced here as
-        # an explicit up-front check — the per-probe except below would
-        # otherwise swallow the env error into a single-dependency
-        # "fail", which is not what Go answers. (Redis unconfigured is
-        # the deliberate `skipped` state, not this path.)
+        # A missing POSTGRES_URL is the probe's panic path: the answer
+        # is the full-failure body naming the variables, not a
+        # single-dependency "fail". Checked up-front because the
+        # per-probe except below would otherwise swallow the env error
+        # into exactly that single-dependency shape. (Redis unconfigured
+        # is the deliberate `skipped` state, not this path.)
         panicking = _panicking_env()
         if panicking is not None:
-            # The retired implementation's Recover logged the panic before
-            # answering;
+            # The panic is logged before answering;
             # healthz is excluded from the access log, so without this line a
             # misconfigured production deploy leaves no trace in the drain.
             logx.error(

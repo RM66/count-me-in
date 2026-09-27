@@ -79,7 +79,7 @@ describe('timezone', () => {
 
   // Parity vector with pkg/validation TestTimezoneRuleCaseInsensitive: IANA ids
   // are case-insensitive, and "Local" is a Go-only name neither side accepts.
-  it('accepts case-insensitive IANA ids like the Go API', () => {
+  it('accepts case-insensitive IANA ids like the Python API', () => {
     expect(timezone.safeParse('europe/belgrade').success).toBe(true)
     expect(timezone.safeParse('america/new_york').success).toBe(true)
     expect(timezone.safeParse('Local').success).toBe(false)
