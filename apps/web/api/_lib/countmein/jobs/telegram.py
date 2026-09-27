@@ -17,7 +17,7 @@ from typing import Any
 
 import httpx
 
-from ..web.asynclient import client as async_client
+from ..web.asyncclient import client as async_client
 
 # MessageButton is a link rendered as a tappable button under the message.
 

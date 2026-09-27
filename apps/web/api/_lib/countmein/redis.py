@@ -52,11 +52,24 @@ def client() -> aioredis.Redis:
     return _client
 
 
+async def dispose() -> None:
+    """Close the shared connection if one was opened, then drop the
+    cached state so the next client() call re-reads REDIS_URL. The
+    lifespan shutdown is the only production caller; a close failure
+    is the caller's to absorb (it must not mask the response already
+    sent)."""
+    global _client, _init_err
+    if _client is not None:
+        await _client.aclose()
+    _client = None
+    _init_err = None
+
+
 def reset_for_test() -> None:
     """Drop the cached client and init state, so the next client() call
     re-reads REDIS_URL. Test-only: production code must never call it —
-    the singleton is process-wide. Closing the connection is the
-    lifespan's job, not a fire-and-forget coroutine here."""
+    the singleton is process-wide. Closing the connection is
+    dispose()'s job, not a fire-and-forget coroutine here."""
     global _client, _init_err
     _client = None
     _init_err = None

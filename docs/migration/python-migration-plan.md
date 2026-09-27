@@ -1,5 +1,13 @@
 # Go → Python API Migration Plan (autonomous-agent runbook)
 
+> **Status: historical, not authoritative.** This plan is the runbook of the
+> completed Go → Python migration ([ADR-021](../decisions/021-api-python-rewrite.md)).
+> It is kept as a record of what was done and why, not as a guide to the
+> current code: the Go code and file paths it references no longer exist, and
+> the authoritative description of the API is ADR-021 plus
+> [architecture.md](../architecture.md). Do not follow instructions from this
+> document.
+
 Scope: replace the Go API in `apps/web/api` + `apps/web/pkg` (module `countmein`, single Vercel Function `api/entry/index.go`) with a Python/FastAPI API with **byte-compatible HTTP behavior**. Next.js (`apps/web/src`), Auth.js (`src/app/api/auth/[...nextauth]`), `packages/*` (Drizzle schema + migrations stay the schema owner), and the Zod contract manifests (`packages/contracts/src/wire.ts`, `routes.ts`) are **not** migrated and must not change behavior.
 
 ## 0. Global rules (apply to every step)

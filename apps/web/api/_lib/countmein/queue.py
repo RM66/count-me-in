@@ -18,7 +18,7 @@ from typing import Any
 import httpx
 
 from . import config, logx
-from .web.asynclient import client as async_client
+from .web.asyncclient import client as async_client
 
 # ErrPublishSkipped — dev without QSTASH_TOKEN: the publish is
 # deliberately never attempted (localhost is not routable from Upstash).

@@ -34,9 +34,12 @@ def redis_url() -> str:
 @pytest.fixture(autouse=True)
 def _require_postgres(request):
     """The shared Postgres gate. Opt a whole module in with
-    `pytestmark = pytest.mark.usefixtures("_require_postgres")` —
-    pytest then lists the fixture in every test's fixturenames, which
-    is what triggers the check. Unit-test modules never opt in, so
-    they pass through untouched."""
-    if "_require_postgres" in request.fixturenames:
-        require_postgres()
+    `pytestmark = pytest.mark.usefixtures("_require_postgres")` — the
+    usefixtures mark is what triggers the check (the fixture is
+    autouse, so its name is in every test's fixturenames and cannot
+    itself be the signal). Unit-test modules never opt in, so they
+    pass through untouched and run without Postgres."""
+    for marker in request.node.iter_markers("usefixtures"):
+        if "_require_postgres" in marker.args:
+            require_postgres()
+            return

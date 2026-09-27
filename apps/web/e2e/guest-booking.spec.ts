@@ -17,8 +17,8 @@ import {
  *
  * The Telegram widget cannot run headless; the "ticket mock" intercepts
  * `/api/auth/telegram-guest` and returns a ticket minted into Redis by the
- * test — the booking then consumes it through the real Go write path
- * (RequireGuestIdentity), so the single-use semantics are exercised for real.
+ * test — the booking then consumes it through the real API write path
+ * (require_guest_identity), so the single-use semantics are exercised for real.
  */
 test.describe('guest booking flow', () => {
   test.beforeAll(async () => {

@@ -10,6 +10,8 @@
     "check-types": "turbo run check-types",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
+    "test:py": "turbo run test:py",
+    "lint:py": "turbo run lint:py",
     "generate:openapi": "turbo run generate:openapi",
     "generate:constants": "turbo run generate:constants",
     "knip": "knip --exclude duplicates"

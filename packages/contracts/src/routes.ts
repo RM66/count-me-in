@@ -68,10 +68,10 @@ import { createTimeSlotInput, updateTimeSlotInput } from './time-slot'
  * How a request proves it may do what it asks.
  * - `public` — no credential at all.
  * - `guestTicket` — a single-use auth ticket carried in the request body and
- *   consumed server-side (`RequireGuestIdentity`).
+ *   consumed server-side (`require_guest_identity` in the API).
  * - `manageToken` — the guest's per-booking secret, in the body.
  * - `sessionWritable` — an Auth.js session that is neither absent nor the demo
- *   organizer (`RequireWritableOrganizer`); refusal is 403, never 401.
+ *   organizer (`require_writable_organizer` in the API); refusal is 403, never 401.
  * - `sessionOrDemoRead` — an Auth.js session if present, otherwise the demo
  *   organizer (ADR-010). Never 401.
  * - `qstashSignature` — the `upstash-signature` header.

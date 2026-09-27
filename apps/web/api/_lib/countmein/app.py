@@ -30,31 +30,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from . import logx
     from . import redis as redis_mod
     from .db import client as db_client
-    from .web import asynclient
+    from .web import asyncclient
 
-    for name, close in (
-        ("engine", db_client._engine.dispose() if db_client._engine is not None else None),
-        ("redis", redis_mod._client.aclose() if redis_mod._client is not None else None),
-        (
-            "http",
-            (
-                asynclient._client.aclose()
-                if asynclient._client is not None and not asynclient._client.is_closed
-                else None
-            ),
-        ),
+    for name, dispose in (
+        ("engine", db_client.dispose),
+        ("redis", redis_mod.dispose),
+        ("http", asyncclient.dispose),
     ):
-        if close is None:
-            continue
         try:
-            await close
+            await dispose()
         except Exception as err:
             logx.error(err, {"scope": "api", "op": "lifespan-close", "resource": name})
-    db_client._engine = None
-    db_client._init_err = None
-    redis_mod._client = None
-    redis_mod._init_err = None
-    asynclient._client = None
 
 
 def create_app() -> FastAPI:

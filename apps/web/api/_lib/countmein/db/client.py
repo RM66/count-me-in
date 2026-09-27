@@ -60,9 +60,22 @@ async def ping() -> None:
         await conn.execute(text("SELECT 1"))
 
 
+async def dispose() -> None:
+    """Dispose the shared engine if one was opened, then drop the
+    cached state so the next engine() call re-reads POSTGRES_URL. The
+    lifespan shutdown is the only production caller; a disposal
+    failure is the caller's to absorb (it must not mask the response
+    already sent)."""
+    global _engine, _init_err
+    if _engine is not None:
+        await _engine.dispose()
+    _engine = None
+    _init_err = None
+
+
 def reset_for_test() -> None:
     """Drop the cached engine and init state, so the next engine() call
-    re-reads POSTGRES_URL. Test-only. Disposal is the lifespan's job;
+    re-reads POSTGRES_URL. Test-only. Disposal is dispose()'s job;
     NullPool holds no connections to close here."""
     global _engine, _init_err
     _engine = None

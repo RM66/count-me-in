@@ -26,9 +26,20 @@ def client() -> httpx.AsyncClient:
     return _client
 
 
+async def dispose() -> None:
+    """Close the shared client if one was opened, then drop the
+    reference so the next call rebuilds it. The lifespan shutdown is
+    the only production caller; a close failure is the caller's to
+    absorb (it must not mask the response already sent)."""
+    global _client
+    if _client is not None and not _client.is_closed:
+        await _client.aclose()
+    _client = None
+
+
 def reset_for_test() -> None:
     """Drop the client so the next call rebuilds it (test-only). The
-    client is not closed here — the lifespan shutdown owns closing;
-    a fresh client is built regardless."""
+    client is not closed here — dispose() owns closing; a fresh
+    client is built regardless."""
     global _client
     _client = None
