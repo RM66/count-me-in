@@ -1,0 +1,50 @@
+## createdOrganizer
+🎉 <b>Новое бронирование</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 сб, 25 июл. 2026 г., 07:00
+👥 2 места
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 Осталось 3 места.
+[button] Открыть кабинет → https://example.com/cabinet
+## createdGuest
+✅ <b>Бронирование подтверждено</b> у Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 сб, 25 июл. 2026 г., 07:00
+👥 2 места
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+Нужно изменить планы? Используйте кнопку ниже.
+[button] Управлять бронью → https://example.com/booking/tok-abc123
+## cancelledOrganizer
+❌ <b>Бронирование отменено</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 сб, 25 июл. 2026 г., 07:00
+👥 2 места
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 В этой сессии освободилось 3 места.
+[button] Открыть кабинет → https://example.com/cabinet
+## cancelledGuest
+❌ <b>Ваше бронирование отменено</b> организатором Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 сб, 25 июл. 2026 г., 07:00
+👥 2 места
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+Жаль, что так вышло — вы можете выбрать другую сессию ниже.
+[button] Другие сессии → https://example.com/test-org

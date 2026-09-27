@@ -1,0 +1,15 @@
+{
+  "contact": null,
+  "createdAt": "2026-01-02T03:04:05.000Z",
+  "description": null,
+  "id": "01930000-0000-7000-8000-000000000001",
+  "isDemo": false,
+  "language": "ru",
+  "location": null,
+  "messenger": "telegram",
+  "messengerId": "123456789",
+  "name": "Studio",
+  "photoUrl": null,
+  "slug": "my-studio",
+  "timezone": "Europe/Belgrade"
+}

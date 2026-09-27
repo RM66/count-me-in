@@ -1,0 +1,50 @@
+## createdOrganizer
+🎉 <b>Nouvelle réservation</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 sam. 25 juil. 2026, 07:00
+👥 2 places
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 3 places encore disponibles.
+[button] Ouvrir dans mon espace → https://example.com/cabinet
+## createdGuest
+✅ <b>Réservation confirmée</b> chez Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 sam. 25 juil. 2026, 07:00
+👥 2 places
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+Tu dois changer tes plans ? Utilise le bouton ci-dessous.
+[button] Gérer ma réservation → https://example.com/booking/tok-abc123
+## cancelledOrganizer
+❌ <b>Réservation annulée</b>
+
+👤 Anne &amp; Co &lt;&quot;anne&quot;&gt; (@anne)
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 sam. 25 juil. 2026, 07:00
+👥 2 places
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+
+🎟 3 places maintenant disponibles pour cette séance.
+[button] Ouvrir dans mon espace → https://example.com/cabinet
+## cancelledGuest
+❌ <b>Ta réservation a été annulée</b> par Mira &amp; Yoga
+
+📌 <b>Yoga &lt;Morning&gt; Flow</b>
+🗓 sam. 25 juil. 2026, 07:00
+👥 2 places
+🔖 Mat rental, Towel +2€
+💰 15 EUR
+📍 Studio 5 &lt;Main Hall&gt;
+☎️ +381 60 123 4567
+
+Désolé pour ce contretemps — tu peux choisir une autre séance ci-dessous.
+[button] Voir les autres séances → https://example.com/test-org
