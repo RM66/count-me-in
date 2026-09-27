@@ -11,10 +11,9 @@ uses /api/organizers/:path* rewrites for whole subtrees, so a new
 /api/organizers/... path needs no edit while a new top-level /api/...
 prefix does.
 
-The entry destination is derived from the single `functions` key, so the
-test stays green across the entry-point move (the Go entry
-api/entry/index.go → the Python entry api/index.py): the destination must
-be the function's route path with the original path carried as ?_path.
+The entry destination is derived from the single `functions` key
+(api/index.py → /api/index): the destination must be the function's
+route path with the original path carried as ?_path.
 """
 
 from __future__ import annotations
@@ -46,11 +45,8 @@ def vercel_rewrites() -> list[tuple[str, str]]:
     functions = cfg.get("functions", {})
     assert len(functions) == 1, f"expected exactly one function, got {list(functions)}"
     key = next(iter(functions))
-    # api/entry/index.go → /api/entry; api/index.py → /api/index.
-    if key.endswith("/index.go"):
-        entry = "/" + key[: -len("/index.go")]
-    else:
-        entry = "/" + key[: -len(".py")] if key.endswith(".py") else "/" + key
+    # api/index.py → /api/index.
+    entry = "/" + key[: -len(".py")] if key.endswith(".py") else "/" + key
 
     sources: list[tuple[str, str]] = []
     for rw in rewrites:
