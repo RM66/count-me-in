@@ -1,4 +1,4 @@
-"""Port of pkg/routes/bookings_test.go — the booking routes'
+"""The booking routes'
 request-level contracts: rate limits, body validation, the ticket door,
 the demo/anonymous refusal, and the after-commit publish absorbing its
 own errors. The DB-dependent paths (sold-out mapping, 201 happy path)

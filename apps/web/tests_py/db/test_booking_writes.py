@@ -1,5 +1,5 @@
-"""Port of pkg/db/booking_writes_test.go, delete_guard_test.go and
-media_test.go — the booking write invariants, against a real Postgres:
+"""The booking-write tests: the atomic seat reserve, delete guards and
+the booking write invariants, against a real Postgres:
 the atomic seat reserve, the idempotent cancel, the manageToken hash
 lookup, the demo refusal inside the transaction, and the transactional
 outbox rows. Mocks cannot test the conditional UPDATE (invariant 2): the
@@ -602,7 +602,7 @@ async def test_create_guest_booking_concurrent_last_seats(cleanup):
     assert len(won) + (racers - len(won)) == racers
 
 
-# ── Delete guards (delete_guard_test.go) ─────────────────────────────────────
+# ── Delete guards ────────────────────────────────────────────────────────────
 
 
 async def test_db_layer_refuses_demo_writes():
@@ -660,7 +660,7 @@ async def test_delete_owned_service_refuses_bookings(cleanup):
         await service_db.delete_owned_service(f.organizer_id, f.service_id)
 
 
-# ── Media (media_test.go) ────────────────────────────────────────────────────
+# ── Media ────────────────────────────────────────────────────────────────────
 
 
 async def test_photo_url_referenced(cleanup):

@@ -1,4 +1,4 @@
-"""Port of pkg/auth/telegram_test.go — the widget HMAC contract, replay
+"""The widget HMAC contract, replay
 protection, and malformed-payload handling."""
 
 from __future__ import annotations

@@ -1,8 +1,7 @@
-"""Port of pkg/routes/jobs_test.go — the QStash receiver's status
-semantics are the queue's retry budget (ADR-012): 400 for a malformed
+"""The QStash receiver's status semantics are the queue's retry
+budget (ADR-012): 400 for a malformed
 payload (no retry), 404 for a foreign queue, 401 for a bad signature,
-500 for a handler failure (retry). The signature helper mirrors
-receiver_test.go in pkg/jobs — hand-built so the test anchors the wire
+500 for a handler failure (retry). The signature helper mirrorshand-built so the test anchors the wire
 contract."""
 
 import base64

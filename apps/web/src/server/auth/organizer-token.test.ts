@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * Unit tests for the organizer-auth JWT mint (architecture review fix #1).
  *
- * The token is the credential the Go API verifies (HS256, HKDF-derived key);
- * the derivation parameters are pinned by a golden vector on the Go side
- * (`pkg/auth/session_test.go`). Here we pin the TS side: shape, TTL, and the
+ * The token is the credential the API verifies (HS256, HKDF-derived key);
+ * the derivation parameters are pinned by a golden vector on the API side
+ * (`tests_py/auth/test_session.py`). Here we pin the TS side: shape, TTL, and the
  * no-secret → anonymous behavior.
  */
 

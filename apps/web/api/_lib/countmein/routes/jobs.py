@@ -1,5 +1,5 @@
-"""POST /api/jobs/{queue} — the QStash receiver (ADR-012). Port of
-pkg/routes/jobs.go.
+"""POST /api/jobs/{queue} — the QStash receiver (ADR-012). Ported from the retired
+implementation.
 
 Everything QStash delivers lands here: booking.created and
 booking.cancelled published after the booking transaction commits, and

@@ -19,13 +19,13 @@ import 'server-only'
  *
  * In production, Go functions live at the same origin (Vercel filesystem
  * routing); the incoming request's Host header supplies the origin. In
- * dev, the Go server runs separately at `GO_API_URL` (default :3001).
+ * dev, the API server runs separately at `API_URL` (default :3001).
  */
 
 /** Resolve the Go API origin for a server-side fetch. */
 async function goApiOrigin(): Promise<string> {
   if (process.env.NODE_ENV !== 'production') {
-    return (process.env.GO_API_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '')
+    return (process.env.API_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '')
   }
   const h = await headers()
   const host = h.get('host')

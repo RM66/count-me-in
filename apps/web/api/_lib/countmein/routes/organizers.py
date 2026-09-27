@@ -1,5 +1,5 @@
 """Organizer routes — registration, profile, language, media uploads.
-Port of pkg/routes/organizers.go."""
+Ported from the retired implementation."""
 
 from __future__ import annotations
 

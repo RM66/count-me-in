@@ -1,4 +1,4 @@
-"""Ported from pkg/validation/vectors_test.go: run the shared validation
+"""Run the shared validation
 vectors in packages/contracts/vectors/validation (the same corpus vitest
 runs on the TS side). Keys are pinned, never message text."""
 

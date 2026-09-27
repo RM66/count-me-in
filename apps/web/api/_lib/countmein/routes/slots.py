@@ -1,5 +1,5 @@
-"""Time-slot routes — the organizer's schedule CRUD. Port of
-pkg/routes/slots.go."""
+"""Time-slot routes — the organizer's schedule CRUD. Ported from the
+retired implementation."""
 
 from __future__ import annotations
 

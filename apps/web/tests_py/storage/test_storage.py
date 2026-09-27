@@ -1,4 +1,4 @@
-"""Port of pkg/storage/keys_test.go and r2_test.go — the ownership
+"""The storage tests — the ownership
 boundary, key mapping, cleanup skip decisions, and the signed-upload
 seam (the presign is computed locally, no network)."""
 
@@ -203,7 +203,7 @@ def test_delete_replaced_media_unconfigured_storage(monkeypatch):
         storage.reset_for_test()
 
 
-# ── Signed-upload seam (r2_test.go) ──────────────────────────────────────────
+# ── Signed-upload seam ───────────────────────────────────────────────────────
 
 
 def test_signed_upload_url_missing_env_is_error_not_panic(monkeypatch):

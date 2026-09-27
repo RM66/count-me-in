@@ -20,6 +20,8 @@ _ESCAPES = {
     "<": "\\u003c",
     ">": "\\u003e",
     "&": "\\u0026",
+    "\u2028": "\\u2028",
+    "\u2029": "\\u2029",
 }
 
 
@@ -29,7 +31,7 @@ def _encode_string(s: str, out: list[str]) -> None:
         esc = _ESCAPES.get(ch)
         if esc is not None:
             out.append(esc)
-        elif ch < " " or ch == "\x7f":
+        elif ch < " ":
             out.append(f"\\u{ord(ch):04x}")
         else:
             out.append(ch)

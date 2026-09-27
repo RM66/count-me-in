@@ -1,4 +1,4 @@
-"""Ported from pkg/httpx/errors_test.go: the error→HTTP mapping.
+"""The error→HTTP mapping.
 
 Status codes carry meaning (403 demo, 404 gone, 409 conflict, 400
 shape) and the body carries localized copy while the error class keeps

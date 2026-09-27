@@ -36,8 +36,8 @@ describe('goApiFetch', () => {
     vi.restoreAllMocks()
   })
 
-  it('targets GO_API_URL in dev', async () => {
-    vi.stubEnv('GO_API_URL', 'http://127.0.0.1:9999/')
+  it('targets API_URL in dev', async () => {
+    vi.stubEnv('API_URL', 'http://127.0.0.1:9999/')
     const { goApiFetch } = await import('@/server/api')
     await goApiFetch('/api/services')
     expect(fetchMock).toHaveBeenCalledWith(

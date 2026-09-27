@@ -26,7 +26,7 @@
     "NEXT_PUBLIC_POSTHOG_KEY",
     "NEXT_PUBLIC_POSTHOG_HOST",
     "POSTHOG_KEY",
-    "GO_API_URL",
+    "API_URL",
     "VERCEL_ENV",
     "NEXT_PUBLIC_SENTRY_DSN",
     "NEXT_PUBLIC_TELEGRAM_BOT_USERNAME",
@@ -50,7 +50,7 @@
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^build", "generate:i18n", "generate:openapi", "generate:constants"],
+      "dependsOn": ["^build", "generate:openapi", "generate:constants", "generate:i18n:py"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/contracts/vectors/**"],
       "outputs": ["coverage/**"]
     },
@@ -64,16 +64,13 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
-    "test:go": {
-      "dependsOn": ["generate:i18n", "generate:openapi", "generate:constants"],
+    "generate:i18n:py": {
       "inputs": [
-        "pkg/**",
-        "api/**",
-        "go.mod",
-        "go.sum",
-        "scripts/**",
-        "$TURBO_ROOT$/packages/contracts/vectors/**"
-      ]
+        "$TURBO_ROOT$/packages/translations/**",
+        "scripts/generate-i18n-py.ts",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": ["api/_lib/countmein/i18n/translations_gen.py"]
     },
     "generate:openapi": {
       "inputs": [
@@ -81,7 +78,7 @@
         "scripts/generate-openapi.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["openapi.yaml", "pkg/api/gen/openapi.yaml"]
+      "outputs": ["openapi.yaml"]
     },
     "generate:constants": {
       "inputs": [
@@ -89,11 +86,7 @@
         "scripts/generate-constants.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["pkg/contracts/constants_gen.go"]
-    },
-    "generate:i18n": {
-      "inputs": ["$TURBO_ROOT$/packages/translations/**/*.json"],
-      "outputs": ["pkg/i18n/translations_gen.go"]
+      "outputs": ["api/_lib/countmein/contracts/constants_gen.py"]
     },
     "test:watch": {
       "cache": false,

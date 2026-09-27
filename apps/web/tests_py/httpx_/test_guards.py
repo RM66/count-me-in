@@ -1,5 +1,4 @@
-"""Port of pkg/httpx/guards_test.go (+ TestReadBodyOr413 from
-response_test.go) — the request-level doors every write passes.
+"""The request-level doors every write passes.
 require_writable_organizer closes "an anonymous visitor writes as an
 organizer" (ADR-010); require_guest_identity closes "a replayed ticket
 books twice" (ADR-008, invariant 8). Redis-backed state (rate buckets,
@@ -207,7 +206,7 @@ async def test_require_guest_identity_redis_down(monkeypatch):
     assert resp is not None and resp.status == 500, "Redis outage must be a 500 for identity"
 
 
-# ── read_body_or_413 (response_test.go) ───────────────────────────────────────
+# ── read_body_or_413 ──────────────────────────────────────────────────────────
 
 
 def body_request(body: bytes):

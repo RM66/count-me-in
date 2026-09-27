@@ -1,12 +1,13 @@
-"""Port of pkg/jobs/templates_test.go — the rendering side of every
-notification. Telegram parses these strings as HTML — an unescaped & or
-< in a guest name is a 400 "can't parse entities" and the message is
-never delivered. Locale selection (ADR-011) and the organizer-timezone
-rule are contracts, not preferences: the guest's confirmation must show
-the same wall clock as the public page they booked from.
+"""The rendering side of every notification template. Telegram parses
+these strings as HTML — an unescaped & or < in a guest name is a 400
+"can't parse entities" and the message is never delivered. Locale
+selection (ADR-011) and the organizer-timezone rule are contracts, not
+preferences: the guest's confirmation must show the same wall clock as
+the public page they booked from.
 
-The golden files are the Go package's own (pkg/jobs/testdata/
-notifications/*.golden) — the port must render them byte for byte."""
+The golden files (tests_py/jobs/testdata/notifications/*.golden) were
+recorded from the retired Go implementation — the port must render them
+byte for byte."""
 
 import sys
 from datetime import datetime
@@ -31,7 +32,7 @@ from _lib.countmein.jobs.templates import (
     organizer_detail_lines,
 )
 
-GOLDEN_DIR = Path(__file__).resolve().parents[2] / "pkg" / "jobs" / "testdata" / "notifications"
+GOLDEN_DIR = Path(__file__).resolve().parent / "testdata" / "notifications"
 
 UPDATE_GOLDENS = "--update-goldens" in sys.argv
 

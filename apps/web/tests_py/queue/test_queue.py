@@ -1,4 +1,4 @@
-"""Port of pkg/queue/qstash_test.go — the after-commit publisher
+"""The after-commit publisher
 (ADR-012). The booking is already committed when this runs, so failures
 are signalled — never thrown — and the dedup id (the outbox row id) is
 what makes the sweeper's re-publish safe."""

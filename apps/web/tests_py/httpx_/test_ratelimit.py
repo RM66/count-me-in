@@ -1,4 +1,4 @@
-"""Port of pkg/httpx/ratelimit_test.go — fail-open without Redis, and
+"""Fail-open without Redis, and
 client-IP trust rules. The sliding-window behavior itself is covered
 against fakeredis (the Go suite relies on the same Lua script running
 in miniredis in the routes tests)."""

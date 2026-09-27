@@ -26,7 +26,7 @@ _CHILD = (
     "        raise AssertionError('network connection opened during app import')\n"
     "socket.socket = _NoNetwork\n"
     "sys.path.insert(0, 'api')\n"
-    "import _lib.index as index\n"
+    "import index as index\n"
     "assert hasattr(index, 'app')\n"
     "sys.stdout.write(json.dumps(sorted(sys.modules)))\n"
 )

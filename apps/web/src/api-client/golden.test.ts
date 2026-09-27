@@ -8,9 +8,8 @@ const dir = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
   '..',
-  'pkg',
+  'tests_py',
   'contracts',
-  'testdata',
   'golden',
 )
 

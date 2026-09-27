@@ -241,9 +241,10 @@ function buildPaths(): Record<string, Record<string, unknown>> {
  * route table always produce the same YAML (component schemas sorted by
  * byte order, version derived from the content hash).
  *
- * Since oapi-codegen v2.8.0 gained OpenAPI 3.1 support, this one document
+ * Since the Python toolchain gained OpenAPI 3.1 support, this one document
  * serves both the committed public spec and the Go toolchain
- * (oapi-codegen + kin-openapi) — the former 3.0.3 down-render is gone.
+ * (datamodel-code-generator + the spec decode) — the former 3.0.3
+ * down-render is gone.
  */
 export function buildOpenApiDocument(): Record<string, unknown> {
   if (SESSION_COOKIE_NAMES.length < 2) {

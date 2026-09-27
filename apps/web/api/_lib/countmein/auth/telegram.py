@@ -122,15 +122,15 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     try:
         # parse_int=int: a JSON integer's literal is str(int) exactly
         # (JSON forbids leading zeros), so the data-check-string keeps
-        # its on-the-wire shape. Floats stay literals like Go's UseNumber.
+        # its on-the-wire shape. Floats stay literals.
         raw = json.loads(body, parse_float=lambda x: x, parse_int=int)
     except ValueError:
         raise TelegramInvalidError() from None
     if not isinstance(raw, dict):
         raise TelegramInvalidError()
-    # kin-openapi (the Go decode) rejects a string for an integer field;
-    # Pydantic's lax mode would coerce it. Enforce the wire types here so
-    # "string id"/"string date" stay TelegramInvalidError, like Go.
+    # The retired implementation's decode rejects a string for an integer
+    # field; Pydantic's lax mode would coerce it. Enforce the wire types
+    # here so "string id"/"string date" stay TelegramInvalidError.
     if not isinstance(raw.get("id"), int) or isinstance(raw.get("id"), bool):
         raise TelegramInvalidError()
     if not isinstance(raw.get("auth_date"), int) or isinstance(raw.get("auth_date"), bool):

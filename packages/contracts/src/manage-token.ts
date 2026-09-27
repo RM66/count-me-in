@@ -8,8 +8,9 @@ import { createHash } from 'node:crypto'
  * never needs to hash a token — it sends the raw value in the request
  * body, and the server hashes it before lookup.
  *
- * Parity: `HashManageToken` in `apps/web/pkg/db/shared.go` — the same
- * function on the Go side. A change here requires the same change there.
+ * Parity: `hash_manage_token` in the API (countmein/db/shared.py) — the
+ * same function on the API side. A change here requires the same change
+ * there.
  */
 export function hashManageToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex')

@@ -1,5 +1,5 @@
-"""Service routes — the organizer's service CRUD. Port of
-pkg/routes/services.go."""
+"""Service routes — the organizer's service CRUD. Ported from the
+retired implementation."""
 
 from __future__ import annotations
 

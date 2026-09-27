@@ -1,4 +1,4 @@
-"""Ported from pkg/i18n tests (format_test.go, keys_test.go): the ICU
+"""The i18n tests: the ICU
 subset renderer and the ApiErrors/notifications lookup with fallbacks.
 """
 

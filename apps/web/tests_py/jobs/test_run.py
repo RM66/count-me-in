@@ -1,4 +1,4 @@
-"""Port of pkg/jobs/run_test.go — job dispatch semantics. The route's
+"""Job dispatch semantics. The route's
 status codes are QStash's retry budget (ADR-012): a malformed payload
 must be a 400-class InvalidJobPayloadError (no retry: QStash would
 re-send the same bad bytes), an unknown queue a 404-class

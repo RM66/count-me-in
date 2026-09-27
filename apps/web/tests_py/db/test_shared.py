@@ -1,4 +1,4 @@
-"""Port of pkg/db/shared_test.go — pure unit tests for the data-layer
+"""Pure unit tests for the data-layer
 helpers (no Postgres needed)."""
 
 from __future__ import annotations

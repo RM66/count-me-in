@@ -44,7 +44,8 @@ export const BOUNDS = {
 /**
  * Length semantics (assessed, safe by construction):
  * Zod's `.max()` counts UTF-16 code units, while JSON Schema `maxLength`
- * (Go/kin-openapi) and Postgres `char_length` count **code points** — an
+ * (the API's spec decode) and Postgres `char_length` count **code
+ * points** — an
  * emoji is 2 units but 1 point. The layers therefore diverge only in one
  * direction: a string within N UTF-16 units always has ≤ N code points, so
  * **Zod-pass ⇒ Go-pass ⇒ DB-pass** — no layer can reject what an earlier

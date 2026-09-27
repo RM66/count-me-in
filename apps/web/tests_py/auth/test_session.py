@@ -1,4 +1,4 @@
-"""Port of pkg/auth/session_test.go — the HKDF golden vector (the
+"""The HKDF golden vector (the
 cross-language anchor with organizer-token.ts) and HS256 verification."""
 
 from __future__ import annotations

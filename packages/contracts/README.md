@@ -1,8 +1,8 @@
 # @repo/contracts
 
-The single source of truth for the wire contract between the TypeScript client and the Go API.
+The single source of truth for the wire contract between the TypeScript client and the Python API.
 
-CountMeIn has two ends of one wire: a React + React Query frontend ([`apps/web/src/api-client`](../../apps/web/src/api-client)) and a Go API ([`apps/web/api`](../../apps/web/api) + [`apps/web/pkg`](../../apps/web/pkg)). They never import each other — the contract between them is HTTP plus the Zod schemas defined **here**. This package owns those schemas, the shared domain rules both sides must agree on, and the manifests that drive cross-language code generation.
+CountMeIn has two ends of one wire: a React + React Query frontend ([`apps/web/src/api-client`](../../apps/web/src/api-client)) and a Python API ([`apps/web/api/_lib/countmein`](../../apps/web/api/_lib/countmein)). They never import each other — the contract between them is HTTP plus the Zod schemas defined **here**. This package owns those schemas, the shared domain rules both sides must agree on, and the manifests that drive cross-language code generation.
 
 Full design rationale: [ADR-014](../../docs/decisions/014-contracts-wire-registry.md), amended by [ADR-015](../../docs/decisions/015-api-route-manifest.md) and [ADR-016](../../docs/decisions/016-standard-openapi-codegen.md).
 
@@ -13,9 +13,9 @@ Everything starts as a Zod schema in [`src/`](src). Two manifests feed a standar
 - [`src/wire.ts`](src/wire.ts) — the payload registry: every wire schema registers under its OpenAPI id.
 - [`src/routes.ts`](src/routes.ts) — the HTTP surface: method, path, auth, request/response schemas by identity (not re-exported from `index.ts`).
 
-[`apps/web/scripts/generate-openapi.ts`](../../apps/web/scripts/generate-openapi.ts) renders it through **zod-openapi** into one committed OpenAPI 3.1 spec — [`apps/web/openapi.yaml`](../../apps/web/openapi.yaml) — which serves as both the public document and the Go toolchain input (oapi-codegen supports 3.1 since v2.8.0).
+[`apps/web/scripts/generate-openapi.ts`](../../apps/web/scripts/generate-openapi.ts) renders it through **zod-openapi** into one committed OpenAPI 3.1 spec — [`apps/web/openapi.yaml`](../../apps/web/openapi.yaml) — which serves as both the public document and the Python toolchain input (datamodel-code-generator supports 3.1).
 
-**oapi-codegen** (pinned via `go:generate` directives in [`pkg/api/gen/doc.go`](../../apps/web/pkg/api/gen/doc.go)) then emits the Go server interface, types, and the embedded spec used by **kin-openapi** for request validation. Hand-written Go lives around the generated code: `Decode*` entry points and refinements in [`pkg/validation`](../../apps/web/pkg/validation), domain logic in [`pkg/contracts/domain.go`](../../apps/web/pkg/contracts/domain.go), constants in [`pkg/contracts/constants_gen.go`](../../apps/web/pkg/contracts/constants_gen.go) (rendered by [`generate-constants.ts`](../../apps/web/scripts/generate-constants.ts)).
+**datamodel-code-generator** (pinned via [`scripts/generate-py-models.sh`](../../apps/web/scripts/generate-py-models.sh)) then emits the Pydantic v2 models in [`api/_lib/countmein/contracts/models_gen.py`](../../apps/web/api/_lib/countmein/contracts/models_gen.py), and request validation runs against the spec's constraints. Hand-written Python lives around the generated code: decode entry points and refinements in [`api/_lib/countmein/validation`](../../apps/web/api/_lib/countmein/validation), domain logic in [`domain.py`](../../apps/web/api/_lib/countmein/contracts/domain.py), constants in [`constants_gen.py`](../../apps/web/api/_lib/countmein/contracts/constants_gen.py) (rendered by [`generate-constants.ts`](../../apps/web/scripts/generate-constants.ts)).
 
 CI verifies freshness with `git diff --exit-code` — a schema change that wasn't regenerated shows up as a diff.
 
@@ -27,7 +27,7 @@ CI verifies freshness with `git diff --exit-code` — a schema change that wasn'
 register(createBookingInput, { id: 'CreateBookingInput' })
 ```
 
-Component schemas are emitted sorted by byte order (deterministic across machines — see `byBytes` in [`src/openapi.ts`](src/openapi.ts)), not in registration order. Schemas that never appear as HTTP bodies (Redis/QStash payloads marked `x-internal`) are still registered — they document the shape even where oapi-codegen emits no Go type (those live hand-written in [`pkg/contracts/payloads.go`](../../apps/web/pkg/contracts/payloads.go)).
+Component schemas are emitted sorted by byte order (deterministic across machines — see `byBytes` in [`src/openapi.ts`](src/openapi.ts)), not in registration order. Schemas that never appear as HTTP bodies (Redis/QStash payloads marked `x-internal`) are still registered — they document the shape even where the codegen emits no model (those live hand-written in [`payloads.py`](../../apps/web/api/_lib/countmein/contracts/payloads.py)).
 
 ### The route manifest
 
@@ -41,7 +41,7 @@ Invariants, pinned by [`src/routes.test.ts`](src/routes.test.ts):
 - a rate-limited route documents 429
 - `sessionWritable` documents 403 and never 401 (ADR-010)
 
-The mux is now the generated oapi-codegen router itself ([`pkg/api`](../../apps/web/pkg/api)), so spec ↔ handler drift is a compile error, not a test failure.
+The route set is pinned to the spec by tests ([`tests_py/test_route_set.py`](../../apps/web/tests_py/test_route_set.py) plus the bidirectional oasdiff contract check), so spec ↔ handler drift is a CI failure, not a silent 404.
 
 ## What lives where
 
@@ -82,20 +82,20 @@ Form schemas are excluded from the wire registry (listed in `TS_ONLY` in [`wire.
 
 ## Testing & parity
 
-Two mechanisms keep TypeScript and Go in lockstep:
+Two mechanisms keep TypeScript and the API in lockstep:
 
 ### Shared vectors ([`vectors/`](vectors))
 
-Single JSON test sets, run by **both** vitest and `go test`:
+Single JSON test sets, run by **both** vitest and pytest:
 
-- [`vectors/validation/`](vectors/validation) — one file per input/update schema. Each case carries a body and the expected `valid`, `fieldErrors` keys, and `formErrors` count. Comparison is structural, never message text (Go deliberately deviates on messages like `"Required"`).
+- [`vectors/validation/`](vectors/validation) — one file per input/update schema. Each case carries a body and the expected `valid`, `fieldErrors` keys, and `formErrors` count. Comparison is structural, never message text (the API deliberately deviates on messages like `"Required"`).
 - [`vectors/domain/`](vectors/domain) — one file per domain function (`seatsLeft`, `slotPrice`, `matchLocale`, `effectiveLocation`, …).
 
 A coverage test in [`vectors.test.ts`](src/vectors.test.ts) fails if any input/update schema lacks a vector file, a valid case, or per-field error cases.
 
 ### Golden samples
 
-Go writes golden JSON per record into [`apps/web/pkg/contracts/testdata/golden/`](../../apps/web/pkg/contracts/testdata/golden). Vitest parses each with its Zod schema, proving a marshalled Go record is valid on the TS side (the response direction). A missing golden for any record fails `TestGoldenCoverage`.
+Golden JSON per record lives in [`apps/web/tests_py/contracts/golden/`](../../apps/web/tests_py/contracts/golden) (frozen from the retired implementation). Vitest parses each with its Zod schema, proving a marshalled API record is valid on the TS side (the response direction); pytest re-renders each sample and byte-compares. A missing golden for any record fails `test_golden_coverage`.
 
 ### Tripwires
 
@@ -106,17 +106,15 @@ Go writes golden JSON per record into [`apps/web/pkg/contracts/testdata/golden/`
 
 Three steps (from [ADR-014](../../docs/decisions/014-contracts-wire-registry.md), [ADR-015](../../docs/decisions/015-api-route-manifest.md), [ADR-016](../../docs/decisions/016-standard-openapi-codegen.md)):
 
-1. **Build it from registered primitives and `register()` it in [`wire.ts`](src/wire.ts).** Forgetting fails the completeness test in [`wire.test.ts`](src/wire.test.ts). If Go needs a hand-written refinement, add it in [`apps/web/pkg/validation/refine.go`](../../apps/web/pkg/validation/refine.go) and call it from the matching `Decode*` in [`decode.go`](../../apps/web/pkg/validation/decode.go).
-2. **Regenerate:** `bun run generate:openapi && bun run generate:constants && go generate ./pkg/api/...` (from `apps/web`; `bun run build:go` runs the full chain). Then add a validation vector in [`vectors/validation/{Id}.json`](vectors/validation) (else the coverage test is red), and for records a golden sample in [`apps/web/pkg/contracts/testdata/golden/{Id}.json`](../../apps/web/pkg/contracts/testdata/golden) (else `TestGoldenCoverage` is red).
+1. **Build it from registered primitives and `register()` it in [`wire.ts`](src/wire.ts).** Forgetting fails the completeness test in [`wire.test.ts`](src/wire.test.ts). If the API needs a hand-written refinement, add it in [`apps/web/api/_lib/countmein/validation/refine.py`](../../apps/web/api/_lib/countmein/validation/refine.py) and call it from the matching decode entry point in [`decode.py`](../../apps/web/api/_lib/countmein/validation/decode.py).
+2. **Regenerate:** `bun run generate:py` (from `apps/web`; runs generate:i18n:py + generate:openapi + generate:constants + generate-py-models.sh). Then add a validation vector in [`vectors/validation/{Id}.json`](vectors/validation) (else the coverage test is red), and for records a golden sample in [`apps/web/tests_py/contracts/golden/{Id}.json`](../../apps/web/tests_py/contracts/golden) (else `test_golden_coverage` is red).
 3. **If it crosses the wire, add the operation to [`src/routes.ts`](src/routes.ts)** — the generated router and spec derive from it, so a schema without a route is an orphan.
 
 ## Scripts
 
 ```sh
 bun run test               # vitest (this package)
-bun run generate:openapi   # render both OpenAPI specs (run from apps/web)
-bun run generate:constants # render pkg/contracts/constants_gen.go (run from apps/web)
-go generate ./pkg/api/...  # oapi-codegen: types, server interface, embedded spec
+bun run generate:py        # i18n copy + OpenAPI spec + constants + Pydantic models (run from apps/web)
 ```
 
 The generators are defined in [`apps/web`](../../apps/web/package.json) and orchestrated by Turborepo from the repo root. `generate-openapi.ts` computes all artifacts before writing any, so a failure leaves the tree untouched.

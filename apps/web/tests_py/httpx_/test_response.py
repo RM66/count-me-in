@@ -1,4 +1,4 @@
-"""Ported from pkg/httpx/response_test.go: the response-writing plumbing.
+"""The response-writing plumbing.
 
 Response.to_starlette's branches, the invalid-body/issue renderers, and
 the default-header middleware + panic→500. These are the seams every

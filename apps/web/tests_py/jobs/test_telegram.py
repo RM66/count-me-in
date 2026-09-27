@@ -1,5 +1,5 @@
-"""Port of the Telegram error-classification tests from
-pkg/jobs/handlers_test.go — the retry budget (ADR-012). The fake Bot
+"""The Telegram error-classification tests — the retry budget
+(ADR-012). The fake Bot
 API is an httpx MockTransport instead of an httptest server."""
 
 import json

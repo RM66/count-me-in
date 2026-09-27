@@ -1,4 +1,4 @@
-"""Port of pkg/jobs/receiver_test.go — the signature is produced with
+"""The receiver tests — the signature is produced with
 the same primitives jose uses on the Upstash side (HS256 JWT, signing
 key as raw secret, body claim = base64url SHA-256), hand-built here so
 the test anchors the wire contract instead of the implementation."""

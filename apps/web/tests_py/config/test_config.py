@@ -1,4 +1,4 @@
-"""Ported from pkg/config/config_test.go: fail-fast production config.
+"""Fail-fast production config.
 
 Validate is pure: in production every missing variable is a hard error
 naming it; outside production validation is skipped (local

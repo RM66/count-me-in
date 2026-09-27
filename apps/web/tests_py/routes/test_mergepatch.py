@@ -1,4 +1,4 @@
-"""Port of pkg/routes/mergepatch_test.go — the RFC 7386 merge and the
+"""The RFC 7386 merge and the
 touched-key set the DB layer writes columns from."""
 
 import json

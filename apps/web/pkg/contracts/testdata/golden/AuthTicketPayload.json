@@ -1,8 +1,0 @@
-{
-  "messenger": "telegram",
-  "messengerId": "123456789",
-  "displayName": "Mila Petrović",
-  "photoUrl": "https://example.com/avatar.webp",
-  "messengerLogin": "mila",
-  "purpose": "guest"
-}

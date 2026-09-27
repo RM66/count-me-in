@@ -1,4 +1,4 @@
-"""Ported from pkg/contracts/vectors_test.go: run the shared domain
+"""Run the shared domain
 vectors in packages/contracts/vectors/domain (the same corpus vitest
 runs on the TS side)."""
 

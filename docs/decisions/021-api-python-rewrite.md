@@ -9,7 +9,7 @@
 
 The API currently lives in `apps/web/api` + `apps/web/pkg` as a Go module (`countmein`) deployed as a single Vercel Function (`api/entry/index.go`, the "fat lambda" dispatching via `pkg/api.NewMux`). The wire contract is owned by the Zod manifests in `packages/contracts` and rendered to `apps/web/openapi.yaml` (ADR-016); the Go side consumes that spec via oapi-codegen and kin-openapi.
 
-The migration replaces the Go implementation with a Python/FastAPI implementation with **byte-compatible HTTP behavior**. Next.js (`apps/web/src`), Auth.js, `packages/*` (Drizzle stays the schema owner), and the Zod contract manifests are not migrated. The full runbook is `docs/python-migration-plan.md`; behavioral goldens were frozen from the Go implementation in Phase 1 (`apps/web/tests_py/parity/golden`).
+The migration replaces the Go implementation with a Python/FastAPI implementation with **byte-compatible HTTP behavior**. Next.js (`apps/web/src`), Auth.js, `packages/*` (Drizzle stays the schema owner), and the Zod contract manifests are not migrated. The full runbook is `docs/migration/python-migration-plan.md`; behavioral goldens were frozen from the Go implementation in Phase 1 (`apps/web/tests_py/parity/golden`).
 
 ## Decision
 
@@ -22,7 +22,7 @@ apps/web/
     _lib/countmein/          # underscore ⇒ not treated as a function by Vercel
 ```
 
-Until the Phase 6 cutover the entry lives at `api/_lib/index.py`, not `api/index.py`: Vercel auto-discovers `api/*.py` as functions, and a half-ported Python app must not deploy next to the live Go one. `api/index.py` is created at cutover together with the `vercel.json` switch.
+During the migration the entry lived at `api/_lib/index.py`, not `api/index.py`: Vercel auto-discovers `api/*.py` as functions, and the half-ported Python app must not have deployed next to the live Go one. `api/index.py` was created together with the `vercel.json` switch when the Go function was removed.
 
 Fixed technology choices:
 
@@ -50,7 +50,7 @@ Codegen pipeline (amends ADR-016): `bun run generate:py` = `generate:i18n:py` (I
 - **Cold start budget:** Python cold starts are slower than Go's. Mitigations: one shared function (mirrors the Go fat lambda), lazy singletons for engine/Redis/boto3, `includeFiles` limited to `api/_lib/**`, and a review test (`tests_py/test_cold_imports.py`) asserting that importing the app does not pull in `boto3`/`qstash` or open network connections. Phase 6 smoke measures cold start and fails above 3 s.
 - **Bundle size:** the function must stay under 200 MB unzipped (Vercel limit 250 MB), checked after `vercel build`. `maxDuration` stays 10 s; `memory` is omitted — the Go config's `memory: 1024` is dropped (the key is ignored under fluid compute; omitting it also avoids any Hobby-tier deploy rejection over configurable memory).
 - **Deploy dependency source:** `requirements.txt` (the uv export) is the file Vercel installs; `pyproject.toml` + `uv.lock` are the source of truth and CI re-exports and fails on drift, so the two can never disagree at deploy time.
-- **Two implementations during migration:** Go stays buildable and deployed until the Phase 6 cutover gate passes; Go source is deleted only in Phase 5 after the parity gate. `vercel.json` is switched in Phase 6 only (target content staged in `docs/migration/vercel.target.json`).
+- **Two implementations during migration:** Go stayed buildable and deployed until the Phase 5 parity gate re-verified the goldens and the Go source was deleted; the Python suite is now the only API implementation. `vercel.json` is switched in Phase 6 only (target content staged in `docs/migration/vercel.target.json`).
 - **Behavioral compatibility is the goal, not improvement:** every Go quirk is ported as-is and recorded in `docs/migration/discrepancies.md`; deliberate fixes happen only after cutover. Byte-level JSON rules (HTML escaping, key order, no trailing newline) are pinned by the Phase 1 golden transcripts and replayed in CI.
 - **Invariants carry over unchanged:** atomic seat reserve, demo organizer write refusal, consumed guest ticket, QStash publish after commit, outbox idempotency, manage-token hashing/expiry, delete 409 guards, media cleanup, healthz, rate limiting, `TRUST_PROXY_HEADERS`, `STRICT_ENV`, i18n of API errors — each gets an explicitly named test (`tests_py/test_invariants.py`, Phase 4).
 - **CQRS boundary is preserved:** Next.js keeps server-side Postgres reads for pages; all writes go through the Python API over HTTP, authenticated by the same `X-Organizer-Auth` HS256 token minted in `proxy.ts`.

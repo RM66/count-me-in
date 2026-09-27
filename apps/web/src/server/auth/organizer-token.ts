@@ -16,9 +16,9 @@
  * internally. Deriving (rather than reusing the raw secret) keeps the
  * two protocols independent: a leak of one derived key reveals nothing
  * about the other, and rotating AUTH_SECRET rotates both at once. The
- * derivation parameters (salt, info, length) must match
- * `pkg/auth/session.go` exactly; parity is pinned by a golden vector
- * in `pkg/auth/session_test.go`.
+ * derivation parameters (salt, info, length) must match the API's
+ * session verifier exactly; parity is pinned by a golden vector in
+ * `tests_py/auth/test_session.py`.
  *
  * The token is short-lived (60s): it is minted per request by the
  * middleware, so a long TTL is unnecessary and a leaked header is useless
@@ -33,10 +33,11 @@ import 'server-only'
 const HEADER = { alg: 'HS256', typ: 'JWT' }
 /** Token lifetime in seconds — short, since it is minted per request. */
 export const ORGANIZER_AUTH_TTL_S = 60
-/** The header the Go API reads. */
+/** The header the API reads. */
 export const ORGANIZER_AUTH_HEADER = 'x-organizer-auth'
 
-// HKDF derivation parameters — must match pkg/auth/session.go exactly.
+// HKDF derivation parameters — must match the API's session verifier
+// (countmein/auth/session.py) exactly.
 const HKDF_SALT = 'countmein'
 const HKDF_INFO = 'CountMeIn Organizer API Token Key v1'
 const HKDF_LENGTH_BYTES = 32

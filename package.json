@@ -12,7 +12,6 @@
     "test:watch": "turbo run test:watch",
     "generate:openapi": "turbo run generate:openapi",
     "generate:constants": "turbo run generate:constants",
-    "generate:i18n": "turbo run generate:i18n",
     "knip": "knip --exclude duplicates"
   },
   "devDependencies": {

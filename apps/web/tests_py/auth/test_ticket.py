@@ -1,5 +1,4 @@
-"""Port of pkg/auth/ticket_test.go and loginlink_test.go — single-use
-tickets and one-time login links, against fakeredis."""
+"""Single-use tickets and one-time login links, against fakeredis."""
 
 from __future__ import annotations
 

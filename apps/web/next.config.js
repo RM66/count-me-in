@@ -49,8 +49,8 @@ const nextConfig = {
       return { beforeFiles: [], afterFiles: [], fallback: [] }
     }
 
-    // Dev: proxy the routes declared in vercel.json to the local Go server (cmd/dev on :3001).
-    const rawOrigin = process.env.GO_API_URL || 'http://127.0.0.1:3001'
+    // Dev: proxy the routes declared in vercel.json to the local API server (uvicorn on :3001).
+    const rawOrigin = process.env.API_URL || 'http://127.0.0.1:3001'
     const origin = new URL(rawOrigin)
     if (
       !['http:', 'https:'].includes(origin.protocol) ||
@@ -60,11 +60,11 @@ const nextConfig = {
       origin.hash ||
       origin.pathname !== '/'
     ) {
-      throw new Error('GO_API_URL must be an origin without credentials, path, query or fragment')
+      throw new Error('API_URL must be an origin without credentials, path, query or fragment')
     }
     const appUrl = process.env.APP_URL
     if (appUrl && origin.origin === new URL(appUrl).origin) {
-      throw new Error('GO_API_URL must differ from APP_URL to avoid a proxy loop')
+      throw new Error('API_URL must differ from APP_URL to avoid a proxy loop')
     }
 
     return {

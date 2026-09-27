@@ -1,8 +1,8 @@
 /**
  * Server-side reads and DTO mapping for services.
  *
- * The write paths (create, update, delete) moved to the Go API
- * (`apps/web/pkg/db/service.go`) together with the route
+ * The write paths (create, update, delete) live in the API
+ * (`countmein/db/service.py`) together with the route
  * handlers — this module now serves only the pages that read Postgres
  * directly: the cabinet lists, the public organizer/service pages and
  * the sitemap.

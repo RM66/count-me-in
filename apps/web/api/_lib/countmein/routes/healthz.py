@@ -91,7 +91,8 @@ async def handle_healthz(request: Request) -> Response:
         # the deliberate `skipped` state, not this path.)
         panicking = _panicking_env()
         if panicking is not None:
-            # Go's Recover logs the panic before answering (pkg/api/server.go);
+            # The retired implementation's Recover logged the panic before
+            # answering;
             # healthz is excluded from the access log, so without this line a
             # misconfigured production deploy leaves no trace in the drain.
             logx.error(

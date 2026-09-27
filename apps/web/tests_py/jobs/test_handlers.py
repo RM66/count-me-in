@@ -1,4 +1,4 @@
-"""Port of pkg/jobs/handlers_test.go — the notification handlers. One
+"""The notification-handler tests. One
 job per recipient (ADR-012), the counterparty-only rule for
 cancellations, the demo refusal (ADR-010), the one-time login link
 minted per send attempt, and the outbox sweeper.

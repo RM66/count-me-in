@@ -1,5 +1,5 @@
 """Booking routes — the guest write flow and the organizer's cancel.
-Port of pkg/routes/bookings.go."""
+Ported from the retired implementation."""
 
 from __future__ import annotations
 

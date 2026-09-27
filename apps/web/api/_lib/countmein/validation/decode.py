@@ -24,9 +24,9 @@ from .rules import is_reserved_slug, timezone_rule, url_rule
 
 
 def _go_message(err: Any) -> str:
-    """Translate a Pydantic issue into the kin-openapi Reason the Go API
-    answers with (spec.go schemaErrReason) — the parity goldens pin the
-    exact strings."""
+    """Translate a Pydantic issue into the Reason the API answers with
+    (the retired implementation's schemaErrReason) — the parity goldens
+    pin the exact strings."""
     import json as _json
 
     t = err.get("type")
@@ -36,7 +36,7 @@ def _go_message(err: Any) -> str:
     if t == "string_too_short":
         return f"minimum string length is {ctx.get('min_length')}"
     if t == "literal_error":
-        # Pydantic renders expected as "'a', 'b' or 'c'" — kin-openapi
+        # Pydantic renders expected as "'a', 'b' or 'c'" — the spec decode
         # answers with the JSON array of allowed values.
         raw = str(ctx.get("expected") or "").replace(" or ", ", ")
         expected = [part.strip().strip("'\"") for part in raw.split(", ") if part.strip()]
@@ -59,7 +59,7 @@ def _go_message(err: Any) -> str:
 def _uuid_pattern_check(schema_name: str, key: str, value: Any, e: Errors) -> bool:
     """UUID-typed properties: Pydantic cannot apply the generated pattern
     constraint to a coerced UUID, so the check lives here — a string that
-    fails the spec pattern gets kin-openapi's pattern message (the
+    fails the spec pattern gets the spec pattern message (the
     parity goldens pin the exact text, pattern verbatim). Returns True
     when the property refs a `format: uuid` schema and the check ran."""
     import re
@@ -124,7 +124,7 @@ def _validate_model[T: BaseModel](
                 continue  # unknown key: stripped, like Zod
             # UUID-typed properties: Pydantic cannot apply the generated
             # pattern to a coerced UUID, so the spec pattern is checked
-            # here — a string that fails it gets kin-openapi's pattern
+            # here — a string that fails it gets the spec pattern
             # message (the parity goldens pin the exact text).
             if _uuid_pattern_check(schema_name, key, value, e):
                 continue

@@ -1,6 +1,6 @@
 # Parity scenarios (Phase 1.4)
 
-One YAML file per scenario; each is an ordered list of steps executed by `scripts/migration/record.py` against the Go API (and later replayed against the Python API by `tests_py/parity/test_replay.py`).
+One YAML file per scenario; each is an ordered list of steps the retired recorder executed against the Go API (replayed against the Python API by `tests_py/parity/test_replay.py`).
 
 ## Step fields
 
@@ -11,7 +11,7 @@ One YAML file per scenario; each is an ordered list of steps executed by `script
 
 ## Placeholders (resolved by the recorder, normalized in goldens)
 
-- `<guestTicket>` / `<signupTicket>` — single-use tickets minted into Redis (`auth:ticket:{token}`, same payload shape as `pkg/auth/ticket.go`)
+- `<guestTicket>` / `<signupTicket>` — single-use tickets minted into Redis (`auth:ticket:{token}`, same payload shape as the auth ticket writer)
 - `<session>` — organizer JWT (`X-Organizer-Auth`), owner of the recorder's seeded rows
 - `<demoSession>` — JWT for `DEMO_ORGANIZER_ID`
 - `<slotId>` / `<serviceId>` / `<bookingId>` — ids captured from earlier responses in the same scenario

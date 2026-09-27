@@ -2,8 +2,8 @@
  * The HTTP surface of the API, as data.
  *
  * Schemas describe payloads; this describes where they travel. Both the
- * OpenAPI spec and the Go route table are derived from it, and a Go test
- * asserts the mux dispatches exactly these method/path pairs — so an endpoint
+ * OpenAPI spec and the Python route table are derived from it, and a test
+ * asserts the app dispatches exactly these method/path pairs — so an endpoint
  * cannot exist without being described, and a described endpoint cannot be
  * missing.
  *

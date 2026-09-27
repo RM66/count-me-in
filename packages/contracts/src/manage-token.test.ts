@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { hashManageToken } from './manage-token'
 
 // Parity vectors: the same SHA-256 hex must come out of the TS helper,
-// the Go helper (pkg/db.HashManageToken — shared_test.go carries the
-// same table) and the SQL lookup key. Pinned so a change on any one
+// the API helper (hash_manage_token in countmein/db/shared.py — the
+// Python suite carries the same table) and the SQL lookup key. Pinned so a change on any one
 // side fails this test. The cases cover the shapes a token can
 // plausibly take: empty, short, unicode/emoji, and both ends of the
 // length spectrum.

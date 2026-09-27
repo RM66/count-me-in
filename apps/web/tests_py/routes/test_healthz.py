@@ -1,4 +1,4 @@
-"""Port of pkg/api/server_test.go's healthz tests — the probe's own
+"""The healthz tests — the probe's own
 recovery: a panicking (or env-missing) dependency answers a JSON 503
 naming the missing variables, a healthy one answers 200. The probes are
 module-level seams so the recovery path is pinned without initializing

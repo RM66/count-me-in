@@ -3,7 +3,7 @@ reviews/
 
 # Generated artifacts.
 apps/web/openapi.yaml
-apps/web/pkg/contracts/testdata/golden/
+apps/web/tests_py/contracts/golden/
 packages/contracts/vectors/
 packages/db/drizzle/meta/
 

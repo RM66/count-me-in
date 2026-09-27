@@ -3,7 +3,7 @@
 Replays every scenario in tests_py/parity/scenarios/ against the Python
 ASGI app and asserts the normalized transcript equals the golden one
 recorded from the Go API (tests_py/parity/golden/). The harness mirrors
-scripts/migration/record.py step for step — same pinned env, same state
+the retired recorder step for step — same pinned env, same state
 reset (TRUNCATE + demo reseed + Redis FLUSHDB), same placeholder
 minting, same normalization — so any difference the comparison reports
 is a behavioral difference between the Go and Python implementations,
@@ -15,7 +15,7 @@ replay:
   `date`/`server` headers never exist and publishes (background tasks)
   complete before the response returns to the client;
 - the outbound sink is the app's own transport seams (queue._post,
-  jobs.telegram._post) instead of scripts/migration/sink.py — the
+  jobs.telegram._post) instead of the retired recorder's sink — the
   recorded {path, body} shape is identical;
 - the demo seed is the Python port (db.seed.seed_demo) instead of
   `bun run db:seed:demo` — a seed drift is exactly the kind of parity
@@ -110,7 +110,7 @@ RL_WINDOWS = {
 EXCLUDED_HEADERS = {"date", "server", "x-vercel-id", "x-vercel-cache", "content-length"}
 
 
-# ── credential minting (mirrors record.py / pkg/authtest) ─────────────────────
+# ── credential minting (mirrors record.py / authtest) ─────────────────────
 
 
 def derived_key(secret: str) -> bytes:
@@ -156,7 +156,7 @@ async def mint_ticket(r: aioredis.Redis, purpose: str, messenger_id: str, name: 
 
 
 def mint_widget_payload(bot_token: str, user_id: int, name: str) -> dict:
-    """Telegram Login Widget payload with a valid HMAC (pkg/auth/telegram.go)."""
+    """Telegram Login Widget payload with a valid HMAC (auth/telegram.py)."""
     data: dict[str, Any] = {"id": user_id, "first_name": name, "auth_date": int(time.time())}
     dcs = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
     secret = hashlib.sha256(bot_token.encode()).digest()
@@ -165,7 +165,7 @@ def mint_widget_payload(bot_token: str, user_id: int, name: str) -> dict:
 
 
 def mint_qstash_signature(body: bytes, sub: str, key: str = QSTASH_CURRENT_KEY) -> str:
-    """HS256 JWT over the body, mirroring pkg/jobs/receiver.go verification."""
+    """HS256 JWT over the body, mirroring jobs/receiver.py verification."""
     header = (
         base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
         .rstrip(b"=")
@@ -391,8 +391,8 @@ class Normalizer:
 
 class Sink:
     """Records every outbound POST the app attempts (QStash publish,
-    Telegram send) as {path, body} — the same shape scripts/migration/
-    sink.py writes and record.py reads. Any host is accepted: a call
+    Telegram send) as {path, body} — the same shape the retired
+    recorder's sink wrote. Any host is accepted: a call
     the golden does not show shows up as an extra sink entry and fails
     the comparison."""
 

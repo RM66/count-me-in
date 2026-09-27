@@ -3,7 +3,7 @@
 TelegramGuest and TelegramSignup are deliberately separate endpoints: a
 guest gets no session at all (the ticket is spent on one booking or one
 lookup), and sharing the route would let a guest ticket be redeemed as
-an organizer sign-in. Port of pkg/routes/auth.go.
+an organizer sign-in. Ported from the retired implementation.
 """
 
 from __future__ import annotations

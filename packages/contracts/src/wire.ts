@@ -93,7 +93,7 @@ import { createTimeSlotInput, slotStartsAt, timeSlotRecord, updateTimeSlotInput 
  * `x-go-*` metadata and the `kind` tags fed the retired hand-written
  * generator; the OpenAPI spec is now rendered by zod-openapi from this
  * registry alone ([`openapi.ts`](./openapi.ts)), and the Go side is
- * generated from the spec by oapi-codegen.
+ * generated from the spec by datamodel-code-generator.
  */
 
 export type WireMeta = {

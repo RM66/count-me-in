@@ -47,8 +47,6 @@ target-version = "py312"
 line-length = 100
 extend-exclude = [
     "**/*_gen.py",
-    # Phase 1 recorder tooling — a separate uv project with its own pyproject.
-    "scripts/migration",
 ]
 
 [tool.ruff.lint]
