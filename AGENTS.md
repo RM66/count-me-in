@@ -96,11 +96,14 @@ See [ADR-001](docs/decisions/001-monorepo-layout.md), [ADR-007](docs/decisions/0
 **Vitest** is the TS test runner; **React Testing Library** covers components and hooks. The Python API suite is **pytest** (mirrors the package tree under `apps/web/tests_py`). TS tests are **co-located** (`*.test.ts` / `*.test.tsx` beside source); Python tests live in `tests_py/`. Run all tests via the Turborepo pipeline:
 
 ```sh
-bun run test          # all packages (TS vitest + Python pytest)
-bun run test:watch    # watch mode (vitest)
+bun run test          # all packages (TS vitest; apps/web runs test:web only)
+bun run test:py      # the Python API suite (pytest) — a separate, mandatory command
+bun run test:watch   # watch mode (vitest)
 ```
 
 Per-package: `cd <package> && bun run test`. In `apps/web`: `bun run test:web` (Vitest only) or `bun run test:py` (pytest only); `bun run lint:py` runs ruff + mypy.
+
+`bun run test` deliberately does **not** include pytest: the Python suite needs real Postgres/Redis (integration tests fail hard in CI without them), so it runs as its own command and its own CI job (`python-api`), not inside the generic turbo `test` pipeline.
 
 - **`packages/contracts`** — Zod schemas, slot/timezone/options logic (node env).
 - **`apps/web`** — helpers, API client, client error classification + link builders, React hooks, components (happy-dom env); the Python API suite in `tests_py/` (`uv run pytest` — includes the parity replay against the frozen golden transcripts and the invariant index `tests_py/test_invariants.py`). Config in `vitest.config.ts`; `server-only` stubbed via `vitest.server-only-stub.ts`; RTL cleanup in `vitest.setup.ts`.

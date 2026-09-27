@@ -14,7 +14,13 @@ def _load_dot_env(path: str) -> None:
     """Fill unset variables from a .env file. The real environment always
     wins — a variable exported by the shell (or passed by Playwright's
     webServer env) is never overwritten, so a local .env cannot leak into
-    an explicitly configured run."""
+    an explicitly configured run.
+
+    Deliberately minimal, not dotenv-compatible: no `export ` prefixes,
+    no multi-line or escaped values, no variable interpolation — only
+    `KEY=value` lines with optional surrounding quotes. The repo's .env
+    files are hand-written in exactly that shape; anything richer belongs
+    in the real environment, not in a parser grown around it."""
     try:
         with open(path, encoding="utf-8") as fh:
             data = fh.read()
