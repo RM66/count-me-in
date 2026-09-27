@@ -13,7 +13,6 @@ from typing import Any
 from starlette.responses import Response as StarletteResponse
 
 from .. import logx
-from ..contracts.constants_gen import DEMO_READ_ONLY_CODE
 from ..contracts.models_gen import ErrorBody, InvalidBody, InvalidIssuesBody, ValidationErrors
 from ..i18n import api_error
 from .jsonenc import dumps_compact
@@ -90,13 +89,6 @@ def method_not_allowed(locale: str) -> Response:
     return error(405, locale, "methodNotAllowed")
 
 
-def internal(err: BaseException) -> Response:
-    """Log the error and return an empty 500 — the analogue of an unhandled
-    throw in a Next.js route handler (no JSON body)."""
-    logx.error(err, {"scope": "api"})
-    return empty(500)
-
-
 def error(status: int, locale: str, key: str) -> Response:
     """Render {error: <localized message>} — the body carries the caller's
     locale (ADR-011)."""
@@ -116,14 +108,6 @@ def error_extras(
 ) -> Response:
     extras.error = api_error(locale, key, params)
     return Response(status=status, body=extras)
-
-
-def demo_read_only(locale: str) -> Response:
-    """The 403 every write path answers for the demo account or anonymous
-    visitors (ADR-010)."""
-    return error_extras(
-        403, locale, "demoReadOnly", None, ErrorBody(error="", code=DEMO_READ_ONLY_CODE)
-    )
 
 
 def invalid_body(locale: str, errs: Any) -> Response:

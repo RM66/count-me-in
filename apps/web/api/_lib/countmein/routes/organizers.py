@@ -31,13 +31,13 @@ from ..db.organizer import (
 from ..db.rows import OrganizerRow, to_organizer_profile
 from ..errors import (
     AccountExists,
-    AuthSessionExpired,
     DemoNotSeeded,
     InvalidInput,
     NothingToUpdate,
     OrganizerNotFound,
     PhotoPrefix,
     SlugTaken,
+    TicketExpired,
 )
 from ..validation.decode import (
     decode_create_avatar_upload_input,
@@ -122,9 +122,11 @@ async def organizer_register(
     identity = await peek_ticket(str(unwrap_root(payload.ticket)))
     # Purpose claim: only an organizer-flow ticket may register an
     # organizer — a guest booking ticket must not be redeemable here.
-    # Answered like an expired one.
+    # Answered like an expired one, with the same wire key as the guest
+    # flow's wrong-purpose answer (TicketExpired): one rule, one key,
+    # and the endpoint cannot be used to test whether a ticket exists.
     if identity is None or identity.purpose != TICKET_PURPOSE_ORGANIZER:
-        raise AuthSessionExpired()
+        raise TicketExpired()
 
     try:
         registered = await insert_organizer(payload, identity)

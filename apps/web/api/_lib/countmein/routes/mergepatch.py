@@ -9,26 +9,7 @@ touched keys so only intended columns are written."""
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
-
-from starlette.requests import Request
-
-if TYPE_CHECKING:
-    pass
-
-from ..web.response import Response, error
-
-
-def require_merge_patch_content_type(request: Request, locale: str) -> Response | None:
-    """Answer 415 unless the request declares the RFC 7386 media type.
-    The semantics (absent key = keep, explicit null = clear) belong to
-    the media type, not the body: a client sending application/json to a
-    PUT that only speaks merge-patch would silently get partial-update
-    behavior where it expected replace."""
-    ct = request.headers.get("content-type", "")
-    if ct == "" or ct.split(";", 1)[0].strip() != "application/merge-patch+json":
-        return error(415, locale, "unsupportedMediaType")
-    return None
+from typing import Any
 
 
 def patch_keys(body: bytes) -> dict[str, bool] | None:

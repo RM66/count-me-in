@@ -16,13 +16,13 @@ from ..contracts.payloads import AuthTicketPayload
 from ..demo import refuse_demo_write
 from .client import engine
 from .errors import (
-    BookingAlreadyCancelledError,
-    DuplicateBookingError,
-    InvalidOptionSelectionError,
-    ManageTokenExpiredError,
-    PartyTooLargeError,
-    SlotNotBookableError,
-    SlotSoldOutError,
+    AlreadyCancelled,
+    BookingNotFound,
+    DuplicateBooking,
+    InvalidOptions,
+    PartyTooLarge,
+    SlotGone,
+    SoldOut,
 )
 from .outbox import OutboxRow, enqueue_outbox
 from .rows import (
@@ -95,7 +95,7 @@ async def create_guest_booking(
         # let anyone book a session that already started (its
         # manageToken would be born expired). The predicate lives in the
         # chain-select, so a past slot is answered exactly like a
-        # missing one: SlotNotBookableError → 404 slotGone.
+        # missing one: SlotGone → 404 slotGone.
         result = await conn.execute(
             text(
                 SLOT_CHAIN_SELECT + "WHERE ts.id = :slot_id AND s.id = :service_id "
@@ -105,7 +105,7 @@ async def create_guest_booking(
         )
         chain = scan_slot_chain(result.first())
         if chain is None:
-            raise SlotNotBookableError()
+            raise SlotGone()
         slot, service, organizer = chain
 
         refuse_demo_write(organizer.id)
@@ -118,13 +118,13 @@ async def create_guest_booking(
                 service.options or [], mode, data.selected_options or []
             )
         except ValueError as err:
-            raise InvalidOptionSelectionError(str(err)) from err
+            raise InvalidOptions(str(err)) from err
 
         # Organizer's per-booking cap — enforced before the atomic
         # reserve so an oversized party is refused outright rather than
         # competing for seats.
         if data.seats > service.max_seats_per_booking:
-            raise PartyTooLargeError(service.max_seats_per_booking)
+            raise PartyTooLarge(service.max_seats_per_booking)
 
         result = await conn.execute(
             text(
@@ -141,7 +141,7 @@ async def create_guest_booking(
             # concurrent booking committed in between can make it stale
             # by a seat or two. Exact TS parity (it read the same
             # snapshot), and the number is UX copy, not an invariant.
-            raise SlotSoldOutError(domain.seats_left(slot.capacity, slot.booked_count))
+            raise SoldOut(domain.seats_left(slot.capacity, slot.booked_count))
         claimed = scan_slot(claimed_row)
         if claimed is None:
             # Unreachable by the decode/guard contract; a real None
@@ -182,11 +182,11 @@ async def create_guest_booking(
             # Duplicate booking — the transaction rolls back, releasing
             # the claimed seat (partial unique index, invariant 4).
             if unique_violation(err):
-                raise DuplicateBookingError() from err
+                raise DuplicateBooking() from err
             raise
         created = scan_booking(result.first())
         if created is None:
-            raise SlotNotBookableError()
+            raise SlotGone()
 
         # Transactional outbox: write one outbox row per recipient in
         # the same transaction, so a crash between commit and the inline
@@ -242,7 +242,7 @@ async def cancel_guest_booking_by_token(
         # test whether a token exists. None = non-expiring (legacy rows
         # created before the column was added).
         if b.manage_token_expires_at is not None and datetime.now(UTC) > b.manage_token_expires_at:
-            raise ManageTokenExpiredError()
+            raise BookingNotFound()
 
         result = await conn.execute(
             text(
@@ -254,7 +254,7 @@ async def cancel_guest_booking_by_token(
         )
         cancelled = scan_booking(result.first())
         if cancelled is None:
-            raise BookingAlreadyCancelledError()
+            raise AlreadyCancelled()
 
         result = await conn.execute(
             text(
@@ -329,7 +329,7 @@ async def cancel_owned_booking(
         )
         cancelled = scan_booking(result.first())
         if cancelled is None:
-            raise BookingAlreadyCancelledError()
+            raise AlreadyCancelled()
 
         await conn.execute(
             text(

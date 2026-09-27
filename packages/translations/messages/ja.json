@@ -784,7 +784,6 @@
     "telegramNotConfigured": "Telegramボットが設定されていません",
     "telegramInvalid": "Telegramの認証データが無効です",
     "telegramValidationFailed": "Telegramの認証データを検証できませんでした",
-    "authSessionExpired": "認証セッションが期限切れです。もう一度Telegramで認証してください",
     "organizerNotFound": "主催者が見つかりません",
     "demoNotSeeded": "デモ主催者のデータが登録されていません",
     "serviceNotFound": "サービスが見つかりません",

@@ -206,6 +206,28 @@ async def test_run_claimed_keeps_claim_on_absorbed_terminal_error(fakeredis):
     assert calls == 1, "terminal outcome must keep the claim"
 
 
+async def test_claim_is_a_short_lease_finalized_to_full_ttl(fakeredis):
+    """The crash-window invariant (ADR-021): the claim TTL is a short
+    lease (60s — the send window), so an instance killed mid-send
+    leaves the key to expire and the retry is processed, not
+    suppressed. A successful send finalizes the claim to the full 24h
+    idempotency TTL, so replays are suppressed for the retention
+    window."""
+    outbox_id = "01930000-0000-7000-8000-0000000000c4"
+    key = "job:processed:" + outbox_id
+
+    async def ok():
+        return None
+
+    assert await run.claim_delivery(outbox_id) is True
+    ttl = await fakeredis.ttl(key)
+    assert 0 < ttl <= 60, "claim must be a short lease, not the full TTL"
+
+    await run.finalize_delivery(outbox_id)
+    ttl = await fakeredis.ttl(key)
+    assert 60 < ttl <= 24 * 3600, "finalize must extend to the full idempotency TTL"
+
+
 # ── payload shape helpers ─────────────────────────────────────────────────────
 
 

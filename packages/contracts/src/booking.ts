@@ -96,7 +96,7 @@ export type GuestBooking = z.infer<typeof guestBooking>
  * Whether the guest can still act on a booking: it is confirmed and its
  * manage token has not expired. `null` expiry means a legacy row created
  * before the column existed (ADR-020) and stays cancellable. Mirrors
- * `can_cancel_booking` in the API (countmein/db/booking.py) — the cancel
+ * `can_cancel_booking` in the API (countmein/db/rows.py) — the cancel
  * write enforces exactly this, so the DTO must not promise more.
  */
 export function canCancelBooking(

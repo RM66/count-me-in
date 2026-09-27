@@ -5,7 +5,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "ar": {
         "accountExists": "يوجد حساب مرتبط بهوية Telegram هذه — سجّل الدخول بدلًا من ذلك",
         "alreadyCancelled": "أُلغي هذا الحجز بالفعل",
-        "authSessionExpired": "انتهت جلسة المصادقة — تحقق من هويتك عبر Telegram مجددًا",
         "bodyTooLarge": "حجم الطلب كبير جدًا",
         "bookingNotFound": "الحجز غير موجود",
         "cannotCreateService": "تعذّر إنشاء الخدمة",
@@ -39,7 +38,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "de": {
         "accountExists": "Für diese Telegram-Identität besteht bereits ein Konto — melde dich stattdessen an",
         "alreadyCancelled": "Diese Buchung wurde bereits storniert",
-        "authSessionExpired": "Die Authentifizierungssitzung ist abgelaufen — authentifiziere dich erneut mit Telegram",
         "bodyTooLarge": "Der Anforderungstext ist zu groß",
         "bookingNotFound": "Buchung nicht gefunden",
         "cannotCreateService": "Das Angebot konnte nicht erstellt werden",
@@ -73,7 +71,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "en": {
         "accountExists": "An account with this Telegram identity already exists — log in instead",
         "alreadyCancelled": "This booking has already been cancelled",
-        "authSessionExpired": "Auth session expired — authenticate with Telegram again",
         "bodyTooLarge": "The request body is too large",
         "bookingNotFound": "Booking not found",
         "cannotCreateService": "Could not create the service",
@@ -107,7 +104,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "es": {
         "accountExists": "Ya existe una cuenta con esta identidad de Telegram; inicia sesión",
         "alreadyCancelled": "Esta reserva ya se ha cancelado",
-        "authSessionExpired": "La sesión de autenticación ha caducado; vuelve a autenticarte con Telegram",
         "bodyTooLarge": "El cuerpo de la solicitud es demasiado grande",
         "bookingNotFound": "Reserva no encontrada",
         "cannotCreateService": "No se pudo crear el servicio",
@@ -141,7 +137,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "fr": {
         "accountExists": "Un compte associé à cette identité Telegram existe déjà — connecte-toi plutôt",
         "alreadyCancelled": "Cette réservation a déjà été annulée",
-        "authSessionExpired": "La session d’authentification a expiré — authentifie-toi de nouveau avec Telegram",
         "bodyTooLarge": "Le corps de la requête est trop volumineux",
         "bookingNotFound": "Réservation introuvable",
         "cannotCreateService": "Impossible de créer l’activité",
@@ -175,7 +170,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "ja": {
         "accountExists": "このTelegramアカウントではすでに登録されています。ログインしてください",
         "alreadyCancelled": "この予約はすでにキャンセルされています",
-        "authSessionExpired": "認証セッションが期限切れです。もう一度Telegramで認証してください",
         "bodyTooLarge": "リクエスト本文が大きすぎます",
         "bookingNotFound": "予約が見つかりません",
         "cannotCreateService": "サービスを作成できませんでした",
@@ -209,7 +203,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "pt": {
         "accountExists": "Já existe uma conta com esta identidade do Telegram — entre em vez de criar outra",
         "alreadyCancelled": "Esta reserva já foi cancelada",
-        "authSessionExpired": "A sessão de autenticação expirou — autentique-se novamente com o Telegram",
         "bodyTooLarge": "O corpo da requisição é grande demais",
         "bookingNotFound": "Reserva não encontrada",
         "cannotCreateService": "Não foi possível criar o serviço",
@@ -243,7 +236,6 @@ API_ERRORS: dict[str, dict[str, str]] = {
     "ru": {
         "accountExists": "Этот аккаунт Telegram уже связан с профилем CountMeIn — войдите в него",
         "alreadyCancelled": "Это бронирование уже отменено",
-        "authSessionExpired": "Сессия авторизации истекла — подтвердите вход через Telegram снова",
         "bodyTooLarge": "Тело запроса слишком большое",
         "bookingNotFound": "Бронирование не найдено",
         "cannotCreateService": "Не удалось создать услугу",

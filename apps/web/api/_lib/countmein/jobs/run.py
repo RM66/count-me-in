@@ -147,6 +147,12 @@ def parse_job(queue: str, body: bytes | None) -> ParsedJob:
 # backoff tops out well under a day), so a redelivery of the same
 # outbox row inside the window is always recognized.
 _IDEMPOTENCY_TTL = timedelta(hours=24)
+# The claim is a lease, not a permanent marker: it only needs to cover
+# the send window (maxDuration 10s) plus margin. If the instance dies
+# mid-send, the lease expires and QStash's next retry — or the
+# sweeper's re-publish — is processed instead of suppressed, which is
+# what keeps the crash window from breaking at-least-once.
+_CLAIM_LEASE = timedelta(seconds=60)
 
 
 def _processed_key(outbox_id: str) -> str:
@@ -155,16 +161,19 @@ def _processed_key(outbox_id: str) -> str:
 
 
 async def claim_delivery(outbox_id: str) -> bool:
-    """SET-NX the outbox id: True means this delivery is the first for
-    that row and the handler may send. A lost race (or a Redis error)
-    fails open — the delivery proceeds — matching the ADR-019 stance: an
-    idempotency outage must not block notifications, and the worst case
-    is a rare duplicate message, never a lost one."""
+    """SET-NX the outbox id with the short claim lease: True means this
+    delivery is the first for that row and the handler may send. A lost
+    race (or a Redis error) fails open — the delivery proceeds —
+    matching the ADR-019 stance: an idempotency outage must not block
+    notifications, and the worst case is a rare duplicate message,
+    never a lost one. The lease (not the full TTL) is the claim window:
+    an instance killed mid-send leaves the key to expire, so the retry
+    is processed instead of suppressed."""
     if not config.redis_configured():
         return True
     try:
         ok = await redis.client().set(
-            _processed_key(outbox_id), "1", nx=True, ex=int(_IDEMPOTENCY_TTL.total_seconds())
+            _processed_key(outbox_id), "1", nx=True, ex=int(_CLAIM_LEASE.total_seconds())
         )
     except Exception as err:
         logx.warn_every(
@@ -174,6 +183,25 @@ async def claim_delivery(outbox_id: str) -> bool:
         )
         return True
     return bool(ok)
+
+
+async def finalize_delivery(outbox_id: str) -> None:
+    """Extend a successful delivery's claim to the full idempotency TTL,
+    so duplicates of the same delivery are suppressed for the retention
+    window. Best-effort: a failure here only risks a rare duplicate on
+    a replay, never a lost notification."""
+    if not config.redis_configured():
+        return
+    try:
+        await redis.client().expire(
+            _processed_key(outbox_id), int(_IDEMPOTENCY_TTL.total_seconds())
+        )
+    except Exception as err:
+        logx.warn_every(
+            5 * 60,
+            "job idempotency finalize failed — replays may duplicate",
+            {"scope": "job-idempotency", "outboxId": outbox_id, "error": str(err)},
+        )
 
 
 async def release_delivery(outbox_id: str) -> None:
@@ -208,10 +236,13 @@ async def run_claimed(
     queue: str, trace_id: str, outbox_id: str, run: Callable[[], Awaitable[None]]
 ) -> None:
     """Wrap one booking-queue dispatch in the consumer idempotency
-    guard: claim → send → release on a retryable failure. Terminal
-    outcomes that _with_retry_policy absorbs (unreachable chat, rejected
-    content) keep the claim — those deliveries are complete and must
-    never be re-sent."""
+    guard: claim (short lease) → send → release on a retryable
+    failure → finalize (full TTL) on success. Terminal outcomes that
+    _with_retry_policy absorbs (unreachable chat, rejected content)
+    keep the claim — those deliveries are complete and must never be
+    re-sent. An instance killed mid-send leaves the lease to expire,
+    so the retry is processed — the crash window cannot lose the
+    notification."""
     if not await claim_delivery(outbox_id):
         logx.info(
             "duplicate delivery — completing without sending",
@@ -223,6 +254,7 @@ async def run_claimed(
     except Exception:
         await release_delivery(outbox_id)
         raise
+    await finalize_delivery(outbox_id)
 
 
 async def _with_retry_policy(queue: str, trace_id: str, run: Callable[[], Awaitable[None]]) -> None:

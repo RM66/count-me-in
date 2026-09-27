@@ -190,26 +190,6 @@ def slot_end(starts_at: datetime, duration_minutes: int) -> datetime:
     return starts_at + timedelta(minutes=duration_minutes)
 
 
-def can_cancel_booking(
-    status: str,
-    starts_at: datetime,
-    now: datetime | None = None,
-) -> bool:
-    """The shared cancel rule (Python can_cancel_booking / TS canCancelBooking):
-    a confirmed booking whose slot has not started yet.
-
-    The manage-token expiry (+24h grace past slot start) is enforced
-    separately at the credential check; this rule governs the DTO's
-    canCancel flag so the history stays listed but the dead link is not
-    offered.
-    """
-    if status != "confirmed":
-        return False
-    if now is None:
-        now = datetime.now(UTC)
-    return starts_at > now
-
-
 # ── FlexTime: RFC3339 string or Unix epoch (seconds or milliseconds) ────────
 
 

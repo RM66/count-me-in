@@ -1,7 +1,7 @@
 /**
  * Generate the Python translation dictionary from `packages/translations`.
  *
- * Python twin of `generate-i18n-go.ts`: the API only needs two slices of the
+ * The i18n generator for the Python API: it only needs two slices of the
  * full corpus —
  *   - the `ApiErrors` section of `messages/*.json` (route error copy)
  *   - all of `notifications/*.json` (Telegram bot copy)

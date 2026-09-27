@@ -1,7 +1,7 @@
 /**
  * Reference Zod v4 default messages. Since ADR-016 request validation is
  * the spec decode (which phrases its own messages) and vectors pin error keys,
- * not text, these are not interpolated into Go code. They exist purely as
+ * not text, these are not interpolated into generated code. They exist purely as
  * the pin messages.test.ts checks: a Zod upgrade that rewords one surfaces
  * as a failing test rather than a silent log divergence. The remaining
  * hand-written API messages that intentionally match Zod word-for-word

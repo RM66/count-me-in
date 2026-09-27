@@ -115,13 +115,6 @@ class TicketExpired(ApiError):
     key = "ticketExpired"
 
 
-class AuthSessionExpired(ApiError):
-    """The organizer session is missing/expired where one is required."""
-
-    status = 401
-    key = "authSessionExpired"
-
-
 class SlotGone(ApiError):
     """The slot a guest tried to book is gone (404)."""
 

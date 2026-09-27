@@ -181,7 +181,9 @@ def test_expired_manage_token_refused_on_read_and_cancel():
     _assert_test_exists(
         "tests_py.db.test_booking_writes", "test_cancel_guest_booking_expired_token"
     )
-    _assert_test_exists("tests_py.contracts.test_domain", "test_can_cancel_booking")
+    _assert_test_exists(
+        "tests_py.jobs.test_demo_refresh", "test_expired_booking_stays_listed_with_can_cancel_false"
+    )
 
 
 # ── Delete guards ─────────────────────────────────────────────────────────────

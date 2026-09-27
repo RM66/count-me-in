@@ -12,9 +12,10 @@ import { describe, expect, it } from 'vitest'
 import { zodMessages } from './messages'
 
 /**
- * These strings are reproduced verbatim in Go (pkg/validation). Zod owns the
- * wording; this test fails when a Zod upgrade changes it, so the Go templates
- * are updated deliberately instead of drifting.
+ * These strings are reproduced verbatim in the API's pinned error messages
+ * (validation/decode). Zod owns the wording; this test fails when a Zod
+ * upgrade changes it, so the pinned messages are updated deliberately
+ * instead of drifting.
  */
 function firstMessage(result: {
   success: boolean

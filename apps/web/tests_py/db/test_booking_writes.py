@@ -42,15 +42,15 @@ from _lib.countmein.db import (
 )
 from _lib.countmein.db.client import engine
 from _lib.countmein.db.errors import (
-    BookingAlreadyCancelledError,
-    DuplicateBookingError,
-    InvalidOptionSelectionError,
-    ManageTokenExpiredError,
-    PartyTooLargeError,
-    ServiceHasBookingsError,
-    SlotHasActiveBookingsError,
-    SlotNotBookableError,
-    SlotSoldOutError,
+    AlreadyCancelled,
+    BookingNotFound,
+    DuplicateBooking,
+    InvalidOptions,
+    PartyTooLarge,
+    ServiceHasBookings,
+    SlotGone,
+    SlotHasActiveBookings,
+    SoldOut,
 )
 from _lib.countmein.db.shared import (
     hash_manage_token,
@@ -305,14 +305,14 @@ async def test_create_guest_booking_success(cleanup):
 async def test_create_guest_booking_sold_out(cleanup):
     f = await new_fixture(lambda s: (setattr(s, "capacity", 3), setattr(s, "booked", 3)))
     cleanup.append(f)
-    with pytest.raises(SlotSoldOutError) as exc_info:
+    with pytest.raises(SoldOut) as exc_info:
         await bw.create_guest_booking(booking_data(f, 1, None, guest_identity("g2")))
     assert exc_info.value.seats_left == 0
 
     # Partial room: capacity 3, booked 2, party of 2 → 2+2 > 3, one seat left.
     f2 = await new_fixture(lambda s: (setattr(s, "capacity", 3), setattr(s, "booked", 2)))
     cleanup.append(f2)
-    with pytest.raises(SlotSoldOutError) as exc_info:
+    with pytest.raises(SoldOut) as exc_info:
         await bw.create_guest_booking(booking_data(f2, 2, None, guest_identity("g3")))
     assert exc_info.value.seats_left == 1
 
@@ -320,7 +320,7 @@ async def test_create_guest_booking_sold_out(cleanup):
 async def test_create_guest_booking_past_slot(cleanup):
     f = await new_fixture(lambda s: setattr(s, "starts_at", datetime.now(UTC) - timedelta(hours=2)))
     cleanup.append(f)
-    with pytest.raises(SlotNotBookableError):
+    with pytest.raises(SlotGone):
         await bw.create_guest_booking(booking_data(f, 1, None, guest_identity("g4")))
     assert await f.booked_count() == 0, "a refused booking must not claim seats"
 
@@ -328,7 +328,7 @@ async def test_create_guest_booking_past_slot(cleanup):
 async def test_create_guest_booking_party_too_large(cleanup):
     f = await new_fixture(lambda s: setattr(s, "max_seats", 2))
     cleanup.append(f)
-    with pytest.raises(PartyTooLargeError) as exc_info:
+    with pytest.raises(PartyTooLarge) as exc_info:
         await bw.create_guest_booking(booking_data(f, 3, None, guest_identity("g5")))
     assert exc_info.value.max_seats == 2
     assert await f.booked_count() == 0, "a refused booking must not claim seats"
@@ -346,7 +346,7 @@ async def test_create_guest_booking_invalid_options(cleanup):
             lambda s, o=options, m=mode: (setattr(s, "options", o), setattr(s, "select_mode", m))
         )
         cleanup.append(f)
-        with pytest.raises(InvalidOptionSelectionError):
+        with pytest.raises(InvalidOptions):
             await bw.create_guest_booking(booking_data(f, 1, selected, guest_identity("g6")))
 
 
@@ -359,9 +359,9 @@ async def test_create_guest_booking_duplicate(cleanup):
     f.track(_uuid_str(first.id))
 
     # Same guest, same slot: the partial unique index rejects the second
-    # INSERT with a 23505 → DuplicateBookingError, and the transaction
+    # INSERT with a 23505 → DuplicateBooking, and the transaction
     # rolls back — releasing the seat the second attempt had claimed.
-    with pytest.raises(DuplicateBookingError):
+    with pytest.raises(DuplicateBooking):
         await bw.create_guest_booking(booking_data(f, 2, None, guest))
     assert await f.booked_count() == 1, "rollback must release the claimed seats"
 
@@ -471,7 +471,7 @@ async def test_cancel_guest_booking_idempotent(cleanup):
 
     # Double-tap: the status='confirmed' predicate updates no row —
     # reported as already cancelled, never a second decrement.
-    with pytest.raises(BookingAlreadyCancelledError):
+    with pytest.raises(AlreadyCancelled):
         await bw.cancel_guest_booking_by_token(token, "it-trace")
     assert await f.booked_count() == after_first, "re-cancel must not double-decrement"
 
@@ -505,7 +505,7 @@ async def test_cancel_guest_booking_expired_token(cleanup):
     expired = datetime.now(UTC) - timedelta(hours=1)
     _, token = await f.insert_booking(1, expired)
 
-    with pytest.raises(ManageTokenExpiredError):
+    with pytest.raises(BookingNotFound):
         await bw.cancel_guest_booking_by_token(token, "it-trace")
     assert await f.booked_count() == 1, "an expired cancel must not release seats"
 
@@ -577,7 +577,7 @@ async def test_create_guest_booking_concurrent_last_seats(cleanup):
             created, _ = await bw.create_guest_booking(
                 booking_data(f, 1, None, guest_identity(f"race-{i}"))
             )
-        except SlotSoldOutError:
+        except SoldOut:
             return None
         return _uuid_str(created.id)
 
@@ -627,7 +627,7 @@ async def test_delete_owned_slot_refuses_cancelled_bookings(cleanup):
             text("UPDATE bookings SET status = 'cancelled' WHERE id = :id"), {"id": booking_id}
         )
 
-    with pytest.raises(SlotHasActiveBookingsError):
+    with pytest.raises(SlotHasActiveBookings):
         await slot_db.delete_owned_slot(f.organizer_id, f.slot_id)
     async with engine().connect() as conn:
         result = await conn.execute(
@@ -649,7 +649,7 @@ async def test_delete_owned_service_refuses_bookings(cleanup):
     expires_at = datetime.now(UTC) + timedelta(hours=1)
     await f.insert_booking(1, expires_at)
 
-    with pytest.raises(ServiceHasBookingsError):
+    with pytest.raises(ServiceHasBookings):
         await service_db.delete_owned_service(f.organizer_id, f.service_id)
 
 

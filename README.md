@@ -84,10 +84,11 @@ A read-only demo organizer is seeded at `/demo`. All write paths reject it; noti
 
 ### Testing
 
-Tests are co-located beside source (`*.test.ts` / `*.test.tsx` / `*.py` test modules): **Vitest** + **React Testing Library** for TS, **pytest** for the Python API.
+TS tests are co-located beside source (`*.test.ts` / `*.test.tsx`); the Python API suite lives in `apps/web/tests_py/` (**pytest**).
 
 ```sh
-bun run test          # all packages (Turborepo: Vitest + pytest)
+bun run test          # all packages (Turborepo: Vitest; apps/web runs test:web only)
+bun run test:py       # the Python API suite (pytest) — a separate, mandatory command
 bun run test:watch    # watch mode (vitest)
 ```
 

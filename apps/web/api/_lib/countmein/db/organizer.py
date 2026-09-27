@@ -20,7 +20,7 @@ from ..contracts.models import unwrap_root
 from ..contracts.payloads import AuthTicketPayload
 from ..demo import refuse_demo_write
 from .client import engine
-from .errors import NoOrganizerUpdatesError, OrganizerNotFoundError
+from .errors import NothingToUpdate, OrganizerNotFound
 from .rows import ORGANIZER_COLUMNS, OrganizerRow, scan_organizer
 from .shared import new_id
 
@@ -147,7 +147,7 @@ async def update_organizer_profile_tx(
         else:
             sets.append("photo_url = NULL")
     if not sets:
-        raise NoOrganizerUpdatesError()
+        raise NothingToUpdate()
 
     query = (
         f"UPDATE organizers SET {', '.join(sets)} WHERE id = :org_id RETURNING {ORGANIZER_COLUMNS}"
@@ -158,7 +158,7 @@ async def update_organizer_profile_tx(
 
 async def update_organizer_language(organizer_id: str, language: str) -> None:
     """Set the organizer's notification language (ADR-011). An unknown
-    id (0 rows affected) is an OrganizerNotFoundError so a stale session
+    id (0 rows affected) is an OrganizerNotFound so a stale session
     answers 404 instead of a silent success."""
     refuse_demo_write(organizer_id)
     async with engine().begin() as conn:
@@ -167,4 +167,4 @@ async def update_organizer_language(organizer_id: str, language: str) -> None:
             {"lang": language, "id": organizer_id},
         )
         if result.rowcount == 0:
-            raise OrganizerNotFoundError()
+            raise OrganizerNotFound()

@@ -784,7 +784,6 @@
     "telegramNotConfigured": "بوت Telegram غير مُعدّ",
     "telegramInvalid": "بيانات مصادقة Telegram غير صالحة",
     "telegramValidationFailed": "فشل التحقق من مصادقة Telegram",
-    "authSessionExpired": "انتهت جلسة المصادقة — تحقق من هويتك عبر Telegram مجددًا",
     "organizerNotFound": "المنظّم غير موجود",
     "demoNotSeeded": "لم تُضف بيانات المنظّم التجريبي",
     "serviceNotFound": "الخدمة غير موجودة",

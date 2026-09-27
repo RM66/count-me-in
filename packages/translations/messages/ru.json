@@ -784,7 +784,6 @@
     "telegramNotConfigured": "Telegram-бот не настроен",
     "telegramInvalid": "Некорректные данные авторизации Telegram",
     "telegramValidationFailed": "Не удалось проверить авторизацию Telegram",
-    "authSessionExpired": "Сессия авторизации истекла — подтвердите вход через Telegram снова",
     "organizerNotFound": "Организатор не найден",
     "demoNotSeeded": "Демо-организатор не создан",
     "serviceNotFound": "Услуга не найдена",

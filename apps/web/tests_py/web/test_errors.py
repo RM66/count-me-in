@@ -16,23 +16,20 @@ from _lib.countmein.contracts.constants_gen import (
     LOCALES,
 )
 from _lib.countmein.db.errors import (
-    BookingAlreadyCancelledError,
-    DuplicateBookingError,
-    InvalidOptionSelectionError,
-    ManageTokenExpiredError,
-    NoOrganizerUpdatesError,
-    NoServiceUpdatesError,
-    NoSlotUpdatesError,
-    OrganizerNotFoundError,
-    PartyTooLargeError,
-    SlotCapacityBelowBookedError,
-    SlotHasActiveBookingsError,
-    SlotNotBookableError,
-    SlotSoldOutError,
+    AlreadyCancelled,
+    BookingNotFound,
+    CapacityBelowBooked,
+    DuplicateBooking,
+    InvalidOptions,
+    NothingToUpdate,
+    OrganizerNotFound,
+    PartyTooLarge,
+    SlotGone,
+    SlotHasActiveBookings,
+    SoldOut,
 )
 from _lib.countmein.demo import DemoReadOnlyError
 from _lib.countmein.errors import ApiError, RateLimited
-from _lib.countmein.web.response import internal
 
 
 def _body(resp) -> dict:
@@ -43,14 +40,14 @@ def _body(resp) -> dict:
     ("err", "want_status", "want_code", "want_seats", "want_max"),
     [
         (DemoReadOnlyError(), 403, DEMO_READ_ONLY_CODE, None, None),
-        (SlotNotBookableError(), 404, "", None, None),
-        (SlotSoldOutError(0), 409, "", 0, None),
-        (SlotSoldOutError(3), 409, "", 3, None),
-        (DuplicateBookingError(), 409, "duplicate_booking", None, None),
-        (BookingAlreadyCancelledError(), 409, "", None, None),
-        (ManageTokenExpiredError(), 404, "", None, None),
-        (InvalidOptionSelectionError("bad"), 400, "invalid_option", None, None),
-        (PartyTooLargeError(4), 400, "", None, 4),
+        (SlotGone(), 404, "", None, None),
+        (SoldOut(0), 409, "", 0, None),
+        (SoldOut(3), 409, "", 3, None),
+        (DuplicateBooking(), 409, "duplicate_booking", None, None),
+        (AlreadyCancelled(), 409, "", None, None),
+        (BookingNotFound(), 404, "", None, None),
+        (InvalidOptions("bad"), 400, "invalid_option", None, None),
+        (PartyTooLarge(4), 400, "", None, 4),
     ],
     ids=[
         "demo read-only",
@@ -81,12 +78,12 @@ def test_error_response(err, want_status, want_code, want_seats, want_max):
 @pytest.mark.parametrize(
     ("err", "want_status"),
     [
-        (NoSlotUpdatesError(), 400),
-        (SlotCapacityBelowBookedError(3), 409),
-        (SlotHasActiveBookingsError(), 409),
-        (NoServiceUpdatesError(), 400),
-        (NoOrganizerUpdatesError(), 400),
-        (OrganizerNotFoundError(), 404),
+        (NothingToUpdate(), 400),
+        (CapacityBelowBooked(3), 409),
+        (SlotHasActiveBookings(), 409),
+        (NothingToUpdate(), 400),
+        (NothingToUpdate(), 400),
+        (OrganizerNotFound(), 404),
     ],
     ids=[
         "no slot updates",
@@ -115,7 +112,7 @@ def test_wrapped_errors_are_not_flattened():
     # real ApiError instance gets the mapped response, everything else
     # keeps propagating to the 500 recovery.
     wrapped = RuntimeError("booking tx")
-    wrapped.__cause__ = SlotSoldOutError(2)
+    wrapped.__cause__ = SoldOut(2)
     assert not isinstance(wrapped, ApiError)
     assert isinstance(wrapped.__cause__, ApiError)
 
@@ -123,7 +120,7 @@ def test_wrapped_errors_are_not_flattened():
 def test_booking_error_response_localized():
     # The body is actually localized (ADR-011): at least one locale must
     # render different copy from English for the same key.
-    err = SlotSoldOutError(0)
+    err = SoldOut(0)
     en = _body(err.to_response("en"))["error"]
     differs = any(
         _body(err.to_response(locale))["error"] != en
@@ -133,9 +130,6 @@ def test_booking_error_response_localized():
     assert differs, "localized copy must differ from English in at least one locale"
 
 
-def test_internal_leaks_nothing():
-    # Internal must not leak error details into the body — the class stays
-    # in the log, the response is an empty 500.
-    resp = internal(RuntimeError("secret db password: hunter2"))
-    assert resp.status == 500
-    assert resp.body is None
+# (The empty-500 shape and log redaction are pinned by test_log_redaction
+# and the middleware recovery tests; the dead `internal()` helper was
+# removed with the broad except-blocks it served.)

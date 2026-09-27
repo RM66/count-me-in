@@ -16,13 +16,9 @@ from __future__ import annotations
 
 import os
 import traceback
-from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from starlette.requests import Request
-
-if TYPE_CHECKING:
-    pass
 from starlette.responses import Response
 
 from .. import config, logx

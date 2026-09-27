@@ -784,7 +784,6 @@
     "telegramNotConfigured": "Le bot Telegram n’est pas configuré",
     "telegramInvalid": "Données d’authentification Telegram invalides",
     "telegramValidationFailed": "Échec de la validation de l’authentification Telegram",
-    "authSessionExpired": "La session d’authentification a expiré — authentifie-toi de nouveau avec Telegram",
     "organizerNotFound": "Compte organisateur introuvable",
     "demoNotSeeded": "Le compte de démonstration n’est pas initialisé",
     "serviceNotFound": "Activité introuvable",

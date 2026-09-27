@@ -19,6 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from .client import engine
+from .rows import _str
 from .shared import new_id
 
 
@@ -108,8 +109,10 @@ async def bump_outbox_attempts(id: str) -> int | None:
     """Spend one retry-budget unit for a row that was actually processed
     (published or attempted), returning the post-increment value. Rows
     the sweeper skips on deadline never reach here, so a slow sweep no
-    longer burns the budget without a send."""
-    async with engine().connect() as conn:
+    longer burns the budget without a send. Must commit: connect()
+    without begin() rolls the UPDATE back on close, so the budget would
+    never be spent and the row could never reach `failed`."""
+    async with engine().begin() as conn:
         result = await conn.execute(
             text(
                 "UPDATE notification_outbox SET attempts = attempts + 1 "
@@ -198,7 +201,10 @@ async def sweep_outbox(grace_period: timedelta, limit: int) -> list[OutboxRow]:
         )
         return [
             OutboxRow(
-                id=r[0],
+                # _str: psycopg hands back a UUID object; the row id is
+                # a wire string (dedup header, logs), and every other
+                # scanner normalizes the same way.
+                id=_str(r[0]),
                 queue=r[1],
                 payload=r[2],
                 trace_id=r[3],

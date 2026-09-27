@@ -79,17 +79,9 @@ def test_slot_end():
     assert domain.slot_end(start, 90) == datetime(2026, 9, 13, 9, 45, tzinfo=UTC)
 
 
-def test_can_cancel_booking():
-    from datetime import UTC, datetime, timedelta
-
-    now = datetime(2026, 9, 13, 12, 0, tzinfo=UTC)
-    future = now + timedelta(hours=1)
-    past = now - timedelta(hours=1)
-    assert domain.can_cancel_booking("confirmed", future, now)
-    assert not domain.can_cancel_booking("confirmed", past, now)
-    assert not domain.can_cancel_booking("cancelled", future, now)
-
-
+# (The cancel rule lives in db/rows.py can_cancel_booking — the
+# manage-token-expiry semantics — and is pinned there; the dead
+# slot-start-only variant was removed.)
 def test_parse_flex_time():
     from datetime import UTC, datetime
 

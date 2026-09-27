@@ -16,9 +16,9 @@ from ..contracts.models import unwrap_root
 from ..demo import refuse_demo_write
 from .client import engine
 from .errors import (
-    NoSlotUpdatesError,
-    SlotCapacityBelowBookedError,
-    SlotHasActiveBookingsError,
+    CapacityBelowBooked,
+    NothingToUpdate,
+    SlotHasActiveBookings,
 )
 from .rows import SLOT_COLUMNS, TimeSlotRow, scan_slot
 from .shared import is_foreign_key_violation, new_id
@@ -156,7 +156,7 @@ async def update_owned_slot_tx(
         else:
             sets.append("price = NULL")
     if not sets:
-        raise NoSlotUpdatesError()
+        raise NothingToUpdate()
 
     scope = f"id = :slot_id AND service_id IN ({_OWNED_SERVICES})"
 
@@ -174,7 +174,7 @@ async def update_owned_slot_tx(
         if row is None:
             return None
         if state.capacity < row[0]:
-            raise SlotCapacityBelowBookedError(booked_count=row[0])
+            raise CapacityBelowBooked(booked_count=row[0])
 
     query = f"UPDATE time_slots SET {', '.join(sets)} WHERE {scope} RETURNING {SLOT_COLUMNS}"
     result = await conn.execute(text(query), args)
@@ -211,7 +211,7 @@ async def delete_owned_slot(organizer_id: str, slot_id: str) -> str | None:
             {"slot_id": slot_id},
         )
         if result.scalar_one() > 0:
-            raise SlotHasActiveBookingsError()
+            raise SlotHasActiveBookings()
 
         try:
             result = await conn.execute(
@@ -223,7 +223,7 @@ async def delete_owned_slot(organizer_id: str, slot_id: str) -> str | None:
             # path this guard models, a stray FK violation must surface as
             # the same 409, never a bare 500.
             if is_foreign_key_violation(err):
-                raise SlotHasActiveBookingsError() from err
+                raise SlotHasActiveBookings() from err
             raise
         deleted = result.first()
         if deleted is None:

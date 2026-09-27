@@ -17,7 +17,9 @@ cp .env.example .env           # if not present yet
 ```sh
 bun run lint
 bun run check-types
-bun run test          # TS (vitest) + Python (pytest) via Turborepo
+bun run test          # TS (vitest) via Turborepo
+bun run test:py       # the Python API suite (pytest) — mandatory when api/ or tests_py/ changed
+bun run lint:py       # ruff + mypy for the Python API — same condition
 bun run format:check
 ```
 

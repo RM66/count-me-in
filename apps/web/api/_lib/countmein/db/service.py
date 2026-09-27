@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from ..contracts.models import unwrap_root
 from ..demo import refuse_demo_write
 from .client import engine
-from .errors import NoServiceUpdatesError, ServiceHasBookingsError
+from .errors import NothingToUpdate, ServiceHasBookings
 from .rows import SERVICE_COLUMNS, ServiceRow, scan_service
 from .shared import is_foreign_key_violation, new_service_id
 
@@ -98,7 +98,7 @@ async def update_owned_service_tx(
     conn: AsyncConnection, organizer_id: str, service_id: str, update: Any
 ) -> ServiceRow | None:
     """None when the id does not exist or belongs to someone else
-    (caller answers 404 either way); NoServiceUpdatesError when the
+    (caller answers 404 either way); NothingToUpdate when the
     payload carries no writable field. Paired with get_owned_service_tx
     on one merge-patch transaction.
 
@@ -160,7 +160,7 @@ async def update_owned_service_tx(
         else:
             set_null("photo_url")
     if not sets:
-        raise NoServiceUpdatesError()
+        raise NothingToUpdate()
 
     query = (
         f"UPDATE services SET {', '.join(sets)} "
@@ -207,7 +207,7 @@ async def delete_owned_service(organizer_id: str, service_id: str) -> tuple[str,
             {"sid": service_id},
         )
         if result.scalar_one() > 0:
-            raise ServiceHasBookingsError()
+            raise ServiceHasBookings()
 
         try:
             result = await conn.execute(
@@ -218,7 +218,7 @@ async def delete_owned_service(organizer_id: str, service_id: str) -> tuple[str,
             # Backstop: a stray FK violation must surface as the same
             # 409, never a bare 500.
             if is_foreign_key_violation(err):
-                raise ServiceHasBookingsError() from err
+                raise ServiceHasBookings() from err
             raise
         deleted = result.first()
         if deleted is None:
