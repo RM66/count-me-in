@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 
 def _load_dot_env(path: str) -> None:
@@ -42,5 +43,12 @@ if os.environ.get("VERCEL", "") == "":
     # from any directory; apps/web (the parent of api/) is the project
     # root that owns .env.
     _load_dot_env(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+# Vercel's runtime imports this entrypoint by absolute path and does NOT
+# put its directory on sys.path (unlike `uvicorn --app-dir api` locally),
+# so `_lib` next to this file is unimportable without this.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
 
 from _lib.countmein.app import app  # noqa: F401, E402

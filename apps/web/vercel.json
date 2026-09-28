@@ -3,7 +3,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 10,
-      "includeFiles": "api/_lib/**",
+      "includeFiles": "_lib/**",
       "excludeFiles": "{tests_py,node_modules,.next,src,public,scripts,e2e,coverage,test-results,.storybook}/**"
     }
   },

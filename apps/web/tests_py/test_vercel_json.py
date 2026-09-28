@@ -113,4 +113,4 @@ def test_bundle_excludes():
     assert excluded == want, f"excludeFiles must stay pinned to the full list (got {excluded!r})"
     # openapi*.yaml must not be pulled in either — the spec is a build
     # input, not runtime code.
-    assert fn["includeFiles"] == "api/_lib/**"
+    assert fn["includeFiles"] == "_lib/**"
