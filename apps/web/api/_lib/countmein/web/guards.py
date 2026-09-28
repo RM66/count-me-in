@@ -21,18 +21,12 @@ from ..demo import is_read_only
 from ..errors import DemoReadOnly, PayloadTooLarge, RateLimited, TicketExpired
 from .ratelimit import RateLimitConfig, allow, client_ip
 
-# Every organizer write also passes a per-organizer rate bucket: the
-# cabinet CRUD routes had no limits at all, so a runaway client could
-# hammer the API unthrottled. The bucket is keyed by organizer id — a
-# signed-in organizer is already authenticated, so this is abuse
-# protection, not auth. The bucket is consulted *before* the demo
-# refusal: anonymous and demo callers are refused with a cheap 403, and
-# without the limiter that refusal would be hammerable for free
-# (anonymous callers bucket by IP, since they share no id).
-#
-# Reads are deliberately unmetered here — read limiting is delegated to
-# the edge (Vercel), which absorbs anonymous scraping before it reaches
-# the function.
+# Every organizer write passes a per-organizer rate bucket (the cabinet
+# CRUD routes had none): abuse protection, not auth — the caller is
+# already authenticated. Keyed by organizer id; anonymous callers
+# bucket by IP. Consulted *before* the demo refusal, so the cheap 403
+# is not hammerable for free. Reads are unmetered — read limiting is
+# delegated to the edge (Vercel).
 _ORGANIZER_WRITE_LIMIT = RateLimitConfig(limit=60, window=60.0)
 
 

@@ -109,11 +109,10 @@ class RestorePathMiddleware:
             return
         orig = _query_param(scope, "_path") or ""
         if orig:
-            # _path is an internal rewrite artifact, never a client input:
-            # only /api/... prefixes are ever rewritten here, and anything
-            # else is answered 404 rather than dispatched. It is also
-            # stripped from the query string so handlers logging the URL do
-            # not echo the artifact back.
+            # _path is an internal rewrite artifact, never a client
+            # input: only /api/... prefixes are rewritten here, anything
+            # else is answered 404. Stripped from the query string so
+            # logged URLs do not echo the artifact.
             if not orig.startswith("/api/"):
                 resp = _not_found_response(scope)
                 await resp(scope, receive, send)

@@ -103,12 +103,10 @@ async def mark_replayed(key: str) -> None:
 
 
 async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
-    # Only the current signing key is required. The next key exists
+    # Only the current signing key is required: the next key exists
     # solely for QStash's key-rotation window and is legitimately empty
-    # outside it — requiring it non-empty would 500 every delivery (and
-    # burn QStash's retry budget) for no reason. The verifier skips an
-    # empty key entirely: HMAC with "" is computable by anyone, so a
-    # token forged with the empty key must not verify.
+    # outside it. The verifier skips an empty key entirely — HMAC with
+    # "" is computable by anyone.
     current_signing_key = os.getenv("QSTASH_CURRENT_SIGNING_KEY", "")
     if current_signing_key == "":
         logx.error(RuntimeError("QSTASH_CURRENT_SIGNING_KEY is not set"), {"queue": queue})

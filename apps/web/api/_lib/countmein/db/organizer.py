@@ -87,16 +87,11 @@ async def insert_organizer(
             },
         )
         row = result.first()
-    # UUIDModel's generated pattern constraint cannot be applied to a
-    # coerced UUID by pydantic-core — construct the wrapper without
-    # re-validation (the id comes straight from the database).
-    # str(): psycopg hands back a UUID object; the wrapper's root must
-    # hold the canonical string (a UUID root trips pydantic's
-    # serializer on every response marshal).
-    # model_construct (not model_validate): the generated pattern
-    # constraint cannot be applied to a UUID schema by pydantic-core
-    # (TypeError on every construct), and the id comes straight from
-    # the database and is already canonical.
+    # model_construct (not model_validate): the generated UUID pattern
+    # constraint cannot be applied by pydantic-core (TypeError), and the
+    # id comes straight from the database. str(): psycopg hands back a
+    # UUID object; the root must hold the canonical string or every
+    # response marshal trips pydantic's serializer.
     return gen.RegisteredOrganizer.model_construct(id=str(row[0]), slug=row[1])  # type: ignore[index]
 
 

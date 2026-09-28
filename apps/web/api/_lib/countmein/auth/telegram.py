@@ -57,16 +57,14 @@ TICKET_PURPOSE_GUEST = "guest"
 TICKET_PURPOSE_ORGANIZER = "organizer"
 
 # Mirrors @telegram-auth/server's inValidateDataAfter default: a widget
-# payload older than 24 hours is expired. Without this, a captured widget
-# body (browser history, access logs, a leaked request) could be replayed
-# forever to mint fresh single-use tickets for that identity.
+# payload older than 24 hours is expired — otherwise a captured widget
+# body could be replayed forever to mint fresh tickets for that identity.
 WIDGET_DATA_VALID_AFTER = 86400
 
 # How far in the future auth_date may lie. The past window is a generous
-# 24h (a guest may take a while between opening the widget and
-# completing signup), but the future direction gets only clock skew:
-# Telegram signs the current time, so auth_date an hour ahead is a
-# forged or replayed claim, not a slow clock.
+# 24h, but the future direction gets only clock skew: Telegram signs
+# the current time, so a future auth_date is a forged claim, not a
+# slow clock.
 WIDGET_FUTURE_SKEW = 300
 
 

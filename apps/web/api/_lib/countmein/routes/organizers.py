@@ -125,11 +125,10 @@ async def organizer_register(
     payload = body.model
 
     identity = await peek_ticket(str(payload.ticket))
-    # Purpose claim: only an organizer-flow ticket may register an
-    # organizer — a guest booking ticket must not be redeemable here.
-    # Answered like an expired one, with the same wire key as the guest
-    # flow's wrong-purpose answer (TicketExpired): one rule, one key,
-    # and the endpoint cannot be used to test whether a ticket exists.
+    # Purpose claim: only an organizer-flow ticket may register —
+    # answered like an expired one (same wire key as the guest flow's
+    # wrong-purpose answer), so the endpoint cannot be used to test
+    # whether a ticket exists.
     if identity is None or identity.purpose != TICKET_PURPOSE_ORGANIZER:
         raise TicketExpired()
 

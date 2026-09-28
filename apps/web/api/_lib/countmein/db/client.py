@@ -48,7 +48,9 @@ _LIBPQ_OPTIONS = frozenset(
 def _sanitize_query(url: str) -> str:
     """Drop query params libpq does not know, keep the rest verbatim."""
     parts = urlsplit(url)
-    kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k in _LIBPQ_OPTIONS]
+    kept = [
+        (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k in _LIBPQ_OPTIONS
+    ]
     return urlunsplit(parts._replace(query=urlencode(kept)))
 
 

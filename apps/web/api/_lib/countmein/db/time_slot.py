@@ -159,11 +159,10 @@ async def update_owned_slot_tx(
 
     scope = f"id = :slot_id AND service_id IN ({_OWNED_SERVICES})"
 
-    # Capacity precheck inside the same tx, under a row lock: a plain
-    # SELECT takes no lock under READ COMMITTED, so the check could race
-    # the booking flow's atomic reserve. FOR UPDATE serializes against
-    # it — an improvement on the TS version, whose backstop is the
-    # booked_count CHECK constraint surfacing as an opaque 23514.
+    # Capacity precheck under a row lock: a plain SELECT takes no lock
+    # under READ COMMITTED, so the check could race the booking flow's
+    # atomic reserve. FOR UPDATE serializes against it (the TS backstop
+    # was the booked_count CHECK constraint surfacing as an opaque 23514).
     if touched.get("capacity") and state.capacity is not None:
         result = await conn.execute(
             text(f"SELECT booked_count FROM time_slots WHERE {scope} FOR UPDATE"),
@@ -190,10 +189,9 @@ async def delete_owned_slot(organizer_id: str, slot_id: str) -> str | None:
     and a bare 500. Returns None when nothing matched."""
     refuse_demo_write(organizer_id)
     async with engine().begin() as conn:
-        # Lock the slot row so the check and delete are atomic against the
-        # booking flow's reserve. A plain SELECT takes no lock under READ
-        # COMMITTED, so a booking could land between the check and the
-        # delete; FOR UPDATE serializes against it.
+        # Lock the slot row so the check and delete are atomic against
+        # the booking flow's reserve (a plain SELECT takes no lock under
+        # READ COMMITTED).
         result = await conn.execute(
             text(
                 f"SELECT id FROM time_slots WHERE id = :slot_id "

@@ -26,10 +26,9 @@ if TYPE_CHECKING:
 _client: aioredis.Redis | None = None
 _init_err: Exception | None = None
 # The loop the cached client was created on. A serverless runtime may
-# drop the ASGI context and serve a later invocation on a new event
-# loop; a client bound to the old loop then fails every command with
-# "attached to a different loop". The client is rebuilt instead —
-# from_url opens no sockets, so the rebuild is cheap.
+# serve a later invocation on a new event loop; a client bound to the
+# old loop fails every command with "attached to a different loop".
+# Rebuilt instead — from_url opens no sockets, so the rebuild is cheap.
 _client_loop: asyncio.AbstractEventLoop | None = None
 
 

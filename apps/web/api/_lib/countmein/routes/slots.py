@@ -183,9 +183,8 @@ async def slot_delete(
     if not deleted_id:
         raise SlotNotFound()
 
-    # model_construct (not model_validate): the generated pattern
-    # constraint cannot be applied to a UUID schema by pydantic-core,
-    # and the id comes straight from the database and is already
-    # canonical.
+    # model_construct (not model_validate): the generated UUID pattern
+    # constraint cannot be applied by pydantic-core, and the id comes
+    # straight from the database.
     envelope = gen.DeletedSlotEnvelope.model_construct(id=deleted_id)
     return json_response(200, envelope).to_starlette()

@@ -111,9 +111,8 @@ def parse_job(queue: str, body: bytes | None) -> ParsedJob:
     the outbox as a side effect)."""
     if queue == QUEUE_BOOKING_CREATED:
         m = _parse_payload(queue, body)
-        # bookingId/outboxId are uuids on the wire (bookingCreatedJob
-        # schema); a malformed id must be a 400, not a 500 — otherwise
-        # QStash burns all retries on bytes that can never succeed.
+        # Malformed ids must be a 400, not a 500 — otherwise QStash
+        # burns all retries on bytes that can never succeed.
         # model_construct (not model_validate): the generated UUIDModel
         # carries a pattern constraint pydantic cannot apply to the
         # coerced UUID — the same quirk decode.py works around.

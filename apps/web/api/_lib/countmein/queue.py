@@ -20,11 +20,10 @@ import httpx
 from . import config, logx
 from .web.async_client import client as async_client
 
-# ErrPublishSkipped — dev without QSTASH_TOKEN: the publish is
-# deliberately never attempted (localhost is not routable from Upstash).
-# Callers mark the row `skipped` (terminal, honest in metrics), not
-# `sent`. A sentinel exception, not None, so the caller can tell
-# "deliberately skipped" apart from "delivered".
+# ErrPublishSkipped — dev without QSTASH_TOKEN: the publish is never
+# attempted (localhost is not routable from Upstash); callers mark the
+# row `skipped` (terminal, honest in metrics), not `sent`. A sentinel
+# exception, not None, to tell "skipped" from "delivered".
 PUBLISH_SKIPPED = "qstash publish skipped (dev without QSTASH_TOKEN)"
 
 

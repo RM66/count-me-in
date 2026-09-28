@@ -76,15 +76,13 @@ async def handle_healthz(request: Request) -> Response:
     try:
         # A missing POSTGRES_URL is the probe's panic path: the answer
         # is the full-failure body naming the variables, not a
-        # single-dependency "fail". Checked up-front because the
-        # per-probe except below would otherwise swallow the env error
-        # into exactly that single-dependency shape. (Redis unconfigured
-        # is the deliberate `skipped` state, not this path.)
+        # single-dependency "fail" (which the per-probe except below
+        # would swallow it into). Redis unconfigured is the deliberate
+        # `skipped` state, not this path.
         panicking = _panicking_env()
         if panicking is not None:
-            # The panic is logged before answering;
-            # healthz is excluded from the access log, so without this line a
-            # misconfigured production deploy leaves no trace in the drain.
+            # healthz is excluded from the access log, so without this
+            # line a misconfigured deploy leaves no trace in the drain.
             logx.error(
                 RuntimeError(f"healthz panic: {panicking} is not set"),
                 {"scope": "healthz"},

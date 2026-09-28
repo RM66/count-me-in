@@ -93,8 +93,8 @@ async def create_guest_booking(
         # A slot in the past is not bookable: the UI filters them out,
         # but the API must not rely on that — knowing the id must not
         # let anyone book a session that already started (its
-        # manageToken would be born expired). The predicate lives in the
-        # chain-select, so a past slot is answered exactly like a
+        # manageToken would be born expired). The predicate lives in
+        # the chain-select, so a past slot is answered exactly like a
         # missing one: SlotGone → 404 slotGone.
         result = await conn.execute(
             text(

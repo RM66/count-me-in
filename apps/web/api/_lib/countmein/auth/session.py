@@ -103,10 +103,8 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
         return None
 
     # Expiry (15s clock tolerance, matching the old decoder). exp is
-    # required: a token without it used to be treated as non-expiring,
-    # but the mint always sets it — an absent exp means a forged or
-    # malformed token, not a legacy one. A non-numeric exp is the same
-    # class of malformed token — treated as invalid (anonymous), never
+    # required — the mint always sets it, so an absent or non-numeric
+    # exp means a forged/malformed token: invalid (anonymous), never
     # a TypeError → 500.
     exp = claims.get("exp", 0)
     if not isinstance(exp, int) or isinstance(exp, bool):
