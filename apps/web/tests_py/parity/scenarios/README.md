@@ -1,6 +1,6 @@
 # Parity scenarios (Phase 1.4)
 
-One YAML file per scenario; each is an ordered list of steps the retired recorder executed against the Go API (replayed against the Python API by `tests_py/parity/test_replay.py`).
+One YAML file per scenario; each is an ordered list of steps the retired recorder executed against the API (replayed against the Python API by `tests_py/parity/test_replay.py`).
 
 ## Step fields
 

@@ -1,6 +1,6 @@
 -- Change the bookings.time_slot_id FK from CASCADE to RESTRICT (Phase 1.2):
 -- deleting a slot must not silently cascade away confirmed guest bookings.
--- The Go API now refuses the delete with a 409 while confirmed bookings exist,
+-- The API refuses the delete with a 409 while confirmed bookings exist,
 -- and this constraint is the database-level backstop that makes the guard
 -- impossible to bypass.
 --

@@ -66,7 +66,7 @@ export async function seedE2EOrganizer(): Promise<void> {
   `)
 }
 
-/** Mint a one-time login link for the e2e organizer (the Go job's mint half). */
+/** Mint a one-time login link for the e2e organizer (the notification job's mint half). */
 export async function mintLoginLink(token: string, next = '/cabinet'): Promise<void> {
   await getRedis().set(
     loginLinkKey(token),

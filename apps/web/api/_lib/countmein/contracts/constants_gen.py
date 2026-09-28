@@ -30,6 +30,3 @@ SLOT_START_IN_PAST_MESSAGE = "Pick a time in the future — guests cannot book a
 LOCALES = ["en", "de", "es", "fr", "pt", "ru", "ar", "ja"]
 
 DEFAULT_LOCALE = "en"
-
-# Auth.js session cookie names, https ("__Secure-"-prefixed, prod) first.
-SESSION_COOKIE_NAMES = ["__Secure-authjs.session-token", "authjs.session-token"]

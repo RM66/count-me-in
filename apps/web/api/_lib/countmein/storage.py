@@ -207,10 +207,9 @@ def organizer_media_url_prefix(organizer_id: str) -> str:
 
 
 def _clean_path(path: str) -> str:
-    """posixpath.normpath on an absolutely-rooted path — the analogue of
-    Go's path.Clean("/" + p): resolves `.`/`..` segments, keeps the root.
-    Unlike Go, Python's normpath preserves a leading `//`, so the path is
-    rooted exactly once."""
+    """posixpath.normpath on an absolutely-rooted path: resolves `.`/`..`
+    segments, keeps the root. Python's normpath preserves a leading `//`,
+    so the path is rooted exactly once."""
     cleaned = posixpath.normpath(path or "/")
     if not cleaned.startswith("/"):
         cleaned = "/" + cleaned

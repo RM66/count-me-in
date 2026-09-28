@@ -53,7 +53,7 @@ async def test_healthz_probe_panic_answers_503_with_missing_env(monkeypatch):
     """A panicking probe must answer a JSON 503 whose body names the
     missing env variables and carries the panic text — not a connection
     reset with a runtime stack in the log. The panic is also logged
-    (Go's Recover does; healthz is excluded from the access log, so the
+    (healthz is excluded from the access log, so the
     explicit line is the only trace a misconfigured deploy leaves)."""
 
     async def panic():
@@ -82,7 +82,7 @@ async def test_healthz_probe_panic_answers_503_with_missing_env(monkeypatch):
     assert "POSTGRES_URL" in body["missingEnv"], "missingEnv must name POSTGRES_URL"
     assert "POSTGRES_URL is not set" in body["error"], "error must carry the panic text"
     panics = [r for r in records if r.levelname == "ERROR" and "healthz panic" in r.getMessage()]
-    assert panics, "the panic path must log an ERROR line (Go's Recover does)"
+    assert panics, "the panic path must log an ERROR line"
 
 
 async def test_healthz_probe_failure_answers_503(monkeypatch):

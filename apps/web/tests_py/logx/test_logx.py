@@ -1,7 +1,7 @@
 """logx — the observability floor.
 
-One JSON object per line on stdout, field names matching the Go
-implementation (time, level, msg + extras). These tests pin the wire
+One JSON object per line on stdout, field names: time, level, msg +
+extras. These tests pin the wire
 format of the log lines: Vercel log drains parse them as JSON, so a
 drift in the shape is a production incident, not a style issue.
 """
@@ -53,10 +53,9 @@ def test_info_emits_one_json_line(capture):
 
 
 def test_line_carries_time_and_level_keys(capture):
-    """The Go slog JSON handler always emits time and level — the drain
+    """Every line always carries time and level — the drain
     queries group by them, so both keys must exist on every line. The
-    level names are uppercase (INFO/WARN/ERROR — never "WARNING"),
-    matching slog's JSON output exactly."""
+    level names are uppercase (INFO/WARN/ERROR — never "WARNING")."""
     logx.info("x")
     logx.warn("y")
     logx.error(RuntimeError("z"))
@@ -71,7 +70,7 @@ def test_line_carries_time_and_level_keys(capture):
 
 def test_error_none_is_dropped(capture):
     """Callers pass optional errors straight through — None must not
-    produce a line (Go logx.Error drops nil the same way)."""
+    produce a line."""
     logx.error(None)
     assert capture.lines == []
 

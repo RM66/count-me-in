@@ -22,7 +22,7 @@ def _load():
 @pytest.mark.parametrize(("fn", "c"), list(_load()))
 def test_domain_vectors(fn, c):
     if fn == "matchLocale":
-        # Go's c["input"].(string) coerces null to ""; mirror that.
+        # The vector's input coerces null to ""; mirror that.
         got = domain.match_locale(c["input"] or "")
         want = c.get("expected")
         want_ok = c["expected"] is not None

@@ -24,11 +24,6 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const specFile = join(__dirname, '..', 'openapi.yaml')
 
 const text = yaml.stringify(buildOpenApiDocument(), { indent: 2 })
-if (text.includes('x-go-')) {
-  throw new Error(
-    'generate-openapi: x-go-* metadata leaked into the spec — strip it before writing',
-  )
-}
 
 writeFileSync(specFile, text, 'utf8')
 console.log(`Wrote ${specFile}`)

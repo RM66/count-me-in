@@ -6,8 +6,7 @@ UnknownJobQueueError, and TelegramUnreachableError must be absorbed (a
 recipient who never pressed Start can never be messaged — retrying
 burns the budget).
 
-The idempotency tests run against fakeredis, mirroring the Go
-miniredis TestMain."""
+The idempotency tests run against fakeredis."""
 
 import countmein.jobs.run as run
 import pytest

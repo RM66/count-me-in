@@ -1,7 +1,6 @@
 """Fail-open without Redis, and
 client-IP trust rules. The sliding-window behavior itself is covered
-against fakeredis (the Go suite relies on the same Lua script running
-in miniredis in the routes tests)."""
+against fakeredis (the routes tests rely on the same Lua script)."""
 
 from __future__ import annotations
 

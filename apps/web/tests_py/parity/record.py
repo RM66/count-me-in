@@ -2,7 +2,7 @@
 
 Replays every scenario in tests_py/parity/scenarios/ against the
 in-process Python app and writes the transcript to
-tests_py/parity/golden/{scenario}.json. The retired Go recorder is
+tests_py/parity/golden/{scenario}.json. The original recorder is
 gone, so this script is the one and only way the goldens are produced
 — the replay test (test_replay.py) and this script share the same
 harness code, so a golden can only drift if the app's behavior drifts.

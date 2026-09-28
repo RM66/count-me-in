@@ -2,7 +2,7 @@
 
 One JSON object per line, what Vercel log drains parse. Sentry/PostHog
 are out of the dependency set — structured logging is the baseline.
-Field names match the Go implementation: time, level, msg, plus extras.
+Field names: time, level, msg, plus extras.
 """
 
 import json
@@ -18,9 +18,9 @@ _LEVELS = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR
 
 
 class _JsonFormatter(logging.Formatter):
-    # Go's slog JSON handler emits uppercase level names (INFO/WARN/
-    # ERROR — never "WARNING"); the drain's level filters match the
-    # exact string, so the case is part of the wire format.
+    # Uppercase level names (INFO/WARN/ERROR — never "WARNING"); the
+    # drain's level filters match the exact string, so the case is part
+    # of the wire format.
     _LEVEL_NAMES: ClassVar[dict[str, str]] = {"WARNING": "WARN"}
 
     def format(self, record: logging.LogRecord) -> str:

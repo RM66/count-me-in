@@ -34,8 +34,8 @@ def test_merge_patch_clears_options_pair():
     write NULL into both columns."""
     merged = mp.merge_patch(service_state_fixture(), b'{"options":null,"optionsSelectMode":null}')
     state = json.loads(merged)
-    # RFC 7386 removes null keys outright — Go's unmarshal reads the
-    # absent key as a nil pointer, so "cleared" is absent-or-None here.
+    # RFC 7386 removes null keys outright, so "cleared" is
+    # absent-or-None here.
     assert not state.get("options")
     assert not state.get("optionsSelectMode")
     # Untouched fields survive the merge.

@@ -1,6 +1,6 @@
 """The API's JSON encoding: stdlib `json.dumps` with compact
 separators and `ensure_ascii=False` — the deliberate wire format
-recorded in ADR-021 ("Retired Go byte-emulation"). Key order is the
+recorded in ADR-021. Key order is the
 model's field order (dicts preserve insertion order); no HTML escaping,
 no trailing newline.
 """

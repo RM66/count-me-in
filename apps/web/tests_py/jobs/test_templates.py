@@ -6,8 +6,8 @@ preferences: the guest's confirmation must show the same wall clock as
 the public page they booked from.
 
 The golden files (tests_py/jobs/testdata/notifications/*.golden) were
-recorded from the retired Go implementation — the port must render them
-byte for byte."""
+recorded from the retired original implementation — the port must render
+them byte for byte."""
 
 import sys
 from datetime import datetime
@@ -290,8 +290,7 @@ def _render_message(m: templates.Message) -> str:
 def test_golden_notifications(locale):
     """Every notification template renders a golden per locale — a change
     to copy, escaping, section order or plural handling in ANY locale
-    shows up as a diff. The goldens are shared with the Go package, so
-    the two implementations are pinned to identical output."""
+    shows up as a diff. The goldens pin the exact rendered output."""
     view = make_test_view()
     got = "\n".join(
         [

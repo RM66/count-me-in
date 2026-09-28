@@ -2,11 +2,11 @@
 
 Replays every scenario in tests_py/parity/scenarios/ against the Python
 ASGI app and asserts the normalized transcript equals the golden one
-recorded from the Go API (tests_py/parity/golden/). The harness mirrors
-the retired recorder step for step — same pinned env, same state
+recorded when the API's behavior was frozen (tests_py/parity/golden/).
+The harness mirrors the retired recorder step for step — same pinned env, same state
 reset (TRUNCATE + demo reseed + Redis FLUSHDB), same placeholder
 minting, same normalization — so any difference the comparison reports
-is a behavioral difference between the Go and Python implementations,
+is a behavioral difference from the frozen goldens,
 not harness drift.
 
 Deliberate differences from the recorder, all forced by in-process
@@ -626,9 +626,8 @@ async def run_scenario(
             req_body_norm = norm.json(req.get("json") if "json" in req else req.get("body_raw"))
             body_norm = norm.json(resp_body)
 
-            # 204 responses carry no content-length header at all (Go
-            # omits it for empty bodies) — an absent header with an
-            # empty body counts as a match.
+            # 204 responses carry no content-length header at all —
+            # an absent header with an empty body counts as a match.
             cl_header = resp.headers.get("content-length")
             response_rec: dict[str, Any] = {
                 "status": resp.status_code,

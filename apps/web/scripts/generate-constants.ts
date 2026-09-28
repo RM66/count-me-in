@@ -22,7 +22,7 @@ import {
   DEMO_SERVICE_IDS,
 } from '@repo/contracts'
 import { LOGIN_LINK_KEY_PREFIX, LOGIN_LINK_TTL_S } from '@repo/contracts'
-import { DEFAULT_LOCALE, LOCALES, SESSION_COOKIE_NAMES } from '@repo/contracts'
+import { DEFAULT_LOCALE, LOCALES } from '@repo/contracts'
 import {
   QUEUE_BOOKING_CANCELLED,
   QUEUE_BOOKING_CREATED,
@@ -77,9 +77,6 @@ SLOT_START_IN_PAST_MESSAGE = ${pyString(SLOT_START_IN_PAST_MESSAGE)}
 LOCALES = ${pyStringList(LOCALES)}
 
 DEFAULT_LOCALE = ${pyString(DEFAULT_LOCALE)}
-
-# Auth.js session cookie names, https ("__Secure-"-prefixed, prod) first.
-SESSION_COOKIE_NAMES = ${pyStringList(SESSION_COOKIE_NAMES)}
 `
 
 writeFileSync(pyOutFile, pyContent, 'utf8')
