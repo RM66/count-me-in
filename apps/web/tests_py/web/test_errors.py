@@ -3,10 +3,10 @@
 Status codes carry meaning (403 demo, 404 gone, 409 conflict, 400
 shape) and the body carries localized copy while the error class keeps
 its EN message for logs (ADR-011). Every domain error is an
-ApiError subclass that renders itself via `to_response(locale)`; the
-app-level exception handler calls it. Anything that is not an ApiError
-propagates to the 500 recovery — a wrapped error must never be
-flattened into a misleading 4xx.
+ApiError subclass that carries only data; the single conversion point
+is web/response.render_api_error, which the app-level exception handler
+calls. Anything that is not an ApiError propagates to the 500 recovery
+— a wrapped error must never be flattened into a misleading 4xx.
 """
 
 import pytest
@@ -15,21 +15,24 @@ from _lib.countmein.contracts.constants_gen import (
     DEMO_READ_ONLY_CODE,
     LOCALES,
 )
-from _lib.countmein.db.errors import (
+from _lib.countmein.errors import (
     AlreadyCancelled,
+    ApiError,
     BookingNotFound,
     CapacityBelowBooked,
+    DemoReadOnly,
     DuplicateBooking,
     InvalidOptions,
     NothingToUpdate,
     OrganizerNotFound,
     PartyTooLarge,
+    RateLimited,
+    ServiceHasBookings,
     SlotGone,
     SlotHasActiveBookings,
     SoldOut,
 )
-from _lib.countmein.demo import DemoReadOnlyError
-from _lib.countmein.errors import ApiError, RateLimited
+from _lib.countmein.web.response import render_api_error
 
 
 def _body(resp) -> dict:
@@ -39,7 +42,7 @@ def _body(resp) -> dict:
 @pytest.mark.parametrize(
     ("err", "want_status", "want_code", "want_seats", "want_max"),
     [
-        (DemoReadOnlyError(), 403, DEMO_READ_ONLY_CODE, None, None),
+        (DemoReadOnly(), 403, DEMO_READ_ONLY_CODE, None, None),
         (SlotGone(), 404, "", None, None),
         (SoldOut(0), 409, "", 0, None),
         (SoldOut(3), 409, "", 3, None),
@@ -63,7 +66,7 @@ def _body(resp) -> dict:
 )
 def test_error_response(err, want_status, want_code, want_seats, want_max):
     for locale in LOCALES:
-        resp = err.to_response(locale)
+        resp = render_api_error(err, locale)
         assert resp.status == want_status
         body = _body(resp)
         assert body["error"], f"{locale}: localized error copy must not be empty"
@@ -81,6 +84,7 @@ def test_error_response(err, want_status, want_code, want_seats, want_max):
         (NothingToUpdate(), 400),
         (CapacityBelowBooked(3), 409),
         (SlotHasActiveBookings(), 409),
+        (ServiceHasBookings(), 409),
         (NothingToUpdate(), 400),
         (NothingToUpdate(), 400),
         (OrganizerNotFound(), 404),
@@ -89,6 +93,7 @@ def test_error_response(err, want_status, want_code, want_seats, want_max):
         "no slot updates",
         "capacity below booked",
         "slot has active bookings",
+        "service has bookings",
         "no service updates",
         "no organizer updates",
         "organizer not found",
@@ -96,13 +101,13 @@ def test_error_response(err, want_status, want_code, want_seats, want_max):
 )
 def test_cabinet_error_response(err, want_status):
     for locale in LOCALES:
-        resp = err.to_response(locale)
+        resp = render_api_error(err, locale)
         assert resp.status == want_status
         assert _body(resp)["error"], f"{locale}: localized copy must not be empty"
 
 
 def test_rate_limited_headers():
-    resp = RateLimited(7).to_response("en")
+    resp = render_api_error(RateLimited(7), "en")
     assert resp.status == 429
     assert resp.headers["Retry-After"] == "7"
 
@@ -121,9 +126,9 @@ def test_booking_error_response_localized():
     # The body is actually localized (ADR-011): at least one locale must
     # render different copy from English for the same key.
     err = SoldOut(0)
-    en = _body(err.to_response("en"))["error"]
+    en = _body(render_api_error(err, "en"))["error"]
     differs = any(
-        _body(err.to_response(locale))["error"] != en
+        _body(render_api_error(err, locale))["error"] != en
         for locale in LOCALES
         if locale != DEFAULT_LOCALE
     )

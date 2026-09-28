@@ -14,15 +14,15 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from .. import storage
 from ..contracts import domain
 from ..contracts import models_gen as gen
-from ..contracts.models import unwrap_root
 from ..contracts.payloads import AuthTicketPayload
 from ..demo import refuse_demo_write
+from ..errors import NothingToUpdate, OrganizerNotFound, PhotoPrefix
 from .client import engine
-from .errors import NothingToUpdate, OrganizerNotFound
 from .rows import ORGANIZER_COLUMNS, OrganizerRow, scan_organizer
-from .shared import new_id
+from .shared import TouchedUpdate, new_id
 
 
 async def get_organizer_profile(organizer_id: str) -> OrganizerRow | None:
@@ -60,10 +60,10 @@ async def insert_organizer(
     surfaces as the raw driver error for the route to map to
     slugTaken / accountExists by constraint name."""
     # The wire schema makes language required, but a None here must
-    # never crash the function — fall back to the default locale. The
-    # generated models wrap scalars in RootModel subclasses — unwrap
-    # before they reach SQL (psycopg cannot adapt the wrappers).
-    language = domain.deref_or(unwrap_root(payload.language), domain.DEFAULT_LOCALE)
+    # never crash the function — fall back to the default locale.
+    # (--use-type-alias renders scalar schemas as plain Annotated
+    # types, so no RootModel unwrapping is needed before SQL.)
+    language = domain.deref_or(payload.language, domain.DEFAULT_LOCALE)
     async with engine().begin() as conn:
         result = await conn.execute(
             text(
@@ -76,14 +76,14 @@ async def insert_organizer(
             ),
             {
                 "id": new_id(),
-                "slug": str(unwrap_root(payload.slug)),
-                "name": str(unwrap_root(payload.name)),
+                "slug": str(payload.slug),
+                "name": str(payload.name),
                 "messenger": identity.messenger,
                 "mid": identity.messenger_id,
-                "tz": str(unwrap_root(payload.timezone)),
+                "tz": str(payload.timezone),
                 "lang": language,
-                "contact": unwrap_root(payload.contact),
-                "photo": unwrap_root(identity.photo_url),
+                "contact": payload.contact,
+                "photo": identity.photo_url,
             },
         )
         row = result.first()
@@ -101,7 +101,7 @@ async def insert_organizer(
 
 
 async def update_organizer_profile_tx(
-    conn: AsyncConnection, organizer_id: str, update: Any
+    conn: AsyncConnection, organizer_id: str, update: TouchedUpdate[gen.UpdateOrganizerProfileInput]
 ) -> OrganizerRow | None:
     """Editable fields only; messenger identity, id and createdAt are set
     at registration and never editable. Absent keys are left untouched,
@@ -109,8 +109,16 @@ async def update_organizer_profile_tx(
 
     Defense in depth: routes already refuse the demo account via
     require_writable_organizer, but a direct db call must not be able to
-    write the read-only demo organizer either."""
+    write the read-only demo organizer either. The media-ownership
+    invariant lives here too — a touched photoUrl must stay under this
+    organizer's media prefix, checked inside the transaction before any
+    column is written."""
     refuse_demo_write(organizer_id)
+    state = update.state
+    touched = update.touched
+    if touched.get("photoUrl") and state.photoUrl is not None:
+        if not storage.is_own_media_url(organizer_id, str(state.photoUrl)):
+            raise PhotoPrefix()
     sets: list[str] = []
     args: dict[str, Any] = {"org_id": organizer_id}
 
@@ -118,32 +126,30 @@ async def update_organizer_profile_tx(
         sets.append(f"{col} = :{key}")
         args[key] = value
 
-    state = update.state
-    touched = update.touched
     if touched.get("name") and state.name is not None:
-        add("name", "name", str(unwrap_root(state.name)))
+        add("name", "name", str(state.name))
     if touched.get("slug") and state.slug is not None:
-        add("slug", "slug", str(unwrap_root(state.slug)))
+        add("slug", "slug", str(state.slug))
     if touched.get("timezone") and state.timezone is not None:
-        add("timezone", "timezone", str(unwrap_root(state.timezone)))
+        add("timezone", "timezone", str(state.timezone))
     if touched.get("description"):
         if state.description is not None:
-            add("description", "description", str(unwrap_root(state.description)))
+            add("description", "description", str(state.description))
         else:
             sets.append("description = NULL")
     if touched.get("location"):
         if state.location is not None:
-            add("location", "location", str(unwrap_root(state.location)))
+            add("location", "location", str(state.location))
         else:
             sets.append("location = NULL")
     if touched.get("contact"):
         if state.contact is not None:
-            add("contact", "contact", str(unwrap_root(state.contact)))
+            add("contact", "contact", str(state.contact))
         else:
             sets.append("contact = NULL")
     if touched.get("photoUrl"):
         if state.photoUrl is not None:
-            add("photo_url", "photo_url", str(unwrap_root(state.photoUrl)))
+            add("photo_url", "photo_url", str(state.photoUrl))
         else:
             sets.append("photo_url = NULL")
     if not sets:

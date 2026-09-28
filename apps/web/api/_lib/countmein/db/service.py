@@ -11,12 +11,13 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from ..contracts.models import unwrap_root
+from .. import storage
+from ..contracts import models_gen as gen
 from ..demo import refuse_demo_write
+from ..errors import NothingToUpdate, PhotoPrefix, ServiceHasBookings
 from .client import engine
-from .errors import NothingToUpdate, ServiceHasBookings
 from .rows import SERVICE_COLUMNS, ServiceRow, scan_service
-from .shared import is_foreign_key_violation, new_service_id
+from .shared import TouchedUpdate, is_foreign_key_violation, new_service_id
 
 
 async def list_services(organizer_id: str) -> list[ServiceRow]:
@@ -53,16 +54,21 @@ async def get_owned_service_tx(
     return scan_service(result.first())
 
 
-async def create_service(organizer_id: str, payload: Any) -> ServiceRow | None:
+async def create_service(organizer_id: str, payload: gen.CreateServiceInput) -> ServiceRow | None:
     """The owner always comes from the session, never the payload;
-    optional columns are normalized to null."""
+    optional columns are normalized to null. The media-ownership
+    invariant lives here — a photoUrl must stay under this organizer's
+    media prefix, checked before the INSERT."""
     refuse_demo_write(organizer_id)
+    if payload.photoUrl is not None:
+        if not storage.is_own_media_url(organizer_id, str(payload.photoUrl)):
+            raise PhotoPrefix()
     mode = None
     if payload.optionsSelectMode is not None:
-        mode = str(unwrap_root(payload.optionsSelectMode))
+        mode = str(payload.optionsSelectMode)
     options = None
     if payload.options is not None:
-        options = [unwrap_root(o) for o in unwrap_root(payload.options)]
+        options = [o for o in payload.options]
     async with engine().begin() as conn:
         result = await conn.execute(
             text(
@@ -78,15 +84,15 @@ async def create_service(organizer_id: str, payload: Any) -> ServiceRow | None:
             {
                 "id": new_service_id(),
                 "org_id": organizer_id,
-                "title": str(unwrap_root(payload.title)),
-                "description": unwrap_root(payload.description),
-                "photo": unwrap_root(payload.photoUrl),
-                "location": unwrap_root(payload.location),
-                "contact": unwrap_root(payload.contact),
-                "price": str(unwrap_root(payload.defaultPrice)),
-                "capacity": int(unwrap_root(payload.defaultCapacity)),
-                "duration": int(unwrap_root(payload.defaultDurationMinutes)),
-                "max_seats": int(unwrap_root(payload.maxSeatsPerBooking)),
+                "title": str(payload.title),
+                "description": payload.description,
+                "photo": payload.photoUrl,
+                "location": payload.location,
+                "contact": payload.contact,
+                "price": str(payload.defaultPrice),
+                "capacity": int(payload.defaultCapacity),
+                "duration": int(payload.defaultDurationMinutes),
+                "max_seats": int(payload.maxSeatsPerBooking),
                 "options": options,
                 "mode": mode,
             },
@@ -95,7 +101,10 @@ async def create_service(organizer_id: str, payload: Any) -> ServiceRow | None:
 
 
 async def update_owned_service_tx(
-    conn: AsyncConnection, organizer_id: str, service_id: str, update: Any
+    conn: AsyncConnection,
+    organizer_id: str,
+    service_id: str,
+    update: TouchedUpdate[gen.UpdateServiceInput],
 ) -> ServiceRow | None:
     """None when the id does not exist or belongs to someone else
     (caller answers 404 either way); NothingToUpdate when the
@@ -104,8 +113,15 @@ async def update_owned_service_tx(
 
     Defense in depth: routes already refuse the demo account via
     require_writable_organizer — a direct db call must not write it
-    either."""
+    either. The media-ownership invariant lives here too — a touched
+    photoUrl must stay under this organizer's media prefix, checked
+    inside the transaction before any column is written."""
     refuse_demo_write(organizer_id)
+    state = update.state
+    touched = update.touched
+    if touched.get("photoUrl") and state.photoUrl is not None:
+        if not storage.is_own_media_url(organizer_id, str(state.photoUrl)):
+            raise PhotoPrefix()
     sets: list[str] = []
     args: dict[str, Any] = {"sid": service_id, "org_id": organizer_id}
 
@@ -116,42 +132,40 @@ async def update_owned_service_tx(
     def set_null(col: str) -> None:
         sets.append(f"{col} = NULL")
 
-    state = update.state
-    touched = update.touched
     if touched.get("title") and state.title is not None:
-        add("title", "title", str(unwrap_root(state.title)))
+        add("title", "title", str(state.title))
     if touched.get("description"):
         if state.description is not None:
-            add("description", "description", str(unwrap_root(state.description)))
+            add("description", "description", str(state.description))
         else:
             set_null("description")
     if touched.get("location"):
         if state.location is not None:
-            add("location", "location", str(unwrap_root(state.location)))
+            add("location", "location", str(state.location))
         else:
             set_null("location")
     if touched.get("contact"):
         if state.contact is not None:
-            add("contact", "contact", str(unwrap_root(state.contact)))
+            add("contact", "contact", str(state.contact))
         else:
             set_null("contact")
     if touched.get("defaultPrice") and state.defaultPrice is not None:
-        add("default_price", "default_price", str(unwrap_root(state.defaultPrice)))
+        add("default_price", "default_price", str(state.defaultPrice))
     if touched.get("defaultCapacity") and state.defaultCapacity is not None:
-        add("default_capacity", "default_capacity", int(unwrap_root(state.defaultCapacity)))
+        add("default_capacity", "default_capacity", int(state.defaultCapacity))
     if touched.get("defaultDurationMinutes") and state.defaultDurationMinutes is not None:
-        add("default_duration_minutes", "duration", int(unwrap_root(state.defaultDurationMinutes)))
+        add("default_duration_minutes", "duration", int(state.defaultDurationMinutes))
     if touched.get("maxSeatsPerBooking") and state.maxSeatsPerBooking is not None:
-        add("max_seats_per_booking", "max_seats", int(unwrap_root(state.maxSeatsPerBooking)))
+        add("max_seats_per_booking", "max_seats", int(state.maxSeatsPerBooking))
     if touched.get("options"):
         if state.options is not None:
-            add("options", "options", [unwrap_root(o) for o in unwrap_root(state.options)])
+            add("options", "options", [o for o in state.options])
         else:
             set_null("options")
     if touched.get("optionsSelectMode"):
         if state.optionsSelectMode is not None:
             sets.append("options_select_mode = CAST(:mode AS options_select_mode)")
-            args["mode"] = str(unwrap_root(state.optionsSelectMode))
+            args["mode"] = str(state.optionsSelectMode)
         else:
             set_null("options_select_mode")
     if touched.get("photoUrl"):

@@ -12,16 +12,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ..contracts import domain
-from ..contracts.models import unwrap_root
+from ..contracts import models_gen as gen
 from ..demo import refuse_demo_write
+from ..errors import CapacityBelowBooked, NothingToUpdate, SlotHasActiveBookings
 from .client import engine
-from .errors import (
-    CapacityBelowBooked,
-    NothingToUpdate,
-    SlotHasActiveBookings,
-)
 from .rows import SLOT_COLUMNS, TimeSlotRow, scan_slot
-from .shared import is_foreign_key_violation, new_id
+from .shared import TouchedUpdate, is_foreign_key_violation, new_id
 
 _OWNED_SERVICES = "SELECT id FROM services WHERE organizer_id = :org_id"
 
@@ -29,7 +25,7 @@ _OWNED_SERVICES = "SELECT id FROM services WHERE organizer_id = :org_id"
 def _slot_starts_at_time(s: Any) -> Any:
     """Extract the instant behind the generated oneOf wrapper (ISO string
     or epoch)."""
-    return domain.parse_flex_time(unwrap_root(s))
+    return domain.parse_flex_time(s)
 
 
 async def list_slots(organizer_id: str, upcoming_only: bool) -> list[TimeSlotRow]:
@@ -75,7 +71,7 @@ async def get_owned_slot_tx(
     return scan_slot(result.first())
 
 
-async def create_slot(organizer_id: str, payload: Any) -> TimeSlotRow | None:
+async def create_slot(organizer_id: str, payload: gen.CreateTimeSlotInput) -> TimeSlotRow | None:
     """Under a service owned by organizer_id; None when the parent
     service does not exist or belongs to someone else (the caller
     answers 404 without ever confirming a foreign id). Ownership is
@@ -89,7 +85,7 @@ async def create_slot(organizer_id: str, payload: Any) -> TimeSlotRow | None:
     async with engine().begin() as conn:
         result = await conn.execute(
             text("SELECT id FROM services WHERE id = :sid AND organizer_id = :org_id LIMIT 1"),
-            {"sid": str(unwrap_root(payload.serviceId)), "org_id": organizer_id},
+            {"sid": str(payload.serviceId), "org_id": organizer_id},
         )
         owned = result.first()
         if owned is None:
@@ -109,9 +105,9 @@ async def create_slot(organizer_id: str, payload: Any) -> TimeSlotRow | None:
                     "id": new_id(),
                     "sid": owned[0],
                     "starts_at": starts_at,
-                    "duration": int(unwrap_root(payload.durationMinutes)),
-                    "capacity": int(unwrap_root(payload.capacity)),
-                    "price": unwrap_root(payload.price),
+                    "duration": int(payload.durationMinutes),
+                    "capacity": int(payload.capacity),
+                    "price": payload.price,
                 },
             )
         except Exception as err:
@@ -125,7 +121,10 @@ async def create_slot(organizer_id: str, payload: Any) -> TimeSlotRow | None:
 
 
 async def update_owned_slot_tx(
-    conn: AsyncConnection, organizer_id: str, slot_id: str, update: Any
+    conn: AsyncConnection,
+    organizer_id: str,
+    slot_id: str,
+    update: TouchedUpdate[gen.UpdateTimeSlotInput],
 ) -> TimeSlotRow | None:
     """booked_count is deliberately not updatable: seats move only
     through the atomic reserve in the booking flow (invariant 2).
@@ -147,12 +146,12 @@ async def update_owned_slot_tx(
     if touched.get("startsAt") and state.startsAt is not None:
         add("starts_at", "starts_at", _slot_starts_at_time(state.startsAt))
     if touched.get("durationMinutes") and state.durationMinutes is not None:
-        add("duration_minutes", "duration", int(unwrap_root(state.durationMinutes)))
+        add("duration_minutes", "duration", int(state.durationMinutes))
     if touched.get("capacity") and state.capacity is not None:
-        add("capacity", "capacity", int(unwrap_root(state.capacity)))
+        add("capacity", "capacity", int(state.capacity))
     if touched.get("price"):
         if state.price is not None:
-            add("price", "price", str(unwrap_root(state.price)))
+            add("price", "price", str(state.price))
         else:
             sets.append("price = NULL")
     if not sets:

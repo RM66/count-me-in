@@ -17,6 +17,7 @@ uv run datamodel-codegen \
   --output-model-type pydantic_v2.BaseModel \
   --use-annotated \
   --collapse-root-models \
+  --use-type-alias \
   --field-constraints \
   --use-standard-collections \
   --use-union-operator \

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from starlette.responses import Response as StarletteResponse
 
 from .. import config, logx
+from ..errors import walk_exception_chain
 from ..jobs.receiver import trace_id_from_headers, verify_qstash_signature
 from ..jobs.run import (
     InvalidJobPayloadError,
@@ -53,13 +54,9 @@ def _find_in_chain(err: BaseException, cls: type) -> BaseException | None:
     type — a wrapped error must not slip past the mapping into a bare
     500 (which would make QStash retry a delivery that can never
     succeed)."""
-    seen: set[int] = set()
-    current: BaseException | None = err
-    while current is not None and id(current) not in seen:
+    for current in walk_exception_chain(err):
         if isinstance(current, cls):
             return current
-        seen.add(id(current))
-        current = current.__cause__ or current.__context__
     return None
 
 

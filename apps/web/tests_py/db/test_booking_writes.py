@@ -38,12 +38,19 @@ from _lib.countmein.db import (
     service as service_db,
 )
 from _lib.countmein.db import (
-    timeslot as slot_db,
+    time_slot as slot_db,
 )
 from _lib.countmein.db.client import engine
-from _lib.countmein.db.errors import (
+from _lib.countmein.db.shared import (
+    hash_manage_token,
+    new_id,
+    new_manage_token,
+    new_service_id,
+)
+from _lib.countmein.errors import (
     AlreadyCancelled,
     BookingNotFound,
+    DemoReadOnly,
     DuplicateBooking,
     InvalidOptions,
     PartyTooLarge,
@@ -52,13 +59,6 @@ from _lib.countmein.db.errors import (
     SlotHasActiveBookings,
     SoldOut,
 )
-from _lib.countmein.db.shared import (
-    hash_manage_token,
-    new_id,
-    new_manage_token,
-    new_service_id,
-)
-from _lib.countmein.demo.errors import DemoReadOnlyError
 from sqlalchemy import text
 
 
@@ -413,7 +413,7 @@ async def test_create_guest_booking_demo_refused(cleanup):
             },
         )
     try:
-        with pytest.raises(DemoReadOnlyError):
+        with pytest.raises(DemoReadOnly):
             await bw.create_guest_booking(
                 bw.CreateBookingData(
                     service_id=service_id,
@@ -552,7 +552,7 @@ async def test_cancel_owned_booking_demo_refused(cleanup):
     cleanup.append(f)
     booking_id, _ = await f.insert_booking(1, None)
 
-    with pytest.raises(DemoReadOnlyError):
+    with pytest.raises(DemoReadOnly):
         await bw.cancel_owned_booking(DEMO_ORGANIZER_ID, booking_id, "it-trace")
     assert await f.booked_count() == 1, "demo refusal must not release seats"
 
@@ -603,13 +603,13 @@ async def test_db_layer_refuses_demo_writes():
     refused before touching Postgres — the route guard is the first
     line, this is the second (ADR-010)."""
     for id_ in (DEMO_ORGANIZER_ID, ""):
-        with pytest.raises(DemoReadOnlyError):
+        with pytest.raises(DemoReadOnly):
             await slot_db.delete_owned_slot(id_, new_id())
-        with pytest.raises(DemoReadOnlyError):
+        with pytest.raises(DemoReadOnly):
             await service_db.delete_owned_service(id_, "svc")
-        with pytest.raises(DemoReadOnlyError):
+        with pytest.raises(DemoReadOnly):
             await slot_db.create_slot(id_, None)
-        with pytest.raises(DemoReadOnlyError):
+        with pytest.raises(DemoReadOnly):
             await organizer_db.update_organizer_language(id_, "en")
 
 

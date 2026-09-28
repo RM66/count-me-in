@@ -228,9 +228,14 @@ def parse_flex_time(value: str | int | float) -> datetime:
     raise ValueError("date string")
 
 
-def iso_date(t: datetime) -> str:
+def iso_date(t: datetime | None) -> str:
     """Render t like JS Date.toISOString(): always UTC, always millisecond
-    precision ("2026-09-13T10:15:35.250Z")."""
+    precision ("2026-09-13T10:15:35.250Z"). None is accepted so the row
+    mappers' optional created_at columns type-check without ignores —
+    the columns are NOT NULL in the schema, so a real None is a bug and
+    raises (python -O must not strip the check)."""
+    if t is None:
+        raise RuntimeError("iso_date: None datetime")
     return (
         t.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.")
         + f"{t.astimezone(UTC).microsecond // 1000:03d}Z"

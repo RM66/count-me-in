@@ -2,15 +2,18 @@
 
 The handlers lean on the exception hierarchy; the
 shared preamble (rate limit → body → decode → guard) is a set of FastAPI
-dependencies (web/deps.py) declared in the handler signature.
+dependencies (web/deps.py) declared in the handler signature. The
+merge-patch PUT runs through the shared transactional skeleton
+(routes/mergepatch.apply_merge_patch); the media-ownership invariant is
+enforced inside the db update (db/organizer.update_organizer_profile_tx).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
@@ -19,8 +22,6 @@ from .. import storage
 from ..auth.telegram import TICKET_PURPOSE_ORGANIZER
 from ..auth.ticket import peek_ticket
 from ..contracts import models_gen as gen
-from ..contracts.models import unwrap_root
-from ..db.client import engine
 from ..db.organizer import (
     get_organizer_profile,
     get_organizer_profile_tx,
@@ -32,12 +33,10 @@ from ..db.rows import OrganizerRow, to_organizer_profile
 from ..errors import (
     AccountExists,
     DemoNotSeeded,
-    InvalidInput,
-    NothingToUpdate,
     OrganizerNotFound,
-    PhotoPrefix,
     SlugTaken,
     TicketExpired,
+    walk_exception_chain,
 )
 from ..validation.decode import (
     decode_create_avatar_upload_input,
@@ -52,39 +51,27 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
+    get_db_engine,
     ip_rate_limit,
     merge_patch_content_type,
     organizer_rate_limit,
 )
 from ..web.guards import require_writable_organizer
 from .media import cleanup_replaced_media
-from .mergepatch import merge_patch, patch_keys
+from .mergepatch import apply_merge_patch, touched_update
 
 
 def _unique_constraint_name(err: BaseException) -> str | None:
     """The constraint name behind a 23505, or None when err is not a
     unique violation. Walks the exception chain over the wrapped driver
     error — the pgconn error may sit under a SQLAlchemy wrapper."""
-    seen: set[int] = set()
-    current: BaseException | None = err
-    while current is not None and id(current) not in seen:
+    for current in walk_exception_chain(err):
         code = getattr(current, "sqlstate", None) or getattr(current, "pgcode", None)
         if code == "23505":
             diag = getattr(current, "diag", None)
             name = getattr(diag, "constraint_name", None) if diag is not None else None
             return str(name or "")
-        seen.add(id(current))
-        current = current.__cause__ or current.__context__
     return None
-
-
-@dataclass
-class OrganizerUpdate:
-    """The merged state plus the touched-key set, handed to the db layer
-    so only intended columns are written (merge-patch semantics)."""
-
-    state: Any
-    touched: dict[str, bool]
 
 
 def organizer_writable_state(o: OrganizerRow) -> dict[str, Any]:
@@ -99,6 +86,24 @@ def organizer_writable_state(o: OrganizerRow) -> dict[str, Any]:
         "contact": o.contact,
         "photoUrl": o.photo_url,
     }
+
+
+async def _fetch_profile(conn: AsyncConnection, organizer_id: str) -> OrganizerRow:
+    row = await get_organizer_profile_tx(conn, organizer_id)
+    if row is None:
+        raise OrganizerNotFound()
+    return row
+
+
+async def _update_profile(
+    conn: AsyncConnection,
+    organizer_id: str,
+    update: Any,
+) -> OrganizerRow:
+    row = await update_organizer_profile_tx(conn, organizer_id, update)
+    if row is None:
+        raise OrganizerNotFound()
+    return row
 
 
 _register_dep = decoded(decode_register_organizer_input)
@@ -119,7 +124,7 @@ async def organizer_register(
     Auth.js (signIn('telegram', {ticket}) consumes it)."""
     payload = body.model
 
-    identity = await peek_ticket(str(unwrap_root(payload.ticket)))
+    identity = await peek_ticket(str(payload.ticket))
     # Purpose claim: only an organizer-flow ticket may register an
     # organizer — a guest booking ticket must not be redeemable here.
     # Answered like an expired one, with the same wire key as the guest
@@ -174,56 +179,39 @@ async def organizer_me_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateOrganizerProfileInput] = Depends(_update_profile_dep),
+    db_engine: AsyncEngine = Depends(get_db_engine),
 ) -> StarletteResponse:
     """PUT /api/organizers/me. Takes a JSON Merge Patch body
     (RFC 7386/ADR-016): validate the patch, merge into the current state,
     validate the result."""
-    touched = patch_keys(body.raw)
-    if touched is None:
-        raise NothingToUpdate()
-
-    # Read → merge → write on one transaction: a separate read and write
-    # let two concurrent PUTs merge against different snapshots and
-    # silently lose columns.
-    async with engine().begin() as conn:
-        current = await get_organizer_profile_tx(conn, organizer_id)
-        if current is None:
-            raise OrganizerNotFound()
-
-        try:
-            merged = merge_patch(organizer_writable_state(current), body.raw)
-        except ValueError:
-            raise InvalidInput() from None
-        state = decode_merged_organizer_input(merged)
-
-        # A new avatar must live under this organizer's media prefix —
-        # otherwise the row could point at an arbitrary host or
-        # another organizer's object. Null clears and stays allowed.
-        if touched.get("photoUrl") and state.photoUrl is not None:
-            if not storage.is_own_media_url(organizer_id, str(unwrap_root(state.photoUrl))):
-                raise PhotoPrefix()
-
-        try:
-            row = await update_organizer_profile_tx(
-                conn, organizer_id, OrganizerUpdate(state=state, touched=touched)
-            )
-        except Exception as err:
-            # A slug change to an occupied handle hits the unique
-            # index — map it to 409 slugTaken like registration does,
-            # instead of a bare 500.
-            constraint = _unique_constraint_name(err)
-            if constraint is not None and "slug" in constraint:
-                raise SlugTaken() from err
-            raise
-        if row is None:
-            raise OrganizerNotFound()
+    try:
+        row, current, touched = await apply_merge_patch(
+            db_engine,
+            body.raw,
+            fetch=lambda conn: _fetch_profile(conn, organizer_id),
+            writable_state=organizer_writable_state,
+            decode_merged=lambda merged, _touched: decode_merged_organizer_input(merged),
+            update_tx=lambda conn, state, touched: _update_profile(
+                conn, organizer_id, touched_update(state, touched)
+            ),
+        )
+    except Exception as err:
+        # A slug change to an occupied handle hits the unique index —
+        # map it to 409 slugTaken like registration does, instead of a
+        # bare 500. Only the UPDATE can produce a 23505; everything else
+        # re-raises untouched.
+        constraint = _unique_constraint_name(err)
+        if constraint is not None and "slug" in constraint:
+            raise SlugTaken() from err
+        raise
 
     out = json_response(200, gen.OrganizerEnvelope(organizer=to_organizer_profile(row, False)))
     star = out.to_starlette()
 
     # The replaced avatar object is removed best-effort after the commit
     # (see cleanup_replaced_media) — a storage failure must not fail an
-    # already-committed update.
+    # already-committed update. The ownership check ran inside the
+    # transaction (db/organizer.update_organizer_profile_tx).
     if touched.get("photoUrl"):
         old = current.photo_url or ""
         new = row.photo_url or ""
@@ -245,7 +233,7 @@ async def organizer_me_language(
     syncs the column so notification jobs render in the right locale.
     An unknown id answers 404 (0 rows affected); demo/anonymous callers
     are refused by require_writable_organizer."""
-    await update_organizer_language(organizer_id, str(unwrap_root(body.model.language)))
+    await update_organizer_language(organizer_id, str(body.model.language))
     return empty(204).to_starlette()
 
 

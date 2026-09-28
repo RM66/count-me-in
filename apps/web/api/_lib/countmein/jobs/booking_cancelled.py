@@ -5,11 +5,10 @@ recipient is derived from it."""
 
 from __future__ import annotations
 
-from typing import Any
-
 from .. import logx
 from ..auth import issue_login_link
 from ..contracts import domain
+from ..contracts import models_gen as gen
 from ..contracts.constants_gen import QUEUE_BOOKING_CANCELLED
 from ..db.booking_reads import get_booking_chain
 from .env import Env
@@ -23,7 +22,7 @@ from .templates import (
 )
 
 
-async def handle_booking_cancelled(env: Env, job: Any, trace_id: str) -> None:
+async def handle_booking_cancelled(env: Env, job: gen.BookingCancelledJob, trace_id: str) -> None:
     chain = await get_booking_chain(str(job.bookingId))
     if chain is None:
         fields = {"queue": QUEUE_BOOKING_CANCELLED, "bookingId": str(job.bookingId)}

@@ -66,31 +66,48 @@ AUTH_SECRET = "parity-recorder-secret"
 TELEGRAM_BOT_TOKEN = "123456:parity-recorder-bot-token"
 QSTASH_CURRENT_KEY = "parity_current_signing_key_000000000000"
 QSTASH_NEXT_KEY = "parity_next_signing_key_00000000000000"
-POSTGRES_URL = os.environ.get(
-    "POSTGRES_URL", "postgresql://countmein:countmein@localhost:5432/countmein"
-)
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
+# Read at call time, never at import: under pytest-xdist the session
+# fixture in tests_py/conftest.py rewrites POSTGRES_URL/REDIS_URL to
+# per-worker slices *after* collection — a module-level capture would
+# keep pointing every worker at the shared base database.
+POSTGRES_URL = "postgresql://countmein:countmein@localhost:5432/countmein"
+REDIS_URL = "redis://localhost:6379"
+
+
+def _postgres_url() -> str:
+    return os.environ.get("POSTGRES_URL", POSTGRES_URL)
+
+
+def _redis_url() -> str:
+    return os.environ.get("REDIS_URL", REDIS_URL)
+
 
 SESSION_ORGANIZER_SLUG = "parity-org"
 
-ENV_OVERRIDES = {
-    "APP_URL": BASE,
-    "AUTH_SECRET": AUTH_SECRET,
-    "POSTGRES_URL": POSTGRES_URL,
-    "REDIS_URL": REDIS_URL,
-    "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
-    "QSTASH_TOKEN": "parity-qstash-token",
-    "QSTASH_URL": "http://127.0.0.1:3199",
-    "QSTASH_CURRENT_SIGNING_KEY": QSTASH_CURRENT_KEY,
-    "QSTASH_NEXT_SIGNING_KEY": QSTASH_NEXT_KEY,
-    # Fake R2 creds: presigning must succeed deterministically (the
-    # signature itself is normalized out of the golden).
-    "R2_ACCOUNT_ID": "parity-account",
-    "R2_ACCESS_KEY_ID": "parity-access-key",
-    "R2_SECRET_ACCESS_KEY": "parity-secret-access-key",
-    "R2_BUCKET": "parity-bucket",
-    "R2_PUBLIC_BASE_URL": "https://parity.r2.example",
-}
+
+def _env_overrides() -> dict:
+    """The pinned recorder env, resolved at call time (see the comment
+    on _postgres_url: xdist rewrites the URLs after collection)."""
+    return {
+        "APP_URL": BASE,
+        "AUTH_SECRET": AUTH_SECRET,
+        "POSTGRES_URL": _postgres_url(),
+        "REDIS_URL": _redis_url(),
+        "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
+        "QSTASH_TOKEN": "parity-qstash-token",
+        "QSTASH_URL": "http://127.0.0.1:3199",
+        "QSTASH_CURRENT_SIGNING_KEY": QSTASH_CURRENT_KEY,
+        "QSTASH_NEXT_SIGNING_KEY": QSTASH_NEXT_KEY,
+        # Fake R2 creds: presigning must succeed deterministically (the
+        # signature itself is normalized out of the golden).
+        "R2_ACCOUNT_ID": "parity-account",
+        "R2_ACCESS_KEY_ID": "parity-access-key",
+        "R2_SECRET_ACCESS_KEY": "parity-secret-access-key",
+        "R2_BUCKET": "parity-bucket",
+        "R2_PUBLIC_BASE_URL": "https://parity.r2.example",
+    }
+
+
 ENV_REMOVED = ("NODE_ENV", "VERCEL_ENV", "STRICT_ENV", "TRUST_PROXY_HEADERS", "VERCEL")
 
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
@@ -679,14 +696,15 @@ def parity_env():
     """Pin the recorder env, build the app once, wire the sink into the
     transport seams. Skips the module when Postgres/Redis are down —
     but fails (not skips) under CI, where the services must be up."""
-    if not _reachable(POSTGRES_URL, 5432) or not _reachable(REDIS_URL, 6379):
+    if not _reachable(_postgres_url(), 5432) or not _reachable(_redis_url(), 6379):
         from _env import skip_or_fail_ci
 
         skip_or_fail_ci("parity replay needs Postgres and Redis (docker compose up)")
 
-    saved = {k: os.environ.get(k) for k in ENV_OVERRIDES}
+    overrides = _env_overrides()
+    saved = {k: os.environ.get(k) for k in overrides}
     removed = {k: os.environ[k] for k in ENV_REMOVED if k in os.environ}
-    os.environ.update(ENV_OVERRIDES)
+    os.environ.update(overrides)
     for k in ENV_REMOVED:
         os.environ.pop(k, None)
 
@@ -721,7 +739,7 @@ async def test_replay_matches_golden(parity_env, scenario_path: Path):
     app, sink = parity_env
     golden = json.loads((GOLDEN / f"{scenario_path.stem}.json").read_text())
 
-    r = aioredis.from_url(REDIS_URL)
+    r = aioredis.from_url(_redis_url())
     transport = ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(transport=transport, base_url=BASE, timeout=30.0) as client:

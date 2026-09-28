@@ -4,7 +4,6 @@ decoder the PUT handler runs over current+patch (ADR-016)."""
 from __future__ import annotations
 
 from ...contracts import models_gen as gen
-from ...contracts.models import unwrap_root
 from ...errors import ValidationFailed
 from ..refine import refine_service_merged_state, refine_service_options
 from ..rules import url_rule
@@ -12,7 +11,7 @@ from .core import _decode_collect, _finish, _raw
 
 
 def _trim_service_keys(m: dict[str, object]) -> None:
-    from ..errors import trim_key
+    from ..transforms import trim_key
 
     for key in ("title", "description", "location", "contact", "defaultPrice", "options"):
         trim_key(m, key)
@@ -23,7 +22,7 @@ def decode_create_service_input(body: bytes) -> gen.CreateServiceInput:
     _trim_service_keys(m)
     out, e = _decode_collect(gen.CreateServiceInput, m, "CreateServiceInput")
     if out is not None and out.photoUrl is not None:
-        msg = url_rule(str(unwrap_root(out.photoUrl)))
+        msg = url_rule(str(out.photoUrl))
         if msg:
             e.add("photoUrl", msg)
     if out is not None:
@@ -45,7 +44,7 @@ def decode_update_service_input(body: bytes) -> gen.UpdateServiceInput:
     _trim_service_keys(m)
     out, e = _decode_collect(gen.UpdateServiceInput, m, "UpdateServiceInput")
     if out is not None and out.photoUrl is not None:
-        msg = url_rule(str(unwrap_root(out.photoUrl)))
+        msg = url_rule(str(out.photoUrl))
         if msg:
             e.add("photoUrl", msg)
     if out is not None:
@@ -61,7 +60,7 @@ def decode_merged_service_input(merged: bytes) -> gen.UpdateServiceInput:
     out, e = _decode_collect(gen.UpdateServiceInput, m, "UpdateServiceInput")
     if out is not None:
         if out.photoUrl is not None:
-            msg = url_rule(str(unwrap_root(out.photoUrl)))
+            msg = url_rule(str(out.photoUrl))
             if msg:
                 e.add("photoUrl", msg)
         refine_service_merged_state(e, out)

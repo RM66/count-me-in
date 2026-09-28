@@ -97,7 +97,7 @@ def test_url_rule():
 
 
 def test_js_trim_set():
-    from _lib.countmein.validation.errors import js_trim
+    from _lib.countmein.validation.transforms import js_trim
 
     assert js_trim("  x  ") == "x"
     assert js_trim("\u00a0x\u00a0") == "x"  # U+00A0 is in the JS set

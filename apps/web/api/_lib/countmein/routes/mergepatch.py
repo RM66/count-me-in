@@ -4,12 +4,25 @@ explicit null = clear — come from the media type itself: the handler
 merges the patch into the current wire state, validates the *result*
 (bounds apply to the final state, which is stricter than validating the
 patch alone), and hands the db layer the merged state plus the set of
-touched keys so only intended columns are written."""
+touched keys so only intended columns are written.
+
+apply_merge_patch is the one transactional skeleton the three PUT
+handlers share: patch_keys → one transaction → fetch current → merge →
+decode the merged state → update_tx. The per-entity pieces (fetch,
+writable-state projection, merged decoder, update) are passed in; the
+not-found mapping stays the caller's (fetch/update raise it), so the
+generic body owns only the order and the transaction."""
 
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+
+from ..db.shared import TouchedUpdate
+from ..errors import InvalidInput, NothingToUpdate
 
 
 def patch_keys(body: bytes) -> dict[str, bool] | None:
@@ -58,3 +71,40 @@ def _merge(current_json: str, patch: Any) -> Any:
         else:
             result[key] = _merge(_json.dumps(result.get(key)), value)
     return result
+
+
+async def apply_merge_patch[RowT, StateT](
+    db_engine: AsyncEngine,
+    raw: bytes,
+    *,
+    fetch: Callable[[AsyncConnection], Awaitable[RowT]],
+    writable_state: Callable[[RowT], dict[str, Any]],
+    decode_merged: Callable[[bytes, dict[str, bool]], StateT],
+    update_tx: Callable[[AsyncConnection, StateT, dict[str, bool]], Awaitable[RowT]],
+) -> tuple[RowT, RowT, dict[str, bool]]:
+    """The shared merge-patch transaction: read → merge → write on one
+    transaction (two concurrent PUTs must not merge against different
+    snapshots and silently lose columns). fetch and update_tx raise the
+    entity's not-found error themselves; decode_merged receives the
+    touched-key set alongside the merged bytes (the slot decoder checks
+    startsAt only when the patch touched it). Returns (row, current,
+    touched) so the caller can build the response and the replaced-media
+    cleanup."""
+    touched = patch_keys(raw)
+    if touched is None:
+        raise NothingToUpdate()
+    async with db_engine.begin() as conn:
+        current = await fetch(conn)
+        try:
+            merged = merge_patch(writable_state(current), raw)
+        except ValueError:
+            raise InvalidInput() from None
+        state = decode_merged(merged, touched)
+        row = await update_tx(conn, state, touched)
+    return row, current, touched
+
+
+def touched_update[StateT](state: StateT, touched: dict[str, bool]) -> TouchedUpdate[StateT]:
+    """Build the db layer's update contract — a thin alias so route
+    call sites read as one expression."""
+    return TouchedUpdate(state=state, touched=touched)

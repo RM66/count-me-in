@@ -5,23 +5,24 @@ decoders raise, the db layer raises ApiError subclasses, and the
 app-level handler renders them. The 404s that are *answers* (unknown or
 foreign slot/service id) stay as explicit raises of the matching
 ApiError subclass. The shared preamble is a set of FastAPI
-dependencies (web/deps.py) declared in the handler signature.
+dependencies (web/deps.py) declared in the handler signature. The
+merge-patch PUT runs through the shared transactional skeleton
+(routes/mergepatch.apply_merge_patch).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
 from ..contracts.domain import iso_date
-from ..db.client import engine
 from ..db.rows import TimeSlotRow, to_time_slot_record
-from ..db.timeslot import (
+from ..db.time_slot import (
     create_slot,
     delete_owned_slot,
     get_owned_slot,
@@ -29,7 +30,7 @@ from ..db.timeslot import (
     list_slots,
     update_owned_slot_tx,
 )
-from ..errors import InvalidInput, NothingToUpdate, ServiceNotFound, SlotNotFound
+from ..errors import ServiceNotFound, SlotNotFound
 from ..validation.decode import (
     decode_create_time_slot_input,
     decode_merged_slot_input,
@@ -40,23 +41,16 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
+    get_db_engine,
     merge_patch_content_type,
     uuid_path_param,
 )
 from ..web.guards import require_writable_organizer
-from .mergepatch import merge_patch, patch_keys
+from .mergepatch import apply_merge_patch, touched_update
 
 # One malformed-UUID rule for every /api/slots/{id} route: the
 # JSON error envelope, never a bare 500 from Postgres.
 _uuid_id = uuid_path_param("id")
-
-
-@dataclass
-class SlotUpdate:
-    """The merged state plus the touched-key set (merge-patch)."""
-
-    state: Any
-    touched: dict[str, bool]
 
 
 def slot_writable_state(s: TimeSlotRow) -> dict[str, Any]:
@@ -69,6 +63,25 @@ def slot_writable_state(s: TimeSlotRow) -> dict[str, Any]:
         "capacity": s.capacity,
         "price": s.price,
     }
+
+
+async def _fetch_owned_slot(conn: AsyncConnection, organizer_id: str, slot_id: str) -> TimeSlotRow:
+    row = await get_owned_slot_tx(conn, organizer_id, slot_id)
+    if row is None:
+        raise SlotNotFound()
+    return row
+
+
+async def _update_owned_slot(
+    conn: AsyncConnection,
+    organizer_id: str,
+    slot_id: str,
+    update: Any,
+) -> TimeSlotRow:
+    row = await update_owned_slot_tx(conn, organizer_id, slot_id, update)
+    if row is None:
+        raise SlotNotFound()
+    return row
 
 
 async def slots_list(
@@ -128,6 +141,7 @@ async def slot_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateTimeSlotInput] = Depends(_update_slot_dep),
+    db_engine: AsyncEngine = Depends(get_db_engine),
 ) -> StarletteResponse:
     """PUT /api/slots/{id}. Cannot move a slot to another service and
     never touches bookedCount (seats change only through the booking
@@ -135,27 +149,21 @@ async def slot_put(
     sold answers 409. Takes a JSON Merge Patch body (RFC 7386/ADR-016):
     the patch is validated, merged into the current state, and the
     result re-validated."""
-    touched = patch_keys(body.raw)
-    if touched is None:
-        raise NothingToUpdate()
-
-    # Read → merge → write on one transaction.
-    async with engine().begin() as conn:
-        current = await get_owned_slot_tx(conn, organizer_id, id)
-        if current is None:
-            raise SlotNotFound()
-
-        try:
-            merged = merge_patch(slot_writable_state(current), body.raw)
-        except ValueError:
-            raise InvalidInput() from None
-        state = decode_merged_slot_input(merged, bool(touched.get("startsAt")))
-
-        row = await update_owned_slot_tx(
-            conn, organizer_id, id, SlotUpdate(state=state, touched=touched)
-        )
-        if row is None:
-            raise SlotNotFound()
+    row, _current, _touched = await apply_merge_patch(
+        db_engine,
+        body.raw,
+        fetch=lambda conn: _fetch_owned_slot(conn, organizer_id, id),
+        writable_state=slot_writable_state,
+        # startsAt is only checked against the past when the patch
+        # touched it (the merged state always carries the current value,
+        # which may legitimately be past).
+        decode_merged=lambda merged, touched: decode_merged_slot_input(
+            merged, bool(touched.get("startsAt"))
+        ),
+        update_tx=lambda conn, state, touched: _update_owned_slot(
+            conn, organizer_id, id, touched_update(state, touched)
+        ),
+    )
 
     return json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Dict, Literal
 from uuid import UUID
 
-from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field, RootModel
+from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field
 
 
 class AuthTicketResponse(BaseModel):
@@ -14,8 +14,7 @@ class AuthTicketResponse(BaseModel):
     organizerExists: bool
 
 
-class Contact(RootModel[str]):
-    root: Annotated[str, Field(max_length=300, min_length=1)]
+type Contact = Annotated[str, Field(max_length=300, min_length=1)]
 
 
 class ErrorBody(BaseModel):
@@ -46,32 +45,26 @@ class InvalidIssuesBody(BaseModel):
     issues: dict[str, list[str]]
 
 
-class Location(RootModel[str]):
-    root: Annotated[str, Field(max_length=300, min_length=1)]
+type Location = Annotated[str, Field(max_length=300, min_length=1)]
 
 
 class LookupBookingsInput(BaseModel):
     guestTicket: Annotated[str, Field(max_length=200, min_length=20)]
 
 
-class OptionLabel(RootModel[str]):
-    root: Annotated[str, Field(max_length=100, min_length=1)]
+type OptionLabel = Annotated[str, Field(max_length=100, min_length=1)]
 
 
-class OptionsList(RootModel[list[OptionLabel]]):
-    root: Annotated[list[OptionLabel], Field(max_length=50, min_length=1)]
+type OptionsList = Annotated[list[OptionLabel], Field(max_length=50, min_length=1)]
 
 
-class OrganizerDescription(RootModel[str]):
-    root: Annotated[str, Field(max_length=4000)]
+type OrganizerDescription = Annotated[str, Field(max_length=4000)]
 
 
-class PriceText(RootModel[str]):
-    root: Annotated[str, Field(max_length=50, min_length=1)]
+type PriceText = Annotated[str, Field(max_length=50, min_length=1)]
 
 
-class ServiceDescription(RootModel[str]):
-    root: Annotated[str, Field(max_length=2000)]
+type ServiceDescription = Annotated[str, Field(max_length=2000)]
 
 
 class UpdateOrganizerLanguageInput(BaseModel):

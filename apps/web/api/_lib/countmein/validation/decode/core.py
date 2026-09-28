@@ -10,10 +10,11 @@ from typing import Annotated, Any
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from ...errors import ValidationFailed
-from ..errors import Errors, form_errors, raw_object
+from ..errors import Errors, form_errors
+from ..transforms import raw_object
 
 
-def _go_message(err: Any) -> str:
+def _issue_reason(err: Any) -> str:
     """Translate a Pydantic issue into the Reason the API answers with
     (the retired implementation's schemaErrReason) — the parity goldens
     pin the exact strings."""
@@ -92,7 +93,7 @@ def _validate_model[T: BaseModel](
             loc = err.get("loc") or ()
             first = loc[0] if loc else None
             key: str | None = first if isinstance(first, str) else None
-            msg = _go_message(err)
+            msg = _issue_reason(err)
             if key is None or not isinstance(key, str):
                 e.add_form(msg)
             else:
@@ -128,7 +129,7 @@ def _validate_model[T: BaseModel](
                 TypeAdapter(field_type).validate_python(value)
             except ValidationError as exc2:
                 for err in exc2.errors():
-                    e.add(key, _go_message(err))
+                    e.add(key, _issue_reason(err))
             except TypeError:
                 pass  # constraint not applicable to the coerced type
         if not e.empty():
@@ -140,6 +141,22 @@ def _validate_model[T: BaseModel](
     if not e.empty():
         return None, e
     return out, None
+
+
+def _decode_model[T: BaseModel](
+    model_cls: type[T], m: dict[str, Any], schema_name: str, *, issues: bool = False
+) -> T:
+    """Validate m and return the model — the one epilogue every entity
+    decoder funnels through: ValidationFailed on any spec error, the
+    unreachable-None guard kept explicit (python -O must not strip it)."""
+    out, errs = _validate_model(model_cls, m, schema_name)
+    if errs is not None:
+        raise ValidationFailed(errs, issues=issues)
+    if out is None:
+        # Unreachable by the decode/guard contract; a real None here is
+        # a bug, and python -O must not strip the check.
+        raise RuntimeError("out is None after its error guard")
+    return out
 
 
 def _decode_collect[T: BaseModel](

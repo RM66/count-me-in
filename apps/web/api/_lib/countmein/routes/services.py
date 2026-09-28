@@ -4,23 +4,22 @@ The handlers lean on the exception hierarchy: guards and
 decoders raise, the db layer raises ApiError subclasses, and the
 app-level handler renders them. The shared preamble is a set
 of FastAPI dependencies (web/deps.py) declared in the handler
-signature.
+signature. The merge-patch PUT runs through the shared transactional
+skeleton (routes/mergepatch.apply_merge_patch); the media-ownership
+invariant is enforced inside the db write (db/service.py).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
-from .. import storage
 from ..contracts import models_gen as gen
-from ..contracts.models import unwrap_root
-from ..db.client import engine
 from ..db.rows import ServiceRow, to_service_record
 from ..db.service import (
     create_service,
@@ -32,9 +31,6 @@ from ..db.service import (
 )
 from ..errors import (
     CannotCreateService,
-    InvalidInput,
-    NothingToUpdate,
-    PhotoPrefix,
     ServiceNotFound,
 )
 from ..validation.decode import (
@@ -47,19 +43,12 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
+    get_db_engine,
     merge_patch_content_type,
 )
 from ..web.guards import require_writable_organizer
 from .media import cleanup_replaced_media
-from .mergepatch import merge_patch, patch_keys
-
-
-@dataclass
-class ServiceUpdate:
-    """The merged state plus the touched-key set (merge-patch)."""
-
-    state: Any
-    touched: dict[str, bool]
+from .mergepatch import apply_merge_patch, touched_update
 
 
 def service_writable_state(s: ServiceRow) -> dict[str, Any]:
@@ -78,6 +67,25 @@ def service_writable_state(s: ServiceRow) -> dict[str, Any]:
         "optionsSelectMode": s.options_select_mode,
         "photoUrl": s.photo_url,
     }
+
+
+async def _fetch_owned(conn: AsyncConnection, organizer_id: str, service_id: str) -> ServiceRow:
+    row = await get_owned_service_tx(conn, organizer_id, service_id)
+    if row is None:
+        raise ServiceNotFound()
+    return row
+
+
+async def _update_owned(
+    conn: AsyncConnection,
+    organizer_id: str,
+    service_id: str,
+    update: Any,
+) -> ServiceRow:
+    row = await update_owned_service_tx(conn, organizer_id, service_id, update)
+    if row is None:
+        raise ServiceNotFound()
+    return row
 
 
 async def services_list(
@@ -104,17 +112,9 @@ async def services_create(
 ) -> StarletteResponse:
     """POST /api/services: creates a service owned by the signed-in
     organizer — organizerId always comes from the session, never from
-    the body."""
-    payload = body.model
-
-    # A cover URL must live under this organizer's media prefix —
-    # otherwise the row could point at an arbitrary host or another
-    # organizer's object.
-    if payload.photoUrl is not None:
-        if not storage.is_own_media_url(organizer_id, str(unwrap_root(payload.photoUrl))):
-            raise PhotoPrefix()
-
-    row = await create_service(organizer_id, payload)
+    the body. The cover-URL ownership check runs inside the db write
+    (db/service.create_service)."""
+    row = await create_service(organizer_id, body.model)
     if row is None:
         # Structurally unreachable (INSERT … RETURNING either errors or
         # returns the row) — kept as defensive parity with the TS check,
@@ -149,46 +149,30 @@ async def service_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateServiceInput] = Depends(_update_service_dep),
+    db_engine: AsyncEngine = Depends(get_db_engine),
 ) -> StarletteResponse:
     """PUT /api/services/{id}. Takes a JSON Merge Patch body (absent key
     = keep, explicit null = clear, RFC 7386/ADR-016): the patch is
     validated first (a null on a non-nullable key is rejected before any
     read), then merged into the current state and the result
     re-validated."""
-    touched = patch_keys(body.raw)
-    if touched is None:
-        raise NothingToUpdate()
-
-    # Read → merge → write on one transaction.
-    async with engine().begin() as conn:
-        current = await get_owned_service_tx(conn, organizer_id, id)
-        if current is None:
-            raise ServiceNotFound()
-
-        try:
-            merged = merge_patch(service_writable_state(current), body.raw)
-        except ValueError:
-            raise InvalidInput() from None
-        state = decode_merged_service_input(merged)
-
-        # A new cover must live under this organizer's media prefix —
-        # otherwise the row could point at an arbitrary host or
-        # another organizer's object. Null clears and stays allowed.
-        if touched.get("photoUrl") and state.photoUrl is not None:
-            if not storage.is_own_media_url(organizer_id, str(unwrap_root(state.photoUrl))):
-                raise PhotoPrefix()
-
-        row = await update_owned_service_tx(
-            conn, organizer_id, id, ServiceUpdate(state=state, touched=touched)
-        )
-        if row is None:
-            raise ServiceNotFound()
+    row, current, touched = await apply_merge_patch(
+        db_engine,
+        body.raw,
+        fetch=lambda conn: _fetch_owned(conn, organizer_id, id),
+        writable_state=service_writable_state,
+        decode_merged=lambda merged, _touched: decode_merged_service_input(merged),
+        update_tx=lambda conn, state, touched: _update_owned(
+            conn, organizer_id, id, touched_update(state, touched)
+        ),
+    )
 
     star = json_response(200, gen.ServiceEnvelope(service=to_service_record(row))).to_starlette()
 
     # The replaced cover object is removed best-effort after the commit
     # (see cleanup_replaced_media) — a storage failure must not fail an
-    # already-committed update.
+    # already-committed update. The ownership check ran inside the
+    # transaction (db/service.update_owned_service_tx).
     if touched.get("photoUrl"):
         old = current.photo_url or ""
         new = row.photo_url or ""

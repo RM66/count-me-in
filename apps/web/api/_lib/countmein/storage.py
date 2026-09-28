@@ -15,7 +15,7 @@ import secrets
 import threading
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
 if TYPE_CHECKING:
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 from . import logx
 from .contracts import models_gen as gen
 from .contracts.domain import iso_date
-from .contracts.models import unwrap_root
 
 # ── Config (lazy, cached like every other singleton) ─────────────────────────
 
@@ -323,21 +322,21 @@ def _signed_target(key: str, content_type: str, size: int) -> gen.ImageUploadTar
     )
 
 
-def create_avatar_upload(organizer_id: str, payload: Any) -> gen.ImageUploadTarget:
+def create_avatar_upload(
+    organizer_id: str, payload: gen.CreateAvatarUploadInput
+) -> gen.ImageUploadTarget:
     """A signed upload URL for an organizer's avatar (browser
     resizes/re-encodes first, then PUTs straight to R2)."""
-    ext = ext_for_content_type(str(unwrap_root(payload.contentType)))
+    ext = ext_for_content_type(str(payload.contentType))
     key = avatar_key(organizer_id, ext)
-    return _signed_target(
-        key, str(unwrap_root(payload.contentType)), int(unwrap_root(payload.size))
-    )
+    return _signed_target(key, str(payload.contentType), int(payload.size))
 
 
-def create_service_photo_upload(organizer_id: str, payload: Any) -> gen.ImageUploadTarget:
+def create_service_photo_upload(
+    organizer_id: str, payload: gen.CreateServicePhotoUploadInput
+) -> gen.ImageUploadTarget:
     """A signed upload URL for a service cover photo (landscape covers
     get their own limits instead of reusing the avatar constants)."""
-    ext = ext_for_content_type(str(unwrap_root(payload.contentType)))
+    ext = ext_for_content_type(str(payload.contentType))
     key = service_photo_key(organizer_id, ext)
-    return _signed_target(
-        key, str(unwrap_root(payload.contentType)), int(unwrap_root(payload.size))
-    )
+    return _signed_target(key, str(payload.contentType), int(payload.size))

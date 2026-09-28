@@ -1,5 +1,5 @@
 """Shared data-layer helpers: SQLSTATE classification, id/token
-generation, and the manage-token hash.
+generation, the manage-token hash, and the merge-patch update contract.
 
 The manage-token hash is a cross-stack contract: SHA-256 hex, identical
 to hashManageToken in @repo/contracts/manage-token (server-only
@@ -13,8 +13,10 @@ import hashlib
 import json
 import secrets
 import time
+from dataclasses import dataclass
 
 from .. import logx
+from ..errors import walk_exception_chain
 
 # Postgres SQLSTATE codes — the codes the driver puts on the error when
 # a constraint rejects a write.
@@ -24,14 +26,10 @@ FOREIGN_KEY_VIOLATION = "23503"
 
 def _pg_error_code(err: BaseException) -> str | None:
     """The SQLSTATE from a psycopg error (or anything it wraps)."""
-    seen: set[int] = set()
-    current: BaseException | None = err
-    while current is not None and id(current) not in seen:
+    for current in walk_exception_chain(err):
         code = getattr(current, "sqlstate", None) or getattr(current, "pgcode", None)
         if code:
             return str(code)
-        seen.add(id(current))
-        current = current.__cause__ or current.__context__
     return None
 
 
@@ -71,6 +69,18 @@ def new_id() -> str:
 
 
 _NANOID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+
+
+@dataclass(slots=True, frozen=True)
+class TouchedUpdate[StateT]:
+    """The merge-patch update contract shared by the three partial-update
+    *_tx functions: the merged state plus the touched-key set, so only
+    intended columns are written (absent key = keep, RFC 7386). Generic
+    over the generated input model — a typo in a touched key or a state
+    field is a type error here, not a silently unwritten column."""
+
+    state: StateT
+    touched: dict[str, bool]
 
 
 def new_service_id() -> str:

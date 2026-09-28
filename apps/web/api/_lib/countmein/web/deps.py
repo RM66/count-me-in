@@ -22,7 +22,7 @@ import math
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends
 from starlette.requests import Request
@@ -31,6 +31,35 @@ from ..contracts.payloads import AuthTicketPayload
 from ..errors import InvalidInput, RateLimited, UnsupportedMediaType
 from .guards import read_body_or_413, require_guest_identity, require_writable_organizer
 from .ratelimit import RateLimitConfig, allow, client_ip
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+    from sqlalchemy.ext.asyncio import AsyncEngine
+
+
+def get_db_engine(request: Request) -> AsyncEngine:
+    """The request's Postgres engine. `app.state.db_engine` (set by a
+    test or an embedding) wins over the process-wide lazy singleton
+    (ADR-021) — the override is how unit tests isolate themselves
+    under parallel runs; `app.dependency_overrides[get_db_engine]`
+    works too, this is the same seam one level down."""
+    override: AsyncEngine | None = getattr(request.app.state, "db_engine", None)
+    if override is not None:
+        return override
+    from ..db.client import engine
+
+    return engine()
+
+
+def get_redis(request: Request) -> Redis:
+    """The request's Redis client — same override seam as
+    get_db_engine (`app.state.redis_client`)."""
+    override: Redis | None = getattr(request.app.state, "redis_client", None)
+    if override is not None:
+        return override
+    from .. import redis as redis_mod
+
+    return redis_mod.client()
 
 
 async def locale(request: Request) -> str:
@@ -43,6 +72,17 @@ async def locale(request: Request) -> str:
 async def request_body(request: Request) -> bytes:
     """The raw request body, bounded at 1MB (413 past the bound)."""
     return await read_body_or_413(request)
+
+
+# Pipeline stages, tagged on the dependency callables so the dependency-
+# order meta-test (tests_py/routes/test_dependency_order.py) can assert
+# the load-bearing sequence without guessing from names.
+_STAGE_RATE_LIMIT = "ratelimit"
+_STAGE_BODY = "body"
+_STAGE_DECODE = "decode"
+_STAGE_TICKET = "ticket"
+
+request_body.__countmein_stage__ = _STAGE_BODY  # type: ignore[attr-defined]
 
 
 @dataclass
@@ -62,6 +102,7 @@ def decoded(decoder: Callable[[bytes], Any]) -> Callable[..., Any]:
     async def dep(body: bytes = Depends(request_body)) -> ValidatedBody[Any]:
         return ValidatedBody(decoder(body), body)
 
+    dep.__countmein_stage__ = _STAGE_DECODE  # type: ignore[attr-defined]
     return dep
 
 
@@ -77,6 +118,7 @@ def rate_limit(key: Callable[[Request], str], limit: int, window: float) -> Call
         if not allowed_flag:
             raise RateLimited(math.ceil(retry_after))
 
+    dep.__countmein_stage__ = _STAGE_RATE_LIMIT  # type: ignore[attr-defined]
     return dep
 
 
@@ -91,6 +133,7 @@ def organizer_rate_limit(prefix: str, limit: int, window: float) -> Callable[...
         if not allowed_flag:
             raise RateLimited(math.ceil(retry_after))
 
+    dep.__countmein_stage__ = _STAGE_RATE_LIMIT  # type: ignore[attr-defined]
     return dep
 
 
@@ -121,6 +164,7 @@ def guest_identity(
     ) -> AuthTicketPayload:
         return await require_guest_identity(request, ticket_of(body.model))
 
+    dep.__countmein_stage__ = _STAGE_TICKET  # type: ignore[attr-defined]
     return dep
 
 

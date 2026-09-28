@@ -15,25 +15,14 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from ..contracts.models import unwrap_root
 from ..contracts.payloads import AuthTicketPayload
-from ..errors import ValidationFailed
+from ..errors import (
+    TelegramInvalidError,
+    TelegramNotConfiguredError,
+    TelegramValidationFailedError,
+    ValidationFailed,
+)
 from ..validation.decode import decode_telegram_widget_payload
-
-
-class TelegramNotConfiguredError(Exception):
-    def __init__(self) -> None:
-        super().__init__("TELEGRAM_BOT_TOKEN is not set")
-
-
-class TelegramInvalidError(Exception):
-    def __init__(self) -> None:
-        super().__init__("telegram auth data is malformed")
-
-
-class TelegramValidationFailedError(Exception):
-    def __init__(self) -> None:
-        super().__init__("telegram auth data failed HMAC validation")
 
 
 @dataclass
@@ -145,7 +134,7 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     # secret = SHA256(bot_token); hash = HMAC-SHA256(secret, dcs) hex.
     secret = hashlib.sha256(bot_token.encode()).digest()
     expected = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, unwrap_root(payload.hash)):
+    if not hmac.compare_digest(expected, payload.hash):
         raise TelegramValidationFailedError()
 
     # Freshness (hasDataExpired in the TS validator): the HMAC proves
@@ -153,19 +142,19 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     # Asymmetric: stale payloads are rejected past 24h, future ones past
     # clock skew — a future auth_date is a forged claim, not a slow
     # guest.
-    age = int(time.time()) - int(unwrap_root(payload.auth_date))
+    age = int(time.time()) - int(payload.auth_date)
     if age > WIDGET_DATA_VALID_AFTER or age < -WIDGET_FUTURE_SKEW:
         raise TelegramValidationFailedError()
 
-    first = unwrap_root(payload.first_name).strip()
-    last = (unwrap_root(payload.last_name) or "").strip()
+    first = payload.first_name.strip()
+    last = (payload.last_name or "").strip()
     identity = TelegramIdentity(
         messenger="telegram",
-        messenger_id=str(int(unwrap_root(payload.id))),
+        messenger_id=str(int(payload.id)),
         display_name=f"{first} {last}".strip(),
-        photo_url=_nil_if_empty(unwrap_root(payload.photo_url)),
+        photo_url=_nil_if_empty(str(payload.photo_url) if payload.photo_url else None),
     )
-    username = unwrap_root(payload.username)
+    username = payload.username
     if username:
         identity.messenger_login = "@" + username
     return identity

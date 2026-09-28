@@ -8,14 +8,34 @@ handlers stop pattern-matching exception chains (`_errors_as` is gone)
 and never flatten an unexpected error into a misleading 4xx: anything
 that is not an ApiError keeps propagating to the 500 recovery.
 
-Byte-identical bodies: `to_response` reuses the existing renderer
+This module deliberately holds only data: the error→Response conversion
+lives in the transport (web/response.render_api_error) and is wired in
+exactly one place — the exception handler registered in app.py — so the
+lower layer never depends on the transport.
+
+Byte-identical bodies: render_api_error reuses the existing renderer
 (web/response.py), which the parity goldens pin.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from .contracts.models_gen import ErrorBody
-from .web.response import Response, error, error_extras, error_params
+
+
+def walk_exception_chain(err: BaseException) -> Iterator[BaseException]:
+    """Yield err and everything it wraps via __cause__/__context__, each
+    exception once. A wrapped driver error must not slip past a mapping
+    into a bare 500 — the three former word-for-word copies of this walk
+    (SQLSTATE classification, unique-constraint naming, job error
+    mapping) all build on it."""
+    seen: set[int] = set()
+    current: BaseException | None = err
+    while current is not None and id(current) not in seen:
+        yield current
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
 
 
 class ApiError(Exception):
@@ -36,20 +56,10 @@ class ApiError(Exception):
         """Additional ErrorBody fields (code/seatsLeft/maxSeats), if any."""
         return None
 
-    def to_response(self, locale: str) -> Response:
-        extras = self.extras()
-        if extras is not None:
-            resp = error_extras(self.status, locale, self.key, self.params(), extras)
-        else:
-            params = self.params()
-            if params is not None:
-                resp = error_params(self.status, locale, self.key, params)
-            else:
-                resp = error(self.status, locale, self.key)
-        headers = self.headers()
-        if headers is not None:
-            resp.headers = {**resp.headers, **headers}
-        return resp
+    def response_key(self) -> str:
+        """The i18n key the response renders — a hook for the errors
+        whose copy depends on the instance (SoldOut)."""
+        return self.key
 
 
 class ValidationFailed(Exception):
@@ -115,6 +125,30 @@ class TicketExpired(ApiError):
     key = "ticketExpired"
 
 
+class TelegramNotConfiguredError(ApiError):
+    """TELEGRAM_BOT_TOKEN is absent, so the widget payload cannot be
+    validated (500 telegramNotConfigured)."""
+
+    status = 500
+    key = "telegramNotConfigured"
+
+
+class TelegramInvalidError(ApiError):
+    """The Telegram Login Widget payload is malformed (400
+    telegramInvalid)."""
+
+    status = 400
+    key = "telegramInvalid"
+
+
+class TelegramValidationFailedError(ApiError):
+    """The Telegram Login Widget payload failed HMAC or freshness
+    validation (400 telegramValidationFailed)."""
+
+    status = 400
+    key = "telegramValidationFailed"
+
+
 class SlotGone(ApiError):
     """The slot a guest tried to book is gone (404)."""
 
@@ -134,7 +168,7 @@ class SoldOut(ApiError):
         self.seats_left = seats_left
         super().__init__(f"slot sold out, {seats_left} seats left")
 
-    def key_for(self) -> str:
+    def response_key(self) -> str:
         # The copy differs by whether anything is left at all.
         return "soldOut" if self.seats_left == 0 else "seatsLeftOnSession"
 
@@ -143,10 +177,6 @@ class SoldOut(ApiError):
 
     def extras(self) -> ErrorBody:
         return ErrorBody(error="", seatsLeft=self.seats_left)
-
-    def to_response(self, locale: str) -> Response:
-        self.key = self.key_for()
-        return super().to_response(locale)
 
 
 class DuplicateBooking(ApiError):

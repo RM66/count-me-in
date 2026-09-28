@@ -36,7 +36,6 @@ from ..contracts.constants_gen import (
     QUEUE_DEMO_REFRESH,
     QUEUE_OUTBOX_SWEEP,
 )
-from ..contracts.models import unwrap_root
 from .booking_cancelled import handle_booking_cancelled
 from .booking_created import handle_booking_created
 from .demo_refresh import handle_demo_refresh
@@ -69,8 +68,8 @@ class ParsedJob:
     outbox.sweep send no payload). Parsing happens exactly once — the
     dispatch switch consumes this value directly."""
 
-    booking_created: Any = None
-    booking_cancelled: Any = None
+    booking_created: gen.BookingCreatedJob | None = None
+    booking_cancelled: gen.BookingCancelledJob | None = None
 
 
 def _valid_recipient(v: str) -> bool:
@@ -136,8 +135,8 @@ def parse_job(queue: str, body: bytes | None) -> ParsedJob:
             or str(m.get("cancelledBy", "")) not in ("guest", "organizer")
         ):
             raise InvalidJobPayloadError(queue)
-        job = gen.BookingCancelledJob.model_construct(**m)  # type: ignore[assignment]
-        return ParsedJob(booking_cancelled=job)
+        job_cancelled = gen.BookingCancelledJob.model_construct(**m)
+        return ParsedJob(booking_cancelled=job_cancelled)
     if queue in (QUEUE_DEMO_REFRESH, QUEUE_OUTBOX_SWEEP):
         return ParsedJob()
     raise UnknownJobQueueError(queue)
@@ -286,20 +285,29 @@ async def run_job(queue: str, body: bytes | None, trace_id: str) -> None:
     what makes QStash retry."""
     job = parse_job(queue, body)
     if queue == QUEUE_BOOKING_CREATED:
+        created = job.booking_created
+        if created is None:
+            # Unreachable by parse_job's contract (the queue name
+            # decides which field is set); a real None is a bug, and
+            # python -O must not strip the check.
+            raise RuntimeError("booking_created is None after parse_job")
         env = read_env()
-        outbox_id = str(unwrap_root(job.booking_created.outboxId))
+        outbox_id = str(created.outboxId)
 
         async def _run() -> None:
-            await handle_booking_created(env, job.booking_created, trace_id)
+            await handle_booking_created(env, created, trace_id)
 
         await run_claimed(queue, trace_id, outbox_id, _run)
         return
     if queue == QUEUE_BOOKING_CANCELLED:
+        cancelled = job.booking_cancelled
+        if cancelled is None:
+            raise RuntimeError("booking_cancelled is None after parse_job")
         env = read_env()
-        outbox_id = str(unwrap_root(job.booking_cancelled.outboxId))
+        outbox_id = str(cancelled.outboxId)
 
         async def _run() -> None:
-            await handle_booking_cancelled(env, job.booking_cancelled, trace_id)
+            await handle_booking_cancelled(env, cancelled, trace_id)
 
         await run_claimed(queue, trace_id, outbox_id, _run)
         return

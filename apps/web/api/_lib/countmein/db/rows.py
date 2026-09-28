@@ -17,7 +17,6 @@ from typing import Any
 
 from ..contracts import domain
 from ..contracts import models_gen as gen
-from ..contracts.models import unwrap_root
 from .shared import parse_string_array
 
 # array_to_json projections make NULL arrays explicit.
@@ -141,7 +140,7 @@ def _str(value: Any) -> str:
     plain str on the row, or every downstream comparison against a
     string constant (the demo guard's DEMO_ORGANIZER_ID check, fixture
     ids in tests) silently misses."""
-    return str(unwrap_root(value))
+    return str(value)
 
 
 def scan_organizer(row: Any) -> OrganizerRow | None:
@@ -355,7 +354,7 @@ def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
         capacity=s.capacity,
         bookedCount=s.booked_count,
         price=s.price,
-        createdAt=domain.iso_date(s.created_at),  # type: ignore[arg-type]
+        createdAt=domain.iso_date(s.created_at),
     )
 
 
@@ -374,7 +373,7 @@ def to_service_record(s: ServiceRow) -> gen.ServiceRecord:
         maxSeatsPerBooking=s.max_seats_per_booking,
         options=s.options,
         optionsSelectMode=s.options_select_mode,
-        createdAt=domain.iso_date(s.created_at),  # type: ignore[arg-type]
+        createdAt=domain.iso_date(s.created_at),
     )
 
 
@@ -408,7 +407,7 @@ def to_organizer_profile(o: OrganizerRow, is_demo: bool) -> gen.OrganizerProfile
         location=o.location,
         contact=o.contact,
         language=language,
-        createdAt=domain.iso_date(o.created_at),  # type: ignore[arg-type]
+        createdAt=domain.iso_date(o.created_at),
         isDemo=is_demo,
     )
 
@@ -424,7 +423,7 @@ def to_booking_record(b: BookingRow) -> gen.BookingRecord:
         guestMessengerId=b.guest_messenger_id,
         guestMessengerLogin=b.guest_messenger_login,
         selectedOptions=b.selected_options,
-        createdAt=domain.iso_date(b.created_at),  # type: ignore[arg-type]
+        createdAt=domain.iso_date(b.created_at),
     )
 
 
@@ -455,7 +454,7 @@ def to_guest_booking(
         seats=b.seats,
         guestName=b.guest_name,
         selectedOptions=b.selected_options,
-        createdAt=domain.iso_date(b.created_at),  # type: ignore[arg-type]
+        createdAt=domain.iso_date(b.created_at),
         manageToken=b.manage_token,
         canCancel=can_cancel_booking(b),
         slot=to_time_slot_record(slot),

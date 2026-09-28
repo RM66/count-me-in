@@ -6,11 +6,10 @@ layer (run.py) has already validated the payload."""
 
 from __future__ import annotations
 
-from typing import Any
-
 from .. import logx
 from ..auth import issue_login_link
 from ..contracts import domain
+from ..contracts import models_gen as gen
 from ..contracts.constants_gen import QUEUE_BOOKING_CREATED
 from ..db.booking_reads import get_booking_chain
 from .env import Env
@@ -24,7 +23,7 @@ from .templates import (
 )
 
 
-async def handle_booking_created(env: Env, job: Any, trace_id: str) -> None:
+async def handle_booking_created(env: Env, job: gen.BookingCreatedJob, trace_id: str) -> None:
     """Notify one recipient about a fresh booking. PostHog captures from
     the TS handler are not ported (no SDK in the dependency set);
     delivery logging covers the remainder."""

@@ -8,6 +8,7 @@ cannot reach).
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,94 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import pytest
 from _env import require_postgres, require_redis
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _xdist_isolation():
+    """Per-worker isolation under pytest-xdist (`-n auto`).
+
+    The suite shares one Postgres and one Redis, but the parity replay
+    TRUNCATEs every table and FLUSHDBs — under xdist that collides with
+    other workers' DML (deadlocks) and wipes their Redis state. So each
+    xdist worker gets its own slice, created once per worker process:
+
+    - Postgres: a per-worker database, migrated from the same Drizzle
+      files CI applies to the base (`packages/db/drizzle`). Not a
+      TEMPLATE clone: the clone requires zero other connections to
+      the base, which a dev server (or another suite) violates.
+    - Redis: a per-worker logical database (db index = worker id + 1;
+      db 0 stays untouched for the dev topology).
+
+    Without xdist (a plain `uv run pytest`) nothing changes: the
+    fixture is a no-op and the base URL is used as-is.
+    """
+    worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    if worker == "":
+        yield
+        return
+
+    base_pg = os.getenv("POSTGRES_URL", "")
+    if base_pg != "":
+        import psycopg
+
+        dbname = f"countmein_test_{worker}"
+        # Admin statements run from the neutral `postgres` maintenance
+        # database: DROP DATABASE cannot run on the database itself.
+        admin_url = _replace_dbname(base_pg, "postgres")
+        with psycopg.connect(admin_url, autocommit=True) as conn:
+            # Always recreate: a leftover database from a previous run
+            # may carry a schema older than the migrations.
+            conn.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
+            conn.execute(f'CREATE DATABASE "{dbname}"')
+        _migrate(_replace_dbname(base_pg, dbname))
+        os.environ["POSTGRES_URL"] = _replace_dbname(base_pg, dbname)
+
+    base_redis = os.getenv("REDIS_URL", "")
+    if base_redis != "":
+        # Worker gw0 → db 1, gw1 → db 2, …; db 0 is left alone.
+        index = int(worker.removeprefix("gw")) + 1
+        os.environ["REDIS_URL"] = f"{base_redis.rstrip('/')}/{index}"
+
+    yield
+
+
+def _replace_dbname(url: str, dbname: str) -> str:
+    """Swap the database name in a postgres://…/name URL (query string
+    preserved)."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    parts = urlsplit(url)
+    path = "/" + dbname
+    return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
+
+
+def _migrate(url: str) -> None:
+    """Apply the Drizzle migrations to a fresh per-worker database — the
+    same files `bun run db:migrate` applies to the base, in journal
+    order, one transaction per file — then seed the demo organizer
+    (`bun run db:seed:demo`'s job in the base): several tests hang
+    booking chains off DEMO_ORGANIZER_ID and rely on the row existing.
+    No drizzle_migrations bookkeeping: the database is dropped and
+    recreated on every run, so there is no state to track."""
+    import json
+    from datetime import UTC, datetime
+
+    import psycopg
+
+    drizzle = Path(__file__).resolve().parents[3] / "packages" / "db" / "drizzle"
+    journal = json.loads((drizzle / "meta" / "_journal.json").read_text())
+    with psycopg.connect(url) as conn:
+        for entry in journal["entries"]:
+            sql = (drizzle / f"{entry['tag']}.sql").read_text()
+            with conn.transaction():
+                conn.execute(sql)
+
+    import asyncio
+
+    from _lib.countmein.db.seed import seed_demo
+
+    os.environ["POSTGRES_URL"] = url
+    asyncio.run(seed_demo(datetime.now(UTC)))
 
 
 @pytest.fixture()

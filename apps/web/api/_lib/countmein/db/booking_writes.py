@@ -14,8 +14,7 @@ from ..contracts import domain
 from ..contracts import models_gen as gen
 from ..contracts.payloads import AuthTicketPayload
 from ..demo import refuse_demo_write
-from .client import engine
-from .errors import (
+from ..errors import (
     AlreadyCancelled,
     BookingNotFound,
     DuplicateBooking,
@@ -24,6 +23,7 @@ from .errors import (
     SlotGone,
     SoldOut,
 )
+from .client import engine
 from .outbox import OutboxRow, enqueue_outbox
 from .rows import (
     BOOKING_CHAIN_SELECT,
@@ -51,7 +51,7 @@ from ..contracts.constants_gen import (  # noqa: E402
 )
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class CreateBookingData:
     """The validated booking input plus the resolved guest identity,
     carried into the booking transaction (hand-written request plumbing,

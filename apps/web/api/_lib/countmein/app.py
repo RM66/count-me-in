@@ -30,12 +30,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from . import logx
     from . import redis as redis_mod
     from .db import client as db_client
-    from .web import asyncclient
+    from .web import async_client
 
     for name, dispose in (
         ("engine", db_client.dispose),
         ("redis", redis_mod.dispose),
-        ("http", asyncclient.dispose),
+        ("http", async_client.dispose),
     ):
         try:
             await dispose()
@@ -95,12 +95,14 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError) -> StarletteResponse:
-        # Domain errors render themselves (the pinned wire bodies via the
-        # shared renderer); anything else keeps propagating to the 500
-        # recovery middleware. Locale comes from the same cookies +
-        # Accept-Language the handlers use.
+        # Domain errors render through the single conversion point in the
+        # transport (web/response.render_api_error); anything else keeps
+        # propagating to the 500 recovery middleware. Locale comes from the
+        # same cookies + Accept-Language the handlers use.
         locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
-        return exc.to_response(locale).to_starlette()
+        from .web.response import render_api_error
+
+        return render_api_error(exc, locale).to_starlette()
 
     @app.exception_handler(ValidationFailed)
     async def validation_failed_handler(

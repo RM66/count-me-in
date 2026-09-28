@@ -5,14 +5,32 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import TYPE_CHECKING
+
+
+def _running_loop() -> asyncio.AbstractEventLoop | None:
+    """The running loop, or None outside one — client() may be called
+    from sync code (tests); without a loop there is nothing to be
+    bound to, so the affinity check is skipped."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+
 
 if TYPE_CHECKING:
     import redis.asyncio as aioredis
 
 _client: aioredis.Redis | None = None
 _init_err: Exception | None = None
+# The loop the cached client was created on. A serverless runtime may
+# drop the ASGI context and serve a later invocation on a new event
+# loop; a client bound to the old loop then fails every command with
+# "attached to a different loop". The client is rebuilt instead —
+# from_url opens no sockets, so the rebuild is cheap.
+_client_loop: asyncio.AbstractEventLoop | None = None
 
 
 def client() -> aioredis.Redis:
@@ -25,13 +43,20 @@ def client() -> aioredis.Redis:
     set" instead of a None-deref 500. No lock: the body has no await, so
     it is atomic with respect to the event loop.
     """
-    global _client, _init_err
+    global _client, _init_err, _client_loop
     # Imported lazily: the cold-start rules (tests_py/test_cold_imports)
     # forbid pulling the asyncio client machinery into a bare app import.
     import redis.asyncio as aioredis
     from redis import backoff as redis_backoff
     from redis import retry as redis_retry
 
+    loop = _running_loop()
+    if _client is not None and loop is not None and _client_loop is not loop:
+        # New event loop since the client was built (serverless reuse):
+        # drop it and rebuild on this loop. aclose() on the old loop's
+        # client is unsafe from here, so the old connection is left to
+        # the pool's own timeouts / process teardown.
+        _client = None
     if _client is None and _init_err is None:
         url = os.getenv("REDIS_URL", "")
         if url == "":
@@ -43,6 +68,7 @@ def client() -> aioredis.Redis:
                 retry_on_timeout=True,
                 retry=redis_retry.Retry(redis_backoff.ExponentialBackoff(), 2),
             )
+            _client_loop = loop
     if _init_err is not None:
         raise _init_err
     if _client is None:
@@ -58,11 +84,12 @@ async def dispose() -> None:
     lifespan shutdown is the only production caller; a close failure
     is the caller's to absorb (it must not mask the response already
     sent)."""
-    global _client, _init_err
+    global _client, _init_err, _client_loop
     if _client is not None:
         await _client.aclose()
     _client = None
     _init_err = None
+    _client_loop = None
 
 
 def reset_for_test() -> None:
@@ -70,6 +97,7 @@ def reset_for_test() -> None:
     re-reads REDIS_URL. Test-only: production code must never call it —
     the singleton is process-wide. Closing the connection is
     dispose()'s job, not a fire-and-forget coroutine here."""
-    global _client, _init_err
+    global _client, _init_err, _client_loop
     _client = None
     _init_err = None
+    _client_loop = None

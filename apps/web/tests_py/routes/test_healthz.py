@@ -135,8 +135,11 @@ async def test_healthz_redis_unconfigured_is_skipped(monkeypatch):
 async def test_healthz_rate_limited(monkeypatch):
     """30/min per IP: the 31st probe inside the window is a 429 — the
     probe is unauthenticated and each call burns a connection from the
-    small serverless pool."""
+    small serverless pool. The bucket is a route-level Depends now, so
+    the test goes through the app (the only faithful way to run the
+    dependency chain)."""
     import fakeredis.aioredis
+    import httpx
 
     fake = fakeredis.aioredis.FakeRedis()
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
@@ -147,9 +150,17 @@ async def test_healthz_rate_limited(monkeypatch):
 
     monkeypatch.setenv("POSTGRES_URL", "postgresql://test")
     monkeypatch.setattr(healthz, "_probe_postgres", ok)
+    monkeypatch.setattr(healthz, "_probe_redis", ok)
+
+    from _lib.countmein.app import create_app
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
     statuses = []
-    for _ in range(31):
-        response = await healthz.handle_healthz(make_request())
-        statuses.append(response.status_code)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+        for _ in range(31):
+            response = await c.get("/api/healthz")
+            statuses.append(response.status_code)
     assert statuses[:30] == [200] * 30
     assert statuses[30] == 429, "the 31st probe inside the window must be a 429"
+    assert "Retry-After" in response.headers, "the 429 must carry Retry-After"

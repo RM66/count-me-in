@@ -23,7 +23,6 @@ from starlette.responses import Response as StarletteResponse
 
 from .. import logx
 from ..contracts import models_gen as gen
-from ..contracts.models import unwrap_root
 from ..contracts.payloads import AuthTicketPayload
 from ..db.booking_reads import list_guest_bookings
 from ..db.booking_writes import (
@@ -139,7 +138,7 @@ async def booking_create(
     _limited: None = Depends(ip_rate_limit("rl:booking:", 5, 60.0)),
     body: ValidatedBody[gen.CreateBookingInput] = Depends(_create_booking_dep),
     identity: AuthTicketPayload = Depends(
-        guest_identity(_create_booking_dep, lambda m: str(unwrap_root(m.guestTicket)))
+        guest_identity(_create_booking_dep, lambda m: str(m.guestTicket))
     ),
 ) -> StarletteResponse:
     """POST /api/bookings: a guest reserves seats (ADR-002). The public
@@ -160,25 +159,25 @@ async def booking_create(
 
     created, outbox = await create_guest_booking(
         CreateBookingData(
-            service_id=str(unwrap_root(payload.serviceId)),
-            time_slot_id=str(unwrap_root(payload.timeSlotId)),
-            seats=int(unwrap_root(payload.seats)),
-            guest_name=str(unwrap_root(payload.guestName)),
+            service_id=str(payload.serviceId),
+            time_slot_id=str(payload.timeSlotId),
+            seats=int(payload.seats),
+            guest_name=str(payload.guestName),
             selected_options=(
-                [str(o) for o in unwrap_root(payload.selectedOptions)]
+                [str(o) for o in payload.selectedOptions]
                 if payload.selectedOptions is not None
                 else None
             ),
             # decode_create_booking_input applies the schema default,
             # so the value is never None here; the fallback is
             # belt-and-braces.
-            guest_locale=str(unwrap_root(payload.guestLocale) or "en"),
+            guest_locale=str(payload.guestLocale or "en"),
             guest=identity,
             trace_id=trace_id,
         )
     )
 
-    logx.info("booking created", {"traceId": trace_id, "bookingId": str(unwrap_root(created.id))})
+    logx.info("booking created", {"traceId": trace_id, "bookingId": str(created.id)})
 
     # After-commit publish (ADR-012): the QStash round trip runs as a
     # response background task — the guest does not wait for QStash, and
@@ -193,7 +192,7 @@ async def booking_lookup(
     _limited: None = Depends(ip_rate_limit("rl:lookup:", 10, 60.0)),
     body: ValidatedBody[gen.LookupBookingsInput] = Depends(_lookup_bookings_dep),
     identity: AuthTicketPayload = Depends(
-        guest_identity(_lookup_bookings_dep, lambda m: str(unwrap_root(m.guestTicket)))
+        guest_identity(_lookup_bookings_dep, lambda m: str(m.guestTicket))
     ),
 ) -> StarletteResponse:
     """POST /api/bookings/lookup: "find my bookings" (ADR-002, entry path
@@ -225,9 +224,7 @@ async def booking_cancel(
     and the response is the updated booking."""
     trace_id = logx.new_trace_id()
 
-    cancelled = await cancel_guest_booking_by_token(
-        str(unwrap_root(body.model.manageToken)), trace_id
-    )
+    cancelled = await cancel_guest_booking_by_token(str(body.model.manageToken), trace_id)
     # Unknown token — answered exactly like a wrong one, so the endpoint
     # cannot be used to test whether a token exists.
     if cancelled is None:
@@ -236,7 +233,7 @@ async def booking_cancel(
 
     logx.info(
         "booking cancelled by guest",
-        {"traceId": trace_id, "bookingId": str(unwrap_root(booking.id))},
+        {"traceId": trace_id, "bookingId": str(booking.id)},
     )
 
     # After-commit notification (ADR-012): the organizer is told by
@@ -267,9 +264,7 @@ async def booking_cancel_by_organizer(
     into cancelling someone else's booking."""
     trace_id = logx.new_trace_id()
 
-    cancelled = await cancel_owned_booking(
-        organizer_id, str(unwrap_root(body.model.bookingId)), trace_id
-    )
+    cancelled = await cancel_owned_booking(organizer_id, str(body.model.bookingId), trace_id)
     # Unknown id and a booking on someone else's service are answered
     # identically, so the endpoint cannot probe for foreign ids.
     if cancelled is None:
@@ -278,7 +273,7 @@ async def booking_cancel_by_organizer(
 
     logx.info(
         "booking cancelled by organizer",
-        {"traceId": trace_id, "bookingId": str(unwrap_root(booking.id))},
+        {"traceId": trace_id, "bookingId": str(booking.id)},
     )
 
     star = json_response(200, gen.BookingEnvelope(booking=booking)).to_starlette()

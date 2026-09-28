@@ -7,9 +7,12 @@ The handler carries its own recovery: the lazy singletons raise on a
 missing connection env, and the probe is exactly the place where that
 misconfiguration must surface as a 503 with a JSON body naming the
 broken dependency — not as a connection reset with a runtime stack in
-the log. It is also rate-limited: the probe is unauthenticated and
-each call burns a connection from the small serverless pool; the
-limiter fails open, so monitoring survives a Redis outage.
+the log. It is also rate-limited — declaratively, like every other
+route: the bucket is a route-level Depends (ip_rate_limit), so the
+handler itself stays recovery-only and there is no second rate-limit
+code path. The probe is unauthenticated and each call burns a
+connection from the small serverless pool; the limiter fails open, so
+monitoring survives a Redis outage.
 """
 
 from __future__ import annotations
@@ -17,13 +20,13 @@ from __future__ import annotations
 import os
 import traceback
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from starlette.requests import Request
 from starlette.responses import Response
 
 from .. import config, logx
-from ..web.jsonenc import dumps_compact
-from ..web.ratelimit import RateLimitConfig, client_ip, rate_limited
+from ..web.deps import ip_rate_limit
+from ..web.json_enc import dumps_compact
 
 _MAX_STACK = 8 << 10
 
@@ -71,12 +74,6 @@ def _encoder_body(checks: dict[str, str]) -> bytes:
 
 async def handle_healthz(request: Request) -> Response:
     try:
-        limited = await rate_limited(
-            request, "rl:healthz:" + client_ip(request), RateLimitConfig(limit=30, window=60.0)
-        )
-        if limited is not None:
-            return limited.to_starlette()
-
         # A missing POSTGRES_URL is the probe's panic path: the answer
         # is the full-failure body naming the variables, not a
         # single-dependency "fail". Checked up-front because the
@@ -143,4 +140,13 @@ async def handle_healthz(request: Request) -> Response:
 
 
 def register_healthz(app: FastAPI) -> None:
-    app.add_api_route("/api/healthz", handle_healthz, methods=["GET"], include_in_schema=False)
+    # 30/min per IP, enforced before the handler runs — the same
+    # dependency every other route uses (web/deps.py), not a bespoke
+    # limiter call inside the handler.
+    app.add_api_route(
+        "/api/healthz",
+        handle_healthz,
+        methods=["GET"],
+        include_in_schema=False,
+        dependencies=[Depends(ip_rate_limit("rl:healthz:", 30, 60.0))],
+    )

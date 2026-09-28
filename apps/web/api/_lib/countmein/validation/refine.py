@@ -17,7 +17,6 @@ from typing import Any
 
 from ..contracts import domain
 from ..contracts.constants_gen import SLOT_START_IN_PAST_MESSAGE
-from ..contracts.models import unwrap_root
 from .errors import Errors
 from .rules import is_acceptable_slot_start
 
@@ -31,7 +30,7 @@ def refine_service_options(
     present exactly when options are. Shared by the create input (where
     the pair is the whole payload) and the merged update state."""
     if options is not None:
-        opts = [unwrap_root(o) for o in unwrap_root(options)]
+        opts = [o for o in options]
         if len(opts) == 0:
             e.add("options", "Too small: expected array to have >=1 items")
         seen: set[str] = set()
@@ -40,8 +39,8 @@ def refine_service_options(
                 e.add("options", "options must be unique")
                 break
             seen.add(option)
-    has_options = options is not None and len(unwrap_root(options)) > 0
-    has_mode = mode is not None and unwrap_root(mode) != ""
+    has_options = options is not None and len(options) > 0
+    has_mode = mode is not None and mode != ""
     if has_options and not has_mode:
         e.add("optionsSelectMode", "optionsSelectMode is required when options are set")
     if not has_options and has_mode:
@@ -94,7 +93,7 @@ def refine_slot_merged_state(e: Errors, state: Any, starts_at_touched: bool) -> 
 def refine_slot_start(e: Errors, starts_at: Any) -> None:
     """Reject a start in the past (beyond the tolerance window)."""
     try:
-        ft = domain.parse_flex_time(unwrap_root(starts_at))
+        ft = domain.parse_flex_time(starts_at)
     except ValueError:
         return  # the spec's oneOf already rejected anything unparseable
     if not is_acceptable_slot_start(ft):

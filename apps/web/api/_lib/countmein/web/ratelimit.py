@@ -3,11 +3,15 @@
 The whole sliding-window check is one atomic Lua script: a pipeline
 could interleave between concurrent requests — two callers could both
 ZADD before either ZCARD runs, letting a burst slip past the limit.
+
+One enforcement path: allow() is the check, the web/deps.py dependency
+factories raise RateLimited from it — every route (healthz included)
+declares its bucket as a Depends, so there is no second hand-rolled
+rate_limited() helper to drift from.
 """
 
 from __future__ import annotations
 
-import math
 import os
 import random
 import time
@@ -16,8 +20,6 @@ from dataclasses import dataclass
 from starlette.requests import Request
 
 from .. import logx
-from ..i18n import detect_locale
-from .response import Response, error
 
 # KEYS[1] = rate key; ARGV[1] = now (ns), ARGV[2] = window (ns),
 # ARGV[3] = limit, ARGV[4] = unique member.
@@ -86,20 +88,6 @@ async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
     if retry_ns <= 0:
         retry_ns = int(cfg.window * 1e9)
     return False, retry_ns / 1e9
-
-
-async def rate_limited(request: Request, key: str, cfg: RateLimitConfig) -> Response | None:
-    """Enforce a sliding-window limit for key; returns the rendered 429
-    Response when exceeded, None when the request may proceed. Callers
-    pass a key that already carries the identity dimension (IP,
-    organizer id, …)."""
-    allowed, retry_after = await allow(key, cfg)
-    if allowed:
-        return None
-    locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
-    resp = error(429, locale, "tooManyRequests")
-    resp.headers = {"Retry-After": str(math.ceil(retry_after))}
-    return resp
 
 
 def trust_proxy_headers() -> bool:

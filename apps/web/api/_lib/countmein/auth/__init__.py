@@ -1,14 +1,13 @@
 """Auth: Telegram widget validation, single-use tickets, one-time login
 links, and organizer session resolution."""
 
-from .session import Session, session_from_request, session_organizer_id
-from .telegram import (
-    TelegramIdentity,
+from ..errors import (
     TelegramInvalidError,
     TelegramNotConfiguredError,
     TelegramValidationFailedError,
-    validate_telegram_widget,
 )
+from .session import Session, session_from_request, session_organizer_id
+from .telegram import TelegramIdentity, validate_telegram_widget
 from .ticket import (
     consume_login_link,
     consume_ticket,

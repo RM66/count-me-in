@@ -8,7 +8,7 @@ route handler sits on, so their contracts are pinned here.
 import httpx
 from _lib.countmein.contracts.constants_gen import LOCALES
 from _lib.countmein.validation.errors import Errors
-from _lib.countmein.web.jsonenc import dumps_compact
+from _lib.countmein.web.json_enc import dumps_compact
 from _lib.countmein.web.response import (
     empty,
     error,

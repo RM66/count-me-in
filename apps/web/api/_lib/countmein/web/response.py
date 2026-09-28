@@ -1,7 +1,9 @@
 """Route-handler plumbing shared by every endpoint: responses, guards,
 error mapping, recovery. Request-level concerns only: sessions,
 tickets, body parsing. Mapping *entity* failure modes onto status codes
-lives in errors.py, deliberately split from the pure plumbing.
+lives in errors.py, deliberately split from the pure plumbing — the one
+error→Response conversion point (render_api_error) lives here in the
+transport, wired by the app-level exception handler in app.py.
 """
 
 from __future__ import annotations
@@ -14,8 +16,9 @@ from starlette.responses import Response as StarletteResponse
 
 from .. import logx
 from ..contracts.models_gen import ErrorBody, InvalidBody, InvalidIssuesBody, ValidationErrors
+from ..errors import ApiError
 from ..i18n import api_error
-from .jsonenc import dumps_compact
+from .json_enc import dumps_compact
 
 
 class CompactJSONResponse(StarletteResponse):
@@ -93,6 +96,28 @@ def error(status: int, locale: str, key: str) -> Response:
     """Render {error: <localized message>} — the body carries the caller's
     locale (ADR-011)."""
     return Response(status=status, body=ErrorBody(error=api_error(locale, key)))
+
+
+def render_api_error(exc: ApiError, locale: str) -> Response:
+    """Render an ApiError into its wire Response — the single conversion
+    point, called by the app-level exception handler (app.py). The error
+    classes carry only data (status, key, params, extras, headers);
+    this is where that data becomes bytes, so the parity goldens stay
+    byte-identical with the retired to_response method."""
+    key = exc.response_key()
+    extras = exc.extras()
+    if extras is not None:
+        resp = error_extras(exc.status, locale, key, exc.params(), extras)
+    else:
+        params = exc.params()
+        if params is not None:
+            resp = error_params(exc.status, locale, key, params)
+        else:
+            resp = error(exc.status, locale, key)
+    headers = exc.headers()
+    if headers is not None:
+        resp.headers = {**resp.headers, **headers}
+    return resp
 
 
 def error_params(status: int, locale: str, key: str, params: Mapping[str, Any] | None) -> Response:
