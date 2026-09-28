@@ -1,10 +1,10 @@
 # ADR-016: Standard OpenAPI codegen (Zod → OpenAPI → Go)
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR-021](021-api-python-rewrite.md) (codegen toolchain: datamodel-code-generator replaces oapi-codegen on the API side; the Zod → OpenAPI flow is unchanged)
 - **Date:** 2026-09-20
 - **Supersedes:** [ADR-014](014-contracts-wire-registry.md), [ADR-015](015-api-route-manifest.md)
 - **Partially relaxes:** ADR-013's "net/http only, no frameworks" rule — Go **library** dependencies are added (`kin-openapi`, `oapi-codegen/runtime`, `evanphx/json-patch`); the router stays std `net/http`
-- **Plan:** [docs/contracts-standard-codegen-migration.md](../contracts-standard-codegen-migration.md)
+- **Plan:** `docs/contracts-standard-codegen-migration.md` (removed after completion; the Go pipeline itself was removed in ADR-021)
 
 ## Context
 
