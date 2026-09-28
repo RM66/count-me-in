@@ -8,9 +8,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from _lib.countmein.contracts import domain
-from _lib.countmein.errors import ValidationFailed
-from _lib.countmein.validation.decode import DECODERS
+from countmein.contracts import domain
+from countmein.errors import ValidationFailed
+from countmein.validation.decode import DECODERS
 
 VECTORS_DIR = (
     Path(__file__).resolve().parents[4] / "packages" / "contracts" / "vectors" / "validation"
@@ -67,7 +67,7 @@ def test_validation_vectors(schema, c):
 
 
 def test_reserved_slugs():
-    from _lib.countmein.validation.rules import is_reserved_slug
+    from countmein.validation.rules import is_reserved_slug
 
     for slug in ("api", "booking", "cabinet", "signup", "login", "terms", "privacy", "demo"):
         assert is_reserved_slug(slug)
@@ -76,7 +76,7 @@ def test_reserved_slugs():
 
 
 def test_timezone_rule():
-    from _lib.countmein.validation.rules import timezone_rule
+    from countmein.validation.rules import timezone_rule
 
     assert timezone_rule("Europe/Belgrade") == ""
     assert timezone_rule("europe/belgrade") == ""  # case-insensitive re-cased lookup
@@ -87,7 +87,7 @@ def test_timezone_rule():
 
 
 def test_url_rule():
-    from _lib.countmein.validation.rules import url_rule
+    from countmein.validation.rules import url_rule
 
     assert url_rule("https://example.com/x.png") == ""
     assert url_rule("http://example.com") == ""
@@ -97,7 +97,7 @@ def test_url_rule():
 
 
 def test_js_trim_set():
-    from _lib.countmein.validation.transforms import js_trim
+    from countmein.validation.transforms import js_trim
 
     assert js_trim("  x  ") == "x"
     assert js_trim("\u00a0x\u00a0") == "x"  # U+00A0 is in the JS set

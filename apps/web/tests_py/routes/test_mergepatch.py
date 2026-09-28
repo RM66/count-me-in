@@ -3,9 +3,9 @@ touched-key set the DB layer writes columns from."""
 
 import json
 
-import _lib.countmein.routes.mergepatch as mp
-from _lib.countmein.db.rows import TimeSlotRow
-from _lib.countmein.routes.slots import slot_writable_state
+import countmein.routes.mergepatch as mp
+from countmein.db.rows import TimeSlotRow
+from countmein.routes.slots import slot_writable_state
 
 
 def service_state_fixture() -> dict:

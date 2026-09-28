@@ -2,6 +2,7 @@
   "npm.packageManager": "bun",
   "python.defaultInterpreterPath": "${workspaceFolder}/apps/web/.venv/bin/python",
   "python.analysis.extraPaths": [
+    "${workspaceFolder}/apps/web/api/_lib",
     "${workspaceFolder}/apps/web/api",
     "${workspaceFolder}/apps/web/tests_py",
     "${workspaceFolder}/apps/web"

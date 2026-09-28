@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.auth.telegram import (
+from countmein import redis as redis_mod
+from countmein.auth.telegram import (
     TICKET_PURPOSE_GUEST,
     TICKET_PURPOSE_ORGANIZER,
 )
-from _lib.countmein.auth.ticket import (
+from countmein.auth.ticket import (
     consume_login_link,
     consume_ticket,
     issue_login_link,
@@ -17,9 +17,9 @@ from _lib.countmein.auth.ticket import (
     peek_ticket,
     ticket_key,
 )
-from _lib.countmein.contracts.constants_gen import LOGIN_LINK_TTL_SECONDS
-from _lib.countmein.contracts.domain import login_link_key
-from _lib.countmein.contracts.payloads import AuthTicketPayload
+from countmein.contracts.constants_gen import LOGIN_LINK_TTL_SECONDS
+from countmein.contracts.domain import login_link_key
+from countmein.contracts.payloads import AuthTicketPayload
 
 
 @pytest.fixture()

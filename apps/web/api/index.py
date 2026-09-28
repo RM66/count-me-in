@@ -46,9 +46,15 @@ if os.environ.get("VERCEL", "") == "":
 
 # Vercel's runtime imports this entrypoint by absolute path and does NOT
 # put its directory on sys.path (unlike `uvicorn --app-dir api` locally),
-# so `_lib` next to this file is unimportable without this.
+# so nothing next to this file is importable without this. Both `api/`
+# (this module) and `api/_lib` (the package root, so imports resolve as
+# the PEP 8-clean `countmein.*` — the underscore stays a disk-level
+# Vercel convention only) go on the path.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
+_LIB = os.path.join(_HERE, "_lib")
+if _LIB not in sys.path:
+    sys.path.insert(0, _LIB)
 
-from _lib.countmein.app import app  # noqa: F401, E402
+from countmein.app import app  # noqa: F401, E402

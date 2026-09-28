@@ -10,8 +10,8 @@ import json
 import logging
 
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.routes import healthz
+from countmein import redis as redis_mod
+from countmein.routes import healthz
 
 
 def make_request():
@@ -152,7 +152,7 @@ async def test_healthz_rate_limited(monkeypatch):
     monkeypatch.setattr(healthz, "_probe_postgres", ok)
     monkeypatch.setattr(healthz, "_probe_redis", ok)
 
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     app = create_app()
     transport = httpx.ASGITransport(app=app)

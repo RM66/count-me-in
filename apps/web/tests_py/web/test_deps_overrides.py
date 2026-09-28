@@ -10,7 +10,7 @@ fallback is the documented lazy singleton.
 from __future__ import annotations
 
 import pytest
-from _lib.countmein.web.deps import get_db_engine, get_redis
+from countmein.web.deps import get_db_engine, get_redis
 
 
 class _FakeState:
@@ -49,7 +49,7 @@ def test_no_override_falls_back_to_singleton(monkeypatch: pytest.MonkeyPatch) ->
     """Without an override the lazy singleton is used (and its missing
     env surfaces at the call site, as documented)."""
     monkeypatch.delenv("POSTGRES_URL", raising=False)
-    from _lib.countmein.db import client as db_client
+    from countmein.db import client as db_client
 
     db_client.reset_for_test()
     with pytest.raises(RuntimeError, match="POSTGRES_URL is not set"):

@@ -15,11 +15,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
-from _lib.countmein.contracts import domain
-from _lib.countmein.db.rows import BookingRow, OrganizerRow, ServiceRow, TimeSlotRow
-from _lib.countmein.i18n.loader import notif
-from _lib.countmein.jobs import templates
-from _lib.countmein.jobs.templates import (
+from countmein.contracts import domain
+from countmein.db.rows import BookingRow, OrganizerRow, ServiceRow, TimeSlotRow
+from countmein.i18n.loader import notif
+from countmein.jobs import templates
+from countmein.jobs.templates import (
     BookingView,
     booking_cancelled_for_guest,
     booking_cancelled_for_organizer,

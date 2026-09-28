@@ -27,7 +27,7 @@ import httpx
 import pytest
 from httpx import ASGITransport
 
-PACKAGE = Path(__file__).resolve().parents[1] / "api" / "_lib" / "countmein"
+PACKAGE = Path(__file__).resolve().parents[2] / "api" / "_lib" / "countmein"
 
 # Attribute/name fragments that must never appear inside a logx call's
 # arguments: request payloads, headers, cookies, or a credential by
@@ -94,7 +94,7 @@ class _Capture(logging.Handler):
 def capture():
     """Capture the formatted lines the countmein logger emits while the
     request is served — the same bytes the stdout handler writes."""
-    from _lib.countmein import logx
+    from countmein import logx
 
     handler = _Capture()
     handler.setFormatter(logx._JsonFormatter())
@@ -120,8 +120,8 @@ MARKERS = {
 async def _drive_app_with_secrets(capture) -> None:
     """POST a booking-shaped request whose every secret-bearing slot
     carries a unique marker value, through the real middleware chain."""
-    from _lib.countmein.app import create_app
-    from _lib.countmein.auth.session import ORGANIZER_AUTH_HEADER
+    from countmein.app import create_app
+    from countmein.auth.session import ORGANIZER_AUTH_HEADER
 
     app = create_app()
     transport = ASGITransport(app=app)

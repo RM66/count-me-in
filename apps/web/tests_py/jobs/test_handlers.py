@@ -12,16 +12,16 @@ import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import _lib.countmein.jobs.telegram as telegram_mod
+import countmein.jobs.telegram as telegram_mod
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.contracts import models_gen as gen
-from _lib.countmein.db.client import engine
-from _lib.countmein.db.shared import hash_manage_token
-from _lib.countmein.jobs.booking_cancelled import handle_booking_cancelled
-from _lib.countmein.jobs.booking_created import handle_booking_created
-from _lib.countmein.jobs.env import Env
-from _lib.countmein.jobs.links import cabinet_slot_path
+from countmein import redis as redis_mod
+from countmein.contracts import models_gen as gen
+from countmein.db.client import engine
+from countmein.db.shared import hash_manage_token
+from countmein.jobs.booking_cancelled import handle_booking_cancelled
+from countmein.jobs.booking_created import handle_booking_created
+from countmein.jobs.env import Env
+from countmein.jobs.links import cabinet_slot_path
 
 pytestmark = pytest.mark.usefixtures("_require_postgres")
 
@@ -168,7 +168,7 @@ async def test_handle_booking_created_mints_login_link(fixture_rows, fake_telegr
     """The organizer's deep link is a real one-time login link:
     {organizerId, next} minted in Redis, next scoped to the booked
     slot."""
-    from _lib.countmein.auth.ticket import peek_login_link
+    from countmein.auth.ticket import peek_login_link
 
     job = gen.BookingCreatedJob.model_construct(
         bookingId=fixture_rows["booking_id"], recipient="organizer"
@@ -227,7 +227,7 @@ async def test_handle_booking_demo_refused(fake_telegram, fake_redis):
     """A demo booking is never notified (ADR-010): every recipient path
     is a silent skip — no Telegram sends, and no one-time login link
     minted in Redis either."""
-    from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
+    from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
     from sqlalchemy import text
 
     # A booking chain hanging off the demo organizer (the row itself is

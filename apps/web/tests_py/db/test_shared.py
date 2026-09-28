@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 
-from _lib.countmein.db.shared import (
+from countmein.db.shared import (
     hash_manage_token,
     new_id,
     new_manage_token,

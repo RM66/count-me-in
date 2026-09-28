@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from _lib.countmein.contracts import models_gen as gen
+from countmein.contracts import models_gen as gen
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 UPDATE_GOLDENS = "--update-goldens" in sys.argv

@@ -26,7 +26,7 @@ R2_ENV = {
 def _r2_env(monkeypatch):
     for k, v in R2_ENV.items():
         monkeypatch.setenv(k, v)
-    from _lib.countmein import storage
+    from countmein import storage
 
     storage.reset_for_test()
     yield
@@ -69,7 +69,7 @@ async def test_avatar_upload_anonymous_refused(client):
 
 
 async def test_avatar_upload_demo_refused(client):
-    from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
+    from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
 
     resp = await client.post(
         "/api/organizers/me/avatar", json=AVATAR_BODY, headers=auth_headers(sub=DEMO_ORGANIZER_ID)

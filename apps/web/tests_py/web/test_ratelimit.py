@@ -6,7 +6,7 @@ in miniredis in the routes tests)."""
 from __future__ import annotations
 
 import pytest
-from _lib.countmein.web.ratelimit import RateLimitConfig, allow, client_ip
+from countmein.web.ratelimit import RateLimitConfig, allow, client_ip
 
 
 @pytest.fixture()
@@ -32,7 +32,7 @@ async def test_allow_fails_open_on_redis_error(clean_env, monkeypatch):
         async def eval(self, *a, **kw):
             raise ConnectionError("redis down")
 
-    import _lib.countmein.redis as redis_mod
+    import countmein.redis as redis_mod
 
     monkeypatch.setattr(redis_mod, "client", lambda: Boom())
     allowed, _ = await allow("rl:test", RateLimitConfig(limit=1, window=60.0))
@@ -87,7 +87,7 @@ async def test_sliding_window_enforces_limit(monkeypatch):
 
     fake = fakeredis.aioredis.FakeRedis()
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
-    import _lib.countmein.redis as redis_mod
+    import countmein.redis as redis_mod
 
     monkeypatch.setattr(redis_mod, "client", lambda: fake)
 

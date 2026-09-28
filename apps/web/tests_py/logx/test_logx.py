@@ -12,7 +12,7 @@ import json
 import logging
 
 import pytest
-from _lib.countmein import logx
+from countmein import logx
 
 
 class _Capture(logging.Handler):

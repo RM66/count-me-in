@@ -27,9 +27,10 @@ from pathlib import Path
 
 import yaml
 
-# The script runs from apps/web; the app lives under api/ on sys.path.
+# The script runs from apps/web; the app lives under api/_lib on
+# sys.path (imports resolve as `countmein.*`).
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "api"))
+sys.path.insert(0, str(ROOT / "api" / "_lib"))
 
 
 def _canonical_operations() -> tuple[dict, dict]:
@@ -46,7 +47,7 @@ def _canonical_operations() -> tuple[dict, dict]:
 
 
 def export() -> str:
-    from _lib.countmein.routes import register_routes
+    from countmein.routes import register_routes
     from fastapi import FastAPI
 
     # Test-only factory: openapi_url enabled so FastAPI renders the

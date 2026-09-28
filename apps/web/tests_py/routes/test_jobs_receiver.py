@@ -12,9 +12,9 @@ import os
 import time
 from collections.abc import Mapping
 
-import _lib.countmein.routes.jobs as jobs_route
+import countmein.routes.jobs as jobs_route
 import pytest
-from _lib.countmein.contracts.constants_gen import QUEUE_BOOKING_CREATED as QUEUE_CREATED
+from countmein.contracts.constants_gen import QUEUE_BOOKING_CREATED as QUEUE_CREATED
 
 ROUTES_CURRENT_KEY = "routes-sig-current-key-000000000000000"
 ROUTES_NEXT_KEY = "routes-sig-next-key-000000000000000000000"

@@ -66,7 +66,9 @@ def test_cancel_releases_seats_and_is_idempotent():
 def test_demo_organizer_rejected_on_every_write():
     """Invariant: every write path rejects the demo organizer id —
     guest booking, cancel, cabinet CRUD, direct db calls — and
-    notifications are never sent for it."""
+    notifications are never sent for it. The guard's own semantics
+    (UUID normalization, empty id, exact slug match) are pinned in
+    isolation by tests_py.demo.test_guard."""
     _assert_test_exists("tests_py.db.test_booking_writes", "test_create_guest_booking_demo_refused")
     _assert_test_exists("tests_py.db.test_booking_writes", "test_cancel_owned_booking_demo_refused")
     _assert_test_exists("tests_py.db.test_booking_writes", "test_db_layer_refuses_demo_writes")
@@ -74,6 +76,10 @@ def test_demo_organizer_rejected_on_every_write():
         "tests_py.routes.test_bookings", "test_booking_cancel_by_organizer_demo_session"
     )
     _assert_test_exists("tests_py.jobs.test_handlers", "test_handle_booking_demo_refused")
+    _assert_test_exists("tests_py.demo.test_guard", "test_is_demo_organizer_raw_uuid_object")
+    _assert_test_exists(
+        "tests_py.demo.test_guard", "test_refuse_demo_write_raises_on_demo_and_empty"
+    )
 
 
 def test_anonymous_cabinet_visitor_cannot_write():

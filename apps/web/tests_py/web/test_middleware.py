@@ -13,12 +13,12 @@ import json
 
 import httpx
 import pytest
-from _lib.countmein.web.middleware import DefaultHeadersAndRecovery
+from countmein.web.middleware import DefaultHeadersAndRecovery
 
 
 @pytest.fixture()
 async def client():
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     transport = httpx.ASGITransport(app=create_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:

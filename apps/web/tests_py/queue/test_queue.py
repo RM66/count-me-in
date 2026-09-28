@@ -5,7 +5,7 @@ what makes the sweeper's re-publish safe."""
 
 import asyncio
 
-import _lib.countmein.queue as queue
+import countmein.queue as queue
 import httpx
 import pytest
 
@@ -119,7 +119,7 @@ async def test_publish_outbox_budget_cancels_slow_publish(monkeypatch):
     import time
 
     started = time.monotonic()
-    from _lib.countmein.routes import bookings as bookings_route
+    from countmein.routes import bookings as bookings_route
 
     row = type("Row", (), {"queue": "booking.created", "payload": b"{}", "id": "r1"})()
     await asyncio.wait_for(bookings_route.publish_outbox_rows([row], "trace-slow"), timeout=2.0)

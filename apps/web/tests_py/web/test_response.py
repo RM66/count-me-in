@@ -6,10 +6,10 @@ route handler sits on, so their contracts are pinned here.
 """
 
 import httpx
-from _lib.countmein.contracts.constants_gen import LOCALES
-from _lib.countmein.validation.errors import Errors
-from _lib.countmein.web.json_enc import dumps_compact
-from _lib.countmein.web.response import (
+from countmein.contracts.constants_gen import LOCALES
+from countmein.validation.errors import Errors
+from countmein.web.json_enc import dumps_compact
+from countmein.web.response import (
     empty,
     error,
     invalid_body,
@@ -96,7 +96,7 @@ async def test_middleware_sets_headers_and_recovers():
     async def boom():
         raise RuntimeError("kaboom")
 
-    from _lib.countmein.web.middleware import DefaultHeadersAndRecovery
+    from countmein.web.middleware import DefaultHeadersAndRecovery
 
     app.add_middleware(DefaultHeadersAndRecovery)
     async with _client(app) as client:
@@ -116,7 +116,7 @@ async def test_middleware_sets_headers_and_recovers():
 
 
 async def test_unknown_route_answers_json_404():
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     app = create_app()
     async with _client(app) as client:
@@ -127,7 +127,7 @@ async def test_unknown_route_answers_json_404():
 
 
 async def test_path_restoration_middleware():
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     app = create_app()
     async with _client(app) as client:
@@ -140,7 +140,7 @@ async def test_path_restoration_middleware():
 
 
 def test_strip_query_param():
-    from _lib.countmein.web.middleware import strip_query_param
+    from countmein.web.middleware import strip_query_param
 
     assert strip_query_param("a=1&_path=/x&b=2", "_path") == "a=1&b=2"
     assert strip_query_param("_path=/x", "_path") == ""

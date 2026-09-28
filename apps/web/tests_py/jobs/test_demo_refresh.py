@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import _lib.countmein.jobs.demo_refresh as refresh_mod
-from _lib.countmein.db.rows import (
+import countmein.jobs.demo_refresh as refresh_mod
+from countmein.db.rows import (
     BookingRow,
     OrganizerRow,
     ServiceRow,

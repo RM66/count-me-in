@@ -9,8 +9,9 @@ skipped locally without it, failed in CI.
 
 from __future__ import annotations
 
-from _lib.countmein.db.client import engine
-from _lib.countmein.db.rows import (
+import pytest
+from countmein.db.client import engine
+from countmein.db.rows import (
     BOOKING_CHAIN_SELECT,
     BOOKING_COLUMNS,
     ORGANIZER_COLUMNS,
@@ -19,6 +20,10 @@ from _lib.countmein.db.rows import (
     SLOT_COLUMNS,
 )
 from sqlalchemy import text
+
+# Every test needs the live Postgres (schema introspection) — the whole
+# module is integration.
+pytestmark = pytest.mark.integration
 
 # table → the column-list constant the query layer uses.
 TABLE_COLUMNS = {

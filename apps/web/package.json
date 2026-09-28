@@ -20,6 +20,8 @@
     "test": "bun run test:web",
     "test:web": "vitest run",
     "test:py": "uv run pytest -n auto",
+    "test:py:unit": "uv run pytest -m 'not integration'",
+    "test:py:integration": "uv run pytest -m integration -n auto",
     "lint:py": "uv run ruff check . && uv run ruff format --check . && uv run mypy",
     "dev:api:py": "uv run uvicorn --app-dir api index:app --port ${PORT:-3001} --reload",
     "dev:api:py:ci": "uv run uvicorn --app-dir api index:app --port ${PORT:-3001}",

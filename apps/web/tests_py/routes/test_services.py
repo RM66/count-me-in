@@ -4,7 +4,7 @@ guard, validation envelope."""
 
 from __future__ import annotations
 
-from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
 
 from ._helpers import (
     auth_headers,
@@ -151,7 +151,7 @@ async def test_service_delete_with_bookings_409(client, fake_redis, db):
     import hashlib
     import secrets
 
-    from _lib.countmein.db import client as db_client
+    from countmein.db import client as db_client
 
     token = "tok-" + secrets.token_hex(16)
     async with db_client.engine().begin() as conn:

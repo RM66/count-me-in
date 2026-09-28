@@ -3,7 +3,7 @@ refusal, 404, merge-patch semantics, validation envelope."""
 
 from __future__ import annotations
 
-from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
 
 from ._helpers import (
     TEST_SECRET,
@@ -21,9 +21,9 @@ async def test_register_happy_path(client, fake_redis, db):
 
 
 async def test_register_reserved_slug_refused(client, fake_redis, db):
-    from _lib.countmein.auth.telegram import TICKET_PURPOSE_ORGANIZER
-    from _lib.countmein.auth.ticket import issue_ticket
-    from _lib.countmein.contracts.payloads import AuthTicketPayload
+    from countmein.auth.telegram import TICKET_PURPOSE_ORGANIZER
+    from countmein.auth.ticket import issue_ticket
+    from countmein.contracts.payloads import AuthTicketPayload
 
     ticket = await issue_ticket(
         AuthTicketPayload(

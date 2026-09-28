@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-from _lib.countmein.contracts import domain
+from countmein.contracts import domain
 
 VECTORS_DIR = Path(__file__).resolve().parents[4] / "packages" / "contracts" / "vectors" / "domain"
 
@@ -105,7 +105,7 @@ def test_iso_date():
 
 
 def test_payloads_roundtrip():
-    from _lib.countmein.contracts.payloads import AuthTicketPayload, LoginLinkPayload
+    from countmein.contracts.payloads import AuthTicketPayload, LoginLinkPayload
 
     ticket = AuthTicketPayload(
         messenger="telegram",

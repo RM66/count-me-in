@@ -11,9 +11,9 @@ import hashlib
 import hmac
 import time
 
-import _lib.countmein.routes.auth as auth_routes
+import countmein.routes.auth as auth_routes
 import pytest
-from _lib.countmein import redis as redis_mod
+from countmein import redis as redis_mod
 from httpx import ASGITransport, AsyncClient
 
 BOT_TOKEN = "123456:test-bot-token-00000000000000000000"
@@ -51,7 +51,7 @@ def _env(monkeypatch):
 
 @pytest.fixture()
 async def client(fake_redis, monkeypatch):
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     # The signup route's organizer-exists lookup is a DB read; patch it
     # so the route test stays at the HTTP seam.

@@ -4,7 +4,7 @@ booked 409, validation envelope."""
 
 from __future__ import annotations
 
-from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
 
 from ._helpers import (
     auth_headers,
@@ -144,7 +144,7 @@ async def test_slot_delete_with_booking_409(client, fake_redis, db):
     # makes delete a terminal 409.
     import uuid as _uuid
 
-    from _lib.countmein.db import client as db_client
+    from countmein.db import client as db_client
     from sqlalchemy import text
 
     _, headers = await _setup(client, fake_redis, db, "slot-del-02")

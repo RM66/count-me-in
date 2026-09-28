@@ -2,6 +2,13 @@
 is transitive: a slot belongs to a service, the service to an organizer
 (invariant 5), so every statement scopes through the parent service with
 an owned-services subquery in the WHERE clause.
+
+Naming: this module is `time_slot.py`, not `slot.py`, deliberately —
+it mirrors the Postgres table `time_slots` (the SQL text below speaks
+about that table on every line), while the route layer keeps the REST
+plural (`routes/slots.py`) and the validation layer the wire schema's
+singular (`validation/decode/slot.py`). The fragmentation is documented
+intent, not drift.
 """
 
 from __future__ import annotations

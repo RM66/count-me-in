@@ -6,7 +6,7 @@ a transaction-mode pooler. The engine must therefore use NullPool —
 which is NOT the async default (create_async_engine defaults to
 AsyncAdaptedQueuePool), so the choice is pinned by this test."""
 
-from _lib.countmein.db import client
+from countmein.db import client
 from sqlalchemy.pool import NullPool
 
 

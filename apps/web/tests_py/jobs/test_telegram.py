@@ -4,10 +4,10 @@ httptest server."""
 
 import json
 
-import _lib.countmein.jobs.telegram as telegram
+import countmein.jobs.telegram as telegram
 import httpx
 import pytest
-from _lib.countmein.jobs.telegram import (
+from countmein.jobs.telegram import (
     SendMessageError,
     TelegramTerminalError,
     TelegramTransientError,

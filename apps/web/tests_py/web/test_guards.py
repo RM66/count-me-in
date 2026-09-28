@@ -15,14 +15,14 @@ import time
 from collections.abc import Mapping
 
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.auth.session import ORGANIZER_AUTH_HEADER
-from _lib.countmein.auth.telegram import TICKET_PURPOSE_GUEST, TICKET_PURPOSE_ORGANIZER
-from _lib.countmein.auth.ticket import issue_ticket
-from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
-from _lib.countmein.contracts.payloads import AuthTicketPayload
-from _lib.countmein.errors import DemoReadOnly, PayloadTooLarge, RateLimited, TicketExpired
-from _lib.countmein.web.guards import (
+from countmein import redis as redis_mod
+from countmein.auth.session import ORGANIZER_AUTH_HEADER
+from countmein.auth.telegram import TICKET_PURPOSE_GUEST, TICKET_PURPOSE_ORGANIZER
+from countmein.auth.ticket import issue_ticket
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
+from countmein.contracts.payloads import AuthTicketPayload
+from countmein.errors import DemoReadOnly, PayloadTooLarge, RateLimited, TicketExpired
+from countmein.web.guards import (
     read_body_or_413,
     require_guest_identity,
     require_writable_organizer,
@@ -55,7 +55,7 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     import hmac
     import json
 
-    from _lib.countmein.auth.session import derived_signing_key
+    from countmein.auth.session import derived_signing_key
 
     header = (
         base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())

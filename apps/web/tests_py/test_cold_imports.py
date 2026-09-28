@@ -25,6 +25,7 @@ _CHILD = (
     "    def __init__(self, *a, **k):\n"
     "        raise AssertionError('network connection opened during app import')\n"
     "socket.socket = _NoNetwork\n"
+    "sys.path.insert(0, 'api/_lib')\n"
     "sys.path.insert(0, 'api')\n"
     "import index as index\n"
     "assert hasattr(index, 'app')\n"
@@ -65,4 +66,4 @@ def test_cold_import_opens_no_network_connection() -> None:
     # The child blocks socket.socket during import; a non-zero exit or an
     # AssertionError would have failed _imported_modules() above. Reaching
     # here means the import completed without connecting.
-    assert "_lib.countmein.app" in _imported_modules()
+    assert "countmein.app" in _imported_modules()

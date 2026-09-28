@@ -9,7 +9,7 @@ import json
 import time
 
 import pytest
-from _lib.countmein.auth.telegram import (
+from countmein.auth.telegram import (
     TICKET_PURPOSE_GUEST,
     WIDGET_DATA_VALID_AFTER,
     TelegramInvalidError,

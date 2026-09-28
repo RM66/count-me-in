@@ -15,13 +15,13 @@ import time
 
 import httpx
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.auth.session import ORGANIZER_AUTH_HEADER
-from _lib.countmein.auth.telegram import TICKET_PURPOSE_GUEST
-from _lib.countmein.auth.ticket import issue_ticket
-from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
-from _lib.countmein.contracts.payloads import AuthTicketPayload
-from _lib.countmein.db.outbox import OutboxRow
+from countmein import redis as redis_mod
+from countmein.auth.session import ORGANIZER_AUTH_HEADER
+from countmein.auth.telegram import TICKET_PURPOSE_GUEST
+from countmein.auth.ticket import issue_ticket
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
+from countmein.contracts.payloads import AuthTicketPayload
+from countmein.db.outbox import OutboxRow
 
 TEST_SECRET = "guards-test-golden-secret"
 BASE = "http://testserver"
@@ -57,7 +57,7 @@ def _trust_proxy(monkeypatch):
 
 @pytest.fixture()
 async def app(fake_redis):
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     yield create_app()
 
@@ -74,7 +74,7 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     by the golden test in tests_py/auth/test_session.py)."""
     import base64
 
-    from _lib.countmein.auth.session import derived_signing_key
+    from countmein.auth.session import derived_signing_key
 
     header = (
         base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
@@ -273,7 +273,7 @@ async def test_publish_outbox_rows_absorbs_publish_errors(monkeypatch):
     """The publisher absorbs its own errors (ADR-012): the booking is
     already committed, so a failing publish must not fail anything — the
     row stays `pending` and the sweeper retries it."""
-    from _lib.countmein.routes import bookings as bookings_route
+    from countmein.routes import bookings as bookings_route
 
     monkeypatch.setenv("QSTASH_TOKEN", "test-token")
     monkeypatch.setenv("QSTASH_URL", "http://127.0.0.1:1")  # unreachable — fails fast
@@ -335,7 +335,7 @@ async def new_route_fixture(capacity: int, booked: int) -> RouteFixture:
     import secrets
     import uuid
 
-    from _lib.countmein.db.client import engine
+    from countmein.db.client import engine
     from sqlalchemy import text
 
     require_postgres()
@@ -373,7 +373,7 @@ async def new_route_fixture(capacity: int, booked: int) -> RouteFixture:
 async def _cleanup_route_fixture(fixture: RouteFixture) -> None:
     """Cleanup: booking rows first, then the organizer (its delete
     cascades services + slots)."""
-    from _lib.countmein.db.client import engine
+    from countmein.db.client import engine
     from sqlalchemy import text
 
     async with engine().begin() as conn:
@@ -428,7 +428,7 @@ async def _happy_path(fixture, monkeypatch, client):
     fixture.booking_ids.append(booking_id)
 
     # Seats claimed…
-    from _lib.countmein.db.client import engine
+    from countmein.db.client import engine
     from sqlalchemy import text
 
     async with engine().connect() as conn:

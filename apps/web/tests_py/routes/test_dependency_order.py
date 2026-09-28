@@ -23,26 +23,26 @@ from __future__ import annotations
 import inspect
 
 import pytest
-from _lib.countmein.routes.auth import telegram_guest, telegram_signup
-from _lib.countmein.routes.bookings import (
+from countmein.routes.auth import telegram_guest, telegram_signup
+from countmein.routes.bookings import (
     booking_cancel,
     booking_cancel_by_organizer,
     booking_create,
     booking_lookup,
 )
-from _lib.countmein.routes.organizers import (
+from countmein.routes.organizers import (
     organizer_avatar,
     organizer_me_language,
     organizer_me_put,
     organizer_register,
     organizer_service_photo,
 )
-from _lib.countmein.routes.services import (
+from countmein.routes.services import (
     service_delete,
     service_put,
     services_create,
 )
-from _lib.countmein.routes.slots import (
+from countmein.routes.slots import (
     slot_delete,
     slot_put,
     slots_create,

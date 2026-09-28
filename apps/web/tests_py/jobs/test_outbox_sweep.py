@@ -11,10 +11,10 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import _lib.countmein.jobs.outbox_sweep as sweep_mod
+import countmein.jobs.outbox_sweep as sweep_mod
 import pytest
-from _lib.countmein.db.client import engine
-from _lib.countmein.jobs.outbox_sweep import (
+from countmein.db.client import engine
+from countmein.jobs.outbox_sweep import (
     OUTBOX_MAX_ATTEMPTS,
     handle_outbox_sweep,
 )

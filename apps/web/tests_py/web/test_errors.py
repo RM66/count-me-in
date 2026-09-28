@@ -10,12 +10,12 @@ calls. Anything that is not an ApiError propagates to the 500 recovery
 """
 
 import pytest
-from _lib.countmein.contracts.constants_gen import (
+from countmein.contracts.constants_gen import (
     DEFAULT_LOCALE,
     DEMO_READ_ONLY_CODE,
     LOCALES,
 )
-from _lib.countmein.errors import (
+from countmein.errors import (
     AlreadyCancelled,
     ApiError,
     BookingNotFound,
@@ -32,7 +32,7 @@ from _lib.countmein.errors import (
     SlotHasActiveBookings,
     SoldOut,
 )
-from _lib.countmein.web.response import render_api_error
+from countmein.web.response import render_api_error
 
 
 def _body(resp) -> dict:

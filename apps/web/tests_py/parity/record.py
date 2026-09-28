@@ -56,9 +56,9 @@ async def main(argv: list[str]) -> int:
     for k in replay.ENV_REMOVED:
         os.environ.pop(k, None)
 
-    from _lib.countmein import redis as redis_mod
-    from _lib.countmein.app import create_app
-    from _lib.countmein.db import client as db_client
+    from countmein import redis as redis_mod
+    from countmein.app import create_app
+    from countmein.db import client as db_client
 
     db_client.reset_for_test()
     redis_mod.reset_for_test()

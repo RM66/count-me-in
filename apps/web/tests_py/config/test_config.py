@@ -9,7 +9,7 @@ still surface them at first use).
 import os
 
 import pytest
-from _lib.countmein import config
+from countmein import config
 
 REQUIRED = [
     "AUTH_SECRET",

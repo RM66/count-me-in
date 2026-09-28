@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from _lib.countmein import redis as redis_mod
+from countmein import redis as redis_mod
 
 TEST_SECRET = "route-test-golden-secret"
 BASE = "http://testserver"
@@ -35,7 +35,7 @@ def _env(monkeypatch):
 
 @pytest.fixture()
 async def app(fake_redis):
-    from _lib.countmein.app import create_app
+    from countmein.app import create_app
 
     yield create_app()
 
@@ -58,7 +58,7 @@ async def db(monkeypatch):
     from _env import require_postgres
 
     url = require_postgres()
-    from _lib.countmein.db import client as db_client
+    from countmein.db import client as db_client
 
     monkeypatch.setenv("POSTGRES_URL", url)
     db_client.reset_for_test()

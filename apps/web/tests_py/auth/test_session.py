@@ -9,7 +9,7 @@ import hmac
 import json
 import time
 
-from _lib.countmein.auth.session import (
+from countmein.auth.session import (
     ORGANIZER_AUTH_HEADER,
     derived_signing_key,
     session_from_request,

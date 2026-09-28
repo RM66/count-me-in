@@ -17,12 +17,17 @@ import asyncio
 
 import httpx
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.web import async_client
+from countmein import redis as redis_mod
+from countmein.web import async_client
 
 
 @pytest.fixture(autouse=True)
 def _reset_clients():
+    # Reset before AND after: a prior test may have cached an init error
+    # (client() called without REDIS_URL) in the module singleton —
+    # without the leading reset this test inherits that failure.
+    redis_mod.reset_for_test()
+    async_client.reset_for_test()
     yield
     redis_mod.reset_for_test()
     async_client.reset_for_test()

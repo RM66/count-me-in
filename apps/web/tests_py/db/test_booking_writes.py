@@ -19,35 +19,35 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from _lib.countmein.contracts.constants_gen import (
+from countmein.contracts.constants_gen import (
     DEMO_ORGANIZER_ID,
     QUEUE_BOOKING_CANCELLED,
     QUEUE_BOOKING_CREATED,
 )
-from _lib.countmein.contracts.payloads import AuthTicketPayload
-from _lib.countmein.db import (
+from countmein.contracts.payloads import AuthTicketPayload
+from countmein.db import (
     booking_writes as bw,
 )
-from _lib.countmein.db import (
+from countmein.db import (
     media,
 )
-from _lib.countmein.db import (
+from countmein.db import (
     organizer as organizer_db,
 )
-from _lib.countmein.db import (
+from countmein.db import (
     service as service_db,
 )
-from _lib.countmein.db import (
+from countmein.db import (
     time_slot as slot_db,
 )
-from _lib.countmein.db.client import engine
-from _lib.countmein.db.shared import (
+from countmein.db.client import engine
+from countmein.db.shared import (
     hash_manage_token,
     new_id,
     new_manage_token,
     new_service_id,
 )
-from _lib.countmein.errors import (
+from countmein.errors import (
     AlreadyCancelled,
     BookingNotFound,
     DemoReadOnly,
@@ -60,6 +60,10 @@ from _lib.countmein.errors import (
     SoldOut,
 )
 from sqlalchemy import text
+
+# Every test in this module needs the live Postgres (the atomic reserve
+# cannot be mocked) — the whole module is integration.
+pytestmark = pytest.mark.integration
 
 
 def require_postgres() -> None:

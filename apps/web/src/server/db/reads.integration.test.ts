@@ -37,9 +37,9 @@ maybeDescribe('server/db reads (integration, real Postgres)', () => {
     // demo-refresh job runs (ADR-021). Shell out to it instead of keeping
     // a TS copy.
     const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
-    await execFileAsync('uv', ['run', 'python', '-m', '_lib.countmein.db.seed'], {
+    await execFileAsync('uv', ['run', 'python', '-m', 'countmein.db.seed'], {
       cwd: webRoot,
-      env: { ...process.env, PYTHONPATH: 'api' },
+      env: { ...process.env, PYTHONPATH: 'api/_lib' },
       timeout: 50_000,
     })
   }, 60_000)

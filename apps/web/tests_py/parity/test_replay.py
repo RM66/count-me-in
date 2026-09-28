@@ -44,15 +44,19 @@ import httpx
 import pytest
 import redis.asyncio as aioredis
 import yaml
-from _lib.countmein import queue as queue_mod
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.app import create_app
-from _lib.countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
-from _lib.countmein.db import client as db_client
-from _lib.countmein.db.seed import seed_demo
-from _lib.countmein.jobs import telegram as telegram_mod
+from countmein import queue as queue_mod
+from countmein import redis as redis_mod
+from countmein.app import create_app
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
+from countmein.db import client as db_client
+from countmein.db.seed import seed_demo
+from countmein.jobs import telegram as telegram_mod
 from httpx import ASGITransport
 from sqlalchemy import text
+
+# The replay TRUNCATEs tables and FLUSHDBs against the live services —
+# the whole module is integration.
+pytestmark = pytest.mark.integration
 
 HERE = Path(__file__).resolve().parent
 SCENARIOS = HERE / "scenarios"

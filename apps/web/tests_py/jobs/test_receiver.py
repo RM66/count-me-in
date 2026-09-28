@@ -11,7 +11,7 @@ import json
 import time
 
 import pytest
-from _lib.countmein.jobs import receiver
+from countmein.jobs import receiver
 
 # Keys are ≥32 bytes: the qstash SDK warns on shorter signing keys
 # (InsecureKeyLengthWarning) and production keys are long.

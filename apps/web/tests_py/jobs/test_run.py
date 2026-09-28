@@ -9,16 +9,16 @@ burns the budget).
 The idempotency tests run against fakeredis, mirroring the Go
 miniredis TestMain."""
 
-import _lib.countmein.jobs.run as run
+import countmein.jobs.run as run
 import pytest
-from _lib.countmein import redis as redis_mod
-from _lib.countmein.contracts.constants_gen import (
+from countmein import redis as redis_mod
+from countmein.contracts.constants_gen import (
     QUEUE_BOOKING_CANCELLED,
     QUEUE_BOOKING_CREATED,
     QUEUE_DEMO_REFRESH,
     QUEUE_OUTBOX_SWEEP,
 )
-from _lib.countmein.jobs.telegram import (
+from countmein.jobs.telegram import (
     TelegramTransientError,
     TelegramUnreachableError,
 )

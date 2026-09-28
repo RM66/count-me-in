@@ -780,7 +780,7 @@ async def seed_demo(now: datetime) -> None:
 
 
 if __name__ == "__main__":
-    # CLI entry: `uv run --app-dir api python -m _lib.countmein.db.seed`
+    # CLI entry: `PYTHONPATH=api/_lib uv run python -m countmein.db.seed`
     # (run from apps/web). The only copy of the demo seed (ADR-021) —
     # `bun run db:seed:demo` delegates here.
     import asyncio

@@ -21,7 +21,7 @@ def _spec_routes() -> set[tuple[str, str]]:
 
 
 def _app_routes() -> set[tuple[str, str]]:
-    from _lib.countmein.routes import register_routes
+    from countmein.routes import register_routes
     from fastapi import FastAPI
 
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)

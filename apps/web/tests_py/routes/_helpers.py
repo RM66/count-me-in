@@ -10,7 +10,7 @@ import time
 from typing import Any
 
 import httpx
-from _lib.countmein.auth.session import ORGANIZER_AUTH_HEADER
+from countmein.auth.session import ORGANIZER_AUTH_HEADER
 
 TEST_SECRET = "route-test-golden-secret"
 BASE = "http://testserver"
@@ -21,7 +21,7 @@ def mint_session(secret: str, sub: str, slug: str, exp: int | None = None) -> st
     by tests_py/auth/test_session.py)."""
     import base64
 
-    from _lib.countmein.auth.session import derived_signing_key
+    from countmein.auth.session import derived_signing_key
 
     header = (
         base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
@@ -65,9 +65,9 @@ async def register_organizer(client: httpx.AsyncClient, fake_redis, slug: str) -
     not collide with the previous one's slug."""
     import secrets
 
-    from _lib.countmein.auth.telegram import TICKET_PURPOSE_ORGANIZER
-    from _lib.countmein.auth.ticket import issue_ticket
-    from _lib.countmein.contracts.payloads import AuthTicketPayload
+    from countmein.auth.telegram import TICKET_PURPOSE_ORGANIZER
+    from countmein.auth.ticket import issue_ticket
+    from countmein.contracts.payloads import AuthTicketPayload
 
     suffix = secrets.token_hex(3)
     slug = f"{slug}-{suffix}"

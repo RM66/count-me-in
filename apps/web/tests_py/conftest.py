@@ -102,7 +102,7 @@ def _migrate(url: str) -> None:
 
     import asyncio
 
-    from _lib.countmein.db.seed import seed_demo
+    from countmein.db.seed import seed_demo
 
     os.environ["POSTGRES_URL"] = url
     asyncio.run(seed_demo(datetime.now(UTC)))
@@ -118,6 +118,31 @@ def pg_url() -> str:
 def redis_url() -> str:
     """REDIS_URL, or skip locally / fail in CI when missing."""
     return require_redis()
+
+
+# NOTE: `_require_postgres` is autouse, so its name appears in every
+# test's fixturenames — it cannot be the signal. The signal is the
+# opt-in `usefixtures("_require_postgres")` marker plus the
+# live-service fixtures below.
+_INTEGRATION_FIXTURES = {"pg_url", "redis_url", "db"}
+
+
+def pytest_collection_modifyitems(config, items):
+    """Auto-mark integration tests: any test that pulls a live-service
+    fixture (the Postgres gate, pg_url/redis_url, the routes `db`
+    fixture) or calls the _env gates gets the `integration` marker, so
+    `uv run pytest -m 'not integration'` runs the pure unit suite with
+    no docker services. The signal is structural (fixture/marker use),
+    not a hand-maintained per-module list."""
+    for item in items:
+        fixturenames = set(getattr(item, "fixturenames", ()))
+        uses_gate = any(
+            "_require_postgres" in marker.args for marker in item.iter_markers("usefixtures")
+        )
+        if fixturenames & _INTEGRATION_FIXTURES or uses_gate:
+            item.add_marker(pytest.mark.integration)
+        else:
+            item.add_marker(pytest.mark.unit)
 
 
 @pytest.fixture(autouse=True)

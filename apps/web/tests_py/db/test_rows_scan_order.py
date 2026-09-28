@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-from _lib.countmein.db.rows import (
+from countmein.db.rows import (
     BOOKING_CHAIN_SELECT,
     BOOKING_COLUMNS,
     ORGANIZER_COLUMNS,

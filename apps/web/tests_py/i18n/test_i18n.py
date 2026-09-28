@@ -2,10 +2,10 @@
 subset renderer and the ApiErrors/notifications lookup with fallbacks.
 """
 
-from _lib.countmein.contracts.constants_gen import DEFAULT_LOCALE, LOCALES
-from _lib.countmein.contracts.domain import match_locale
-from _lib.countmein.i18n import api_error, format_message, notif, plural_category
-from _lib.countmein.i18n.locale import detect_locale
+from countmein.contracts.constants_gen import DEFAULT_LOCALE, LOCALES
+from countmein.contracts.domain import match_locale
+from countmein.i18n import api_error, format_message, notif, plural_category
+from countmein.i18n.locale import detect_locale
 
 
 def test_format_placeholder():

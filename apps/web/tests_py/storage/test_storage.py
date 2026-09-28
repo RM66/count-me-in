@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import _lib.countmein.storage as storage
+import countmein.storage as storage
 import pytest
 
 
