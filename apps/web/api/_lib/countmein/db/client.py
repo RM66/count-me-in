@@ -15,6 +15,7 @@ set" instead of a None-deref 500.
 from __future__ import annotations
 
 import os
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -22,6 +23,33 @@ from sqlalchemy.pool import NullPool
 
 _engine: AsyncEngine | None = None
 _init_err: Exception | None = None
+
+
+# libpq-known query options are the allowlist: anything else in the URL
+# (Supabase pooler strings carry vendor params like `supa=...`) makes
+# psycopg fail the connection with "invalid connection option".
+_LIBPQ_OPTIONS = frozenset(
+    {
+        "application_name",
+        "connect_timeout",
+        "dbname",
+        "host",
+        "options",
+        "passfile",
+        "port",
+        "sslmode",
+        "sslrootcert",
+        "target_session_attrs",
+        "user",
+    }
+)
+
+
+def _sanitize_query(url: str) -> str:
+    """Drop query params libpq does not know, keep the rest verbatim."""
+    parts = urlsplit(url)
+    kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k in _LIBPQ_OPTIONS]
+    return urlunsplit(parts._replace(query=urlencode(kept)))
 
 
 def engine() -> AsyncEngine:
@@ -37,6 +65,7 @@ def engine() -> AsyncEngine:
                 url = "postgresql+psycopg://" + url[len("postgres://") :]
             elif url.startswith("postgresql://"):
                 url = "postgresql+psycopg://" + url[len("postgresql://") :]
+            url = _sanitize_query(url)
             _engine = create_async_engine(
                 url,
                 # NullPool explicitly: create_async_engine defaults to
