@@ -27,9 +27,14 @@ import httpx
 import redis.asyncio as aioredis
 from httpx import ASGITransport
 
-import tests_py.parity.test_replay as replay
-
 HERE = Path(__file__).resolve().parent
+WEB_DIR = HERE.parents[1]
+API_DIR = WEB_DIR / "api"
+for p in (str(API_DIR), str(WEB_DIR)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+import tests_py.parity.test_replay as replay  # noqa: E402
 
 
 async def main(argv: list[str]) -> int:
@@ -44,9 +49,10 @@ async def main(argv: list[str]) -> int:
     # Same pinned env + app construction as the replay fixture.
     import os
 
-    saved = {k: os.environ.get(k) for k in replay.ENV_OVERRIDES}
+    overrides = replay._env_overrides()
+    saved = {k: os.environ.get(k) for k in overrides}
     removed = {k: os.environ[k] for k in replay.ENV_REMOVED if k in os.environ}
-    os.environ.update(replay.ENV_OVERRIDES)
+    os.environ.update(overrides)
     for k in replay.ENV_REMOVED:
         os.environ.pop(k, None)
 

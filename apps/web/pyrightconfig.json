@@ -1,0 +1,9 @@
+{
+  "include": ["api", "tests_py"],
+  "exclude": ["**/__pycache__", "**/*_gen.py"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": ["api", "tests_py", "."],
+  "typeCheckingMode": "off",
+  "reportMissingImports": "error"
+}
