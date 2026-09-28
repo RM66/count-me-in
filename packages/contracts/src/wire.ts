@@ -29,7 +29,6 @@ import {
   guestBookingEnvelope,
   guestBookingsEnvelope,
   invalidBody,
-  invalidIssuesBody,
   organizerEnvelope,
   serviceEnvelope,
   servicesEnvelope,
@@ -88,11 +87,10 @@ import {
 import { createTimeSlotInput, slotStartsAt, timeSlotRecord, updateTimeSlotInput } from './time-slot'
 
 /**
- * The wire registry (ADR-016): every schema that crosses the TS↔Go boundary,
- * registered under the id it carries in the OpenAPI document. The old
- * `x-go-*` metadata and the `kind` tags fed the retired hand-written
- * generator; the OpenAPI spec is now rendered by zod-openapi from this
- * registry alone ([`openapi.ts`](./openapi.ts)), and the API is
+ * The wire registry (ADR-016): every schema that crosses the TS↔Python
+ * boundary, registered under the id it carries in the OpenAPI document.
+ * The OpenAPI spec is rendered by zod-openapi from this registry alone
+ * ([`openapi.ts`](./openapi.ts)), and the API's Pydantic models are
  * generated from the spec by datamodel-code-generator.
  */
 
@@ -220,4 +218,3 @@ register(deletedSlotEnvelope, { id: 'DeletedSlotEnvelope' })
 register(errorBody, { id: 'ErrorBody' })
 register(validationErrors, { id: 'ValidationErrors' })
 register(invalidBody, { id: 'InvalidBody' })
-register(invalidIssuesBody, { id: 'InvalidIssuesBody' })

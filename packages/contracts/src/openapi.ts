@@ -13,15 +13,15 @@
  * returns). Schemas used in both directions keep one component because the
  * document is generated with `outputIdSuffix: ''`.
  *
- * The two overrides the old generator applied live here as a document-level
- * `override` hook (they must not become `.meta()` on the shared schema
- * objects — that would write into Zod's global registry and leak into every
- * other `z.toJSONSchema` consumer):
+ * Two overrides live here as a document-level `override` hook (they must
+ * not become `.meta()` on the shared schema objects — that would write
+ * into Zod's global registry and leak into every other `z.toJSONSchema`
+ * consumer):
  * - `SlugShape`/`Slug` — the slug pattern reaches the spec explicitly, since
  *   Zod cannot express "this refine's regex" as JSON Schema on its own;
- * - `SlotStartsAt` — `z.coerce.date()` renders as a plain string; the wire
- *   actually accepts an ISO string **or** a Unix epoch (FlexTime on the Go
- *   side), which only `oneOf` can say.
+ * - `SlotStartsAt` — the union of RFC 3339 string / epoch / Date renders
+ *   more precisely as the wire's actual contract: an ISO string **or** a
+ *   Unix epoch (FlexTime on the API side), which only `oneOf` can say.
  *
  * Build-time only: imports `node:crypto` and the full wire registry. Not
  * re-exported from `index.ts` — import via `@repo/contracts/openapi`.
@@ -101,10 +101,11 @@ function isLiteralEnum(schema: unknown): schema is { enum: readonly string[] } {
 const byBytes = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
 /**
- * Neither direction is strict on the wire: Zod strips unknown request keys and
- * the Go parsers ignore them, while responses gain fields without a version
- * bump. `additionalProperties: false` (emitted by Zod for output renders)
- * would make a spec-validating client reject traffic the API accepts.
+ * Neither direction is strict on the wire: Zod strips unknown request keys
+ * and the API's decoders ignore them, while responses gain fields without
+ * a version bump. `additionalProperties: false` (emitted by Zod for output
+ * renders) would make a spec-validating client reject traffic the API
+ * accepts.
  */
 function stripAdditionalPropertiesFalse(schemas: Record<string, Record<string, unknown>>): number {
   let stripped = 0
@@ -241,10 +242,9 @@ function buildPaths(): Record<string, Record<string, unknown>> {
  * route table always produce the same YAML (component schemas sorted by
  * byte order, version derived from the content hash).
  *
- * Since the Python toolchain gained OpenAPI 3.1 support, this one document
- * serves both the committed public spec and the Go toolchain
- * (datamodel-code-generator + the spec decode) — the former 3.0.3
- * down-render is gone.
+ * One document serves both the committed public spec and the Python
+ * toolchain (datamodel-code-generator + the spec decode) — the former
+ * 3.0.3 down-render is gone.
  */
 export function buildOpenApiDocument(): Record<string, unknown> {
   if (SESSION_COOKIE_NAMES.length < 2) {

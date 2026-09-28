@@ -40,11 +40,6 @@ class ImageUploadTarget(BaseModel):
     expiresAt: str
 
 
-class InvalidIssuesBody(BaseModel):
-    error: str
-    issues: dict[str, list[str]]
-
-
 type Location = Annotated[str, Field(max_length=300, min_length=1)]
 
 

@@ -48,12 +48,12 @@ export const BOUNDS = {
  * points** — an
  * emoji is 2 units but 1 point. The layers therefore diverge only in one
  * direction: a string within N UTF-16 units always has ≤ N code points, so
- * **Zod-pass ⇒ Go-pass ⇒ DB-pass** — no layer can reject what an earlier
+ * **Zod-pass ⇒ spec-pass ⇒ DB-pass** — no layer can reject what an earlier
  * layer accepted, and no `contractViolation` noise is possible. The cost is
- * that Zod rejects some astral-heavy strings Go would accept (e.g. 60 emoji
- * in a 100-char name); the browser client always validates with Zod first,
- * so users never see the gap. Do not "fix" this by dropping `.max()` — it is
- * what emits `maxLength` into the OpenAPI spec for the API.
+ * that Zod rejects some astral-heavy strings the spec decode would accept
+ * (e.g. 60 emoji in a 100-char name); the browser client always validates
+ * with Zod first, so users never see the gap. Do not "fix" this by dropping
+ * `.max()` — it is what emits `maxLength` into the OpenAPI spec for the API.
  */
 
 /**
@@ -97,7 +97,7 @@ export const uuid = z.uuid()
 export const serviceId = z.string().regex(SERVICE_ID_PATTERN, 'Invalid service id')
 
 /** HTTP(S) URL (avatar / cover photo). Scheme-whitelisted to http/https
- * with a host — parity with Go URLRule: bare `z.url()` accepts
+ * with a host — parity with the API's `url_rule`: bare `z.url()` accepts
  * `javascript:`/`data:`/`ftp:`, which must never reach a rendered
  * `<img src>` or link. */
 export const httpUrl = z.url().refine(

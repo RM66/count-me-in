@@ -65,14 +65,12 @@ class ApiError(Exception):
 class ValidationFailed(Exception):
     """A request body failed schema validation (400).
 
-    Deliberately NOT an ApiError: the body shape is route-specific
-    (invalid_body's {error, details} vs the register route's
-    {error, issues}), so the app-level handler renders it by shape —
-    `issues=True` selects the register route's fieldErrors-only body."""
+    Deliberately NOT an ApiError: the body shape is the shared
+    invalid_body envelope ({error, details}), rendered by the app-level
+    handler so route handlers never catch ValidationFailed locally."""
 
-    def __init__(self, errors: object, *, issues: bool = False) -> None:
+    def __init__(self, errors: object) -> None:
         self.errors = errors
-        self.issues = issues
         super().__init__("request body failed validation")
 
 

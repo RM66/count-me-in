@@ -52,9 +52,3 @@ export type ValidationErrors = z.infer<typeof validationErrors>
 
 export const invalidBody = z.object({ error: z.string(), details: validationErrors })
 export type InvalidBody = z.infer<typeof invalidBody>
-
-export const invalidIssuesBody = z.object({
-  error: z.string(),
-  issues: z.record(z.string(), z.array(z.string())),
-})
-export type InvalidIssuesBody = z.infer<typeof invalidIssuesBody>

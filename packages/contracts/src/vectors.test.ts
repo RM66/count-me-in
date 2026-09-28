@@ -23,7 +23,7 @@ type ValidationCase = {
   valid?: boolean
   fieldErrors?: string[]
   formErrors?: number
-  skip?: { ts?: string; go?: string }
+  skip?: { ts?: string }
 }
 
 function replaceNowMarkers(value: unknown): unknown {

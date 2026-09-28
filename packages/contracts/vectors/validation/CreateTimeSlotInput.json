@@ -112,13 +112,13 @@
         "durationMinutes": 60,
         "serviceId": "demo-yoga",
         "startsAt": "2030-06-15"
-        },
-        "name": "date-only startsAt",
-        "skip": {
-          "ts": "Zod's coerce.date accepts date-only (local midnight); the API stacks reject it by design (domain.parse_flex_time) — see ADR-021 → Known deliberate deviations (FlexTime rejects date-only)"
-        },
-        "valid": false
-      }
-    ],
+      },
+      "fieldErrors": [
+        "startsAt"
+      ],
+      "name": "date-only startsAt",
+      "valid": false
+    }
+  ],
     "schema": "CreateTimeSlotInput"
 }

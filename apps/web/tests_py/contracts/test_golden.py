@@ -55,7 +55,6 @@ RECORD_NAMES = [
     "ErrorBody",
     "ValidationErrors",
     "InvalidBody",
-    "InvalidIssuesBody",
 ]
 
 GOLDEN_TIME = "2026-01-02T03:04:05.000Z"
@@ -311,10 +310,6 @@ def golden_samples() -> dict[str, Any]:
                 "fieldErrors": {"title": ["Required"]},
             },
         },
-        "InvalidIssuesBody": {
-            "error": "Invalid input",
-            "issues": {"slug": ["this slug is reserved for system use — please choose another"]},
-        },
     }
 
 
@@ -352,7 +347,6 @@ def _model_for(key: str) -> type[gen.BaseModel] | None:
         "ErrorBody": gen.ErrorBody,
         "ValidationErrors": gen.ValidationErrors,
         "InvalidBody": gen.InvalidBody,
-        "InvalidIssuesBody": gen.InvalidIssuesBody,
     }.get(base)
 
 

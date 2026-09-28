@@ -143,15 +143,13 @@ def _validate_model[T: BaseModel](
     return out, None
 
 
-def _decode_model[T: BaseModel](
-    model_cls: type[T], m: dict[str, Any], schema_name: str, *, issues: bool = False
-) -> T:
+def _decode_model[T: BaseModel](model_cls: type[T], m: dict[str, Any], schema_name: str) -> T:
     """Validate m and return the model — the one epilogue every entity
     decoder funnels through: ValidationFailed on any spec error, the
     unreachable-None guard kept explicit (python -O must not strip it)."""
     out, errs = _validate_model(model_cls, m, schema_name)
     if errs is not None:
-        raise ValidationFailed(errs, issues=issues)
+        raise ValidationFailed(errs)
     if out is None:
         # Unreachable by the decode/guard contract; a real None here is
         # a bug, and python -O must not strip the check.
@@ -200,9 +198,9 @@ def _raw(body: bytes) -> dict[str, Any]:
     return m or {}
 
 
-def _finish[T](out: T, e: Errors, *, issues: bool = False) -> T:
+def _finish[T](out: T, e: Errors) -> T:
     """Turn the collected Errors into the raise-or-return decision."""
     done = e.finish()
     if done is not None:
-        raise ValidationFailed(done, issues=issues)
+        raise ValidationFailed(done)
     return out

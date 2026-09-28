@@ -14,8 +14,9 @@ export const SESSION_COOKIE_NAMES = [
 ] as const
 
 /**
- * Telegram numeric user id. Bounded rather than `.positive()` so the bound is
- * derivable as a Go int range — an exclusive minimum is not (D10).
+ * Telegram numeric user id. Bounded rather than `.positive()` so the bound
+ * is derivable as an inclusive JSON Schema range — an exclusive minimum
+ * is not.
  */
 export const telegramUserId = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER)
 
@@ -117,10 +118,10 @@ export function loginLinkKey(token: string): string {
 
 /**
  * Whether a `next` path is safe to redirect to: a relative path with no
- * backslashes or control characters. Mirrors Go `isSafeNextPath` — browsers
- * treat backslashes as slashes, and embedded CR/LF/NUL can split responses in
- * downstream consumers. Written as a loop because a control-character regex
- * trips `no-control-regex`.
+ * backslashes or control characters. Mirrors `_is_safe_next_path` in the
+ * API — browsers treat backslashes as slashes, and embedded CR/LF/NUL can
+ * split responses in downstream consumers. Written as a loop because a
+ * control-character regex trips `no-control-regex`.
  */
 function hasUnsafeNextChars(value: string): boolean {
   for (const ch of value) {

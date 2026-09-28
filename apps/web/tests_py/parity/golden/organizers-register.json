@@ -110,7 +110,7 @@
       "sink": []
     },
     {
-      "note": "slug too short → 400 field issues",
+      "note": "slug too short → 400 validation details",
       "request": {
         "method": "POST",
         "path": "/api/organizers",
@@ -137,20 +137,21 @@
         },
         "body": {
           "error": "Invalid input",
-          "issues": {
-            "slug": [
-              "minimum string length is 4"
-            ]
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "slug": ["minimum string length is 4"]
+            }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"issues\":{\"slug\":[\"minimum string length is 4\"]}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
       "sink": []
     },
     {
-      "note": "reserved slug → 400 field issues",
+      "note": "reserved slug → 400 validation details",
       "request": {
         "method": "POST",
         "path": "/api/organizers",
@@ -177,13 +178,14 @@
         },
         "body": {
           "error": "Invalid input",
-          "issues": {
-            "slug": [
-              "minimum string length is 4"
-            ]
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "slug": ["minimum string length is 4"]
+            }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"issues\":{\"slug\":[\"minimum string length is 4\"]}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

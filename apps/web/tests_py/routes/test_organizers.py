@@ -62,13 +62,13 @@ async def test_register_unknown_ticket_401(client, fake_redis):
 
 
 async def test_register_validation_error_envelope(client, fake_redis):
-    # Missing every required field — the register route answers with
-    # issues (fieldErrors only), not details.
+    # Missing every required field — the register route answers with the
+    # shared {error, details} envelope, like every other route.
     r = await client.post("/api/organizers", json={"slug": "x"})
     assert r.status_code == 400
     body = body_json(r)
     assert body.get("error")
-    assert "issues" in body
+    assert "details" in body
 
 
 async def test_me_requires_session(client, fake_redis, db):

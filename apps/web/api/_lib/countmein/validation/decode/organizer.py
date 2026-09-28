@@ -20,14 +20,14 @@ def decode_register_organizer_input(body: bytes) -> gen.RegisterOrganizerInput:
     lower_key(m, "slug")
     trim_key(m, "name")
     trim_key(m, "contact")
-    out = _decode_model(gen.RegisterOrganizerInput, m, "RegisterOrganizerInput", issues=True)
+    out = _decode_model(gen.RegisterOrganizerInput, m, "RegisterOrganizerInput")
     e = Errors()
     msg = timezone_rule(str(out.timezone))
     if msg:
         e.add("timezone", msg)
     if is_reserved_slug(str(out.slug)):
         e.add("slug", "this slug is reserved for system use — please choose another")
-    return _finish(out, e, issues=True)
+    return _finish(out, e)
 
 
 def _decode_organizer_profile(

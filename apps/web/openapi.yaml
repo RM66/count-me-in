@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+5fab21c281ec
+  version: 1.0.0+5dc7e68d5fdd
 servers:
   - url: https://countmein.group
     description: Production
@@ -91,6 +91,10 @@ paths:
     post:
       summary: Register a new organizer using an auth ticket
       operationId: registerOrganizer
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 3600
+        per: ip
       requestBody:
         required: true
         content:
@@ -105,11 +109,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Registered"
         "400":
-          description: Validation error (field issues)
+          description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidIssuesBody"
+                $ref: "#/components/schemas/InvalidBody"
         "401":
           description: Auth ticket expired or unknown
           content:
@@ -118,6 +122,12 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
           description: Slug taken, or an account already exists for this identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -709,6 +719,10 @@ paths:
     post:
       summary: Look up a guest's bookings with a single-use ticket
       operationId: lookupBookings
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
@@ -734,12 +748,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
   /api/bookings/cancel:
     post:
       summary: Guest cancels a booking via manageToken
       operationId: cancelBookingByToken
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
@@ -773,6 +797,12 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
           description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -1268,22 +1298,6 @@ components:
       required:
         - error
         - details
-    InvalidIssuesBody:
-      type: object
-      properties:
-        error:
-          type: string
-        issues:
-          type: object
-          propertyNames:
-            type: string
-          additionalProperties:
-            type: array
-            items:
-              type: string
-      required:
-        - error
-        - issues
     Location:
       type: string
       minLength: 1

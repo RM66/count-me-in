@@ -27,21 +27,39 @@ export interface WallClock {
 }
 
 /**
+ * Formatter cache, keyed by timezone. `Intl.DateTimeFormat` construction is
+ * comparatively expensive in V8, and `wallClockToInstant` calls the offset
+ * probe twice per conversion (plus one per candidate day in the form's
+ * re-dating walk) — reusing one instance per zone makes those near-free.
+ * A plain `Map` is enough: the key set is bounded by the IANA zone list.
+ */
+const formatterCache = new Map<string, Intl.DateTimeFormat>()
+
+function getFormatter(timeZone: string): Intl.DateTimeFormat {
+  let fmt = formatterCache.get(timeZone)
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+    formatterCache.set(timeZone, fmt)
+  }
+  return fmt
+}
+
+/**
  * Offset (ms) between `timeZone` and UTC at `instant` — positive east of
  * Greenwich. Derived by formatting the instant into the zone and reading the
  * result back as if it were UTC; the difference is the offset in force.
  */
 function offsetAt(instant: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(instant)
+  const parts = getFormatter(timeZone).formatToParts(instant)
 
   const field: Partial<Record<Intl.DateTimeFormatPartTypes, number>> = {}
   for (const part of parts) {

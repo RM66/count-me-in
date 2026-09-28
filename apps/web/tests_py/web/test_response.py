@@ -13,7 +13,6 @@ from _lib.countmein.web.response import (
     empty,
     error,
     invalid_body,
-    invalid_issues,
     json_response,
 )
 
@@ -67,17 +66,6 @@ def test_invalid_body_renderers():
     assert resp.status == 400
     body = resp.body.model_dump()
     assert body["details"]["fieldErrors"] == {"name": ["required"]}
-
-
-def test_invalid_issues_renderers():
-    resp = invalid_issues("en", None)
-    assert resp.status == 400
-    assert resp.body.issues == {}
-    errs = Errors()
-    errs.add("slug", "reserved")
-    resp = invalid_issues("en", errs)
-    assert resp.status == 400
-    assert resp.body.issues == {"slug": ["reserved"]}
 
 
 def test_error_body_localized_for_every_locale():

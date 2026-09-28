@@ -91,7 +91,7 @@ def create_app() -> FastAPI:
 
     from .errors import ApiError, ValidationFailed
     from .i18n.locale import detect_locale
-    from .web import invalid_body, invalid_issues
+    from .web import invalid_body
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError) -> StarletteResponse:
@@ -108,13 +108,10 @@ def create_app() -> FastAPI:
     async def validation_failed_handler(
         request: Request, exc: ValidationFailed
     ) -> StarletteResponse:
-        # Body-shape 400s: the register route answers with issues
-        # (fieldErrors only), every other route with details — the flag
-        # on the exception selects the shape, so handlers no longer
-        # catch ValidationFailed locally.
+        # Body-shape 400s: every route answers with the same
+        # {error, details} envelope, so handlers never catch
+        # ValidationFailed locally.
         locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
-        if exc.issues:
-            return invalid_issues(locale, exc.errors).to_starlette()
         return invalid_body(locale, exc.errors).to_starlette()
 
     from .routes import register_routes

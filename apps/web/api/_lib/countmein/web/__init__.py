@@ -5,7 +5,6 @@ from .response import (
     error_extras,
     error_params,
     invalid_body,
-    invalid_issues,
     json_response,
 )
 
@@ -16,6 +15,5 @@ __all__ = [
     "error_extras",
     "error_params",
     "invalid_body",
-    "invalid_issues",
     "json_response",
 ]

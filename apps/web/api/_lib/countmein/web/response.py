@@ -15,7 +15,7 @@ from typing import Any
 from starlette.responses import Response as StarletteResponse
 
 from .. import logx
-from ..contracts.models_gen import ErrorBody, InvalidBody, InvalidIssuesBody, ValidationErrors
+from ..contracts.models_gen import ErrorBody, InvalidBody, ValidationErrors
 from ..errors import ApiError
 from ..i18n import api_error
 from .json_enc import dumps_compact
@@ -148,16 +148,4 @@ def invalid_body(locale: str, errs: Any) -> Response:
             error=api_error(locale, "invalidInput"),
             details=ValidationErrors(formErrors=errs.form, fieldErrors=errs.fields),
         ),
-    )
-
-
-def invalid_issues(locale: str, errs: Any) -> Response:
-    """The register route's 400: issues (fieldErrors only) instead of
-    details, mirroring its TS shape."""
-    fields: dict[str, list[str]] = {}
-    if errs is not None and errs.fields is not None:
-        fields = errs.fields
-    return json_response(
-        400,
-        InvalidIssuesBody(error=api_error(locale, "invalidInput"), issues=fields),
     )

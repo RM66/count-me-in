@@ -36,7 +36,6 @@ import {
   guestBookingEnvelope,
   guestBookingsEnvelope,
   invalidBody,
-  invalidIssuesBody,
   organizerEnvelope,
   serviceEnvelope,
   servicesEnvelope,
@@ -105,7 +104,7 @@ export type ApiResponse = {
 export type ApiRoute = {
   operationId: string
   method: 'get' | 'post' | 'put' | 'patch' | 'delete'
-  /** OpenAPI and the retired Go mux share the `{param}` spelling. */
+  /** OpenAPI path spelling, `{param}` for path parameters. */
   path: string
   summary: string
   auth: ApiAuth
@@ -189,15 +188,17 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: 'Register a new organizer using an auth ticket',
     auth: 'public',
     request: registerOrganizerInput,
+    rateLimit: { limit: 10, windowSeconds: 3600, per: 'ip' },
     responses: [
       { status: 201, description: 'Organizer created', body: registered },
-      { status: 400, description: 'Validation error (field issues)', body: invalidIssuesBody },
+      INVALID_BODY,
       { status: 401, description: 'Auth ticket expired or unknown', body: errorBody },
       {
         status: 409,
         description: 'Slug taken, or an account already exists for this identity',
         body: errorBody,
       },
+      TOO_MANY,
       INTERNAL,
     ],
   },
@@ -477,10 +478,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: "Look up a guest's bookings with a single-use ticket",
     auth: 'guestTicket',
     request: lookupBookingsInput,
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 200, description: 'Guest bookings', body: guestBookingsEnvelope },
       INVALID_BODY,
       { status: 401, description: 'Guest ticket expired or already used', body: errorBody },
+      TOO_MANY,
       INTERNAL,
     ],
   },
@@ -491,6 +494,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: 'Guest cancels a booking via manageToken',
     auth: 'manageToken',
     request: cancelBookingByTokenInput,
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 200, description: 'Booking cancelled', body: guestBookingEnvelope },
       INVALID_BODY,
@@ -501,6 +505,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
         body: errorBody,
       },
       { status: 409, description: 'Booking already cancelled', body: errorBody },
+      TOO_MANY,
       INTERNAL,
     ],
   },
