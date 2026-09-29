@@ -18,6 +18,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import pytest
 from _env import require_postgres, require_redis
+from dotenv import load_dotenv
+
+# Local runs do not load .env; without POSTGRES_URL the xdist isolation
+# below is a no-op and parity workers collide on one shared database.
+# Never override what the environment (CI) already sets.
+_env_file = Path(__file__).resolve().parents[1] / ".env"
+if _env_file.is_file():
+    load_dotenv(_env_file, override=False)
 
 
 @pytest.fixture(scope="session", autouse=True)

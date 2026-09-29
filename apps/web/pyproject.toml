@@ -28,6 +28,7 @@ dev = [
     "boto3-stubs[s3]",
     "pyyaml",
     "types-pyyaml",
+    "python-dotenv",
 ]
 
 [tool.pytest.ini_options]
