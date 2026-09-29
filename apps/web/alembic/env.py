@@ -5,15 +5,16 @@ postgres:// → postgresql+psycopg://, libpq-unknown query params dropped)
 but is deliberately duplicated, not imported: migrations must keep
 running even if the app code changes around them.
 
-Phase 2 will point target_metadata at the SQLAlchemy 2.0 declarative
-Base.metadata for autogenerate; Phase 1 keeps it None (explicit
-baseline migration, no autogenerate).
+target_metadata points at the SQLAlchemy 2.0 declarative Base.metadata
+(countmein.models) so `alembic check` and future autogenerate runs
+compare the models against the live schema.
 """
 
 from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from logging.config import fileConfig
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -33,8 +34,18 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
-# Phase 2: from countmein.models.base import Base; target_metadata = Base.metadata
-target_metadata = None
+# api/_lib is not on sys.path when alembic runs as a CLI (unlike
+# uvicorn/api tests, which set it via pytest pythonpath / index.py).
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LIB = os.path.join(_HERE, "..", "api", "_lib")
+if os.path.isdir(_LIB):
+    _LIB_ABS = os.path.abspath(_LIB)
+    if _LIB_ABS not in sys.path:
+        sys.path.insert(0, _LIB_ABS)
+
+from countmein.models import Base  # noqa: E402
+
+target_metadata = Base.metadata
 
 
 def _load_dot_env(path: str) -> None:
