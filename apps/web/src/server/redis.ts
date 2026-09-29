@@ -1,19 +1,19 @@
 import Redis from 'ioredis'
 
+import 'server-only'
+
 /**
- * Shared Redis client.
+ * The web app's Redis connection.
  *
- * Redis is infrastructure shared across the web app's server layers — sessions,
- * auth tickets, rate limits, and minting one-time login links from notification
- * jobs — so the connection lives here for the same reason `@repo/db` owns the
- * Postgres pool. Two hand-rolled singletons drifted apart almost immediately,
- * which is exactly the failure a shared package prevents.
+ * Redis backs the server-side auth machinery — guest identity tickets,
+ * one-time login links, rate limits — so the connection lives beside the
+ * code that uses it, in `src/server/`. The Python API owns its own client
+ * (`countmein/redis.py`); key names and payload shapes shared across the
+ * two runtimes live in `@repo/contracts` (see `loginLinkKey`).
  *
- * What is *not* here: key names and payload shapes. Those are contracts between
- * the two apps and live in `@repo/contracts` (see `loginLinkKey`).
- *
- * Note this package cannot carry `import 'server-only'` — the worker is not a
- * Next app and that module would throw there.
+ * What is *not* here: key names and payload shapes. Those are contracts
+ * between the TS server layer and the Python API and live in
+ * `@repo/contracts` (see `loginLinkKey`).
  */
 
 const globalForRedis = globalThis as unknown as { redis?: Redis }

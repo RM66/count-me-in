@@ -18,7 +18,8 @@
  */
 
 import { loginLinkKey, type LoginLinkPayload, loginLinkPayload } from '@repo/contracts'
-import { getRedis } from '@repo/redis'
+
+import { getRedis } from '@/server/redis'
 
 import 'server-only'
 

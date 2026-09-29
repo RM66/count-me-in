@@ -64,7 +64,6 @@ export default defineConfig({
       'server-only': path.resolve(__dirname, 'vitest.server-only-stub.ts'),
       '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
       '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
-      '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
     },
   },
 })

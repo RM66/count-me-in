@@ -27,12 +27,10 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 | Package                   | Role                                                  |
 | ------------------------- | ----------------------------------------------------- |
 | `@repo/db`                | Drizzle schema & migrations                           |
-| `@repo/redis`             | ioredis singleton (tickets, login links, rate limits) |
 | `@repo/contracts`         | Shared Zod schemas, wire registry, API route manifest |
 | `@repo/translations`      | Web + notification copy (ICU messages per locale)     |
 | `@repo/eslint-config`     | ESLint configs                                        |
 | `@repo/typescript-config` | TypeScript configs                                    |
-| `@repo/vitest-config`     | Shared Vitest configs                                 |
 
 ## Stack
 

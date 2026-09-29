@@ -94,9 +94,6 @@
         "openapi.yaml"
       ]
     },
-    "@repo/db#test": {
-      "outputs": []
-    },
     "@repo/translations#test": {
       "outputs": []
     },

@@ -31,7 +31,7 @@ function buildRemotePatterns() {
 }
 
 const nextConfig = {
-  transpilePackages: ['@repo/contracts', '@repo/db', '@repo/redis', '@repo/translations'],
+  transpilePackages: ['@repo/contracts', '@repo/db', '@repo/translations'],
   images: {
     remotePatterns: [
       ...buildRemotePatterns(),

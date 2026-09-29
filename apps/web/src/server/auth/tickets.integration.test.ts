@@ -21,7 +21,7 @@ maybeDescribe('auth tickets and login links (integration, real Redis)', () => {
 
   afterAll(async () => {
     if (!hasRedis || mintedTickets.length === 0) return
-    const { getRedis } = await import('@repo/redis')
+    const { getRedis } = await import('@/server/redis')
     const redis = getRedis()
     await redis.del(...mintedTickets.map((token) => `auth:ticket:${token}`))
   })
@@ -73,7 +73,7 @@ maybeDescribe('auth tickets and login links (integration, real Redis)', () => {
     it('peek does not consume — consume is single-use', async () => {
       const { loginLinkKey } = await import('@repo/contracts')
       const { peekLoginLink, consumeLoginLink } = await import('@/server/auth/login-link')
-      const { getRedis } = await import('@repo/redis')
+      const { getRedis } = await import('@/server/redis')
 
       // Mint a link the way the Python API does: { organizerId, next } under the
       // shared key format.
@@ -95,7 +95,7 @@ maybeDescribe('auth tickets and login links (integration, real Redis)', () => {
     it('returns null for garbage stored under the key', async () => {
       const { loginLinkKey } = await import('@repo/contracts')
       const { peekLoginLink, consumeLoginLink } = await import('@/server/auth/login-link')
-      const { getRedis } = await import('@repo/redis')
+      const { getRedis } = await import('@/server/redis')
 
       const token = 'test-login-link-token-garbage'
       await getRedis().set(loginLinkKey(token), 'not-json{', 'EX', 60)

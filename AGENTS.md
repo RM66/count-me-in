@@ -48,7 +48,6 @@ apps/
     scripts/           # ensure-qstash.ts, generate-openapi.ts, generate-constants.ts, generate-i18n-py.ts, generate-py-models.sh
 packages/
   db/                  # Drizzle schema, migrations
-  redis/               # ioredis singleton (tickets, login links, rate limits)
   contracts/           # Zod schemas, shared types
   translations/        # web + notification copy (ICU messages per locale, ADR-011)
   eslint-config/       # shared ESLint

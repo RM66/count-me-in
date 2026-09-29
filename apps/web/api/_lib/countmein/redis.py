@@ -1,6 +1,6 @@
 """Shared Redis connection. Key names and payload shapes are contracts
 (login-link key prefix in contracts/constants_gen), mirroring
-@repo/contracts / @repo/redis in the TS monorepo.
+@repo/contracts and the TS server singleton (src/server/redis.ts).
 """
 
 from __future__ import annotations
@@ -61,7 +61,8 @@ def client() -> aioredis.Redis:
         if url == "":
             _init_err = RuntimeError("REDIS_URL is not set")
         else:
-            # Mirror @repo/redis: maxRetriesPerRequest 2.
+            # Mirror the TS server singleton (src/server/redis.ts):
+            # maxRetriesPerRequest 2.
             _client = aioredis.from_url(
                 url,
                 retry_on_timeout=True,

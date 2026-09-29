@@ -11,6 +11,7 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "test:py": "turbo run test:py",
+    "db:seed:demo": "bun --filter=@repo/db run db:seed:demo",
     "lint:py": "turbo run lint:py",
     "generate:openapi": "turbo run generate:openapi",
     "generate:constants": "turbo run generate:constants",
