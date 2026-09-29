@@ -211,8 +211,8 @@ def mint_qstash_signature(body: bytes, sub: str, key: str = QSTASH_CURRENT_KEY) 
 
 
 async def reset_state(r: aioredis.Redis) -> None:
-    """Truncate EVERY table in the public schema (except Drizzle's
-    migrations bookkeeping), reseed demo, flush Redis. Deriving the
+    """Truncate EVERY table in the public schema (except Alembic's
+    version bookkeeping), reseed demo, flush Redis. Deriving the
     table list from the schema means a new table cannot stay dirty
     between scenarios."""
     async with db_client.engine().begin() as conn:
@@ -224,7 +224,7 @@ async def reset_state(r: aioredis.Redis) -> None:
                 BEGIN
                     FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
                     LOOP
-                        IF t <> 'drizzle_migrations' AND t <> '__drizzle_migrations' THEN
+                        IF t <> 'alembic_version' THEN
                             EXECUTE format('TRUNCATE TABLE %I CASCADE', t);
                         END IF;
                     END LOOP;

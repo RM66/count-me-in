@@ -37,10 +37,11 @@ def _xdist_isolation():
     other workers' DML (deadlocks) and wipes their Redis state. So each
     xdist worker gets its own slice, created once per worker process:
 
-    - Postgres: a per-worker database, migrated from the same Drizzle
-      files CI applies to the base (`packages/db/drizzle`). Not a
-      TEMPLATE clone: the clone requires zero other connections to
-      the base, which a dev server (or another suite) violates.
+    - Postgres: a per-worker database, migrated with Alembic
+      (`alembic upgrade head` — the same revision CI applies to the
+      base). Not a TEMPLATE clone: the clone requires zero other
+      connections to the base, which a dev server (or another suite)
+      violates.
     - Redis: a per-worker logical database (db index = worker id + 1;
       db 0 stays untouched for the dev topology).
 
@@ -88,25 +89,23 @@ def _replace_dbname(url: str, dbname: str) -> str:
 
 
 def _migrate(url: str) -> None:
-    """Apply the Drizzle migrations to a fresh per-worker database — the
-    same files `bun run db:migrate` applies to the base, in journal
-    order, one transaction per file — then seed the demo organizer
-    (`bun run db:seed:demo`'s job in the base): several tests hang
-    booking chains off DEMO_ORGANIZER_ID and rely on the row existing.
-    No drizzle_migrations bookkeeping: the database is dropped and
-    recreated on every run, so there is no state to track."""
-    import json
+    """Apply the Alembic migrations to a fresh per-worker database —
+    the same revision `bun run db:migrate:py` applies to the base —
+    then seed the demo organizer (`bun run db:seed:demo`'s job in the
+    base): several tests hang booking chains off DEMO_ORGANIZER_ID and
+    rely on the row existing. The database is dropped and recreated on
+    every run, so there is no state to track beyond the revision."""
     from datetime import UTC, datetime
 
-    import psycopg
+    from alembic.config import Config as AlembicConfig
 
-    drizzle = Path(__file__).resolve().parents[3] / "packages" / "db" / "drizzle"
-    journal = json.loads((drizzle / "meta" / "_journal.json").read_text())
-    with psycopg.connect(url) as conn:
-        for entry in journal["entries"]:
-            sql = (drizzle / f"{entry['tag']}.sql").read_text()
-            with conn.transaction():
-                conn.execute(sql)
+    from alembic import command as alembic_command
+
+    web_root = Path(__file__).resolve().parents[1]
+    cfg = AlembicConfig(str(web_root / "alembic.ini"))
+    cfg.set_main_option("script_location", str(web_root / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    alembic_command.upgrade(cfg, "head")
 
     import asyncio
 

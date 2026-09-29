@@ -27,7 +27,8 @@
     "dev:api:py:ci": "uv run uvicorn --app-dir api index:app --port ${PORT:-3001}",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:migrate:py": "uv run alembic upgrade head"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

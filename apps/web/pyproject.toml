@@ -12,6 +12,7 @@ dependencies = [
     "httpx",
     "qstash>=2",
     "boto3",
+    "alembic>=1.13.0",
 ]
 
 [dependency-groups]
