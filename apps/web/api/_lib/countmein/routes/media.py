@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 
 from .. import logx, storage
-from ..db.client import engine
+from ..db.client import sessionmaker
 from ..db.media import photo_url_referenced
 
 # Caps the post-response R2 work — it runs inline after the commit, so
@@ -37,8 +37,8 @@ async def cleanup_replaced_media(organizer_id: str, old_url: str, new_url: str) 
         return
     try:
         async with asyncio.timeout(_MEDIA_CLEANUP_TIMEOUT):
-            async with engine().connect() as conn:
-                referenced = await photo_url_referenced(conn, organizer_id, old_url)
+            async with sessionmaker()() as session:
+                referenced = await photo_url_referenced(session, organizer_id, old_url)
             if referenced:
                 logx.info(
                     "skipped media cleanup",

@@ -8,8 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import text
-
 from ..contracts import domain
 from ..contracts import models_gen as gen
 from ..contracts.payloads import AuthTicketPayload
@@ -23,17 +21,14 @@ from ..errors import (
     SlotGone,
     SoldOut,
 )
-from .client import engine
+from ..repositories import booking_repo, slot_repo
+from .client import sessionmaker
 from .outbox import OutboxRow, enqueue_outbox
 from .rows import (
-    BOOKING_CHAIN_SELECT,
-    BOOKING_COLUMNS,
-    SLOT_CHAIN_SELECT,
-    SLOT_COLUMNS,
-    scan_booking,
-    scan_booking_chain,
-    scan_slot,
-    scan_slot_chain,
+    from_model_booking,
+    from_model_organizer,
+    from_model_service,
+    from_model_slot,
     to_booking_record,
     to_guest_booking,
 )
@@ -73,11 +68,8 @@ async def create_guest_booking(
     """Reserve seats and insert the confirmed booking — the guest
     booking flow's one write (invariant 2).
 
-    The seat claim is a single conditional UPDATE:
-
-        UPDATE time_slots SET booked_count = booked_count + :seats
-        WHERE id = :id AND booked_count + :seats <= capacity
-
+    The seat claim is a single conditional UPDATE (booking_repo):
+    booked_count moves only when the capacity predicate holds.
     Postgres evaluates the predicate against the row it locks, so two
     concurrent bookings for the last seat cannot both succeed — one
     updates no row and is refused. The booking row is inserted only if
@@ -89,24 +81,24 @@ async def create_guest_booking(
     transaction: the caller publishes them inline after commit and marks
     each `sent` on success, so the sweeper never re-publishes a delivered
     row."""
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         # A slot in the past is not bookable: the UI filters them out,
         # but the API must not rely on that — knowing the id must not
         # let anyone book a session that already started (its
         # manageToken would be born expired). The predicate lives in
         # the chain-select, so a past slot is answered exactly like a
         # missing one: SlotGone → 404 slotGone.
-        result = await conn.execute(
-            text(
-                SLOT_CHAIN_SELECT + "WHERE ts.id = :slot_id AND s.id = :service_id "
-                "AND ts.starts_at > now() LIMIT 1"
-            ),
-            {"slot_id": data.time_slot_id, "service_id": data.service_id},
+        models = await slot_repo.get_slot_chain_for_booking(
+            session, data.time_slot_id, data.service_id
         )
-        chain = scan_slot_chain(result.first())
-        if chain is None:
+        if models is None:
             raise SlotGone()
-        slot, service, organizer = chain
+        slot_model, service_model, organizer_model = models
+        slot, service, organizer = (
+            from_model_slot(slot_model),
+            from_model_service(service_model),
+            from_model_organizer(organizer_model),
+        )
 
         refuse_demo_write(organizer.id)
 
@@ -126,56 +118,39 @@ async def create_guest_booking(
         if data.seats > service.max_seats_per_booking:
             raise PartyTooLarge(service.max_seats_per_booking)
 
-        result = await conn.execute(
-            text(
-                "UPDATE time_slots SET booked_count = booked_count + :seats "
-                "WHERE id = :slot_id AND booked_count + :seats <= capacity "
-                f"RETURNING {SLOT_COLUMNS}"
-            ),
-            {"seats": data.seats, "slot_id": data.time_slot_id},
+        claimed_model = await booking_repo.atomic_reserve_seats(
+            session, data.time_slot_id, data.seats
         )
-        claimed_row = result.first()
-        if claimed_row is None:
+        if claimed_model is None:
             # No row claimed → sold out. seats_left is computed from the
             # chain-select snapshot (tx start) — under READ COMMITTED a
             # concurrent booking committed in between can make it stale
             # by a seat or two. Exact TS parity (it read the same
             # snapshot), and the number is UX copy, not an invariant.
             raise SoldOut(domain.seats_left(slot.capacity, slot.booked_count))
-        claimed = scan_slot(claimed_row)
-        if claimed is None:
-            # Unreachable by the decode/guard contract; a real None
-            # here is a bug, and python -O must not strip the check.
-            raise RuntimeError("claimed is None after its error guard")
+        claimed = from_model_slot(claimed_model)
         # manageToken expiry: the token is usable until the slot starts
         # plus a grace period — a past event's booking does not need
         # cancel access.
         expires_at = claimed.starts_at + MANAGE_TOKEN_GRACE_PERIOD
         token = new_manage_token()
         try:
-            result = await conn.execute(
-                text(
-                    f"""
-                    INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
-                        guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options, manage_token_expires_at)
-                    VALUES (:id, :slot_id, 'confirmed', :seats, :guest_name, :messenger, :messenger_id,
-                        :messenger_login, :guest_locale, :token, :token_hash, :selected_options, :expires_at)
-                    RETURNING {BOOKING_COLUMNS}
-                    """
-                ),
+            created_model = await booking_repo.create_booking(
+                session,
                 {
                     "id": new_id(),
-                    "slot_id": claimed.id,
+                    "time_slot_id": claimed.id,
+                    "status": "confirmed",
                     "seats": data.seats,
                     "guest_name": data.guest_name,
-                    "messenger": data.guest.messenger,
-                    "messenger_id": data.guest.messenger_id,
-                    "messenger_login": data.guest.messenger_login,
+                    "guest_messenger": data.guest.messenger,
+                    "guest_messenger_id": data.guest.messenger_id,
+                    "guest_messenger_login": data.guest.messenger_login,
                     "guest_locale": data.guest_locale,
-                    "token": token,
-                    "token_hash": hash_manage_token(token),
+                    "manage_token": token,
+                    "manage_token_hash": hash_manage_token(token),
                     "selected_options": selected,
-                    "expires_at": expires_at,
+                    "manage_token_expires_at": expires_at,
                 },
             )
         except Exception as err:
@@ -184,9 +159,7 @@ async def create_guest_booking(
             if unique_violation(err):
                 raise DuplicateBooking() from err
             raise
-        created = scan_booking(result.first())
-        if created is None:
-            raise SlotGone()
+        created = from_model_booking(created_model)
 
         # Transactional outbox: write one outbox row per recipient in
         # the same transaction, so a crash between commit and the inline
@@ -196,7 +169,7 @@ async def create_guest_booking(
         outbox: list[OutboxRow] = []
         for recipient in ("organizer", "guest"):
             row = await enqueue_outbox(
-                conn,
+                session,
                 QUEUE_BOOKING_CREATED,
                 lambda outbox_id, r=recipient: {  # type: ignore[misc]
                     "bookingId": created.id,
@@ -223,17 +196,21 @@ async def cancel_guest_booking_by_token(
 
     Returns None for an unknown token (caller answers 404 without
     confirming whether the token exists)."""
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         # Credential check goes through the hash: the raw token column
         # is not a lookup key anymore.
-        result = await conn.execute(
-            text(BOOKING_CHAIN_SELECT + "WHERE b.manage_token_hash = :token_hash LIMIT 1"),
-            {"token_hash": hash_manage_token(token)},
+        models = await booking_repo.get_chain_by_manage_token_hash(
+            session, hash_manage_token(token)
         )
-        chain = scan_booking_chain(result.first())
-        if chain is None:
+        if models is None:
             return None
-        b, slot, service, organizer = chain
+        booking_model, slot_model, service_model, organizer_model = models
+        b = from_model_booking(booking_model)
+        slot, service, organizer = (
+            from_model_slot(slot_model),
+            from_model_service(service_model),
+            from_model_organizer(organizer_model),
+        )
 
         refuse_demo_write(organizer.id)
 
@@ -244,36 +221,23 @@ async def cancel_guest_booking_by_token(
         if b.manage_token_expires_at is not None and datetime.now(UTC) > b.manage_token_expires_at:
             raise BookingNotFound()
 
-        result = await conn.execute(
-            text(
-                f"UPDATE bookings SET status = 'cancelled' "
-                f"WHERE id = :booking_id AND status = 'confirmed' "
-                f"RETURNING {BOOKING_COLUMNS}"
-            ),
-            {"booking_id": b.id},
-        )
-        cancelled = scan_booking(result.first())
-        if cancelled is None:
+        cancelled_model = await booking_repo.cancel_booking_mark(session, b.id)
+        if cancelled_model is None:
             raise AlreadyCancelled()
+        cancelled = from_model_booking(cancelled_model)
 
-        result = await conn.execute(
-            text(
-                "UPDATE time_slots SET booked_count = greatest(0, booked_count - :seats) "
-                "WHERE id = :slot_id "
-                "RETURNING id, service_id, starts_at, duration_minutes, capacity, booked_count, price, created_at"
-            ),
-            {"seats": cancelled.seats, "slot_id": cancelled.time_slot_id},
+        released_model = await booking_repo.release_seats_returning(
+            session, cancelled.time_slot_id, cancelled.seats
         )
-        released = scan_slot(result.first())
-        if released is None:
-            released = slot  # released can't vanish while the booking points at it
+        # released can't vanish while the booking points at it.
+        released = from_model_slot(released_model) if released_model is not None else slot
 
         # Transactional outbox: the organizer is notified of the guest's
         # cancellation. One row — the counterparty only (ADR-012). The
         # row travels back to the caller for the inline publish + `sent`
         # marking.
         outbox_row = await enqueue_outbox(
-            conn,
+            session,
             QUEUE_BOOKING_CANCELLED,
             lambda outbox_id: {
                 "bookingId": cancelled.id,
@@ -298,53 +262,28 @@ async def cancel_owned_booking(
     cabinet must never receive it, even as a side effect."""
     refuse_demo_write(organizer_id)
 
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         # Unknown id and a booking on someone else's service are
         # answered identically, so the endpoint cannot probe for foreign
         # ids.
-        result = await conn.execute(
-            text(
-                f"SELECT {BOOKING_COLUMNS} "
-                "FROM bookings "
-                "WHERE id = :booking_id "
-                "AND time_slot_id IN ("
-                "  SELECT ts.id FROM time_slots ts "
-                "  INNER JOIN services s ON ts.service_id = s.id "
-                "  WHERE s.organizer_id = :org_id"
-                ") LIMIT 1"
-            ),
-            {"booking_id": booking_id, "org_id": organizer_id},
-        )
-        target = scan_booking(result.first())
-        if target is None:
+        owned = await booking_repo.get_owned_booking(session, organizer_id, booking_id)
+        if owned is None:
             return None
+        target = from_model_booking(owned)
 
-        result = await conn.execute(
-            text(
-                f"UPDATE bookings SET status = 'cancelled' "
-                f"WHERE id = :booking_id AND status = 'confirmed' "
-                f"RETURNING {BOOKING_COLUMNS}"
-            ),
-            {"booking_id": target.id},
-        )
-        cancelled = scan_booking(result.first())
-        if cancelled is None:
+        cancelled_model = await booking_repo.cancel_booking_mark(session, target.id)
+        if cancelled_model is None:
             raise AlreadyCancelled()
+        cancelled = from_model_booking(cancelled_model)
 
-        await conn.execute(
-            text(
-                "UPDATE time_slots SET booked_count = greatest(0, booked_count - :seats) "
-                "WHERE id = :slot_id"
-            ),
-            {"seats": cancelled.seats, "slot_id": cancelled.time_slot_id},
-        )
+        await booking_repo.release_seats(session, cancelled.time_slot_id, cancelled.seats)
 
         # Transactional outbox: the guest is notified of the organizer's
         # cancellation. One row — the counterparty only (ADR-012). The
         # row travels back to the caller for the inline publish + `sent`
         # marking.
         outbox_row = await enqueue_outbox(
-            conn,
+            session,
             QUEUE_BOOKING_CANCELLED,
             lambda outbox_id: {
                 "bookingId": cancelled.id,

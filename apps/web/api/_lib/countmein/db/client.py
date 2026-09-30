@@ -18,11 +18,18 @@ import os
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import NullPool
 
 _engine: AsyncEngine | None = None
 _init_err: Exception | None = None
+_sessionmaker: async_sessionmaker[AsyncSession] | None = None
+_sessionmaker_engine: AsyncEngine | None = None
 
 
 # libpq-known query options are the allowlist: anything else in the URL
@@ -91,6 +98,22 @@ async def ping() -> None:
         await conn.execute(text("SELECT 1"))
 
 
+def sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """ORM session factory bound to the shared engine.
+
+    Repositories speak ORM entities (select(Model),
+    update(Model).returning(Model)) — only AsyncSession.execute loads
+    model instances; AsyncConnection.execute would return raw column
+    tuples. expire_on_commit=False: repositories return detached models
+    that row mappers read after commit without triggering lazy IO."""
+    global _sessionmaker, _sessionmaker_engine
+    eng = engine()
+    if _sessionmaker is None or _sessionmaker_engine is not eng:
+        _sessionmaker = async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)
+        _sessionmaker_engine = eng
+    return _sessionmaker
+
+
 async def dispose() -> None:
     """Dispose the shared engine if one was opened, then drop the
     cached state so the next engine() call re-reads POSTGRES_URL. The
@@ -108,6 +131,8 @@ def reset_for_test() -> None:
     """Drop the cached engine and init state, so the next engine() call
     re-reads POSTGRES_URL. Test-only. Disposal is dispose()'s job;
     NullPool holds no connections to close here."""
-    global _engine, _init_err
+    global _engine, _init_err, _sessionmaker, _sessionmaker_engine
     _engine = None
     _init_err = None
+    _sessionmaker = None
+    _sessionmaker_engine = None

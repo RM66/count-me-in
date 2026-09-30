@@ -11,13 +11,20 @@ it, because that token is their link to the management page.
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..contracts import domain
 from ..contracts import models_gen as gen
 from .shared import parse_string_array
+
+if TYPE_CHECKING:
+    from ..models.booking import Booking
+    from ..models.organizer import Organizer
+    from ..models.service import Service
+    from ..models.time_slot import TimeSlot
 
 # array_to_json projections make NULL arrays explicit.
 BOOKING_COLUMNS = (
@@ -216,6 +223,96 @@ def scan_booking(row: Any) -> BookingRow | None:
         selected_options=parse_string_array(row[11]),
         created_at=row[12],
         manage_token_expires_at=row[13],
+    )
+
+
+def _enum_str(value: Any) -> str:
+    """Render a NOT NULL ORM enum attribute as its lowercase Postgres
+    value. psycopg hands back the raw 'telegram' string; the ORM hands
+    back the StrEnum member (also 'telegram' via str(), but explicit is
+    better than relying on StrEnum.__str__ staying value-shaped)."""
+    if isinstance(value, enum.Enum):
+        return str(value.value)
+    return str(value)
+
+
+def _enum_text(value: Any) -> str | None:
+    """Nullable-column variant: None passes through (options_select_mode
+    is unset on old rows)."""
+    if value is None:
+        return None
+    return _enum_str(value)
+
+
+def from_model_organizer(o: Organizer) -> OrganizerRow:
+    """Map an Organizer ORM instance to its Row — the attribute-addressed
+    replacement for scan_organizer(row[i])."""
+    return OrganizerRow(
+        id=_str(o.id),
+        slug=o.slug,
+        name=o.name,
+        messenger=_enum_str(o.messenger),
+        messenger_id=o.messenger_id,
+        timezone=o.timezone,
+        language=o.language,
+        description=o.description,
+        photo_url=o.photo_url,
+        location=o.location,
+        contact=o.contact,
+        created_at=o.created_at,
+    )
+
+
+def from_model_service(s: Service) -> ServiceRow:
+    return ServiceRow(
+        id=_str(s.id),
+        organizer_id=_str(s.organizer_id),
+        title=s.title,
+        description=s.description,
+        photo_url=s.photo_url,
+        location=s.location,
+        contact=s.contact,
+        default_price=s.default_price,
+        default_capacity=s.default_capacity,
+        default_duration_minutes=s.default_duration_minutes,
+        max_seats_per_booking=s.max_seats_per_booking,
+        options=list(s.options) if s.options is not None else None,
+        options_select_mode=_enum_text(s.options_select_mode)
+        if s.options_select_mode is not None
+        else None,
+        created_at=s.created_at,
+    )
+
+
+def from_model_slot(s: TimeSlot) -> TimeSlotRow:
+    return TimeSlotRow(
+        id=_str(s.id),
+        service_id=_str(s.service_id),
+        starts_at=s.starts_at,
+        duration_minutes=s.duration_minutes,
+        capacity=s.capacity,
+        booked_count=s.booked_count,
+        price=s.price,
+        created_at=s.created_at,
+    )
+
+
+def from_model_booking(b: Booking) -> BookingRow:
+    return BookingRow(
+        id=_str(b.id),
+        time_slot_id=_str(b.time_slot_id),
+        status=_enum_str(b.status),
+        seats=b.seats,
+        guest_name=b.guest_name,
+        guest_messenger=_enum_str(b.guest_messenger),
+        guest_messenger_id=b.guest_messenger_id,
+        guest_messenger_login=b.guest_messenger_login,
+        guest_locale=b.guest_locale,
+        manage_token=b.manage_token,
+        manage_token_hash=b.manage_token_hash,
+        selected_options=list(b.selected_options) if b.selected_options is not None else None,
+        created_at=b.created_at,
+        manage_token_expires_at=b.manage_token_expires_at,
     )
 
 

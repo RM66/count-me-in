@@ -1,0 +1,128 @@
+"""Service repository: typed SQLAlchemy 2.0 queries over Service.
+
+The merge-patch write path takes an explicit column-keyed dict
+(touched values only) — Core update() instead of f-string SET
+concatenation. Ownership (organizer_id) is part of every scoped
+predicate, so a foreign id misses rather than leaks.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..models.booking import Booking
+from ..models.service import Service
+from ..models.time_slot import TimeSlot
+
+
+async def list_by_organizer(session: AsyncSession, organizer_id: str) -> list[Service]:
+    result = await session.execute(
+        select(Service).where(Service.organizer_id == organizer_id).order_by(Service.created_at)
+    )
+    return list(result.scalars().all())
+
+
+async def get_owned_service(
+    session: AsyncSession, organizer_id: str, service_id: str
+) -> Service | None:
+    result = await session.execute(
+        select(Service).where(Service.id == service_id, Service.organizer_id == organizer_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_service(session: AsyncSession, values: dict[str, Any]) -> Service:
+    result = await session.execute(pg_insert(Service).values(**values).returning(Service))
+    return result.scalar_one()
+
+
+async def update_service_merge_patch(
+    session: AsyncSession,
+    organizer_id: str,
+    service_id: str,
+    touched_values: dict[str, Any],
+) -> Service | None:
+    """Partial update of touched columns only.
+
+    The caller maps wire fields (defaultPrice) to columns
+    (default_price) and explicit-null clears to None; an empty dict
+    cannot produce `UPDATE … SET` with no assignments.
+    """
+    if not touched_values:
+        return await get_owned_service(session, organizer_id, service_id)
+    stmt = (
+        update(Service)
+        .where(Service.id == service_id, Service.organizer_id == organizer_id)
+        .values(**touched_values)
+        .returning(Service)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def upsert_demo_service(session: AsyncSession, values: dict[str, Any]) -> None:
+    stmt = pg_insert(Service).values(**values)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["id"],
+        set_={
+            "title": stmt.excluded.title,
+            "description": stmt.excluded.description,
+            "photo_url": stmt.excluded.photo_url,
+            "location": stmt.excluded.location,
+            "contact": stmt.excluded.contact,
+            "default_price": stmt.excluded.default_price,
+            "default_capacity": stmt.excluded.default_capacity,
+            "default_duration_minutes": stmt.excluded.default_duration_minutes,
+            "max_seats_per_booking": stmt.excluded.max_seats_per_booking,
+            "options": stmt.excluded.options,
+            "options_select_mode": stmt.excluded.options_select_mode,
+        },
+    )
+    await session.execute(stmt)
+
+
+async def count_bookings_for_service(session: AsyncSession, service_id: str) -> int:
+    """Every booking row referencing the service's slots — confirmed or
+    cancelled (the 409 guard counts history, not just active rows)."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(Booking)
+        .join(TimeSlot, Booking.time_slot_id == TimeSlot.id)
+        .where(TimeSlot.service_id == service_id)
+    )
+    return int(result.scalar_one())
+
+
+async def get_owned_service_for_update(
+    session: AsyncSession, organizer_id: str, service_id: str
+) -> Service | None:
+    """Owned service row under FOR UPDATE — serializes the delete guard
+    against a concurrent service delete."""
+    stmt = (
+        select(Service)
+        .where(Service.id == service_id, Service.organizer_id == organizer_id)
+        .limit(1)
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def delete_owned_service(
+    session: AsyncSession, organizer_id: str, service_id: str
+) -> Service | None:
+    """DELETE … RETURNING the row so the caller keeps photo_url for the
+    post-commit R2 cleanup without a second read."""
+    from sqlalchemy import delete
+
+    stmt = (
+        delete(Service)
+        .where(Service.id == service_id, Service.organizer_id == organizer_id)
+        .returning(Service)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()

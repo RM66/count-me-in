@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
@@ -51,7 +51,6 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
-    get_db_engine,
     ip_rate_limit,
     merge_patch_content_type,
     organizer_rate_limit,
@@ -88,19 +87,19 @@ def organizer_writable_state(o: OrganizerRow) -> dict[str, Any]:
     }
 
 
-async def _fetch_profile(conn: AsyncConnection, organizer_id: str) -> OrganizerRow:
-    row = await get_organizer_profile_tx(conn, organizer_id)
+async def _fetch_profile(session: AsyncSession, organizer_id: str) -> OrganizerRow:
+    row = await get_organizer_profile_tx(session, organizer_id)
     if row is None:
         raise OrganizerNotFound()
     return row
 
 
 async def _update_profile(
-    conn: AsyncConnection,
+    session: AsyncSession,
     organizer_id: str,
     update: Any,
 ) -> OrganizerRow:
-    row = await update_organizer_profile_tx(conn, organizer_id, update)
+    row = await update_organizer_profile_tx(session, organizer_id, update)
     if row is None:
         raise OrganizerNotFound()
     return row
@@ -178,20 +177,18 @@ async def organizer_me_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateOrganizerProfileInput] = Depends(_update_profile_dep),
-    db_engine: AsyncEngine = Depends(get_db_engine),
 ) -> StarletteResponse:
     """PUT /api/organizers/me. Takes a JSON Merge Patch body
     (RFC 7386/ADR-016): validate the patch, merge into the current state,
     validate the result."""
     try:
         row, current, touched = await apply_merge_patch(
-            db_engine,
             body.raw,
-            fetch=lambda conn: _fetch_profile(conn, organizer_id),
+            fetch=lambda session: _fetch_profile(session, organizer_id),
             writable_state=organizer_writable_state,
             decode_merged=lambda merged, _touched: decode_merged_organizer_input(merged),
-            update_tx=lambda conn, state, touched: _update_profile(
-                conn, organizer_id, touched_update(state, touched)
+            update_tx=lambda session, state, touched: _update_profile(
+                session, organizer_id, touched_update(state, touched)
             ),
         )
     except Exception as err:

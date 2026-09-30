@@ -8,22 +8,10 @@ row still serves it would break that row's image.
 
 from __future__ import annotations
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..repositories import media_repo
 
 
-async def photo_url_referenced(conn: AsyncConnection, organizer_id: str, url: str) -> bool:
-    result = await conn.execute(
-        text(
-            """
-            SELECT EXISTS (
-                SELECT 1 FROM organizers WHERE id = :org_id AND photo_url = :url
-                UNION ALL
-                SELECT 1 FROM services WHERE organizer_id = :org_id AND photo_url = :url
-            )
-            """
-        ),
-        {"org_id": organizer_id, "url": url},
-    )
-    row = result.first()
-    return bool(row[0]) if row is not None else False
+async def photo_url_referenced(session: AsyncSession, organizer_id: str, url: str) -> bool:
+    return await media_repo.photo_url_referenced(session, organizer_id, url)

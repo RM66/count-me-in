@@ -14,8 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import text
-
 from ..contracts.constants_gen import (
     DEFAULT_LOCALE,
     DEMO_ORGANIZER_ID,
@@ -25,7 +23,7 @@ from ..contracts.constants_gen import (
     DEMO_SERVICE_YOGA,
 )
 from .booking_writes import MANAGE_TOKEN_GRACE_PERIOD
-from .client import engine
+from .client import sessionmaker
 from .rows import BookingRow, TimeSlotRow
 from .shared import hash_manage_token, new_manage_token
 
@@ -661,122 +659,89 @@ async def seed_demo(now: datetime) -> None:
     slot_bookings = build_demo_bookings(now, slots)
     demo_service_ids = [s.id for s in DEMO_SERVICES]
 
-    async with engine().begin() as conn:
-        await conn.execute(
-            text(
-                """
-                INSERT INTO organizers (id, slug, name, messenger, messenger_id, timezone, language, description, photo_url, location, contact)
-                VALUES (:id, :slug, :name, 'telegram', :messenger_id, :timezone, :language, :description, :photo_url, :location, :contact)
-                ON CONFLICT (id) DO UPDATE SET
-                    slug = :slug, name = :name, timezone = :timezone, language = :language, description = :description,
-                    photo_url = :photo_url, location = :location, contact = :contact
-                """
-            ),
-            {
-                "id": DEMO_ORGANIZER_ID,
-                "slug": DEMO_ORGANIZER_SLUG,
-                "name": "Studio Demo",
-                "messenger_id": DEMO_MESSENGER_ID,
-                "timezone": DEMO_TIMEZONE,
-                "language": DEFAULT_LOCALE,
-                "description": DEMO_ORGANIZER_DESCRIPTION,
-                "photo_url": DEMO_ORGANIZER_PHOTO_URL,
-                "location": DEMO_ORGANIZER_LOCATION,
-                "contact": DEMO_ORGANIZER_CONTACT,
-            },
+    # Local import: repositories pull sqlalchemy + models; seed.py is
+    # also imported by tests_py/jobs/test_demo_refresh.py, which must
+    # stay on the fast import path with the repositories imported lazily
+    # here instead of at module top.
+    from ..repositories import booking_repo, organizer_repo, service_repo, slot_repo
+
+    async with sessionmaker()() as session, session.begin():
+        await organizer_repo.upsert_demo_organizer(
+            session,
+            id=DEMO_ORGANIZER_ID,
+            slug=DEMO_ORGANIZER_SLUG,
+            name="Studio Demo",
+            messenger_id=DEMO_MESSENGER_ID,
+            timezone=DEMO_TIMEZONE,
+            language=DEFAULT_LOCALE,
+            description=DEMO_ORGANIZER_DESCRIPTION,
+            photo_url=DEMO_ORGANIZER_PHOTO_URL,
+            location=DEMO_ORGANIZER_LOCATION,
+            contact=DEMO_ORGANIZER_CONTACT,
         )
 
         for s in DEMO_SERVICES:
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO services (id, organizer_id, title, description, photo_url, location, contact,
-                        default_price, default_capacity, default_duration_minutes, max_seats_per_booking,
-                        options, options_select_mode)
-                    VALUES (:id, :org_id, :title, :description, :photo_url, :location, :contact,
-                        :price, :capacity, :duration, :max_seats, :options, :options_select_mode)
-                    ON CONFLICT (id) DO UPDATE SET
-                        title = :title, description = :description, photo_url = :photo_url, location = :location, contact = :contact,
-                        default_price = :price, default_capacity = :capacity, default_duration_minutes = :duration,
-                        max_seats_per_booking = :max_seats,
-                        options = :options, options_select_mode = :options_select_mode
-                    """
-                ),
+            await service_repo.upsert_demo_service(
+                session,
                 {
                     "id": s.id,
-                    "org_id": DEMO_ORGANIZER_ID,
+                    "organizer_id": DEMO_ORGANIZER_ID,
                     "title": s.title,
                     "description": s.description,
                     "photo_url": s.photo_url,
                     "location": s.location,
                     "contact": s.contact,
-                    "price": s.default_price,
-                    "capacity": s.default_capacity,
-                    "duration": s.default_duration_minutes,
-                    "max_seats": s.max_seats_per_booking,
+                    "default_price": s.default_price,
+                    "default_capacity": s.default_capacity,
+                    "default_duration_minutes": s.default_duration_minutes,
+                    "max_seats_per_booking": s.max_seats_per_booking,
                     "options": s.options,
                     "options_select_mode": s.options_select_mode,
                 },
             )
 
         # Replace slots (and their bookings) wholesale.
-        await conn.execute(
-            text(
-                "DELETE FROM bookings WHERE time_slot_id IN ("
-                "SELECT id FROM time_slots WHERE service_id = ANY(:service_ids))"
-            ),
-            {"service_ids": demo_service_ids},
-        )
-        await conn.execute(
-            text("DELETE FROM time_slots WHERE service_id = ANY(:service_ids)"),
-            {"service_ids": demo_service_ids},
-        )
+        await booking_repo.delete_bookings_for_services(session, demo_service_ids)
+        await slot_repo.delete_slots_for_services(session, demo_service_ids)
 
-        for slot in slots:
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, capacity, booked_count, price)
-                    VALUES (:id, :service_id, :starts_at, :duration, :capacity, :booked_count, :price)
-                    """
-                ),
+        await slot_repo.insert_slots(
+            session,
+            [
                 {
                     "id": slot.id,
                     "service_id": slot.service_id,
                     "starts_at": slot.starts_at,
-                    "duration": slot.duration_minutes,
+                    "duration_minutes": slot.duration_minutes,
                     "capacity": slot.capacity,
                     "booked_count": slot.booked_count,
                     "price": slot.price,
-                },
-            )
+                }
+                for slot in slots
+            ],
+        )
 
-        for b in slot_bookings:
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, guest_messenger, guest_messenger_id,
-                    guest_messenger_login, guest_locale, manage_token, manage_token_hash, selected_options, manage_token_expires_at, created_at)
-                    VALUES (:id, :slot_id, :status, :seats, :guest_name, 'telegram', :guest_messenger_id,
-                        :guest_login, :guest_locale, :token, :token_hash, :selected_options, :expires_at, :created_at)
-                    """
-                ),
+        await booking_repo.insert_bookings(
+            session,
+            [
                 {
                     "id": b.id,
-                    "slot_id": b.time_slot_id,
+                    "time_slot_id": b.time_slot_id,
                     "status": b.status,
                     "seats": b.seats,
                     "guest_name": b.guest_name,
+                    "guest_messenger": "telegram",
                     "guest_messenger_id": b.guest_messenger_id,
-                    "guest_login": b.guest_messenger_login,
+                    "guest_messenger_login": b.guest_messenger_login,
                     "guest_locale": b.guest_locale,
-                    "token": b.manage_token,
-                    "token_hash": b.manage_token_hash,
+                    "manage_token": b.manage_token,
+                    "manage_token_hash": b.manage_token_hash,
                     "selected_options": b.selected_options,
-                    "expires_at": b.manage_token_expires_at,
+                    "manage_token_expires_at": b.manage_token_expires_at,
                     "created_at": b.created_at,
-                },
-            )
+                }
+                for b in slot_bookings
+            ],
+        )
 
 
 if __name__ == "__main__":

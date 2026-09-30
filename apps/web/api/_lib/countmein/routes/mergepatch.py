@@ -19,8 +19,9 @@ import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..db.client import sessionmaker
 from ..db.shared import TouchedUpdate
 from ..errors import InvalidInput, NothingToUpdate
 
@@ -74,33 +75,32 @@ def _merge(current_json: str, patch: Any) -> Any:
 
 
 async def apply_merge_patch[RowT, StateT](
-    db_engine: AsyncEngine,
     raw: bytes,
     *,
-    fetch: Callable[[AsyncConnection], Awaitable[RowT]],
+    fetch: Callable[[AsyncSession], Awaitable[RowT]],
     writable_state: Callable[[RowT], dict[str, Any]],
     decode_merged: Callable[[bytes, dict[str, bool]], StateT],
-    update_tx: Callable[[AsyncConnection, StateT, dict[str, bool]], Awaitable[RowT]],
+    update_tx: Callable[[AsyncSession, StateT, dict[str, bool]], Awaitable[RowT]],
 ) -> tuple[RowT, RowT, dict[str, bool]]:
     """The shared merge-patch transaction: read → merge → write on one
-    transaction (two concurrent PUTs must not merge against different
-    snapshots and silently lose columns). fetch and update_tx raise the
-    entity's not-found error themselves; decode_merged receives the
-    touched-key set alongside the merged bytes (the slot decoder checks
-    startsAt only when the patch touched it). Returns (row, current,
-    touched) so the caller can build the response and the replaced-media
-    cleanup."""
+    ORM session transaction (two concurrent PUTs must not merge against
+    different snapshots and silently lose columns). fetch and update_tx
+    raise the entity's not-found error themselves; decode_merged
+    receives the touched-key set alongside the merged bytes (the slot
+    decoder checks startsAt only when the patch touched it). Returns
+    (row, current, touched) so the caller can build the response and
+    the replaced-media cleanup."""
     touched = patch_keys(raw)
     if touched is None:
         raise NothingToUpdate()
-    async with db_engine.begin() as conn:
-        current = await fetch(conn)
+    async with sessionmaker()() as session, session.begin():
+        current = await fetch(session)
         try:
             merged = merge_patch(writable_state(current), raw)
         except ValueError:
             raise InvalidInput() from None
         state = decode_merged(merged, touched)
-        row = await update_tx(conn, state, touched)
+        row = await update_tx(session, state, touched)
     return row, current, touched
 
 

@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from countmein.contracts import models_gen as gen
 from countmein.db import time_slot as slot_db
-from countmein.db.client import engine
+from countmein.db.client import engine, sessionmaker
 from countmein.db.shared import TouchedUpdate, new_id, new_service_id
 from countmein.errors import CapacityBelowBooked, DemoReadOnly, NothingToUpdate
 from sqlalchemy import text
@@ -167,9 +167,9 @@ async def test_update_owned_slot_tx_touches_only_touched_columns(fx):
         startsAt=None, durationMinutes=90, capacity=None, price="12 EUR"
     )
     touched = {"startsAt": False, "durationMinutes": True, "capacity": False, "price": True}
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         row = await slot_db.update_owned_slot_tx(
-            conn, org_id, slot_id, TouchedUpdate(state, touched)
+            session, org_id, slot_id, TouchedUpdate(state, touched)
         )
     assert row is not None
     assert row.duration_minutes == 90
@@ -186,18 +186,22 @@ async def test_update_owned_slot_tx_capacity_below_booked_is_409(fx):
         )
     state = gen.UpdateTimeSlotInput(startsAt=None, durationMinutes=None, capacity=4, price=None)
     touched = {"startsAt": False, "durationMinutes": False, "capacity": True, "price": False}
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         with pytest.raises(CapacityBelowBooked):
-            await slot_db.update_owned_slot_tx(conn, org_id, slot_id, TouchedUpdate(state, touched))
+            await slot_db.update_owned_slot_tx(
+                session, org_id, slot_id, TouchedUpdate(state, touched)
+            )
 
 
 async def test_update_owned_slot_tx_nothing_touched_raises(fx):
     org_id, _service_id, slot_id = fx
     state = gen.UpdateTimeSlotInput(startsAt=None, durationMinutes=None, capacity=None, price=None)
     touched = {"startsAt": False, "durationMinutes": False, "capacity": False, "price": False}
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         with pytest.raises(NothingToUpdate):
-            await slot_db.update_owned_slot_tx(conn, org_id, slot_id, TouchedUpdate(state, touched))
+            await slot_db.update_owned_slot_tx(
+                session, org_id, slot_id, TouchedUpdate(state, touched)
+            )
 
 
 async def test_update_owned_slot_tx_foreign_organizer_answers_none(fx):
@@ -208,10 +212,10 @@ async def test_update_owned_slot_tx_foreign_organizer_answers_none(fx):
             startsAt=None, durationMinutes=45, capacity=None, price=None
         )
         touched = {"startsAt": False, "durationMinutes": True, "capacity": False, "price": False}
-        async with engine().begin() as conn:
+        async with sessionmaker()() as session, session.begin():
             assert (
                 await slot_db.update_owned_slot_tx(
-                    conn, other_org, slot_id, TouchedUpdate(state, touched)
+                    session, other_org, slot_id, TouchedUpdate(state, touched)
                 )
                 is None
             ), "a foreign update must answer None, not leak the row"

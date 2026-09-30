@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
@@ -41,7 +41,6 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
-    get_db_engine,
     merge_patch_content_type,
     uuid_path_param,
 )
@@ -65,20 +64,20 @@ def slot_writable_state(s: TimeSlotRow) -> dict[str, Any]:
     }
 
 
-async def _fetch_owned_slot(conn: AsyncConnection, organizer_id: str, slot_id: str) -> TimeSlotRow:
-    row = await get_owned_slot_tx(conn, organizer_id, slot_id)
+async def _fetch_owned_slot(session: AsyncSession, organizer_id: str, slot_id: str) -> TimeSlotRow:
+    row = await get_owned_slot_tx(session, organizer_id, slot_id)
     if row is None:
         raise SlotNotFound()
     return row
 
 
 async def _update_owned_slot(
-    conn: AsyncConnection,
+    session: AsyncSession,
     organizer_id: str,
     slot_id: str,
     update: Any,
 ) -> TimeSlotRow:
-    row = await update_owned_slot_tx(conn, organizer_id, slot_id, update)
+    row = await update_owned_slot_tx(session, organizer_id, slot_id, update)
     if row is None:
         raise SlotNotFound()
     return row
@@ -141,7 +140,6 @@ async def slot_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateTimeSlotInput] = Depends(_update_slot_dep),
-    db_engine: AsyncEngine = Depends(get_db_engine),
 ) -> StarletteResponse:
     """PUT /api/slots/{id}. Cannot move a slot to another service and
     never touches bookedCount (seats change only through the booking
@@ -150,9 +148,8 @@ async def slot_put(
     the patch is validated, merged into the current state, and the
     result re-validated."""
     row, _current, _touched = await apply_merge_patch(
-        db_engine,
         body.raw,
-        fetch=lambda conn: _fetch_owned_slot(conn, organizer_id, id),
+        fetch=lambda session: _fetch_owned_slot(session, organizer_id, id),
         writable_state=slot_writable_state,
         # startsAt is only checked against the past when the patch
         # touched it (the merged state always carries the current value,
@@ -160,8 +157,8 @@ async def slot_put(
         decode_merged=lambda merged, touched: decode_merged_slot_input(
             merged, bool(touched.get("startsAt"))
         ),
-        update_tx=lambda conn, state, touched: _update_owned_slot(
-            conn, organizer_id, id, touched_update(state, touched)
+        update_tx=lambda session, state, touched: _update_owned_slot(
+            session, organizer_id, id, touched_update(state, touched)
         ),
     )
 

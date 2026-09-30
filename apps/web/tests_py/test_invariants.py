@@ -38,17 +38,26 @@ def _assert_test_exists(module_rel: str, test_name: str) -> None:
 def test_seat_reserve_is_single_conditional_update():
     """Invariant: seats are claimed by ONE conditional UPDATE inside the
     booking transaction — never read booked_count, check in Python,
-    write back. Pinned two ways: the SQL text itself, and the
-    contention test that proves no overbooking under a race."""
-    src = (TESTS.parent / "api/_lib/countmein/db/booking_writes.py").read_text("utf-8")
-    assert "booked_count = booked_count + :seats" in src
-    assert "booked_count + :seats <= capacity" in src
-    # The read-check-write shape must not appear: a SELECT of
-    # booked_count feeding a plain UPDATE is the bug this invariant
-    # forbids.
-    assert "SET booked_count = :seats" not in src.replace(
+    write back. Pinned two ways: the SQLAlchemy predicate in the
+    repository, and the contention test that proves no overbooking
+    under a race."""
+    src = (TESTS.parent / "api/_lib/countmein/repositories/booking_repo.py").read_text("utf-8")
+    # update(TimeSlot).where(id == ..., booked_count + seats <=
+    # capacity).values(booked_count=booked_count + seats): the claim and
+    # the guard are one statement.
+    assert "TimeSlot.booked_count + seats <= TimeSlot.capacity" in src
+    assert "booked_count=TimeSlot.booked_count+seats" in src.replace(" ", "")
+    # The read-check-write shape must not appear in the write path: a
+    # SELECT of booked_count feeding a plain UPDATE is the bug this
+    # invariant forbids. The shrink-capacity precheck in db/time_slot.py
+    # reads booked_count under FOR UPDATE but never writes it — allow
+    # that file, forbid the pattern in the booking write path.
+    writes = (TESTS.parent / "api/_lib/countmein/db/booking_writes.py").read_text("utf-8")
+    assert "time_slots SET booked_count" not in writes
+    assert "SET booked_count = :seats" not in writes.replace(
         "booked_count = booked_count + :seats", ""
     )
+    assert "atomic_reserve_seats" in writes
     _assert_test_exists(
         "tests_py.db.test_booking_writes", "test_create_guest_booking_concurrent_last_seats"
     )

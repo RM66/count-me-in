@@ -11,8 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import storage
 from ..contracts import domain
@@ -20,36 +19,30 @@ from ..contracts import models_gen as gen
 from ..contracts.payloads import AuthTicketPayload
 from ..demo import refuse_demo_write
 from ..errors import NothingToUpdate, OrganizerNotFound, PhotoPrefix
-from .client import engine
-from .rows import ORGANIZER_COLUMNS, OrganizerRow, scan_organizer
+from ..repositories import organizer_repo
+from .client import sessionmaker
+from .rows import OrganizerRow, from_model_organizer
 from .shared import TouchedUpdate, new_id
 
 
 async def get_organizer_profile(organizer_id: str) -> OrganizerRow | None:
-    async with engine().connect() as conn:
-        return await get_organizer_profile_tx(conn, organizer_id)
+    async with sessionmaker()() as session:
+        return await get_organizer_profile_tx(session, organizer_id)
 
 
-async def get_organizer_profile_tx(conn: AsyncConnection, organizer_id: str) -> OrganizerRow | None:
+async def get_organizer_profile_tx(session: AsyncSession, organizer_id: str) -> OrganizerRow | None:
     """The profile for the organizer this request may view; None when the
     id does not exist (e.g. demo not yet seeded). The merge-patch route
     reads the current state and writes the merged state on one
     transaction so concurrent PUTs cannot lose columns."""
-    result = await conn.execute(
-        text(f"SELECT {ORGANIZER_COLUMNS} FROM organizers WHERE id = :id"),
-        {"id": organizer_id},
-    )
-    return scan_organizer(result.first())
+    model = await organizer_repo.get_by_id(session, organizer_id)
+    return from_model_organizer(model) if model is not None else None
 
 
 async def exists_organizer_by_messenger(messenger: str, messenger_id: str) -> bool:
     """Used by the signup flow to decide sign-in vs registration."""
-    async with engine().connect() as conn:
-        result = await conn.execute(
-            text("SELECT 1 FROM organizers WHERE messenger = :messenger AND messenger_id = :mid"),
-            {"messenger": messenger, "mid": messenger_id},
-        )
-        return result.first() is not None
+    async with sessionmaker()() as session:
+        return await organizer_repo.exists_by_messenger(session, messenger, messenger_id)
 
 
 async def insert_organizer(
@@ -64,39 +57,31 @@ async def insert_organizer(
     # (--use-type-alias renders scalar schemas as plain Annotated
     # types, so no RootModel unwrapping is needed before SQL.)
     language = domain.deref_or(payload.language, domain.DEFAULT_LOCALE)
-    async with engine().begin() as conn:
-        result = await conn.execute(
-            text(
-                """
-                INSERT INTO organizers
-                    (id, slug, name, messenger, messenger_id, timezone, language, contact, photo_url)
-                VALUES (:id, :slug, :name, :messenger, :mid, :tz, :lang, :contact, :photo)
-                RETURNING id, slug
-                """
-            ),
-            {
-                "id": new_id(),
-                "slug": str(payload.slug),
-                "name": str(payload.name),
-                "messenger": identity.messenger,
-                "mid": identity.messenger_id,
-                "tz": str(payload.timezone),
-                "lang": language,
-                "contact": payload.contact,
-                "photo": identity.photo_url,
-            },
+    async with sessionmaker()() as session, session.begin():
+        model = await organizer_repo.insert_organizer(
+            session,
+            id=new_id(),
+            slug=str(payload.slug),
+            name=str(payload.name),
+            messenger=identity.messenger,
+            messenger_id=identity.messenger_id,
+            timezone=str(payload.timezone),
+            language=language,
+            contact=payload.contact,
+            photo_url=identity.photo_url,
         )
-        row = result.first()
     # model_construct (not model_validate): the generated UUID pattern
     # constraint cannot be applied by pydantic-core (TypeError), and the
     # id comes straight from the database. str(): psycopg hands back a
     # UUID object; the root must hold the canonical string or every
     # response marshal trips pydantic's serializer.
-    return gen.RegisteredOrganizer.model_construct(id=str(row[0]), slug=row[1])  # type: ignore[index]
+    return gen.RegisteredOrganizer.model_construct(id=str(model.id), slug=model.slug)
 
 
 async def update_organizer_profile_tx(
-    conn: AsyncConnection, organizer_id: str, update: TouchedUpdate[gen.UpdateOrganizerProfileInput]
+    session: AsyncSession,
+    organizer_id: str,
+    update: TouchedUpdate[gen.UpdateOrganizerProfileInput],
 ) -> OrganizerRow | None:
     """Editable fields only; messenger identity, id and createdAt are set
     at registration and never editable. Absent keys are left untouched,
@@ -114,47 +99,29 @@ async def update_organizer_profile_tx(
     if touched.get("photoUrl") and state.photoUrl is not None:
         if not storage.is_own_media_url(organizer_id, str(state.photoUrl)):
             raise PhotoPrefix()
-    sets: list[str] = []
-    args: dict[str, Any] = {"org_id": organizer_id}
-
-    def add(col: str, key: str, value: Any) -> None:
-        sets.append(f"{col} = :{key}")
-        args[key] = value
-
+    # Column-keyed touched values: absent keys are left untouched,
+    # explicit nulls clear the column (merge-patch semantics, ADR-016).
+    # Core update() instead of f-string SET concatenation.
+    values: dict[str, Any] = {}
     if touched.get("name") and state.name is not None:
-        add("name", "name", str(state.name))
+        values["name"] = str(state.name)
     if touched.get("slug") and state.slug is not None:
-        add("slug", "slug", str(state.slug))
+        values["slug"] = str(state.slug)
     if touched.get("timezone") and state.timezone is not None:
-        add("timezone", "timezone", str(state.timezone))
+        values["timezone"] = str(state.timezone)
     if touched.get("description"):
-        if state.description is not None:
-            add("description", "description", str(state.description))
-        else:
-            sets.append("description = NULL")
+        values["description"] = str(state.description) if state.description is not None else None
     if touched.get("location"):
-        if state.location is not None:
-            add("location", "location", str(state.location))
-        else:
-            sets.append("location = NULL")
+        values["location"] = str(state.location) if state.location is not None else None
     if touched.get("contact"):
-        if state.contact is not None:
-            add("contact", "contact", str(state.contact))
-        else:
-            sets.append("contact = NULL")
+        values["contact"] = str(state.contact) if state.contact is not None else None
     if touched.get("photoUrl"):
-        if state.photoUrl is not None:
-            add("photo_url", "photo_url", str(state.photoUrl))
-        else:
-            sets.append("photo_url = NULL")
-    if not sets:
+        values["photo_url"] = str(state.photoUrl) if state.photoUrl is not None else None
+    if not values:
         raise NothingToUpdate()
 
-    query = (
-        f"UPDATE organizers SET {', '.join(sets)} WHERE id = :org_id RETURNING {ORGANIZER_COLUMNS}"
-    )
-    result = await conn.execute(text(query), args)
-    return scan_organizer(result.first())
+    model = await organizer_repo.update_profile(session, organizer_id, values)
+    return from_model_organizer(model) if model is not None else None
 
 
 async def update_organizer_language(organizer_id: str, language: str) -> None:
@@ -162,10 +129,6 @@ async def update_organizer_language(organizer_id: str, language: str) -> None:
     id (0 rows affected) is an OrganizerNotFound so a stale session
     answers 404 instead of a silent success."""
     refuse_demo_write(organizer_id)
-    async with engine().begin() as conn:
-        result = await conn.execute(
-            text("UPDATE organizers SET language = :lang WHERE id = :id"),
-            {"lang": language, "id": organizer_id},
-        )
-        if result.rowcount == 0:
+    async with sessionmaker()() as session, session.begin():
+        if not await organizer_repo.update_language(session, organizer_id, language):
             raise OrganizerNotFound()

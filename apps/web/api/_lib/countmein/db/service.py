@@ -8,50 +8,38 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import storage
 from ..contracts import models_gen as gen
 from ..demo import refuse_demo_write
 from ..errors import NothingToUpdate, PhotoPrefix, ServiceHasBookings
-from .client import engine
-from .rows import SERVICE_COLUMNS, ServiceRow, scan_service
+from ..repositories import service_repo
+from .client import sessionmaker
+from .rows import ServiceRow, from_model_service
 from .shared import TouchedUpdate, is_foreign_key_violation, new_service_id
 
 
 async def list_services(organizer_id: str) -> list[ServiceRow]:
     """All services of an organizer, oldest first."""
-    async with engine().connect() as conn:
-        result = await conn.execute(
-            text(
-                f"SELECT {SERVICE_COLUMNS} FROM services "
-                "WHERE organizer_id = :org_id ORDER BY created_at ASC LIMIT 200"
-            ),
-            {"org_id": organizer_id},
-        )
-        return [s for s in (scan_service(r) for r in result) if s is not None]
+    async with sessionmaker()() as session:
+        models = await service_repo.list_by_organizer(session, organizer_id)
+        return [from_model_service(m) for m in models]
 
 
 async def get_owned_service(organizer_id: str, service_id: str) -> ServiceRow | None:
     """None when the id does not exist *or* belongs to someone else, so
     callers cannot leak another organizer's service by guessing ids.
     Ownership sits in the WHERE clause like every sibling query."""
-    async with engine().connect() as conn:
-        return await get_owned_service_tx(conn, organizer_id, service_id)
+    async with sessionmaker()() as session:
+        return await get_owned_service_tx(session, organizer_id, service_id)
 
 
 async def get_owned_service_tx(
-    conn: AsyncConnection, organizer_id: str, service_id: str
+    session: AsyncSession, organizer_id: str, service_id: str
 ) -> ServiceRow | None:
-    result = await conn.execute(
-        text(
-            f"SELECT {SERVICE_COLUMNS} FROM services "
-            "WHERE id = :sid AND organizer_id = :org_id LIMIT 1"
-        ),
-        {"sid": service_id, "org_id": organizer_id},
-    )
-    return scan_service(result.first())
+    model = await service_repo.get_owned_service(session, organizer_id, service_id)
+    return from_model_service(model) if model is not None else None
 
 
 async def create_service(organizer_id: str, payload: gen.CreateServiceInput) -> ServiceRow | None:
@@ -63,45 +51,36 @@ async def create_service(organizer_id: str, payload: gen.CreateServiceInput) -> 
     if payload.photoUrl is not None:
         if not storage.is_own_media_url(organizer_id, str(payload.photoUrl)):
             raise PhotoPrefix()
-    mode = None
+    mode: Any = None
     if payload.optionsSelectMode is not None:
         mode = str(payload.optionsSelectMode)
     options = None
     if payload.options is not None:
         options = [o for o in payload.options]
-    async with engine().begin() as conn:
-        result = await conn.execute(
-            text(
-                f"""
-                INSERT INTO services (id, organizer_id, title, description, photo_url, location, contact,
-                    default_price, default_capacity, default_duration_minutes, max_seats_per_booking,
-                    options, options_select_mode)
-                VALUES (:id, :org_id, :title, :description, :photo, :location, :contact,
-                    :price, :capacity, :duration, :max_seats, :options, CAST(:mode AS options_select_mode))
-                RETURNING {SERVICE_COLUMNS}
-                """
-            ),
+    async with sessionmaker()() as session, session.begin():
+        model = await service_repo.create_service(
+            session,
             {
                 "id": new_service_id(),
-                "org_id": organizer_id,
+                "organizer_id": organizer_id,
                 "title": str(payload.title),
                 "description": payload.description,
-                "photo": payload.photoUrl,
+                "photo_url": payload.photoUrl,
                 "location": payload.location,
                 "contact": payload.contact,
-                "price": str(payload.defaultPrice),
-                "capacity": int(payload.defaultCapacity),
-                "duration": int(payload.defaultDurationMinutes),
-                "max_seats": int(payload.maxSeatsPerBooking),
+                "default_price": str(payload.defaultPrice),
+                "default_capacity": int(payload.defaultCapacity),
+                "default_duration_minutes": int(payload.defaultDurationMinutes),
+                "max_seats_per_booking": int(payload.maxSeatsPerBooking),
                 "options": options,
-                "mode": mode,
+                "options_select_mode": mode,
             },
         )
-        return scan_service(result.first())
+        return from_model_service(model)
 
 
 async def update_owned_service_tx(
-    conn: AsyncConnection,
+    session: AsyncSession,
     organizer_id: str,
     service_id: str,
     update: TouchedUpdate[gen.UpdateServiceInput],
@@ -122,66 +101,39 @@ async def update_owned_service_tx(
     if touched.get("photoUrl") and state.photoUrl is not None:
         if not storage.is_own_media_url(organizer_id, str(state.photoUrl)):
             raise PhotoPrefix()
-    sets: list[str] = []
-    args: dict[str, Any] = {"sid": service_id, "org_id": organizer_id}
-
-    def add(col: str, key: str, value: Any) -> None:
-        sets.append(f"{col} = :{key}")
-        args[key] = value
-
-    def set_null(col: str) -> None:
-        sets.append(f"{col} = NULL")
-
+    # Column-keyed touched values: absent keys are left untouched,
+    # explicit nulls clear the column (merge-patch semantics, ADR-016).
+    # Core update() instead of f-string SET concatenation.
+    values: dict[str, Any] = {}
     if touched.get("title") and state.title is not None:
-        add("title", "title", str(state.title))
+        values["title"] = str(state.title)
     if touched.get("description"):
-        if state.description is not None:
-            add("description", "description", str(state.description))
-        else:
-            set_null("description")
+        values["description"] = str(state.description) if state.description is not None else None
     if touched.get("location"):
-        if state.location is not None:
-            add("location", "location", str(state.location))
-        else:
-            set_null("location")
+        values["location"] = str(state.location) if state.location is not None else None
     if touched.get("contact"):
-        if state.contact is not None:
-            add("contact", "contact", str(state.contact))
-        else:
-            set_null("contact")
+        values["contact"] = str(state.contact) if state.contact is not None else None
     if touched.get("defaultPrice") and state.defaultPrice is not None:
-        add("default_price", "default_price", str(state.defaultPrice))
+        values["default_price"] = str(state.defaultPrice)
     if touched.get("defaultCapacity") and state.defaultCapacity is not None:
-        add("default_capacity", "default_capacity", int(state.defaultCapacity))
+        values["default_capacity"] = int(state.defaultCapacity)
     if touched.get("defaultDurationMinutes") and state.defaultDurationMinutes is not None:
-        add("default_duration_minutes", "duration", int(state.defaultDurationMinutes))
+        values["default_duration_minutes"] = int(state.defaultDurationMinutes)
     if touched.get("maxSeatsPerBooking") and state.maxSeatsPerBooking is not None:
-        add("max_seats_per_booking", "max_seats", int(state.maxSeatsPerBooking))
+        values["max_seats_per_booking"] = int(state.maxSeatsPerBooking)
     if touched.get("options"):
-        if state.options is not None:
-            add("options", "options", [o for o in state.options])
-        else:
-            set_null("options")
+        values["options"] = [o for o in state.options] if state.options is not None else None
     if touched.get("optionsSelectMode"):
-        if state.optionsSelectMode is not None:
-            sets.append("options_select_mode = CAST(:mode AS options_select_mode)")
-            args["mode"] = str(state.optionsSelectMode)
-        else:
-            set_null("options_select_mode")
+        values["options_select_mode"] = (
+            str(state.optionsSelectMode) if state.optionsSelectMode is not None else None
+        )
     if touched.get("photoUrl"):
-        if state.photoUrl is not None:
-            add("photo_url", "photo_url", str(state.photoUrl))
-        else:
-            set_null("photo_url")
-    if not sets:
+        values["photo_url"] = str(state.photoUrl) if state.photoUrl is not None else None
+    if not values:
         raise NothingToUpdate()
 
-    query = (
-        f"UPDATE services SET {', '.join(sets)} "
-        f"WHERE id = :sid AND organizer_id = :org_id RETURNING {SERVICE_COLUMNS}"
-    )
-    result = await conn.execute(text(query), args)
-    return scan_service(result.first())
+    model = await service_repo.update_service_merge_patch(session, organizer_id, service_id, values)
+    return from_model_service(model) if model is not None else None
 
 
 async def delete_owned_service(organizer_id: str, service_id: str) -> tuple[str, str | None] | None:
@@ -196,47 +148,31 @@ async def delete_owned_service(organizer_id: str, service_id: str) -> tuple[str,
     handlers) — a separate read-then-delete would race with a
     concurrent PUT pointing the row at a new cover."""
     refuse_demo_write(organizer_id)
-    async with engine().begin() as conn:
+    async with sessionmaker()() as session, session.begin():
         # Lock the service row so the check sees a stable parent: FOR
         # UPDATE serializes against a concurrent service delete, not
         # against a concurrent booking INSERT (bookings lock the slot
         # row, not the service row). A booking landing between the guard
         # and the DELETE is caught by the FK backstop below, which
         # answers the same 409.
-        result = await conn.execute(
-            text("SELECT id FROM services WHERE id = :sid AND organizer_id = :org_id FOR UPDATE"),
-            {"sid": service_id, "org_id": organizer_id},
-        )
-        row = result.first()
-        if row is None:
+        locked = await service_repo.get_owned_service_for_update(session, organizer_id, service_id)
+        if locked is None:
             return None
-        service_id = row[0]
+        scoped_id = str(locked.id)
 
-        result = await conn.execute(
-            text(
-                "SELECT count(*) FROM bookings b "
-                "INNER JOIN time_slots ts ON b.time_slot_id = ts.id "
-                "WHERE ts.service_id = :sid"
-            ),
-            {"sid": service_id},
-        )
-        if result.scalar_one() > 0:
+        if await service_repo.count_bookings_for_service(session, scoped_id) > 0:
             raise ServiceHasBookings()
 
         try:
-            result = await conn.execute(
-                text("DELETE FROM services WHERE id = :sid RETURNING photo_url"),
-                {"sid": service_id},
-            )
+            deleted = await service_repo.delete_owned_service(session, organizer_id, scoped_id)
         except Exception as err:
             # Backstop: a stray FK violation must surface as the same
             # 409, never a bare 500.
             if is_foreign_key_violation(err):
                 raise ServiceHasBookings() from err
             raise
-        deleted = result.first()
         if deleted is None:
             return None
         # psycopg hands back a UUID object; the caller compares and
         # interpolates the canonical string.
-        return str(service_id), deleted[0]
+        return scoped_id, deleted.photo_url

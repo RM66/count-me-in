@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
@@ -43,7 +43,6 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
-    get_db_engine,
     merge_patch_content_type,
 )
 from ..web.guards import require_writable_organizer
@@ -69,20 +68,20 @@ def service_writable_state(s: ServiceRow) -> dict[str, Any]:
     }
 
 
-async def _fetch_owned(conn: AsyncConnection, organizer_id: str, service_id: str) -> ServiceRow:
-    row = await get_owned_service_tx(conn, organizer_id, service_id)
+async def _fetch_owned(session: AsyncSession, organizer_id: str, service_id: str) -> ServiceRow:
+    row = await get_owned_service_tx(session, organizer_id, service_id)
     if row is None:
         raise ServiceNotFound()
     return row
 
 
 async def _update_owned(
-    conn: AsyncConnection,
+    session: AsyncSession,
     organizer_id: str,
     service_id: str,
     update: Any,
 ) -> ServiceRow:
-    row = await update_owned_service_tx(conn, organizer_id, service_id, update)
+    row = await update_owned_service_tx(session, organizer_id, service_id, update)
     if row is None:
         raise ServiceNotFound()
     return row
@@ -149,7 +148,6 @@ async def service_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateServiceInput] = Depends(_update_service_dep),
-    db_engine: AsyncEngine = Depends(get_db_engine),
 ) -> StarletteResponse:
     """PUT /api/services/{id}. Takes a JSON Merge Patch body (absent key
     = keep, explicit null = clear, RFC 7386/ADR-016): the patch is
@@ -157,13 +155,12 @@ async def service_put(
     read), then merged into the current state and the result
     re-validated."""
     row, current, touched = await apply_merge_patch(
-        db_engine,
         body.raw,
-        fetch=lambda conn: _fetch_owned(conn, organizer_id, id),
+        fetch=lambda session: _fetch_owned(session, organizer_id, id),
         writable_state=service_writable_state,
         decode_merged=lambda merged, _touched: decode_merged_service_input(merged),
-        update_tx=lambda conn, state, touched: _update_owned(
-            conn, organizer_id, id, touched_update(state, touched)
+        update_tx=lambda session, state, touched: _update_owned(
+            session, organizer_id, id, touched_update(state, touched)
         ),
     )
 
