@@ -298,9 +298,15 @@ async def analytics_trend(
     """Per-day created_at buckets (UTC date via date_trunc) for the
     trend window — one grouped query, zero-filled by the caller."""
     confirmed_status = Booking.status == BookingStatus.CONFIRMED
+    # Same expression object in SELECT and GROUP BY: two identical
+    # func.date_trunc() calls compile to separate bound params
+    # ($1 vs $2), and Postgres refuses to match the SELECT label to
+    # the GROUP BY expression (GroupingError). One shared object
+    # renders one param used in both places.
+    day_bucket = func.date_trunc("day", Booking.created_at).label("day")
     result = await session.execute(
         select(
-            func.date_trunc("day", Booking.created_at).label("day"),
+            day_bucket,
             func.count().filter(confirmed_status).label("bookings"),
             func.coalesce(
                 func.sum(Booking.seats).filter(confirmed_status),
@@ -314,7 +320,7 @@ async def analytics_trend(
             Service.organizer_id == organizer_id,
             Booking.created_at >= trend_start,
         )
-        .group_by(func.date_trunc("day", Booking.created_at))
+        .group_by(day_bucket)
     )
     out: list[tuple[datetime, int, int]] = []
     for day, bookings, seats in result.all():

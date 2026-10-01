@@ -48,10 +48,20 @@ describe('apiFetch', () => {
 
   it('derives the origin from the Host header in production', async () => {
     vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_URL', '')
     const { apiFetch } = await import('@/server/api')
     await apiFetch('/api/services')
     const [url] = fetchMock.mock.calls[0]!
     expect(String(url)).toBe('https://countmein.group/api/services')
+  })
+
+  it('prefers an explicit API_URL in production (container twin)', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_URL', 'http://api:3001/')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
+    const [url] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('http://api:3001/api/services')
   })
 
   it('forwards the minted organizer-auth header for a signed-in session', async () => {

@@ -1,0 +1,61 @@
+# CountMeIn Next.js web — container twin (Phase 6).
+#
+# Vercel stays the production web path; this image is the container twin
+# for local full-stack dev (`docker compose up`) and AWS, where the web
+# talks to the API service over the compose network (API_URL).
+#
+# NOTE: build context must be the REPO ROOT (docker compose sets
+# context: .) — the web install resolves workspace:* deps
+# (@repo/contracts, @repo/translations) from packages/, so apps/web
+# alone is not a self-contained context.
+FROM oven/bun:1.3.14-slim AS deps
+
+WORKDIR /app
+
+COPY package.json bun.lock turbo.json ./
+COPY packages ./packages
+COPY apps/web/package.json ./apps/web/package.json
+RUN bun install --filter=web --frozen-lockfile
+
+FROM oven/bun:1.3.14-slim AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY package.json turbo.json bun.lock ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+
+WORKDIR /app/apps/web
+RUN bun run build
+
+FROM node:22-slim AS runtime
+
+# HOSTNAME="0.0.0.0": Docker always sets HOSTNAME to the container id,
+# and the standalone server binds to $HOSTNAME when set — which would
+# listen only on eth0 and refuse loopback (ECONNREFUSED on 127.0.0.1
+# healthchecks). Pin it to all interfaces.
+ENV NODE_ENV=production \
+    HOSTNAME="0.0.0.0" \
+    PORT=3000
+
+WORKDIR /app
+
+RUN useradd -m -u 10001 appuser
+USER appuser
+
+COPY --chown=appuser:appuser --from=builder /app/apps/web/.next/standalone ./
+COPY --chown=appuser:appuser --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --chown=appuser:appuser --from=builder /app/apps/web/public ./apps/web/public
+
+EXPOSE 3000
+
+# Single quotes: the check runs under `sh -c`, where backticks would be
+# command substitution (the URL "not found" as a command). Plain node
+# fetch against loopback — HOSTNAME=0.0.0.0 above makes it listen here.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
+    CMD node -e 'fetch("http://127.0.0.1:3000/api/healthz").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))'
+
+CMD ["node", "apps/web/server.js"]

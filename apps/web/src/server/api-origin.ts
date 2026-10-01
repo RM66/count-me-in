@@ -12,10 +12,17 @@ import 'server-only'
  * In production, the API lives at the same origin (Vercel rewrites route
  * routing); the incoming request's Host header supplies the origin. In
  * dev, the API server runs separately at `API_URL` (default :3001).
+ * The container twin (docker compose) sets API_URL alongside
+ * NODE_ENV=production, so an explicit API_URL always wins — same-origin
+ * applies only when no separate API origin is configured.
  */
 export async function resolveApiOrigin(): Promise<string> {
+  const apiUrl = process.env.API_URL?.replace(/\/$/, '')
+  if (apiUrl) {
+    return apiUrl
+  }
   if (process.env.NODE_ENV !== 'production') {
-    return (process.env.API_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '')
+    return 'http://127.0.0.1:3001'
   }
   const h = await headers()
   const host = h.get('host')

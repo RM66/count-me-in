@@ -32,6 +32,9 @@ function buildRemotePatterns() {
 
 const nextConfig = {
   transpilePackages: ['@repo/contracts', '@repo/translations'],
+  // Container twin (Phase 6): the web image runs the standalone server
+  // (Dockerfile.web). No effect on Vercel — it ignores this mode.
+  output: 'standalone',
   images: {
     remotePatterns: [
       ...buildRemotePatterns(),

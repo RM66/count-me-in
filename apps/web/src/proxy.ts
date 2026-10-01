@@ -34,6 +34,14 @@ import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organize
  *    Auth.js sessions, so it is the natural place to translate the
  *    session into a stable, self-controlled token.
  *
+ *    In the container twin (Phase 6: standalone `next start` behind
+ *    `docker compose`, `API_URL` set, no Vercel Edge Router) the API does
+ *    not live at this origin — the request is rewritten to `API_URL`
+ *    (browser TanStack Query calls hit `:3000/api/*` and would 404
+ *    otherwise, since Next.js owns no such routes). On Vercel
+ *    (`VERCEL=1`, no `API_URL`) the Edge Router serves the API from the
+ *    same origin per `vercel.json`, so the request passes through.
+ *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
  * there would decode the session on every request just to allow it.
@@ -72,6 +80,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
       if (token) {
         requestHeaders.set(ORGANIZER_AUTH_HEADER, token)
       }
+    }
+    // Container twin (Phase 6): no Vercel Edge Router serves the API at
+    // this origin, so rewrite browser /api/* calls to the separate API
+    // origin. The minted header travels with the rewritten request.
+    const apiOrigin = process.env.API_URL?.replace(/\/$/, '')
+    if (apiOrigin && process.env.VERCEL !== '1') {
+      const target = new URL(`${apiOrigin}${pathname}${request.nextUrl.search}`)
+      return NextResponse.rewrite(target, { request: { headers: requestHeaders } })
     }
     return NextResponse.next({ request: { headers: requestHeaders } })
   }

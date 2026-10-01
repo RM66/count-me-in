@@ -1,10 +1,16 @@
 """Postgres engine: the server end of the data wire.
 
-Serverless: each function cold start builds its own small pool; queries
-take the request context so delivery cancels cleanly. NullPool + no
-server-side prepared statements is safe behind a transaction-mode pooler
-(PgBouncer/Supavisor) and does not leak connections across frozen
-serverless instances.
+Dual-runtime pooling (backend-refactoring-plan Phase 6):
+
+- Vercel serverless (`VERCEL=1`): each function cold start builds its
+  own engine; queries take the request context so delivery cancels
+  cleanly. NullPool + no server-side prepared statements is safe
+  behind a transaction-mode pooler (PgBouncer/Supavisor) and does not
+  leak connections across frozen serverless instances.
+- Long-running container (`VERCEL` unset — Docker Compose locally,
+  ECS / App Runner in prod): a shared AsyncAdaptedQueuePool reuses
+  connections across requests, with server-side prepared statements
+  enabled (direct Postgres, no transaction-mode pooler in front).
 
 A failed initialization is cached and re-raised on every call, so a
 bad URL does not leave the engine None for the lifetime of the
@@ -24,12 +30,19 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 
 _engine: AsyncEngine | None = None
 _init_err: Exception | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 _sessionmaker_engine: AsyncEngine | None = None
+
+
+def is_serverless() -> bool:
+    """True on Vercel serverless (`VERCEL=1`), False in a long-running
+    container. The check reads the env on every call so tests can flip
+    the mode with monkeypatch without a cache reset."""
+    return os.getenv("VERCEL", "0") == "1"
 
 
 # libpq-known query options are the allowlist: anything else in the URL
@@ -75,14 +88,27 @@ def engine() -> AsyncEngine:
             elif url.startswith("postgresql://"):
                 url = "postgresql+psycopg://" + url[len("postgresql://") :]
             url = _sanitize_query(url)
-            _engine = create_async_engine(
-                url,
+            if is_serverless():
                 # NullPool explicitly: create_async_engine defaults to
                 # AsyncAdaptedQueuePool, which would hold connections
                 # open across frozen serverless instances.
-                poolclass=NullPool,
-                connect_args={"prepare_threshold": None, "connect_timeout": 5},
-            )
+                _engine = create_async_engine(
+                    url,
+                    poolclass=NullPool,
+                    connect_args={"prepare_threshold": None, "connect_timeout": 5},
+                )
+            else:
+                # Long-running container: pooled connections across
+                # requests; prepared statements stay enabled (direct
+                # Postgres, no transaction-mode pooler in front).
+                _engine = create_async_engine(
+                    url,
+                    poolclass=AsyncAdaptedQueuePool,
+                    pool_size=5,
+                    max_overflow=10,
+                    pool_pre_ping=True,
+                    connect_args={"connect_timeout": 10},
+                )
     if _init_err is not None:
         raise _init_err
     if _engine is None:
@@ -129,8 +155,10 @@ async def dispose() -> None:
 
 def reset_for_test() -> None:
     """Drop the cached engine and init state, so the next engine() call
-    re-reads POSTGRES_URL. Test-only. Disposal is dispose()'s job;
-    NullPool holds no connections to close here."""
+    re-reads POSTGRES_URL (and VERCEL for the pool policy). Test-only.
+    Disposal is dispose()'s job; a cached NullPool engine holds no
+    connections to close here (a container-mode pool does, but tests
+    never open pooled connections — they assert pool policy only)."""
     global _engine, _init_err, _sessionmaker, _sessionmaker_engine
     _engine = None
     _init_err = None

@@ -41,7 +41,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget)
 - **Validation:** Zod (`packages/contracts`) → OpenAPI → Pydantic v2 models via datamodel-code-generator; requests validated against the spec ([ADR-016](docs/decisions/016-standard-openapi-codegen.md), [ADR-021](docs/decisions/021-api-python-rewrite.md))
 - **i18n:** next-intl, ICU messages per locale ([ADR-011](docs/decisions/011-i18n.md))
-- **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis
+- **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis — `NullPool` on Vercel serverless, queue pool in the container (`apps/web/Dockerfile` + `docker-compose.yml`)
 - **Media:** Cloudflare R2
 - **Jobs:** Upstash QStash ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links
@@ -54,10 +54,16 @@ Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md)
 ```sh
 bun install
 cp .env.example .env          # DB + Redis connection strings
-docker compose up -d          # Postgres + Redis
-bun run db:migrate:py   # apply migrations (Alembic, schema owner)
-bun run dev
+docker compose up -d          # full stack: Postgres + Redis + API + web
+bun run dev                   # host dev servers (Next :3000 + API :3001)
 ```
+
+`docker compose up postgres redis` keeps the minimal shape for host-run
+servers and pytest/Playwright. The API image migrates on startup
+(`alembic upgrade head`); the web image runs the standalone server and
+reaches the API at `API_URL` (explicit `API_URL` wins over same-origin
+even with `NODE_ENV=production`). Vercel serverless stays the
+production web path; containers are the local/AWS twin.
 
 Package manager: **Bun** (see `.vscode/settings.json`); Python toolchain managed by **uv** — run `uv sync` in `apps/web` once after cloning (the local API dev server is uvicorn via `bun run dev:api:py`).
 

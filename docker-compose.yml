@@ -29,6 +29,92 @@ services:
       timeout: 5s
       retries: 5
 
+  # Full-stack local dev (Phase 6): `docker compose up` boots the whole
+  # topology — Postgres + Redis (integration tests, E2E, dev servers)
+  # plus the containerized Python API and the Next.js web app.
+  #
+  # `docker compose up postgres redis` keeps the old minimal shape for
+  # pytest/Playwright against host-run servers.
+  api:
+    build:
+      # Repo root (shared with web): the API Dockerfile COPYs
+      # apps/web-relative paths from the root context.
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    container_name: countmein_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Service discovery inside the compose network. VERCEL is
+      # deliberately unset — the container opens the queue pool.
+      POSTGRES_URL: postgresql://countmein:countmein@postgres:5432/countmein
+      REDIS_URL: redis://redis:6379
+      APP_URL: http://localhost:3000
+      API_URL: http://api:3001
+      AUTH_SECRET: ${AUTH_SECRET:-dev-auth-secret-change-me}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      QSTASH_TOKEN: ${QSTASH_TOKEN:-}
+      QSTASH_CURRENT_SIGNING_KEY: ${QSTASH_CURRENT_SIGNING_KEY:-}
+      QSTASH_NEXT_SIGNING_KEY: ${QSTASH_NEXT_SIGNING_KEY:-}
+      QSTASH_URL: ${QSTASH_URL:-}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BUCKET:-countmein-media}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+    ports:
+      - '3001:3001'
+    # The image migrates on startup (`alembic upgrade head`), so no
+    # entrypoint override is needed here.
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/api/healthz > /dev/null || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    build:
+      # Repo root: the web install resolves workspace:* deps from
+      # packages/ (see Dockerfile.web) — apps/web alone is insufficient.
+      context: .
+      dockerfile: ./apps/web/Dockerfile.web
+    container_name: countmein_web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Server-side API origin: same helper the dev rewrites use
+      # (resolveApiOrigin reads API_URL outside production). Auth.js
+      # needs the host allowlisted (AUTH_TRUST_HOST) and the canonical
+      # URL (AUTH_URL) so callbacks/sessions resolve behind compose.
+      NODE_ENV: production
+      API_URL: http://api:3001
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
+      AUTH_SECRET: ${AUTH_SECRET:-dev-auth-secret-change-me}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}
+      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+    ports:
+      - '3000:3000'
+    healthcheck:
+      # Single quotes inside: CMD-SHELL runs under `sh -c`, where
+      # backticks would be command substitution.
+      test:
+        [
+          'CMD-SHELL',
+          'node -e ''fetch("http://127.0.0.1:3000/api/healthz").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))''',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
 volumes:
   postgres_data:
   redis_data:
