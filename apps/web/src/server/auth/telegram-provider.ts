@@ -2,7 +2,7 @@ import { isDemoOrganizerId } from '@repo/contracts'
 import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
 import Credentials from 'next-auth/providers/credentials'
 
-import { getInternalOrganizer } from '@/server/api-client'
+import { getInternalOrganizer } from '@/server/internal-api'
 import { consumeLoginLink } from './login-link'
 import { consumeTicket, issueTicket, TICKET_BASE64URL_LENGTH } from './ticket'
 

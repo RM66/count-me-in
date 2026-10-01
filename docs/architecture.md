@@ -46,10 +46,8 @@ flowchart LR
 
 | Component                                      | Role                                                                                                                               |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`                                     | Next.js: landing, public booking, cabinet, Auth.js, server-side page reads (Postgres)                                              |
-| `apps/web/api`                                 | Python API: a single FastAPI ASGI Vercel Function — all API routes + job handlers ([ADR-021](decisions/021-api-python-rewrite.md)) |
-| `packages/db`                                  | Drizzle schema, migrations, client                                                                                                 |
-| `packages/redis`                               | ioredis singleton (sessions, auth tickets, rate limits)                                                                            |
+| `apps/web`                                     | Next.js: landing, public booking, cabinet, Auth.js; server reads go over HTTP to the Python API (no direct Postgres)              |
+| `apps/web/api`                                 | Python API: a single FastAPI ASGI Vercel Function — all API routes + job handlers ([ADR-021](decisions/021-api-python-rewrite.md)); Alembic owns the schema (`apps/web/alembic`) |
 | `packages/contracts`                           | Zod schemas shared across the web app's layers                                                                                     |
 | `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                                                                           |
 | Postgres                                       | Domain data                                                                                                                        |
@@ -158,6 +156,6 @@ Both SDKs check their env var before initialising, so local dev and CI run witho
 
 ## Out of scope
 
-- Concrete DDL (Drizzle later).
+- Concrete DDL (Alembic baseline `apps/web/alembic/versions/0001_initial_schema.py`).
 - Deployment topology and CI.
 - Payments, multi-staff, subdomain tenancy, Capacitor app ([roadmap.md](roadmap.md)).

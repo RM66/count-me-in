@@ -1,15 +1,10 @@
-import { createHmac } from 'node:crypto'
 import {
-  type AnalyticsSummaryRecord,
   type BookingRecord,
   bookingsEnvelope,
   type CabinetSummaryEnvelope,
   cabinetSummaryEnvelope,
   type GuestBooking,
   guestBookingEnvelope,
-  internalOrganizerEnvelope,
-  internalOrganizerLookupInput,
-  type InternalOrganizerRecord,
   organizerEnvelope,
   type OrganizerProfile,
   type PublicOrganizerViewEnvelope,
@@ -22,14 +17,12 @@ import {
   serviceEnvelope,
   type ServiceRecord,
   servicesEnvelope,
-  slotEnvelope,
   slotsEnvelope,
   type TimeSlotRecord,
 } from '@repo/contracts'
-import { headers } from 'next/headers'
 import type { z } from 'zod'
 
-import { apiFetch } from '@/server/api'
+import { apiFetch, resolveApiOrigin } from '@/server/api'
 
 import 'server-only'
 
@@ -46,23 +39,9 @@ import 'server-only'
  * - cabinet reads reuse `apiFetch`, which mints `X-Organizer-Auth` from
  *   the Auth.js session when present; anonymous callers get the demo
  *   scope server-side (ADR-010).
- * - `getInternalOrganizer` sends `x-internal-secret` derived from
- *   `AUTH_SECRET` via HKDF-SHA256, mirroring
- *   `countmein/auth/internal.py` exactly.
+ * - the Auth.js provider lookup lives in `internal-api.ts` (kept
+ *   separate so it never imports `apiFetch`/`auth()` — review fix 1.1).
  */
-
-async function publicOrigin(): Promise<string> {
-  if (process.env.NODE_ENV !== 'production') {
-    return (process.env.API_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '')
-  }
-  const h = await headers()
-  const host = h.get('host')
-  if (host) {
-    const proto = h.get('x-forwarded-proto') ?? 'https'
-    return `${proto}://${host}`
-  }
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://countmein.group').replace(/\/$/, '')
-}
 
 async function fetchEnvelope<S extends z.ZodType>(
   path: string,
@@ -88,7 +67,7 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
   tags: string[],
   init: RequestInit = {},
 ): Promise<z.infer<S> | null> {
-  const origin = await publicOrigin()
+  const origin = await resolveApiOrigin()
   const res = await fetch(`${origin}${path}`, { ...init, next: { tags } })
   if (res.status === 404) return null
   if (!res.ok) {
@@ -134,7 +113,7 @@ export async function getPublicSitemap(): Promise<PublicSitemapEnvelope> {
 
 /** Guest booking by manageToken. POST: the token is a secret, kept out of URLs. */
 export async function getGuestBooking(manageToken: string): Promise<GuestBooking | null> {
-  const origin = await publicOrigin()
+  const origin = await resolveApiOrigin()
   const res = await fetch(`${origin}/api/bookings/manage-lookup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -185,16 +164,6 @@ export async function listSlots(options: { upcomingOnly?: boolean } = {}): Promi
     next: { tags: ['cabinet-slots'] },
   })
   return envelope?.slots ?? []
-}
-
-/** One slot scoped to the viewer; null when unknown or foreign. */
-export async function getOwnedSlot(slotId: string): Promise<TimeSlotRecord | null> {
-  const envelope = await fetchEnvelope(
-    `/api/slots/${encodeURIComponent(slotId)}`,
-    slotEnvelope,
-    { next: { tags: ['cabinet-slots', `cabinet-slot:${slotId}`] } },
-  )
-  return envelope?.slot ?? null
 }
 
 /** Bookings of the viewer, newest first, paginated (default 50). */
@@ -284,56 +253,4 @@ export function serviceCountsById(
   )
 }
 
-export type { AnalyticsSummaryRecord, ServiceCountsRecord }
-
-const INTERNAL_SECRET_HEADER = 'x-internal-secret'
-const INTERNAL_HKDF_SALT = 'countmein'
-const INTERNAL_HKDF_INFO = 'CountMeIn Internal Service Key v1'
-
-/**
- * Derive the internal service secret from AUTH_SECRET via HKDF-SHA256 —
- * the same extract-then-expand construction as
- * `derived_internal_secret` in `countmein/auth/internal.py`:
- * PRK = HMAC(salt, IKM), OKM = HMAC(PRK, info || 0x01) truncated to
- * 32 bytes, hex-encoded.
- */
-export function derivedInternalSecret(authSecret: string): string {
-  const prk = createHmac('sha256', INTERNAL_HKDF_SALT).update(authSecret, 'utf8').digest()
-  return createHmac('sha256', prk)
-    .update(Buffer.concat([Buffer.from(INTERNAL_HKDF_INFO, 'utf8'), Buffer.from([0x01])]))
-    .digest()
-    .subarray(0, 32)
-    .toString('hex')
-}
-
-/**
- * Internal organizer lookup for Auth.js: by messenger identity or by id.
- * Returns null when not found, or when AUTH_SECRET is unconfigured.
- */
-export async function getInternalOrganizer(
-  lookup: { messenger?: string; messengerId?: string; organizerId?: string },
-): Promise<InternalOrganizerRecord | null> {
-  const authSecret = process.env.AUTH_SECRET
-  if (!authSecret) return null
-  const parsed = internalOrganizerLookupInput.safeParse(lookup)
-  if (!parsed.success) return null
-  const origin = await publicOrigin()
-  const res = await fetch(`${origin}/api/internal/auth/organizer-by-messenger`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      [INTERNAL_SECRET_HEADER]: derivedInternalSecret(authSecret),
-    },
-    body: JSON.stringify(parsed.data),
-  })
-  if (res.status === 404 || res.status === 400 || res.status === 401) return null
-  if (!res.ok) {
-    throw new Error(`API request failed: internal organizer lookup answered ${res.status}`)
-  }
-  const data: unknown = await res.json().catch(() => ({}))
-  const envelope = internalOrganizerEnvelope.safeParse(data)
-  if (!envelope.success) {
-    throw new Error('API contract violation: internal organizer lookup shape mismatch')
-  }
-  return envelope.data.organizer
-}
+export type { ServiceCountsRecord }

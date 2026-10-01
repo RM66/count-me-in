@@ -23,8 +23,12 @@ from dotenv import load_dotenv
 # Local runs do not load .env; without POSTGRES_URL the xdist isolation
 # below is a no-op and parity workers collide on one shared database.
 # Never override what the environment (CI) already sets.
-_env_file = Path(__file__).resolve().parents[1] / ".env"
-if _env_file.is_file():
+# Walk up from this file to the first .env (repo root locally; absent in CI).
+_env_file = next(
+    (p / ".env" for p in Path(__file__).resolve().parents if (p / ".env").is_file()),
+    None,
+)
+if _env_file is not None:
     load_dotenv(_env_file, override=False)
 
 

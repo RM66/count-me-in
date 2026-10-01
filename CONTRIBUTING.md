@@ -31,7 +31,7 @@ the env var was lost, not that the test is flaky.
 ## E2E smoke
 
 ```sh
-bun run --cwd packages/db db:seed:demo   # the /demo scenario needs the seed
+bun run db:seed:demo   # the /demo scenario needs the seed
 bun run --cwd apps/web test:e2e
 ```
 
@@ -91,7 +91,7 @@ CI**, by design. Do not weaken these checks to get a PR green:
   name tests after the invariant, not the function.
 - Transactions and Redis semantics are tested against **real** services
   (docker-compose locally, workflow services in CI) — mocks hide the bug class
-  that matters (Drizzle cache + `Buffer.from(Date)`, `getdel` single-use).
+  that matters (query caching, `getdel` single-use).
 - Every new write route ships with a happy-path test **and** a demo/refusal
   test; every new notification message ships goldens for all 8 locales
   (`--update-goldens` in `tests_py/jobs`).

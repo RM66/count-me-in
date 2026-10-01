@@ -14,7 +14,7 @@ Target audience and product framing: see [README.md](README.md) — organizers o
 - **State:** TanStack Query (server)
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget; `Organizer.id` = user id, identity = `messenger` + `messengerId`)
 - **Validation:** Zod (`packages/contracts`)
-- **Data:** Postgres, Drizzle ORM, Redis
+- **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis
 - **Media:** Cloudflare R2 (signed upload URLs minted by the Python API; R2 helpers live in `apps/web/api/_lib/countmein/storage.py`)
 - **Jobs:** Upstash QStash — `apps/web` publishes after commit, `POST /api/jobs/{queue}` consumes ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links in messages
@@ -32,7 +32,7 @@ apps/
       app/             # App Router: pages, layouts, route handlers
       components/      # React components (shadcn/ui + app components)
       hooks/           # React hooks (shadcn-owned alias `@/hooks`)
-      server/          # server-only: db (reads), auth, demo (import 'server-only')
+      server/          # server-only: api-client (reads), auth, demo (import 'server-only')
       api-client/      # client-only React Query layer — the browser end of the wire
       helpers/         # pure presentation utilities (date, name, contact)
       constants/       # static data tables (timezones, site)
@@ -47,7 +47,6 @@ apps/
     tests_py/          # pytest suite (mirrors the package tree) + parity goldens
     scripts/           # ensure-qstash.ts, generate-openapi.ts, generate-constants.ts, generate-i18n-py.ts, generate-py-models.sh
 packages/
-  db/                  # Drizzle schema, migrations
   contracts/           # Zod schemas, shared types
   translations/        # web + notification copy (ICU messages per locale, ADR-011)
   eslint-config/       # shared ESLint
@@ -61,16 +60,15 @@ docs/
 
 **`apps/web/src/` structure — the data wire is the load-bearing seam:**
 
-- `server/` — **server-only** code; every module carries `import 'server-only'`. Read-only Postgres access for pages + Auth.js config. The write side (route handlers, guards, QStash, storage, jobs) lives in the Python API.
+- `server/` — **server-only** code; every module carries `import 'server-only'`. Reads go over HTTP to the Python API via `server/api-client.ts` (`api.ts` mints `X-Organizer-Auth`, `internal-api.ts` serves Auth.js); `server/db/` is deleted — Next.js has zero direct Postgres access. The write side (route handlers, guards, QStash, storage, jobs) lives in the Python API.
   - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`, `login-link.ts`
-  - `db/` — Postgres **reads only** + DTO mapping, one file per entity (`organizer.ts`, `service.ts`, `booking.ts`, `time-slot.ts`). Writes live in the Python API; these modules serve pages that read Postgres directly (cabinet, public pages, sitemap, OG images).
   - `demo.ts` — cabinet organizer resolution: `resolveCabinetOrganizerId()` (whose data to show) and `isDemoSession()`. Write-side demo guards live in the Python API.
 - `api-client/` — **client-only** React Query layer, one file per entity (`organizer.ts`, `service.ts`, `auth.ts`), each holding queries _and_ mutations. `keys.ts` is the cache-key factory, `client.ts` the fetch helpers, `image.ts` browser-side downscaling. Import via `@/api-client`. The browser end of the wire.
 - `helpers/` — pure presentation utilities: formatting and adapters (`date.ts`, `name.ts`, `contact.ts`).
 - `constants/` — static data tables (`timezones.ts`, `site.ts`).
 - `lib/` — cross-cutting singletons that don't fit a semantic bucket: `posthog.ts` (analytics), `og/` (OpenGraph image assets), `utils.ts` (`cn()`). **`utils.ts` is shadcn-owned:** path is the `utils` alias in `components.json`. Do not add non-shadcn helpers here.
 
-**No `lib/domain/`** — deleted as dead code. Entity invariants live in `server/db/` or `packages/contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
+**No `lib/domain/`** — deleted as dead code. Entity invariants live in `packages/contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
 
 **No mock data** — `lib/mock-data.ts` was deleted. Sample content is the **demo seed** (`apps/web/api/_lib/countmein/db/seed.py`, invoked by `bun run db:seed:demo`), real rows behind `/demo` (ADR-010). Do not reintroduce fixtures.
 
@@ -78,7 +76,7 @@ docs/
 
 **Form schemas are not wire schemas.** Controlled inputs hold `string` (including `''` mid-edit), while the API takes numbers and `null`. Each entity has a `*-form.ts` beside its wire schema, with adapters (`optionalText`, `numericText`) shared from `form-fields.ts`. Bounds compose from `primitives.ts`.
 
-**Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and entity files live at `server/db/service.ts` (kind → entity). Never reintroduce `services/`.
+**Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and server reads live in `server/api-client.ts`. Never reintroduce `services/`.
 
 **`api-client/` vs the Python API** — two ends of one wire. `api-client/` is the browser client (React Query). The Python API (`apps/web/api/_lib/countmein`) holds the server handlers; `app/api/auth/[...nextauth]/route.ts` is the only TS route handler left (Auth.js). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
 

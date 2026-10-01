@@ -83,16 +83,8 @@ jobs:
       # CI, see requirePostgres) when the schema is missing.
       - name: Migrate CI database
         if: matrix.task == 'test'
-        working-directory: packages/db
-        run: bun run db:migrate
-
-      # `next build` collects page data for OG routes, which instantiates
-      # the Drizzle client: it never connects during the
-      # build, but the constructor requires POSTGRES_URL. A placeholder
-      # is enough — no real database is reachable from CI anyway.
-      - name: Build env
-        if: matrix.task == 'build'
-        run: echo "POSTGRES_URL=postgres://ci:ci@localhost:5432/ci" >> "$GITHUB_ENV"
+        working-directory: apps/web
+        run: bun run db:migrate:py
 
       - run: bun run ${{ matrix.task }}
 
@@ -184,8 +176,9 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Migrate CI database
-        working-directory: packages/db
-        run: bun run db:migrate
+        # Alembic owns the schema (Phase 1).
+        working-directory: apps/web
+        run: bun run db:migrate:py
 
       - name: Generate Python artifacts
         # i18n copy, the OpenAPI spec, the constants and the Pydantic
@@ -303,12 +296,13 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Migrate CI database
-        working-directory: packages/db
-        run: bun run db:migrate
+        # Alembic owns the schema (Phase 1).
+        working-directory: apps/web
+        run: bun run db:migrate:py
 
       - name: Seed demo organizer
-        working-directory: packages/db
-        run: bun run db:seed:demo
+        working-directory: apps/web
+        run: bun run db:seed:demo:py
 
       - name: Run E2E smoke
         working-directory: apps/web
@@ -317,8 +311,9 @@ jobs:
   # Apply DB migrations only on the production deploy trigger (push to main),
   # after all checks pass. Running them in the Vercel build command would be
   # wrong: builds are cached (migrations could be skipped) and preview deploys
-  # would run them against the production database. drizzle-kit migrate is
-  # idempotent — it tracks applied migrations in the DB, so re-runs are no-ops.
+  # would run them against the production database. `alembic upgrade head`
+  # is idempotent — it tracks applied revisions in the DB, so re-runs
+  # are no-ops.
   migrate:
     name: Apply DB migrations
     runs-on: ubuntu-latest
@@ -350,7 +345,7 @@ jobs:
         run: |
           if ! git rev-parse --verify -q HEAD^ >/dev/null; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only HEAD^ HEAD -- packages/db/drizzle/ | grep -q .; then
+          elif git diff --name-only HEAD^ HEAD -- apps/web/alembic/ | grep -q .; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
           else
             echo "migrations=false" >> "$GITHUB_OUTPUT"
@@ -358,8 +353,8 @@ jobs:
 
       - name: Apply migrations
         if: steps.changes.outputs.migrations == 'true'
-        working-directory: packages/db
-        run: bun run db:migrate
+        working-directory: apps/web
+        run: bun run db:migrate:py
 
   # Keep the QStash schedule for the demo seed refresh in sync with the code
   # (ADR-012). The schedule lives in Upstash, not in this repo, so left alone

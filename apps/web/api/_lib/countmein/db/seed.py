@@ -747,9 +747,21 @@ async def seed_demo(now: datetime) -> None:
 if __name__ == "__main__":
     # CLI entry: `PYTHONPATH=api/_lib uv run python -m countmein.db.seed`
     # (run from apps/web). The only copy of the demo seed (ADR-021) —
-    # `bun run db:seed:demo` delegates here.
+    # `bun run db:seed:demo` delegates here. Loads the repo-root .env when
+    # present (local dev); CI sets connection vars via `env:` instead, so a
+    # missing file is fine and never overrides the environment.
     import asyncio
     from datetime import UTC
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+
+    _env_file = next(
+        (p / ".env" for p in Path(__file__).resolve().parents if (p / ".env").is_file()),
+        None,
+    )
+    if _env_file is not None:
+        load_dotenv(_env_file, override=False)
 
     asyncio.run(seed_demo(datetime.now(tz=UTC)))
     print("[seed] demo organizer seeded — https://countmein.group/demo")

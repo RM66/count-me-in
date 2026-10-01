@@ -19,7 +19,7 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 
 /**
  * Client-side API for the **Service** entity — writes plus the cover upload
- * flow. Cabinet pages read services on the server (`lib/server/db/service.ts`),
+ * flow. Cabinet pages read services on the server (`server/api-client.ts`),
  * so there is no list/detail query here. The mutations return the created or
  * updated record; the caller follows with `router.refresh()` to re-render the
  * server component (Phase 2.3 — no client cache to invalidate).

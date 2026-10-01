@@ -28,7 +28,8 @@
     "test:e2e": "playwright test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "db:migrate:py": "uv run alembic upgrade head"
+    "db:migrate:py": "uv run alembic upgrade head",
+    "db:seed:demo:py": "PYTHONPATH=api/_lib uv run python -m countmein.db.seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

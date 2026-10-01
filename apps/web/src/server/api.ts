@@ -1,9 +1,10 @@
-import { headers } from 'next/headers'
-
+import { resolveApiOrigin } from '@/server/api-origin'
 import { auth } from '@/server/auth'
 import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
 
 import 'server-only'
+
+export { resolveApiOrigin }
 
 /**
  * Server-side fetch to the Python API — the write-side counterpart of the
@@ -22,20 +23,6 @@ import 'server-only'
  * dev, the API server runs separately at `API_URL` (default :3001).
  */
 
-/** Resolve the API origin for a server-side fetch. */
-async function apiOrigin(): Promise<string> {
-  if (process.env.NODE_ENV !== 'production') {
-    return (process.env.API_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '')
-  }
-  const h = await headers()
-  const host = h.get('host')
-  if (host) {
-    const proto = h.get('x-forwarded-proto') ?? 'https'
-    return `${proto}://${host}`
-  }
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://countmein.group').replace(/\/$/, '')
-}
-
 /**
  * Fetch an API path with the organizer-auth header forwarded. The caller
  * sets method, body and any non-cookie headers; this helper adds the
@@ -46,7 +33,7 @@ async function apiOrigin(): Promise<string> {
  * organizer-auth JWT is the credential now.
  */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const origin = await apiOrigin()
+  const origin = await resolveApiOrigin()
   const reqHeaders = new Headers(init.headers)
 
   const session = await auth()

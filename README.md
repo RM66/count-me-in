@@ -26,7 +26,6 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 
 | Package                   | Role                                                  |
 | ------------------------- | ----------------------------------------------------- |
-| `@repo/db`                | Drizzle schema & migrations                           |
 | `@repo/contracts`         | Shared Zod schemas, wire registry, API route manifest |
 | `@repo/translations`      | Web + notification copy (ICU messages per locale)     |
 | `@repo/eslint-config`     | ESLint configs                                        |
@@ -42,7 +41,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget)
 - **Validation:** Zod (`packages/contracts`) → OpenAPI → Pydantic v2 models via datamodel-code-generator; requests validated against the spec ([ADR-016](docs/decisions/016-standard-openapi-codegen.md), [ADR-021](docs/decisions/021-api-python-rewrite.md))
 - **i18n:** next-intl, ICU messages per locale ([ADR-011](docs/decisions/011-i18n.md))
-- **Data:** Postgres, Drizzle ORM, Redis
+- **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis
 - **Media:** Cloudflare R2
 - **Jobs:** Upstash QStash ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links
@@ -56,7 +55,7 @@ Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md)
 bun install
 cp .env.example .env          # DB + Redis connection strings
 docker compose up -d          # Postgres + Redis
-bun run --filter @repo/db db:migrate   # apply migrations
+bun run db:migrate:py   # apply migrations (Alembic, schema owner)
 bun run dev
 ```
 
@@ -64,12 +63,11 @@ Package manager: **Bun** (see `.vscode/settings.json`); Python toolchain managed
 
 ### Database
 
-Drizzle schema and migrations in [`packages/db`](packages/db):
+Alembic owns the schema (`apps/web/alembic`, baseline `0001_initial_schema.py`):
 
 ```sh
-bun run --filter @repo/db db:generate   # create a migration from schema changes
-bun run --filter @repo/db db:migrate    # apply pending migrations
-bun run --filter @repo/db db:studio     # open Drizzle Studio
+bun run db:migrate:py   # apply pending revisions (alembic upgrade head)
+bun run db:seed:demo    # seed the /demo organizer (Python seed)
 ```
 
 ### Contracts codegen

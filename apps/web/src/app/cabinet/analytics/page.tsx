@@ -6,7 +6,6 @@ import { getTranslations } from 'next-intl/server'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
 import { getCabinetSummary, listSlots, toChartTrend } from '@/server/api-client'
-import { resolveCabinetOrganizerId } from '@/server/demo'
 
 // recharts is a heavy client bundle; defer it so the page shell and stat cards
 // paint before the chart chunk loads. The charts are the only consumer. The
@@ -39,9 +38,7 @@ function formatDelta(delta: number | null): string | undefined {
 }
 
 export default async function AnalyticsPage() {
-  // Anonymous visitors get the read-only demo organizer (ADR-010).
-  await resolveCabinetOrganizerId()
-
+  // Anonymous visitors get the read-only demo scope from the API (ADR-010).
   const t = await getTranslations('Cabinet.analytics')
   const tcrumbs = await getTranslations('Cabinet.crumbs')
 

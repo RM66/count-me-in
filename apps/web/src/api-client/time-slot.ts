@@ -8,7 +8,7 @@ import { del, post, put } from './client'
 
 /**
  * Client-side API for the **TimeSlot** entity.
- * The cabinet reads slots on the server (`lib/server/db/time-slot.ts`), so
+ * The cabinet reads slots on the server (`server/api-client.ts`), so
  * there is no list/detail query here. The mutations return the created or
  * updated record; the caller follows with `router.refresh()` to re-render the
  * server component (Phase 2.3 — no client cache to invalidate).
