@@ -5,8 +5,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
-import { getAnalyticsSummary } from '@/server/db/booking'
-import { listSlots } from '@/server/db/time-slot'
+import { getCabinetSummary, listSlots, toChartTrend } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 // recharts is a heavy client bundle; defer it so the page shell and stat cards
@@ -41,18 +40,19 @@ function formatDelta(delta: number | null): string | undefined {
 
 export default async function AnalyticsPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId } = await resolveCabinetOrganizerId()
+  await resolveCabinetOrganizerId()
 
   const t = await getTranslations('Cabinet.analytics')
   const tcrumbs = await getTranslations('Cabinet.crumbs')
 
-  // The booking-derived metrics are aggregated in Postgres (Phase 2.2) rather
+  // The booking-derived metrics are aggregated in the Python API rather
   // than loaded into JS memory; slots are still needed for the fill rate,
   // which reads off the atomic-reserve `bookedCount` column.
-  const [slots, summary] = await Promise.all([
-    listSlots(organizerId),
-    getAnalyticsSummary(organizerId),
-  ])
+  const [slots, summaryEnvelope] = await Promise.all([listSlots(), getCabinetSummary()])
+  const summary = summaryEnvelope.analytics
+
+  // Zero-fill the 14-day API trend into the 7-day chart buckets.
+  const trend = toChartTrend(summary.trend)
 
   const now = Date.now()
   const upcoming = slots.filter((slot) => new Date(slot.startsAt).getTime() >= now)
@@ -110,7 +110,7 @@ export default async function AnalyticsPage() {
           />
         </div>
 
-        <AnalyticsCharts trend={summary.trend} byService={summary.byService} />
+        <AnalyticsCharts trend={trend} byService={summary.byService} />
       </div>
     </>
   )

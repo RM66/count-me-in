@@ -2,9 +2,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { WeekCalendar } from '@/app/cabinet/calendar/_components/week-calendar'
-import { getOrganizerProfile } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listSlots } from '@/server/db/time-slot'
+import { getOrganizerProfile, listServices, listSlots } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 /**
@@ -19,14 +17,14 @@ import { resolveCabinetOrganizerId } from '@/server/demo'
  */
 export default async function CalendarPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  await resolveCabinetOrganizerId()
 
   const tcrumbs = await getTranslations('Cabinet.crumbs')
 
   const [organizer, services, slots] = await Promise.all([
-    getOrganizerProfile(organizerId, isReadOnly),
-    listServices(organizerId),
-    listSlots(organizerId),
+    getOrganizerProfile(),
+    listServices(),
+    listSlots(),
   ])
 
   // "Now" as the server saw it, so the today column and the current-time line

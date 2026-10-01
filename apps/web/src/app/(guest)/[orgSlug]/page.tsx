@@ -12,9 +12,7 @@ import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-previe
 import { Separator } from '@/components/ui/separator'
 import { SITE_URL } from '@/constants/site'
 import { pageMetadata } from '@/lib/seo'
-import { getPublicOrganizerBySlug } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listUpcomingSlotsForServices } from '@/server/db/time-slot'
+import { getPublicOrganizerView } from '@/server/api-client'
 
 /**
  * Metadata has to be a function, not a static object: the title names the
@@ -28,7 +26,8 @@ export async function generateMetadata({
   params: Promise<{ orgSlug: string }>
 }): Promise<Metadata> {
   const { orgSlug } = await params
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
+  const view = await getPublicOrganizerView(orgSlug)
+  const organizer = view?.organizer ?? null
   const t = await getTranslations('OrgPage')
 
   if (!organizer) {
@@ -49,17 +48,12 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
   const t = await getTranslations('OrgPage')
   const locale = await getLocale()
 
-  // The slug is the only identifier a guest has, so it is resolved first — every
-  // read below is scoped to the organizer it returns.
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
-  if (!organizer) notFound()
-
-  const services = await listServices(organizer.id)
-
-  // Every service's upcoming slots in one query, so each card can show its next
-  // open session without a lookup per card. `listServices` is reused as-is: a
-  // service row holds nothing an organizer would not print on their own page.
-  const slots = await listUpcomingSlotsForServices(services.map((service) => service.id))
+  // The slug is the only identifier a guest has — one API call returns the
+  // organizer, their services, and every service's upcoming slots, so each
+  // card can show its next open session without a lookup per card.
+  const view = await getPublicOrganizerView(orgSlug)
+  if (!view) notFound()
+  const { organizer, services, slots } = view
 
   // Grouped once here rather than filtered inside each card — the cards receive
   // exactly their own slots and stay free of the parent's data shape.

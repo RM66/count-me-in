@@ -14,25 +14,26 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { countConfirmedBookings } from '@/server/db/booking'
-import { countUpcomingSlots, listServices } from '@/server/db/service'
+import { getCabinetSummary, listServices, serviceCountsById } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function ServicesPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  const { isDemo: isReadOnly } = await resolveCabinetOrganizerId()
 
   const t = await getTranslations('Cabinet.services')
   const tc = await getTranslations('Cabinet.common')
   const tcrumbs = await getTranslations('Cabinet.crumbs')
   const tslots = await getTranslations('Cabinet.slots')
 
-  const services = await listServices(organizerId)
-  const serviceIds = services.map((service) => service.id)
-  const [slotCounts, bookingCounts] = await Promise.all([
-    countUpcomingSlots(serviceIds),
-    countConfirmedBookings(serviceIds),
-  ])
+  const [services, summary] = await Promise.all([listServices(), getCabinetSummary()])
+  const countsById = serviceCountsById(summary.serviceCounts)
+  const slotCounts: Record<string, number> = Object.fromEntries(
+    Object.entries(countsById).map(([id, counts]) => [id, counts.upcomingSlots]),
+  )
+  const bookingCounts: Record<string, number> = Object.fromEntries(
+    Object.entries(countsById).map(([id, counts]) => [id, counts.confirmedBookings]),
+  )
 
   return (
     <>

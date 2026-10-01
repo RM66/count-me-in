@@ -3,10 +3,6 @@
 import { useTranslations } from 'next-intl'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
-import type {
-  AnalyticsServicePoint,
-  AnalyticsTrendPoint,
-} from '@/app/cabinet/analytics/compute-analytics'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   type ChartConfig,
@@ -14,6 +10,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
+import type { AnalyticsServicePoint, AnalyticsTrendPoint } from '@/server/api-client'
 
 export function AnalyticsCharts({
   trend,

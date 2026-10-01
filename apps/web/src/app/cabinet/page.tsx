@@ -22,10 +22,12 @@ import { Separator } from '@/components/ui/separator'
 import { SITE_DOMAIN } from '@/constants/site'
 import { formatDateTime } from '@/helpers/date'
 import { cn } from '@/lib/utils'
-import { listBookings } from '@/server/db/booking'
-import { getOrganizerProfile } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listSlots } from '@/server/db/time-slot'
+import {
+  getOrganizerProfile,
+  listBookings,
+  listServices,
+  listSlots,
+} from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
@@ -39,7 +41,7 @@ export default async function CabinetOverviewPage({
   searchParams: Promise<{ slot?: string }>
 }) {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  const { isDemo: isReadOnly } = await resolveCabinetOrganizerId()
   const { slot: slotParam } = await searchParams
 
   const t = await getTranslations('Cabinet.overview')
@@ -54,10 +56,10 @@ export default async function CabinetOverviewPage({
   // recent booking may sit on a session that has already happened, and it still
   // has to resolve Booking → TimeSlot → Service to name its service.
   const [organizer, services, slots, bookings] = await Promise.all([
-    getOrganizerProfile(organizerId, isReadOnly),
-    listServices(organizerId),
-    listSlots(organizerId),
-    listBookings(organizerId),
+    getOrganizerProfile(),
+    listServices(),
+    listSlots(),
+    listBookings(),
   ])
 
   // Falls back to UTC only if the profile row is missing (e.g. the demo seed

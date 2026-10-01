@@ -3,10 +3,12 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { BookingsTable } from '@/app/cabinet/bookings/_components/bookings-table'
 import { formatDateTime } from '@/helpers/date'
-import { listBookings } from '@/server/db/booking'
-import { getOrganizerProfile } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listSlots } from '@/server/db/time-slot'
+import {
+  getOrganizerProfile,
+  listBookings,
+  listServices,
+  listSlots,
+} from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function BookingsPage({
@@ -15,7 +17,7 @@ export default async function BookingsPage({
   searchParams: Promise<{ service?: string; slot?: string; page?: string }>
 }) {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  const { isDemo: isReadOnly } = await resolveCabinetOrganizerId()
   const { service: serviceParam, slot: slotParam, page: pageParam } = await searchParams
 
   // Pagination (Phase 2.2): one page of bookings at a time, 50 per page, so
@@ -34,10 +36,10 @@ export default async function BookingsPage({
   // the timezone every slot instant is shown in. Bookings on past slots are
   // history, not noise — nothing is filtered out here.
   const [organizer, services, slots, bookings] = await Promise.all([
-    getOrganizerProfile(organizerId, isReadOnly),
-    listServices(organizerId),
-    listSlots(organizerId),
-    listBookings(organizerId, { limit: PAGE_SIZE, offset }),
+    getOrganizerProfile(),
+    listServices(),
+    listSlots(),
+    listBookings({ limit: PAGE_SIZE, offset }),
   ])
 
   // The filters live in the URL so the services and slots pages can deep-link
