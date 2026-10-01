@@ -85,7 +85,7 @@ async def get_slot_chain_for_booking(
     row = result.first()
     if row is None:
         return None
-    slot, service, organizer = row[0], row[1], row[2]
+    slot, service, organizer = row
     return (slot, service, organizer)
 
 
@@ -131,7 +131,7 @@ async def get_slot_with_parents(
     row = result.first()
     if row is None:
         return None
-    slot, service, organizer = row[0], row[1], row[2]
+    slot, service, organizer = row
     return (slot, service, organizer)
 
 

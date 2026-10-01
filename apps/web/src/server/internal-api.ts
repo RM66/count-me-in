@@ -62,6 +62,8 @@ export async function getInternalOrganizer(
       [INTERNAL_SECRET_HEADER]: derivedInternalSecret(authSecret),
     },
     body: JSON.stringify(parsed.data),
+    // Service-to-service credential lookup: never cacheable.
+    cache: 'no-store',
   })
   if (res.status === 401) {
     throw new Error('Internal service authentication failed')

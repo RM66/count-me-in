@@ -43,10 +43,17 @@ def test_seat_reserve_is_single_conditional_update():
     under a race."""
     src = (TESTS.parent / "api/_lib/countmein/repositories/booking_repo.py").read_text("utf-8")
     # update(TimeSlot).where(id == ..., booked_count + seats <=
-    # capacity).values(booked_count=booked_count + seats): the claim and
-    # the guard are one statement.
+    # capacity).values(booked_count=booked_count + seats).returning():
+    # the claim and the guard are one statement, and the updated row
+    # comes back from the same round-trip (no re-read to race with).
     assert "TimeSlot.booked_count + seats <= TimeSlot.capacity" in src
     assert "booked_count=TimeSlot.booked_count+seats" in src.replace(" ", "")
+    assert ".returning(TimeSlot)" in src
+    # The predicate and the update must live in the same function —
+    # a comment mentioning the shape must not satisfy the pin.
+    reserve_fn = src.split("async def atomic_reserve_seats", 1)[1].split("\nasync def ", 1)[0]
+    assert "TimeSlot.booked_count + seats <= TimeSlot.capacity" in reserve_fn
+    assert ".returning(TimeSlot)" in reserve_fn
     # The read-check-write shape must not appear in the write path: a
     # SELECT of booked_count feeding a plain UPDATE is the bug this
     # invariant forbids. The shrink-capacity precheck in db/time_slot.py
@@ -58,6 +65,10 @@ def test_seat_reserve_is_single_conditional_update():
         "booked_count = booked_count + :seats", ""
     )
     assert "atomic_reserve_seats" in writes
+    # Cancel releases through the status-guarded mark + release pair —
+    # a double cancel must hit AlreadyCancelled, never double-decrement.
+    assert "cancel_booking_mark" in writes
+    assert "Booking.status == BookingStatus.CONFIRMED" in src
     _assert_test_exists(
         "tests_py.db.test_booking_writes", "test_create_guest_booking_concurrent_last_seats"
     )

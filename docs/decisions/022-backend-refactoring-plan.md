@@ -1,4 +1,16 @@
-# Implementation Plan: Python-First Full-Stack Architecture Refactoring
+# 022 — Python-First Full-Stack Architecture Refactoring (COMPLETED)
+
+> **Status: implemented.** All six phases landed (`ce3d54d` → `9f2cded`) and the
+> review follow-ups after them (cache scoping, raw-SQL removal, docker hygiene).
+> This document is the frozen execution plan, kept as a decision record.
+>
+> Corrections to the plan text discovered during implementation (code is
+> authoritative): §1.3/§2 describe `services.id` as UUID and
+> `notification_outbox` as `(payload jsonb, next_attempt_at, last_error)` —
+> the real schema (Drizzle `0000`–`0015`, Alembic `0001`) uses
+> `services.id TEXT` (nanoid), cascading service/slot FKs, and
+> `notification_outbox(payload TEXT, trace_id, sent_at)` with no
+> `next_attempt_at`/`last_error`.
 
 ## 1. Overview & Architecture Target
 

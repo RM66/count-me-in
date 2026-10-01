@@ -20,6 +20,7 @@ import {
   slotsEnvelope,
   type TimeSlotRecord,
 } from '@repo/contracts'
+import { cache } from 'react'
 import type { z } from 'zod'
 
 import { apiFetch, resolveApiOrigin } from '@/server/api'
@@ -48,7 +49,12 @@ async function fetchEnvelope<S extends z.ZodType>(
   schema: S,
   init: RequestInit = {},
 ): Promise<z.infer<S> | null> {
-  const res = await apiFetch(path, init)
+  // Cabinet reads are per-organizer private data minted from the
+  // request's Auth.js session: never cache them in the shared Next
+  // Data Cache (a cached `cabinet-services` could serve organizer A's
+  // rows to B). `cache: 'no-store'` keeps the per-request fetch while
+  // still allowing React dedup within the render.
+  const res = await apiFetch(path, { ...init, cache: 'no-store' })
   if (res.status === 404) return null
   if (!res.ok) {
     throw new Error(`API request failed: ${path} answered ${res.status}`)
@@ -65,10 +71,18 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
   path: string,
   schema: S,
   tags: string[],
-  init: RequestInit = {},
+  options: { revalidateSeconds?: number } & RequestInit = {},
 ): Promise<z.infer<S> | null> {
+  const { revalidateSeconds = 60, ...init } = options
   const origin = await resolveApiOrigin()
-  const res = await fetch(`${origin}${path}`, { ...init, next: { tags } })
+  // Public catalog reads are unauthenticated and shared: cache them for
+  // a short window so generateMetadata + page + OG image share one
+  // origin fetch instead of three. Tags allow on-demand invalidation
+  // when an organizer mutates public content.
+  const res = await fetch(`${origin}${path}`, {
+    ...init,
+    next: { tags, revalidate: revalidateSeconds },
+  })
   if (res.status === 404) return null
   if (!res.ok) {
     throw new Error(`API request failed: ${path} answered ${res.status}`)
@@ -81,43 +95,59 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
   return parsed.data
 }
 
-/** Public organizer view: profile + services + upcoming slots in one call. */
-export async function getPublicOrganizerView(
-  slug: string,
-): Promise<PublicOrganizerViewEnvelope | null> {
-  return fetchPublicEnvelope(
-    `/api/public/organizers/${encodeURIComponent(slug.toLowerCase())}`,
-    publicOrganizerViewEnvelope,
-    ['public-organizer', `public-organizer:${slug.toLowerCase()}`],
-  )
-}
+/**
+ * Public organizer view: profile + services + upcoming slots in one call.
+ * `cache()`-memoized per request: generateMetadata + page + OG image
+ * share one HTTP fetch instead of three.
+ */
+export const getPublicOrganizerView = cache(
+  async (slug: string): Promise<PublicOrganizerViewEnvelope | null> => {
+    return fetchPublicEnvelope(
+      `/api/public/organizers/${encodeURIComponent(slug.toLowerCase())}`,
+      publicOrganizerViewEnvelope,
+      ['public-organizer', `public-organizer:${slug.toLowerCase()}`],
+    )
+  },
+)
 
 /** Public service view: service + parent organizer + upcoming slots. */
-export async function getPublicServiceView(
-  serviceId: string,
-): Promise<PublicServiceViewEnvelope | null> {
-  return fetchPublicEnvelope(
-    `/api/public/services/${encodeURIComponent(serviceId)}`,
-    publicServiceViewEnvelope,
-    ['public-service', `public-service:${serviceId}`],
-  )
-}
+export const getPublicServiceView = cache(
+  async (serviceId: string): Promise<PublicServiceViewEnvelope | null> => {
+    return fetchPublicEnvelope(
+      `/api/public/services/${encodeURIComponent(serviceId)}`,
+      publicServiceViewEnvelope,
+      ['public-service', `public-service:${serviceId}`],
+    )
+  },
+)
 
-/** Sitemap catalog: every public slug + service path. */
+/**
+ * Sitemap catalog: every public slug + service path.
+ * A 404 here is a route misconfiguration (the handler has no 404 path) —
+ * throw instead of masking it as an empty catalog.
+ */
 export async function getPublicSitemap(): Promise<PublicSitemapEnvelope> {
   const view = await fetchPublicEnvelope('/api/public/sitemap', publicSitemapEnvelope, [
     'public-sitemap',
   ])
-  return view ?? { organizers: [], services: [] }
+  if (view === null) {
+    throw new Error('API request failed: /api/public/sitemap answered 404')
+  }
+  return view
 }
 
-/** Guest booking by manageToken. POST: the token is a secret, kept out of URLs. */
+/**
+ * Guest booking by manageToken. POST: the token is a secret, kept out of
+ * URLs. Unauthenticated but single-credential — no-store like the
+ * cabinet reads (must never land in the shared cache).
+ */
 export async function getGuestBooking(manageToken: string): Promise<GuestBooking | null> {
   const origin = await resolveApiOrigin()
   const res = await fetch(`${origin}/api/bookings/manage-lookup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ manageToken }),
+    cache: 'no-store',
   })
   if (res.status === 404 || res.status === 400) return null
   if (!res.ok) {
@@ -133,17 +163,13 @@ export async function getGuestBooking(manageToken: string): Promise<GuestBooking
 
 /** Organizer profile this request may view (demo for anonymous, null when unseeded). */
 export async function getOrganizerProfile(): Promise<OrganizerProfile | null> {
-  const envelope = await fetchEnvelope('/api/organizers/me', organizerEnvelope, {
-    next: { tags: ['cabinet-profile'] },
-  })
+  const envelope = await fetchEnvelope('/api/organizers/me', organizerEnvelope)
   return envelope?.organizer ?? null
 }
 
 /** Services of the organizer this request may view, oldest first. */
 export async function listServices(): Promise<ServiceRecord[]> {
-  const envelope = await fetchEnvelope('/api/services', servicesEnvelope, {
-    next: { tags: ['cabinet-services'] },
-  })
+  const envelope = await fetchEnvelope('/api/services', servicesEnvelope)
   return envelope?.services ?? []
 }
 
@@ -152,7 +178,6 @@ export async function getOwnedService(serviceId: string): Promise<ServiceRecord 
   const envelope = await fetchEnvelope(
     `/api/services/${encodeURIComponent(serviceId)}`,
     serviceEnvelope,
-    { next: { tags: ['cabinet-services', `cabinet-service:${serviceId}`] } },
   )
   return envelope?.service ?? null
 }
@@ -160,9 +185,7 @@ export async function getOwnedService(serviceId: string): Promise<ServiceRecord 
 /** Slots across the viewer's services, earliest first. */
 export async function listSlots(options: { upcomingOnly?: boolean } = {}): Promise<TimeSlotRecord[]> {
   const path = options.upcomingOnly ? '/api/slots?upcoming=1' : '/api/slots'
-  const envelope = await fetchEnvelope(path, slotsEnvelope, {
-    next: { tags: ['cabinet-slots'] },
-  })
+  const envelope = await fetchEnvelope(path, slotsEnvelope)
   return envelope?.slots ?? []
 }
 
@@ -172,33 +195,22 @@ export async function listBookings(
 ): Promise<BookingRecord[]> {
   const limit = options.limit ?? 50
   const offset = options.offset ?? 0
-  const envelope = await fetchEnvelope(
-    `/api/bookings?limit=${limit}&offset=${offset}`,
-    bookingsEnvelope,
-  )
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+  const envelope = await fetchEnvelope(`/api/bookings?${params.toString()}`, bookingsEnvelope)
   return envelope?.bookings ?? []
 }
 
-/** Cabinet summary: per-service counts + 30-day analytics aggregates. */
+/**
+ * Cabinet summary: per-service counts + 30-day analytics aggregates.
+ * A 404 here is a route misconfiguration (the handler has no 404 path) —
+ * throw instead of masking it as a zero envelope.
+ */
 export async function getCabinetSummary(): Promise<CabinetSummaryEnvelope> {
-  const envelope = await fetchEnvelope('/api/cabinet/summary', cabinetSummaryEnvelope, {
-    next: { tags: ['cabinet-summary'] },
-  })
-  return (
-    envelope ?? {
-      serviceCounts: [],
-      analytics: {
-        totalBookings: 0,
-        prevTotalBookings: 0,
-        seatsSold: 0,
-        prevSeatsSold: 0,
-        windowBookings: 0,
-        cancelledInWindow: 0,
-        trend: [],
-        byService: [],
-      },
-    }
-  )
+  const envelope = await fetchEnvelope('/api/cabinet/summary', cabinetSummaryEnvelope)
+  if (envelope === null) {
+    throw new Error('API request failed: /api/cabinet/summary answered 404')
+  }
+  return envelope
 }
 
 /** One point on the per-day trend chart. */

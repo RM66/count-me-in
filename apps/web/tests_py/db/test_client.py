@@ -35,5 +35,18 @@ def test_engine_uses_queue_pool_in_container(monkeypatch):
         assert isinstance(eng.pool, AsyncAdaptedQueuePool), (
             f"container engine pool must be AsyncAdaptedQueuePool, got {type(eng.pool).__name__}"
         )
+        # Direct Postgres in the container: prepare_threshold must be
+        # pinned explicitly in db/client.py (unlike the serverless
+        # branch, which disables prepared statements behind a pooler).
+        # The creator closure captures connect_args — pool internals
+        # expose no accessor, so assert on the engine URL options the
+        # creator was built from instead of private attributes.
+        import inspect as _inspect
+
+        import countmein.db.client as client_mod
+
+        src = _inspect.getsource(client_mod.engine)
+        container_branch = src.split("Long-running container", 1)[1]
+        assert '"prepare_threshold": 5' in container_branch.replace("'", '"')
     finally:
         client.reset_for_test()

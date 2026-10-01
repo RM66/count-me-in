@@ -39,7 +39,9 @@ async def list_public_service_paths(session: AsyncSession) -> list[tuple[str, st
         .order_by(Organizer.slug, Service.id)
     )
     result = await session.execute(stmt)
-    return [(str(row.org_slug), str(row.service_id)) for row in result.all()]
+    # Row unpacks directly (SQLAlchemy 2.1: tuples() is deprecated) —
+    # named iteration, never positional row[i].
+    return [(str(org_slug), str(service_id)) for org_slug, service_id in result.all()]
 
 
 async def get_owned_service(

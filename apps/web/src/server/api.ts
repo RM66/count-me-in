@@ -44,5 +44,8 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     }
   }
 
-  return fetch(`${origin}${path}`, { ...init, headers: reqHeaders })
+  // Same no-store rule as the cabinet reads in api-client.ts: the
+  // request carries a per-organizer credential, so its response is
+  // private to this request and must not land in the shared cache.
+  return fetch(`${origin}${path}`, { ...init, cache: 'no-store', headers: reqHeaders })
 }

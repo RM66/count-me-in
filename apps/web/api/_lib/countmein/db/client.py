@@ -99,15 +99,16 @@ def engine() -> AsyncEngine:
                 )
             else:
                 # Long-running container: pooled connections across
-                # requests; prepared statements stay enabled (direct
-                # Postgres, no transaction-mode pooler in front).
+                # requests; prepared statements stay at the psycopg
+                # default threshold (direct Postgres, no
+                # transaction-mode pooler in front).
                 _engine = create_async_engine(
                     url,
                     poolclass=AsyncAdaptedQueuePool,
                     pool_size=5,
                     max_overflow=10,
                     pool_pre_ping=True,
-                    connect_args={"connect_timeout": 10},
+                    connect_args={"prepare_threshold": 5, "connect_timeout": 10},
                 )
     if _init_err is not None:
         raise _init_err

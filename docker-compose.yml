@@ -103,12 +103,14 @@ services:
     ports:
       - '3000:3000'
     healthcheck:
+      # Web-process liveness (not API reachability): /login is a static
+      # Next route, so this probe stays green during an API outage.
       # Single quotes inside: CMD-SHELL runs under `sh -c`, where
       # backticks would be command substitution.
       test:
         [
           'CMD-SHELL',
-          'node -e ''fetch("http://127.0.0.1:3000/api/healthz").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))''',
+          'node -e ''fetch("http://127.0.0.1:3000/login").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))''',
         ]
       interval: 15s
       timeout: 5s

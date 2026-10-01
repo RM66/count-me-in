@@ -100,13 +100,11 @@ async def delete_bookings_for_services(session: AsyncSession, service_ids: list[
 
 async def get_booking_chain_by_id(session: AsyncSession, booking_id: str) -> BookingChain | None:
     result = await session.execute(_chain_select().where(Booking.id == booking_id).limit(1))
-    # tuples(): the multi-entity row unpacks to (Booking, TimeSlot,
-    # Service, Organizer) — plain first() would type as a flat column
-    # tuple the unpack cannot satisfy under --strict.
     row = result.first()
     if row is None:
         return None
-    return (row[0], row[1], row[2], row[3])
+    booking, slot, service, organizer = row
+    return (booking, slot, service, organizer)
 
 
 async def get_chain_by_manage_token_hash(
@@ -120,7 +118,8 @@ async def get_chain_by_manage_token_hash(
     row = result.first()
     if row is None:
         return None
-    return (row[0], row[1], row[2], row[3])
+    booking, slot, service, organizer = row
+    return (booking, slot, service, organizer)
 
 
 async def list_guest_bookings(
@@ -140,7 +139,8 @@ async def list_guest_bookings(
     )
     out: list[BookingChain] = []
     for row in result.all():
-        out.append((row[0], row[1], row[2], row[3]))
+        booking, slot, service, organizer = row
+        out.append((booking, slot, service, organizer))
     return out
 
 
@@ -323,7 +323,8 @@ async def analytics_trend(
         .group_by(day_bucket)
     )
     out: list[tuple[datetime, int, int]] = []
-    for day, bookings, seats in result.all():
+    for row in result.all():
+        day, bookings, seats = row
         if isinstance(day, datetime) and day.tzinfo is None:
             day = day.replace(tzinfo=UTC)
         out.append((day, int(bookings), int(seats)))

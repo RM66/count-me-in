@@ -13,6 +13,14 @@ vi.mock('@/server/api-client', () => ({
 }))
 
 describe('sitemap', () => {
+  it('throws on an unexpected catalog 404 instead of masking it as empty', async () => {
+    const { getPublicSitemap } = await import('@/server/api-client')
+    vi.mocked(getPublicSitemap).mockRejectedValueOnce(
+      new Error('API request failed: /api/public/sitemap answered 404'),
+    )
+    await expect((await import('./sitemap')).default()).rejects.toThrow('404')
+  })
+
   it('lists static pages, organizer pages and service pages', async () => {
     const { default: sitemap } = await import('./sitemap')
     const entries = await sitemap()
