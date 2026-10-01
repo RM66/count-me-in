@@ -781,6 +781,7 @@
     "invalidInput": "入力内容が正しくありません",
     "invalidOptions": "選択したオプションはこのサービスでは利用できません",
     "ticketExpired": "Telegramでの確認が期限切れです。もう一度認証してください",
+    "unauthorizedInternal": "無効または見つからない内部サービスシークレットです",
     "telegramNotConfigured": "Telegramボットが設定されていません",
     "telegramInvalid": "Telegramの認証データが無効です",
     "telegramValidationFailed": "Telegramの認証データを検証できませんでした",

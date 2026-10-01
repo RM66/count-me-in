@@ -24,25 +24,30 @@ from starlette.responses import Response as StarletteResponse
 from .. import logx
 from ..contracts import models_gen as gen
 from ..contracts.payloads import AuthTicketPayload
-from ..db.booking_reads import list_guest_bookings
+from ..db.booking_reads import get_guest_booking_by_token, list_guest_bookings
 from ..db.booking_writes import (
     CreateBookingData,
     cancel_guest_booking_by_token,
     cancel_owned_booking,
     create_guest_booking,
 )
+from ..db.client import sessionmaker
 from ..db.outbox import OutboxRow, mark_outbox_sent, mark_outbox_skipped
-from ..errors import BookingNotFound
+from ..db.rows import from_model_booking, to_booking_record
+from ..errors import BookingNotFound, InvalidInput
 from ..queue import PublishSkipped, publish_outbox
+from ..repositories import booking_repo
 from ..validation.decode import (
     decode_cancel_booking_by_organizer_input,
     decode_cancel_booking_by_token_input,
     decode_create_booking_input,
+    decode_lookup_booking_by_token_input,
     decode_lookup_bookings_input,
 )
 from ..web import json_response
 from ..web.deps import (
     ValidatedBody,
+    cabinet_organizer,
     decoded,
     guest_identity,
     ip_rate_limit,
@@ -66,6 +71,7 @@ _MARK_DEADLINE_SECONDS = 5.0
 _create_booking_dep = decoded(decode_create_booking_input)
 _lookup_bookings_dep = decoded(decode_lookup_bookings_input)
 _cancel_by_token_dep = decoded(decode_cancel_booking_by_token_input)
+_manage_lookup_dep = decoded(decode_lookup_booking_by_token_input)
 _cancel_by_organizer_dep = decoded(decode_cancel_booking_by_organizer_input)
 
 
@@ -131,6 +137,30 @@ async def _mark_outbox_terminal(id: str, trace_id: str, skipped: bool) -> None:
                 await mark_outbox_sent(id)
     except Exception as err:
         logx.error(err, {"outboxId": id, "traceId": trace_id, "source": source})
+
+
+async def bookings_list(
+    request: Request,
+    scope: tuple[str, bool] = Depends(cabinet_organizer),
+) -> StarletteResponse:
+    """GET /api/bookings: list bookings of the organizer this request may view."""
+    organizer_id, _is_demo = scope
+    raw_limit = request.query_params.get("limit")
+    raw_offset = request.query_params.get("offset")
+    try:
+        limit = int(raw_limit) if raw_limit is not None else 50
+        offset = int(raw_offset) if raw_offset is not None else 0
+        if limit < 1 or limit > 100 or offset < 0:
+            raise ValueError()
+    except (ValueError, TypeError):
+        raise InvalidInput("limit must be between 1 and 100, offset non-negative") from None
+
+    async with sessionmaker()() as session:
+        bookings = await booking_repo.list_by_organizer(
+            session, organizer_id, limit=limit, offset=offset
+        )
+        records = [to_booking_record(from_model_booking(b)) for b in bookings]
+        return json_response(200, gen.BookingsEnvelope(bookings=records)).to_starlette()
 
 
 async def booking_create(
@@ -243,6 +273,19 @@ async def booking_cancel(
     star = json_response(200, gen.GuestBookingEnvelope(booking=booking)).to_starlette()
     star.background = BackgroundTask(publish_outbox_rows, outbox, trace_id)
     return star
+
+
+async def booking_manage_lookup(
+    request: Request,
+    _limited: None = Depends(ip_rate_limit("rl:manage-lookup:", 10, 60.0)),
+    body: ValidatedBody[gen.LookupBookingByTokenInput] = Depends(_manage_lookup_dep),
+) -> StarletteResponse:
+    """POST /api/bookings/manage-lookup: a guest looks up a booking by manageToken."""
+    booking = await get_guest_booking_by_token(str(body.model.manageToken))
+    if booking is None:
+        raise BookingNotFound()
+
+    return json_response(200, gen.GuestBookingEnvelope(booking=booking)).to_starlette()
 
 
 async def booking_cancel_by_organizer(

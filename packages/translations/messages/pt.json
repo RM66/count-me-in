@@ -781,6 +781,7 @@
     "invalidInput": "Dados inválidos",
     "invalidOptions": "As opções selecionadas não são válidas para este serviço",
     "ticketExpired": "Sua confirmação pelo Telegram expirou — autentique-se novamente",
+    "unauthorizedInternal": "Segredo de serviço interno inválido ou ausente",
     "telegramNotConfigured": "O bot do Telegram não está configurado",
     "telegramInvalid": "Dados de autenticação do Telegram inválidos",
     "telegramValidationFailed": "Falha ao validar a autenticação do Telegram",

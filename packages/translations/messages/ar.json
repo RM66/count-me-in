@@ -781,6 +781,7 @@
     "invalidInput": "إدخال غير صالح",
     "invalidOptions": "الخيارات المحددة غير صالحة لهذه الخدمة",
     "ticketExpired": "انتهت صلاحية تأكيد Telegram — تحقق من هويتك مجددًا",
+    "unauthorizedInternal": "سر الخدمة الداخلي غير صالح أو مفقود",
     "telegramNotConfigured": "بوت Telegram غير مُعدّ",
     "telegramInvalid": "بيانات مصادقة Telegram غير صالحة",
     "telegramValidationFailed": "فشل التحقق من مصادقة Telegram",

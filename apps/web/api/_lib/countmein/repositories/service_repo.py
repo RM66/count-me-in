@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.booking import Booking
+from ..models.organizer import Organizer
 from ..models.service import Service
 from ..models.time_slot import TimeSlot
 
@@ -24,6 +25,21 @@ async def list_by_organizer(session: AsyncSession, organizer_id: str) -> list[Se
         select(Service).where(Service.organizer_id == organizer_id).order_by(Service.created_at)
     )
     return list(result.scalars().all())
+
+
+async def get_by_id(session: AsyncSession, service_id: str) -> Service | None:
+    result = await session.execute(select(Service).where(Service.id == service_id))
+    return result.scalar_one_or_none()
+
+
+async def list_public_service_paths(session: AsyncSession) -> list[tuple[str, str]]:
+    stmt = (
+        select(Organizer.slug.label("org_slug"), Service.id.label("service_id"))
+        .join(Organizer, Service.organizer_id == Organizer.id)
+        .order_by(Organizer.slug, Service.id)
+    )
+    result = await session.execute(stmt)
+    return [(str(row.org_slug), str(row.service_id)) for row in result.all()]
 
 
 async def get_owned_service(

@@ -50,6 +50,20 @@ async def list_upcoming_by_services(
     return list(result.scalars().all())
 
 
+async def count_upcoming_by_services(
+    session: AsyncSession, service_ids: list[str], from_time: datetime
+) -> dict[str, int]:
+    if not service_ids:
+        return {}
+    stmt = (
+        select(TimeSlot.service_id, func.count())
+        .where(TimeSlot.service_id.in_(service_ids), TimeSlot.starts_at >= from_time)
+        .group_by(TimeSlot.service_id)
+    )
+    result = await session.execute(stmt)
+    return {str(service_id): int(cnt) for service_id, cnt in result.all()}
+
+
 async def get_slot_chain_for_booking(
     session: AsyncSession, slot_id: str, service_id: str
 ) -> tuple[TimeSlot, Service, Organizer] | None:

@@ -148,6 +148,8 @@ function buildPaths(): Record<string, Record<string, unknown>> {
     }
     if (route.auth === 'sessionWritable' || route.auth === 'sessionOrDemoRead') {
       operation.security = [{ sessionCookie: [] }]
+    } else if (route.auth === 'internal') {
+      operation.security = [{ internalSecret: [] }]
     }
     if (route.rateLimit) {
       // The 429 response is hand-declared per route; this carries the numbers
@@ -275,6 +277,12 @@ export function buildOpenApiDocument(): Record<string, unknown> {
             in: 'cookie',
             name: SESSION_COOKIE_NAMES[0],
             description: `Auth.js session cookie: \`${SESSION_COOKIE_NAMES[0]}\` in production, \`${SESSION_COOKIE_NAMES[1]}\` in local development.`,
+          },
+          internalSecret: {
+            type: 'apiKey',
+            in: 'header',
+            name: 'x-internal-secret',
+            description: 'Internal secret header for service-to-service communication between Next.js BFF and Python API.',
           },
         },
       },

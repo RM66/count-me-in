@@ -3,6 +3,8 @@ server layer — this package owns the write side, ADR-013)."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from ..contracts import models_gen as gen
 from ..repositories import booking_repo
 from .client import sessionmaker
@@ -17,6 +19,7 @@ from .rows import (
     from_model_slot,
     to_guest_booking,
 )
+from .shared import hash_manage_token
 
 
 async def list_guest_bookings(messenger: str, messenger_id: str) -> list[gen.GuestBooking]:
@@ -52,6 +55,27 @@ async def get_booking_chain(
             return None
         b, slot, service, organizer = chain
         return (
+            from_model_booking(b),
+            from_model_slot(slot),
+            from_model_service(service),
+            from_model_organizer(organizer),
+        )
+
+
+async def get_guest_booking_by_token(token: str) -> gen.GuestBooking | None:
+    """Lookup a guest booking by raw manageToken. Checks manage_token_hash
+    and expiry."""
+    token_hash = hash_manage_token(token)
+    async with sessionmaker()() as session:
+        chain = await booking_repo.get_chain_by_manage_token_hash(session, token_hash)
+        if chain is None:
+            return None
+        b, slot, service, organizer = chain
+        # Expired token is refused on lookup (ADR-020)
+        now = datetime.now(UTC)
+        if b.manage_token_expires_at is not None and b.manage_token_expires_at <= now:
+            return None
+        return to_guest_booking(
             from_model_booking(b),
             from_model_slot(slot),
             from_model_service(service),

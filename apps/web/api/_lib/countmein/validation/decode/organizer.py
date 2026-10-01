@@ -90,3 +90,9 @@ def decode_telegram_widget_payload(body: bytes) -> gen.TelegramWidgetPayload:
         if msg:
             e.add("photo_url", msg)
     return _finish(out, e)
+
+
+def decode_internal_organizer_lookup_input(body: bytes) -> gen.InternalOrganizerLookupInput:
+    return _decode_model(
+        gen.InternalOrganizerLookupInput, _raw(body), "InternalOrganizerLookupInput"
+    )

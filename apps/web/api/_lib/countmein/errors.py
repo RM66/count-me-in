@@ -123,6 +123,13 @@ class TicketExpired(ApiError):
     key = "ticketExpired"
 
 
+class UnauthorizedInternal(ApiError):
+    """An internal service request lacked a valid internal secret (401)."""
+
+    status = 401
+    key = "unauthorizedInternal"
+
+
 class TelegramNotConfiguredError(ApiError):
     """TELEGRAM_BOT_TOKEN is absent, so the widget payload cannot be
     validated (500 telegramNotConfigured)."""

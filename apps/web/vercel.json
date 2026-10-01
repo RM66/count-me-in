@@ -17,6 +17,18 @@
       "destination": "/api/index?_path=/api/auth/telegram-signup"
     },
     {
+      "source": "/api/public/:path*",
+      "destination": "/api/index?_path=/api/public/:path*"
+    },
+    {
+      "source": "/api/cabinet/:path*",
+      "destination": "/api/index?_path=/api/cabinet/:path*"
+    },
+    {
+      "source": "/api/internal/:path*",
+      "destination": "/api/index?_path=/api/internal/:path*"
+    },
+    {
       "source": "/api/organizers/:path*",
       "destination": "/api/index?_path=/api/organizers/:path*"
     },

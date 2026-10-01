@@ -17,8 +17,12 @@ def register_routes(app: FastAPI) -> None:
         booking_cancel_by_organizer,
         booking_create,
         booking_lookup,
+        booking_manage_lookup,
+        bookings_list,
     )
+    from .cabinet import cabinet_summary
     from .healthz import register_healthz
+    from .internal import organizer_by_messenger
     from .jobs import jobs_receiver
     from .organizers import (
         organizer_avatar,
@@ -27,6 +31,11 @@ def register_routes(app: FastAPI) -> None:
         organizer_me_put,
         organizer_register,
         organizer_service_photo,
+    )
+    from .public import (
+        get_public_organizer,
+        get_public_service,
+        get_public_sitemap,
     )
     from .services import (
         service_delete,
@@ -55,6 +64,26 @@ def register_routes(app: FastAPI) -> None:
         "/api/auth/telegram-signup", telegram_signup, methods=["POST"], response_model=None
     )
 
+    # Public
+    app.add_api_route(
+        "/api/public/organizers/{slug}",
+        get_public_organizer,
+        methods=["GET"],
+        response_model=None,
+    )
+    app.add_api_route(
+        "/api/public/services/{id}",
+        get_public_service,
+        methods=["GET"],
+        response_model=None,
+    )
+    app.add_api_route(
+        "/api/public/sitemap",
+        get_public_sitemap,
+        methods=["GET"],
+        response_model=None,
+    )
+
     # Organizers
     app.add_api_route("/api/organizers", organizer_register, methods=["POST"], response_model=None)
     app.add_api_route("/api/organizers/me", organizer_me_get, methods=["GET"], response_model=None)
@@ -72,6 +101,9 @@ def register_routes(app: FastAPI) -> None:
         response_model=None,
     )
 
+    # Cabinet
+    app.add_api_route("/api/cabinet/summary", cabinet_summary, methods=["GET"], response_model=None)
+
     # Services
     app.add_api_route("/api/services", services_list, methods=["GET"], response_model=None)
     app.add_api_route("/api/services", services_create, methods=["POST"], response_model=None)
@@ -87,9 +119,13 @@ def register_routes(app: FastAPI) -> None:
     app.add_api_route("/api/slots/{id}", slot_delete, methods=["DELETE"], response_model=None)
 
     # Bookings (ADR-002)
+    app.add_api_route("/api/bookings", bookings_list, methods=["GET"], response_model=None)
     app.add_api_route("/api/bookings", booking_create, methods=["POST"], response_model=None)
     app.add_api_route("/api/bookings/lookup", booking_lookup, methods=["POST"], response_model=None)
     app.add_api_route("/api/bookings/cancel", booking_cancel, methods=["POST"], response_model=None)
+    app.add_api_route(
+        "/api/bookings/manage-lookup", booking_manage_lookup, methods=["POST"], response_model=None
+    )
     app.add_api_route(
         "/api/bookings/cancel-by-organizer",
         booking_cancel_by_organizer,
@@ -99,3 +135,11 @@ def register_routes(app: FastAPI) -> None:
 
     # QStash receiver (ADR-012)
     app.add_api_route("/api/jobs/{queue}", jobs_receiver, methods=["POST"], response_model=None)
+
+    # Internal (Auth.js BFF)
+    app.add_api_route(
+        "/api/internal/auth/organizer-by-messenger",
+        organizer_by_messenger,
+        methods=["POST"],
+        response_model=None,
+    )

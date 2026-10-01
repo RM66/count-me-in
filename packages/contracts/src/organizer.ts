@@ -33,6 +33,13 @@ export const registerOrganizerInput = z.object({
 })
 export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
 
+export const internalOrganizerLookupInput = z.object({
+  messenger: messengerEnum.optional(),
+  messengerId: z.string().optional(),
+  organizerId: uuid.optional(),
+})
+export type InternalOrganizerLookupInput = z.infer<typeof internalOrganizerLookupInput>
+
 export const registeredOrganizer = z.object({
   id: uuid,
   slug: slugShape,

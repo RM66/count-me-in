@@ -11,11 +11,13 @@ from .booking import (
     decode_cancel_booking_by_organizer_input,
     decode_cancel_booking_by_token_input,
     decode_create_booking_input,
+    decode_lookup_booking_by_token_input,
     decode_lookup_bookings_input,
 )
 from .organizer import (
     decode_create_avatar_upload_input,
     decode_create_service_photo_upload_input,
+    decode_internal_organizer_lookup_input,
     decode_merged_organizer_input,
     decode_register_organizer_input,
     decode_telegram_widget_payload,
@@ -38,6 +40,7 @@ from .slot import (
 DECODERS = {
     "CreateBookingInput": decode_create_booking_input,
     "CancelBookingByTokenInput": decode_cancel_booking_by_token_input,
+    "LookupBookingByTokenInput": decode_lookup_booking_by_token_input,
     "LookupBookingsInput": decode_lookup_bookings_input,
     "CancelBookingByOrganizerInput": decode_cancel_booking_by_organizer_input,
     "CreateServiceInput": decode_create_service_input,
@@ -50,6 +53,7 @@ DECODERS = {
     "CreateAvatarUploadInput": decode_create_avatar_upload_input,
     "CreateServicePhotoUploadInput": decode_create_service_photo_upload_input,
     "TelegramWidgetPayload": decode_telegram_widget_payload,
+    "InternalOrganizerLookupInput": decode_internal_organizer_lookup_input,
 }
 
 __all__ = [
@@ -61,6 +65,8 @@ __all__ = [
     "decode_create_service_input",
     "decode_create_service_photo_upload_input",
     "decode_create_time_slot_input",
+    "decode_internal_organizer_lookup_input",
+    "decode_lookup_booking_by_token_input",
     "decode_lookup_bookings_input",
     "decode_merged_organizer_input",
     "decode_merged_service_input",

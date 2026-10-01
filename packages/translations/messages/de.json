@@ -781,6 +781,7 @@
     "invalidInput": "Ungültige Eingabe",
     "invalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
     "ticketExpired": "Deine Telegram-Bestätigung ist abgelaufen — authentifiziere dich erneut",
+    "unauthorizedInternal": "Ungültiges oder fehlendes internes Service-Geheimnis",
     "telegramNotConfigured": "Der Telegram-Bot ist nicht eingerichtet",
     "telegramInvalid": "Ungültige Telegram-Authentifizierungsdaten",
     "telegramValidationFailed": "Die Telegram-Authentifizierung konnte nicht validiert werden",

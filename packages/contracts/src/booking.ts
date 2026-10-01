@@ -34,6 +34,10 @@ export type CreateBookingInput = z.infer<typeof createBookingInput>
 export const cancelBookingByTokenInput = z.object({ manageToken })
 export type CancelBookingByTokenInput = z.infer<typeof cancelBookingByTokenInput>
 
+/** Look up a booking via the guest's manageToken (in body to avoid URL leaks). */
+export const lookupBookingByTokenInput = z.object({ manageToken })
+export type LookupBookingByTokenInput = z.infer<typeof lookupBookingByTokenInput>
+
 /**
  * Look up the bookings of a messenger identity (ADR-002, entry path 2).
  * The identity is read from the ticket server-side — a raw `messengerId` in

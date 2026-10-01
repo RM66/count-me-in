@@ -205,3 +205,13 @@ def session_organizer(request: Request) -> str:
     from ..auth.session import session_organizer_id
 
     return session_organizer_id(request)
+
+
+def require_internal_secret(request: Request) -> None:
+    """Validate the x-internal-secret header for service-to-service calls."""
+    from ..auth.internal import INTERNAL_SECRET_HEADER, verify_internal_secret
+    from ..errors import UnauthorizedInternal
+
+    secret = request.headers.get(INTERNAL_SECRET_HEADER)
+    if not verify_internal_secret(secret):
+        raise UnauthorizedInternal()

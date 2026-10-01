@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+5dc7e68d5fdd
+  version: 1.0.0+24a56afe04c6
 servers:
   - url: https://countmein.group
     description: Production
@@ -306,6 +306,114 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/cabinet/summary:
+    get:
+      summary: Get cabinet summary counts and 30-day analytics for the organizer
+      operationId: getCabinetSummary
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Cabinet summary and analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CabinetSummaryEnvelope"
+        "500":
+          description: Internal error
+  /api/public/organizers/{slug}:
+    get:
+      summary: Get public organizer profile, services, and upcoming slots by slug
+      operationId: getPublicOrganizer
+      x-rateLimit:
+        limit: 60
+        windowSeconds: 60
+        per: ip
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SlugShape"
+      responses:
+        "200":
+          description: Public organizer view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicOrganizerViewEnvelope"
+        "404":
+          description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/public/services/{id}:
+    get:
+      summary: Get public service details, parent organizer, and upcoming slots
+      operationId: getPublicService
+      x-rateLimit:
+        limit: 60
+        windowSeconds: 60
+        per: ip
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+      responses:
+        "200":
+          description: Public service view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicServiceViewEnvelope"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/public/sitemap:
+    get:
+      summary: List all public organizer slugs and service paths for sitemap generation
+      operationId: getPublicSitemap
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
+      responses:
+        "200":
+          description: Public sitemap catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSitemapEnvelope"
         "429":
           description: Rate limit exceeded
           content:
@@ -655,6 +763,39 @@ paths:
         "500":
           description: Internal error
   /api/bookings:
+    get:
+      summary: List bookings of the organizer this request may view
+      operationId: listBookings
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryLimit"
+          description: Maximum bookings to return (default 50, max 100).
+        - name: offset
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryOffset"
+          description: Number of bookings to skip (default 0).
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingsEnvelope"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     post:
       summary: Guest creates a booking (atomic reserve)
       operationId: createBooking
@@ -809,6 +950,47 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
+  /api/bookings/manage-lookup:
+    post:
+      summary: Guest looks up a booking via manageToken
+      operationId: getBookingByManageToken
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupBookingByTokenInput"
+      responses:
+        "200":
+          description: Guest booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBookingEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "404":
+          description: Booking not found or token expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/bookings/cancel-by-organizer:
     post:
       summary: Organizer cancels a booking on one of their own services
@@ -891,6 +1073,46 @@ paths:
           description: Unknown queue name
         "500":
           description: Handler failure (triggers a QStash retry)
+  /api/internal/auth/organizer-by-messenger:
+    post:
+      summary: Internal lookup of organizer by messenger identity or organizer ID for
+        Auth.js
+      operationId: getOrganizerByMessenger
+      security:
+        - internalSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InternalOrganizerLookupInput"
+      responses:
+        "200":
+          description: Organizer found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalOrganizerEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "401":
+          description: Invalid or missing internal secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
 x-internal:
   - $ref: "#/components/schemas/AuthTicketPayload"
   - $ref: "#/components/schemas/LoginLinkPayload"
@@ -902,7 +1124,86 @@ components:
       name: __Secure-authjs.session-token
       description: "Auth.js session cookie: `__Secure-authjs.session-token` in
         production, `authjs.session-token` in local development."
+    internalSecret:
+      type: apiKey
+      in: header
+      name: x-internal-secret
+      description: Internal secret header for service-to-service communication between
+        Next.js BFF and Python API.
   schemas:
+    AnalyticsServiceCount:
+      type: object
+      properties:
+        service:
+          type: string
+        bookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - service
+        - bookings
+    AnalyticsSummaryRecord:
+      type: object
+      properties:
+        totalBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        prevTotalBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        seatsSold:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        prevSeatsSold:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        windowBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        cancelledInWindow:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsTrendDay"
+        byService:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsServiceCount"
+      required:
+        - totalBookings
+        - prevTotalBookings
+        - seatsSold
+        - prevSeatsSold
+        - windowBookings
+        - cancelledInWindow
+        - trend
+        - byService
+    AnalyticsTrendDay:
+      type: object
+      properties:
+        day:
+          type: string
+        bookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        seats:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - day
+        - bookings
+        - seats
     AppLocale:
       type: string
       enum:
@@ -1034,6 +1335,27 @@ components:
       enum:
         - confirmed
         - cancelled
+    BookingsEnvelope:
+      type: object
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookingRecord"
+      required:
+        - bookings
+    CabinetSummaryEnvelope:
+      type: object
+      properties:
+        serviceCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceCountsRecord"
+        analytics:
+          $ref: "#/components/schemas/AnalyticsSummaryRecord"
+      required:
+        - serviceCounts
+        - analytics
     CancelActor:
       type: string
       enum:
@@ -1288,6 +1610,39 @@ components:
         - uploadUrl
         - publicUrl
         - expiresAt
+    InternalOrganizerEnvelope:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/InternalOrganizerRecord"
+      required:
+        - organizer
+    InternalOrganizerLookupInput:
+      type: object
+      properties:
+        messenger:
+          $ref: "#/components/schemas/Messenger"
+        messengerId:
+          type: string
+        organizerId:
+          $ref: "#/components/schemas/UUID"
+    InternalOrganizerRecord:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          $ref: "#/components/schemas/DisplayName"
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+        photoUrl:
+          anyOf:
+            - type: string
+            - type: "null"
+      required:
+        - id
+        - name
+        - slug
     InvalidBody:
       type: object
       properties:
@@ -1313,6 +1668,13 @@ components:
       required:
         - organizerId
         - next
+    LookupBookingByTokenInput:
+      type: object
+      properties:
+        manageToken:
+          $ref: "#/components/schemas/ManageToken"
+      required:
+        - manageToken
     LookupBookingsInput:
       type: object
       properties:
@@ -1460,6 +1822,60 @@ components:
         - location
         - contact
         - isDemo
+    PublicOrganizerViewEnvelope:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/PublicOrganizer"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRecord"
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlotRecord"
+      required:
+        - organizer
+        - services
+        - slots
+    PublicServiceViewEnvelope:
+      type: object
+      properties:
+        service:
+          $ref: "#/components/schemas/ServiceRecord"
+        organizer:
+          $ref: "#/components/schemas/PublicOrganizer"
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlotRecord"
+      required:
+        - service
+        - organizer
+        - slots
+    PublicSitemapEnvelope:
+      type: object
+      properties:
+        organizers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SitemapOrganizerEntry"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/SitemapServiceEntry"
+      required:
+        - organizers
+        - services
+    QueryLimit:
+      type: integer
+      minimum: 1
+      maximum: 100
+    QueryOffset:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
     RegisterOrganizerInput:
       type: object
       properties:
@@ -1507,6 +1923,23 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/OptionLabel"
+    ServiceCountsRecord:
+      type: object
+      properties:
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+        upcomingSlotsCount:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        confirmedBookingsCount:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - serviceId
+        - upcomingSlotsCount
+        - confirmedBookingsCount
     ServiceDescription:
       type: string
       maxLength: 2000
@@ -1593,6 +2026,23 @@ components:
             $ref: "#/components/schemas/ServiceRecord"
       required:
         - services
+    SitemapOrganizerEntry:
+      type: object
+      properties:
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+      required:
+        - slug
+    SitemapServiceEntry:
+      type: object
+      properties:
+        orgSlug:
+          $ref: "#/components/schemas/SlugShape"
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+      required:
+        - orgSlug
+        - serviceId
     SlotEnvelope:
       type: object
       properties:

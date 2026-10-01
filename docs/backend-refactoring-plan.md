@@ -188,49 +188,225 @@ Create `apps/web/api/_lib/countmein/repositories/`:
 
 ---
 
-### Phase 4: API Surface Expansion for SSR Reads
+### Phase 4: API Surface Expansion for SSR Reads (Vertical Slices)
 
-**Objective:** Add the necessary read endpoints to FastAPI so Next.js App Router can SSR all pages via HTTP instead of direct SQL.
+**Objective:** Add the necessary read and lookup endpoints to FastAPI so Next.js App Router can SSR all pages and Auth.js can authenticate via HTTP instead of direct SQL. To prevent stalls and maintain a green CI state, Phase 4 is executed in strictly isolated vertical slices (4.0 through 4.6). Each slice delivers wire schemas, OpenAPI updates, generated models, FastAPI handlers, Vercel rewrites, and full parity verification.
 
-#### 4.1 Define Routes in `@repo/contracts`
-In `packages/contracts/src/routes.ts` and `packages/contracts/src/wire.ts`:
-1. `GET /api/public/organizers/{slug}` (`getPublicOrganizerBySlug`):
-   - Auth: `public`
-   - Returns: Public organizer profile, list of active services, and upcoming time slots.
-2. `GET /api/public/services/{id}` (`getPublicService`):
-   - Auth: `public`
-   - Returns: Public service details with upcoming slots.
-3. `GET /api/public/sitemap` (`getPublicSitemap`):
-   - Auth: `public`
-   - Returns: List of all public organizer slugs and service IDs for XML sitemap generation.
-4. `GET /api/bookings/{manageToken}` (`getGuestBookingByManageToken`):
-   - Auth: `public` (validated by `manageToken` path parameter)
-   - Returns: `GuestBooking` with `canCancel` boolean.
-5. `GET /api/cabinet/summary` (`getCabinetSummary`):
-   - Auth: `sessionOrDemoRead`
-   - Returns: Aggregated counts, upcoming slots, recent bookings, and services for `/cabinet`.
-6. `POST /api/internal/auth/organizer-by-messenger`:
-   - Auth: Internal Secret Header (`X-Internal-Secret` matching `INTERNAL_SERVICE_SECRET` derived from `AUTH_SECRET`).
-   - Request: `{ messenger: "telegram", messengerId: string }`
-   - Returns: `{ id: string, name: string, slug: string } | null`
-   - Used by Auth.js `telegram-provider.ts` to verify existing accounts.
+#### Invariants & Contract Resolutions for Phase 4:
+1. **`ApiAuth = 'internal'`**: Support a dedicated `internal` auth mode for service-to-service calls between Next.js server actions / Auth.js and Python API. Authenticated via `x-internal-secret` header verified in constant time (`hmac.compare_digest`) against a key derived from `AUTH_SECRET` via HKDF-SHA256 (`CountMeIn Internal Service Key v1`).
+2. **`manageToken` in Request Body (`POST /api/bookings/manage-lookup`)**: Preserves the core invariant from `AGENTS.md` (manageToken never appears in URL paths, query parameters, or Referer headers). Validated via SHA-256 hash `manage_token_hash` against `manage_token_expires_at` grace window.
+3. **No Nullable Top-Level Wire Envelopes**: Avoid `{ ... } | null` at root. Missing entities return HTTP 404 with standard `ErrorBody`.
+4. **Strict Response Statuses**: Every route declares status 500 (`INTERNAL`), rate-limited routes declare 429 (`TOO_MANY`), and protected routes declare standard error envelopes (401/403/404).
 
-#### 4.2 Codegen Execution
-Run:
-```sh
-bun run generate:py
-```
-This updates `apps/web/openapi.yaml`, `constants_gen.py`, and `models_gen.py`.
+---
 
-#### 4.3 Implement Route Handlers
-In `apps/web/api/_lib/countmein/routes/`:
-- Create `public.py` (handling `/api/public/*`).
-- Create `internal.py` (handling `/api/internal/*`).
-- Update `bookings.py` with `GET /api/bookings/{manageToken}`.
-- Update `organizers.py` with `GET /api/cabinet/summary`.
-- Ensure all new routes are registered in `apps/web/api/_lib/countmein/routes/__init__.py`.
-- Update `apps/web/vercel.json` rewrites to forward `/api/public/:path*` and `/api/internal/:path*` to `api/index.py`.
-- Verify `tests_py/test_route_set.py` and `tests_py/test_vercel_json.py` pass.
+#### Slice 4.0: Contract & API Infrastructure Setup
+- **`packages/contracts/src/routes.ts`**:
+  - Add `'internal'` to `ApiAuth` union type.
+- **`packages/contracts/src/openapi.ts`**:
+  - Map `auth === 'internal'` to `security: [{ internalSecret: [] }]`.
+  - Add `internalSecret` to `components.securitySchemes`: API key in header `x-internal-secret`.
+- **`apps/web/api/_lib/countmein/auth/internal.py`**:
+  - Implement HKDF derivation of internal signing key from `AUTH_SECRET`.
+  - Constant-time verification helper `verify_internal_secret(secret: str) -> bool`.
+- **`apps/web/api/_lib/countmein/web/deps.py`**:
+  - Add dependency `require_internal_secret(request: Request) -> None` raising 401 on invalid/missing secret.
+- **Verification:**
+  ```sh
+  bun run test:web
+  ```
+
+---
+
+#### Slice 4.1: Public Organizer Profile & Catalog (`GET /api/public/organizers/{slug}`)
+- **Purpose:** Supplies data for `/{orgSlug}` public page and OG image (`generateMetadata`, `OrganizerPage`).
+- **Wire Contract (`@repo/contracts`):**
+  - Schema: `publicOrganizerViewEnvelope = z.object({ organizer: publicOrganizer, services: z.array(serviceRecord), slots: z.array(timeSlotRecord) })`.
+  - Registered in `wire.ts`: `{ id: 'PublicOrganizerViewEnvelope' }`.
+  - Golden Sample: Add `PublicOrganizerViewEnvelope` to `RECORD_NAMES` in `tests_py/contracts/test_golden.py` and commit golden JSON fixture.
+  - Route in `routes.ts`:
+    - `operationId: 'getPublicOrganizer'`
+    - `method: 'get'`, `path: '/api/public/organizers/{slug}'`
+    - `auth: 'public'`
+    - `params: [{ name: 'slug', in: 'path', required: true, schema: slugShape }]`
+    - `rateLimit: { limit: 60, windowSeconds: 60, per: 'ip' }`
+    - `responses`: 200 (`publicOrganizerViewEnvelope`), 404 (`errorBody`), 429 (`TOO_MANY`), 500 (`INTERNAL`).
+- **Python Implementation:**
+  - Route module: `apps/web/api/_lib/countmein/routes/public.py` -> `get_public_organizer`.
+  - Queries `organizer_repo.get_by_slug`, `service_repo.list_by_organizer`, `slot_repo.list_upcoming_by_services`.
+  - Register in `routes/__init__.py`.
+  - Add rewrite in `apps/web/vercel.json`: `{"source": "/api/public/:path*", "destination": "/api/index?_path=/api/public/:path*"}`.
+- **Verification:**
+  ```sh
+  bun run generate:py
+  cd apps/web && uv run pytest tests_py/test_route_set.py tests_py/test_vercel_json.py tests_py/contracts/test_golden.py
+  bun run test:web
+  ```
+
+---
+
+#### Slice 4.2: Public Service Details (`GET /api/public/services/{id}`)
+- **Purpose:** Supplies data for `/{orgSlug}/{serviceId}` public booking page (`ServicePage`, `resolveService`, `generateMetadata`).
+- **Wire Contract (`@repo/contracts`):**
+  - Schema: `publicServiceViewEnvelope = z.object({ service: serviceRecord, organizer: publicOrganizer, slots: z.array(timeSlotRecord) })`.
+  - Registered in `wire.ts`: `{ id: 'PublicServiceViewEnvelope' }`.
+  - Golden Sample: Add `PublicServiceViewEnvelope` to `RECORD_NAMES` in `tests_py/contracts/test_golden.py` and commit golden JSON fixture.
+  - Route in `routes.ts`:
+    - `operationId: 'getPublicService'`
+    - `method: 'get'`, `path: '/api/public/services/{id}'`
+    - `auth: 'public'`
+    - `params: [{ name: 'id', in: 'path', required: true, schema: serviceId }]`
+    - `rateLimit: { limit: 60, windowSeconds: 60, per: 'ip' }`
+    - `responses`: 200 (`publicServiceViewEnvelope`), 404 (`errorBody`), 429 (`TOO_MANY`), 500 (`INTERNAL`).
+- **Python Implementation:**
+  - Route handler in `routes/public.py` -> `get_public_service`.
+  - Joins `Service` -> `Organizer`, fetches upcoming slots with `slot_repo.list_upcoming_by_services`.
+  - Register in `routes/__init__.py`.
+- **Verification:**
+  ```sh
+  bun run generate:py
+  cd apps/web && uv run pytest tests_py/test_route_set.py tests_py/contracts/test_golden.py
+  bun run test:web
+  ```
+
+---
+
+#### Slice 4.3: Public Sitemap Catalog (`GET /api/public/sitemap`)
+- **Purpose:** Supplies data for Next.js App Router dynamic sitemap (`app/sitemap.ts`).
+- **Wire Contract (`@repo/contracts`):**
+  - Schemas:
+    - `sitemapOrganizerEntry = z.object({ slug: slugShape })`
+    - `sitemapServiceEntry = z.object({ orgSlug: slugShape, serviceId: serviceId })`
+    - `publicSitemapEnvelope = z.object({ organizers: z.array(sitemapOrganizerEntry), services: z.array(sitemapServiceEntry) })`
+  - Registered in `wire.ts`: `SitemapOrganizerEntry`, `SitemapServiceEntry`, `PublicSitemapEnvelope`.
+  - Golden Sample: Add `PublicSitemapEnvelope` to `RECORD_NAMES` in `tests_py/contracts/test_golden.py` and commit golden JSON fixture.
+  - Route in `routes.ts`:
+    - `operationId: 'getPublicSitemap'`
+    - `method: 'get'`, `path: '/api/public/sitemap'`
+    - `auth: 'public'`
+    - `rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' }`
+    - `responses`: 200 (`publicSitemapEnvelope`), 429 (`TOO_MANY`), 500 (`INTERNAL`).
+- **Python Implementation:**
+  - Route handler in `routes/public.py` -> `get_public_sitemap`.
+  - Uses `organizer_repo.list_public_slugs` and service join.
+  - Register in `routes/__init__.py`.
+- **Verification:**
+  ```sh
+  bun run generate:py
+  cd apps/web && uv run pytest tests_py/test_route_set.py tests_py/contracts/test_golden.py
+  bun run test:web
+  ```
+
+---
+
+#### Slice 4.4: Guest Booking Manage Lookup (`POST /api/bookings/manage-lookup`)
+- **Purpose:** Allows guests to load their booking management page (`/booking/{manageToken}`) without leaking credentials in URL paths.
+- **Wire Contract (`@repo/contracts`):**
+  - Input Schema: `lookupBookingByTokenInput = z.object({ manageToken })`.
+  - Registered in `wire.ts`: `{ id: 'LookupBookingByTokenInput' }`.
+  - Validation Vector: `packages/contracts/vectors/validation/LookupBookingByTokenInput.json`.
+  - Response Schema: Reuses existing `guestBookingEnvelope = z.object({ booking: guestBooking })` (already registered and golden-tested).
+  - Route in `routes.ts`:
+    - `operationId: 'getBookingByManageToken'`
+    - `method: 'post'`, `path: '/api/bookings/manage-lookup'`
+    - `auth: 'manageToken'`
+    - `request: lookupBookingByTokenInput`
+    - `rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' }`
+    - `responses`: 200 (`guestBookingEnvelope`), 400 (`invalidBody`), 404 (`errorBody`), 429 (`TOO_MANY`), 500 (`INTERNAL`).
+- **Python Implementation:**
+  - Route handler in `routes/bookings.py` -> `booking_manage_lookup`.
+  - Hashes token via `hash_manage_token`, queries `booking_repo.get_chain_by_manage_token_hash`.
+  - Enforces `manage_token_expires_at` check (returns 404 if expired).
+  - Register in `routes/__init__.py`.
+- **Verification:**
+  ```sh
+  bun run generate:py
+  cd apps/web && uv run pytest tests_py/test_route_set.py
+  bun run test:web
+  ```
+
+---
+
+#### Slice 4.5: Cabinet Reads (`GET /api/bookings` & `GET /api/cabinet/summary`)
+- **Purpose:** Supplies data for `/cabinet`, `/cabinet/bookings`, `/cabinet/services`, and `/cabinet/analytics`.
+- **Wire Contract (`@repo/contracts`):**
+  - Schemas:
+    - `bookingsEnvelope = z.object({ bookings: z.array(bookingRecord) })` (for paginated bookings list).
+    - `serviceCountsRecord = z.object({ serviceId: serviceId, upcomingSlotsCount: z.number().int(), confirmedBookingsCount: z.number().int() })`
+    - `analyticsTrendDay = z.object({ day: z.string(), bookings: z.number().int(), seats: z.number().int() })`
+    - `analyticsServiceCount = z.object({ service: z.string(), bookings: z.number().int() })`
+    - `analyticsSummaryRecord = z.object({ totalBookings: z.number().int(), prevTotalBookings: z.number().int(), seatsSold: z.number().int(), prevSeatsSold: z.number().int(), windowBookings: z.number().int(), cancelledInWindow: z.number().int(), trend: z.array(analyticsTrendDay), byService: z.array(analyticsServiceCount) })`
+    - `cabinetSummaryEnvelope = z.object({ serviceCounts: z.array(serviceCountsRecord), analytics: analyticsSummaryRecord })`
+  - Registered in `wire.ts`: `BookingsEnvelope`, `ServiceCountsRecord`, `AnalyticsTrendDay`, `AnalyticsServiceCount`, `AnalyticsSummaryRecord`, `CabinetSummaryEnvelope`.
+  - Golden Samples: Add `BookingsEnvelope` and `CabinetSummaryEnvelope` to `RECORD_NAMES` in `tests_py/contracts/test_golden.py` and commit golden JSON fixtures.
+  - Routes in `routes.ts`:
+    - `listBookings`:
+      - `method: 'get'`, `path: '/api/bookings'`
+      - `auth: 'sessionOrDemoRead'`
+      - `params`: `limit` (query int optional default 50), `offset` (query int optional default 0)
+      - `responses`: 200 (`bookingsEnvelope`), 500 (`INTERNAL`).
+    - `getCabinetSummary`:
+      - `method: 'get'`, `path: '/api/cabinet/summary'`
+      - `auth: 'sessionOrDemoRead'`
+      - `responses`: 200 (`cabinetSummaryEnvelope`), 500 (`INTERNAL`).
+- **Python Implementation:**
+  - Route handler `routes/bookings.py` -> `bookings_list` using `cabinet_organizer(request)`.
+  - Route module `routes/cabinet.py` -> `cabinet_summary` using `cabinet_organizer(request)`.
+  - Add rewrite in `apps/web/vercel.json`: `{"source": "/api/cabinet/:path*", "destination": "/api/index?_path=/api/cabinet/:path*"}`.
+  - Register in `routes/__init__.py`.
+- **Verification:**
+  ```sh
+  bun run generate:py
+  cd apps/web && uv run pytest tests_py/test_route_set.py tests_py/test_vercel_json.py tests_py/contracts/test_golden.py
+  bun run test:web
+  ```
+
+---
+
+#### Slice 4.6: Internal Auth Lookup (`POST /api/internal/auth/organizer-by-messenger`)
+- **Purpose:** Used by Auth.js `telegram-provider.ts` to look up organizers by messenger identity or organizer ID without direct SQL.
+- **Wire Contract (`@repo/contracts`):**
+  - Input Schema:
+    ```typescript
+    export const internalOrganizerLookupInput = z.object({
+      messenger: messengerEnum.optional(),
+      messengerId: z.string().optional(),
+      organizerId: uuid.optional(),
+    })
+    ```
+  - Output Schema:
+    ```typescript
+    export const internalOrganizerRecord = z.object({
+      id: uuid,
+      name: displayName,
+      slug: slugShape,
+      photoUrl: z.string().nullable().optional(),
+    })
+    export const internalOrganizerEnvelope = z.object({
+      organizer: internalOrganizerRecord,
+    })
+    ```
+  - Registered in `wire.ts`: `InternalOrganizerLookupInput`, `InternalOrganizerRecord`, `InternalOrganizerEnvelope`.
+  - Validation Vector: `packages/contracts/vectors/validation/InternalOrganizerLookupInput.json`.
+  - Golden Sample: Add `InternalOrganizerEnvelope` to `RECORD_NAMES` in `tests_py/contracts/test_golden.py` and commit golden JSON fixture.
+  - Route in `routes.ts`:
+    - `operationId: 'getOrganizerByMessenger'`
+    - `method: 'post'`, `path: '/api/internal/auth/organizer-by-messenger'`
+    - `auth: 'internal'`
+    - `request: internalOrganizerLookupInput`
+    - `responses`: 200 (`internalOrganizerEnvelope`), 400 (`invalidBody`), 401 (`errorBody`), 404 (`errorBody`), 500 (`INTERNAL`).
+- **Python Implementation:**
+  - Route module: `apps/web/api/_lib/countmein/routes/internal.py`.
+  - Validates `require_internal_secret(request)`.
+  - Resolves via `organizer_repo.get_by_id` or `organizer_repo.get_by_messenger`. Raises 404 if not found.
+  - Add rewrite in `apps/web/vercel.json`: `{"source": "/api/internal/:path*", "destination": "/api/index?_path=/api/internal/:path*"}`.
+  - Register in `routes/__init__.py`.
+- **Verification:**
+  ```sh
+  bun run generate:py
+  cd apps/web && uv run pytest tests_py/test_route_set.py tests_py/test_vercel_json.py tests_py/contracts/test_golden.py
+  bun run test:web
+  ```
 
 ---
 
@@ -321,9 +497,13 @@ Follow these exact steps in sequence to ensure CI remains green throughout:
 | **1.2** | Configure Alembic & create `0001_initial_schema.py` | `apps/web/alembic/`, `apps/web/alembic.ini` | `uv run alembic check` |
 | **1.3** | Create SQLAlchemy 2.0 declarative models | `apps/web/api/_lib/countmein/models/*` | `uv run mypy api/_lib` |
 | **1.4** | Implement repositories & eliminate tuple unpacking | `apps/web/api/_lib/countmein/repositories/*`, `db/rows.py` | `cd apps/web && uv run pytest tests_py/db` |
-| **2.1** | Define new SSR read endpoints in contracts | `packages/contracts/src/routes.ts`, `wire.ts` | `bun run generate:py` |
-| **2.2** | Implement FastAPI routes for SSR reads | `apps/web/api/_lib/countmein/routes/*`, `vercel.json` | `uv run pytest tests_py/test_route_set.py` |
-| **2.3** | Verify parity golden tests & invariant tests | `tests_py/parity/*`, `tests_py/test_invariants.py` | `cd apps/web && bun run test:py` |
+| **4.0** | Contract & API infra setup (`ApiAuth='internal'`, guard) | `packages/contracts/src/*`, `api/_lib/countmein/auth/*` | `bun run test:web` |
+| **4.1** | Slice: Public Organizer View (`GET /api/public/organizers/{slug}`) | `packages/contracts/src/*`, `routes/public.py`, `vercel.json` | `bun run generate:py && cd apps/web && uv run pytest tests_py/test_route_set.py` |
+| **4.2** | Slice: Public Service View (`GET /api/public/services/{id}`) | `packages/contracts/src/*`, `routes/public.py` | `bun run generate:py && cd apps/web && uv run pytest tests_py/test_route_set.py` |
+| **4.3** | Slice: Public Sitemap (`GET /api/public/sitemap`) | `packages/contracts/src/*`, `routes/public.py` | `bun run generate:py && cd apps/web && uv run pytest tests_py/test_route_set.py` |
+| **4.4** | Slice: Guest Booking Lookup (`POST /api/bookings/manage-lookup`) | `packages/contracts/src/*`, `routes/bookings.py` | `bun run generate:py && cd apps/web && uv run pytest tests_py/test_route_set.py` |
+| **4.5** | Slice: Cabinet Bookings & Summary (`GET /api/bookings`, `summary`) | `packages/contracts/src/*`, `routes/bookings.py`, `routes/cabinet.py` | `bun run generate:py && cd apps/web && uv run pytest tests_py/test_route_set.py` |
+| **4.6** | Slice: Internal Auth Lookup (`POST /api/internal/auth/...`) | `packages/contracts/src/*`, `routes/internal.py` | `bun run generate:py && cd apps/web && uv run pytest tests_py/test_route_set.py` |
 | **3.1** | Implement Next.js server API client | `apps/web/src/server/api-client.ts` | `bun run check-types` |
 | **3.2** | Migrate `telegram-provider.ts` to API client | `apps/web/src/server/auth/telegram-provider.ts` | `bun run test:web` |
 | **3.3** | Migrate Next.js App Router pages to API client | `apps/web/src/app/**/page.tsx`, `sitemap.ts` | `bun run check-types && bun run test:web` |

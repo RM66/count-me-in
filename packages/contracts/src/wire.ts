@@ -18,20 +18,34 @@ import {
   cancelBookingByTokenInput,
   createBookingInput,
   guestBooking,
+  lookupBookingByTokenInput,
   lookupBookingsInput,
 } from './booking'
 import { bookingStatusEnum, messengerEnum, optionsSelectModeEnum } from './enums'
 import {
+  analyticsServiceCount,
+  analyticsSummaryRecord,
+  analyticsTrendDay,
   bookingEnvelope,
+  bookingsEnvelope,
+  cabinetSummaryEnvelope,
   deletedServiceEnvelope,
   deletedSlotEnvelope,
   errorBody,
   guestBookingEnvelope,
   guestBookingsEnvelope,
+  internalOrganizerEnvelope,
+  internalOrganizerRecord,
   invalidBody,
   organizerEnvelope,
+  publicOrganizerViewEnvelope,
+  publicServiceViewEnvelope,
+  publicSitemapEnvelope,
+  serviceCountsRecord,
   serviceEnvelope,
   servicesEnvelope,
+  sitemapOrganizerEntry,
+  sitemapServiceEntry,
   slotEnvelope,
   slotsEnvelope,
   validationErrors,
@@ -45,6 +59,7 @@ import {
 } from './jobs'
 import { optionsList, selectedOptionsShape } from './options'
 import {
+  internalOrganizerLookupInput,
   organizerProfile,
   publicOrganizer,
   registered,
@@ -67,6 +82,8 @@ import {
   optionLabel,
   organizerDescription,
   priceText,
+  queryLimit,
+  queryOffset,
   seats,
   serviceDescription,
   serviceId,
@@ -138,6 +155,8 @@ register(optionLabel, { id: 'OptionLabel' })
 register(manageToken, { id: 'ManageToken' })
 register(messengerId, { id: 'MessengerID' })
 register(authTicket, { id: 'AuthTicket' })
+register(queryLimit, { id: 'QueryLimit' })
+register(queryOffset, { id: 'QueryOffset' })
 register(seats, { id: 'Seats' })
 register(capacity, { id: 'Capacity' })
 register(durationMinutes, { id: 'DurationMinutes' })
@@ -171,6 +190,7 @@ register(avatarContentType, { id: 'ImageContentType' })
 // Inputs / updates.
 register(createBookingInput, { id: 'CreateBookingInput' })
 register(cancelBookingByTokenInput, { id: 'CancelBookingByTokenInput' })
+register(lookupBookingByTokenInput, { id: 'LookupBookingByTokenInput' })
 register(lookupBookingsInput, { id: 'LookupBookingsInput' })
 register(cancelBookingByOrganizerInput, { id: 'CancelBookingByOrganizerInput' })
 register(createServiceInput, { id: 'CreateServiceInput' })
@@ -178,6 +198,7 @@ register(updateServiceInput, { id: 'UpdateServiceInput' })
 register(createTimeSlotInput, { id: 'CreateTimeSlotInput' })
 register(updateTimeSlotInput, { id: 'UpdateTimeSlotInput' })
 register(registerOrganizerInput, { id: 'RegisterOrganizerInput' })
+register(internalOrganizerLookupInput, { id: 'InternalOrganizerLookupInput' })
 register(updateOrganizerProfileInput, { id: 'UpdateOrganizerProfileInput' })
 register(updateOrganizerLanguageInput, { id: 'UpdateOrganizerLanguageInput' })
 register(createAvatarUploadInput, { id: 'CreateAvatarUploadInput' })
@@ -211,8 +232,21 @@ register(slotEnvelope, { id: 'SlotEnvelope' })
 register(slotsEnvelope, { id: 'SlotsEnvelope' })
 register(guestBookingEnvelope, { id: 'GuestBookingEnvelope' })
 register(bookingEnvelope, { id: 'BookingEnvelope' })
+register(bookingsEnvelope, { id: 'BookingsEnvelope' })
 register(guestBookingsEnvelope, { id: 'GuestBookingsEnvelope' })
 register(organizerEnvelope, { id: 'OrganizerEnvelope' })
+register(publicOrganizerViewEnvelope, { id: 'PublicOrganizerViewEnvelope' })
+register(publicServiceViewEnvelope, { id: 'PublicServiceViewEnvelope' })
+register(sitemapOrganizerEntry, { id: 'SitemapOrganizerEntry' })
+register(sitemapServiceEntry, { id: 'SitemapServiceEntry' })
+register(publicSitemapEnvelope, { id: 'PublicSitemapEnvelope' })
+register(serviceCountsRecord, { id: 'ServiceCountsRecord' })
+register(analyticsTrendDay, { id: 'AnalyticsTrendDay' })
+register(analyticsServiceCount, { id: 'AnalyticsServiceCount' })
+register(analyticsSummaryRecord, { id: 'AnalyticsSummaryRecord' })
+register(cabinetSummaryEnvelope, { id: 'CabinetSummaryEnvelope' })
+register(internalOrganizerRecord, { id: 'InternalOrganizerRecord' })
+register(internalOrganizerEnvelope, { id: 'InternalOrganizerEnvelope' })
 register(deletedServiceEnvelope, { id: 'DeletedServiceEnvelope' })
 register(deletedSlotEnvelope, { id: 'DeletedSlotEnvelope' })
 register(errorBody, { id: 'ErrorBody' })

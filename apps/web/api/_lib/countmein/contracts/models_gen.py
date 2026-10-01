@@ -9,6 +9,17 @@ from uuid import UUID
 from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field
 
 
+class AnalyticsServiceCount(BaseModel):
+    service: str
+    bookings: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+
+
+class AnalyticsTrendDay(BaseModel):
+    day: str
+    bookings: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    seats: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+
+
 class AuthTicketResponse(BaseModel):
     ticket: Annotated[str, Field(max_length=200, min_length=20)]
     organizerExists: bool
@@ -59,6 +70,12 @@ type OrganizerDescription = Annotated[str, Field(max_length=4000)]
 type PriceText = Annotated[str, Field(max_length=50, min_length=1)]
 
 
+type QueryLimit = Annotated[int, Field(ge=1, le=100)]
+
+
+type QueryOffset = Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 type ServiceDescription = Annotated[str, Field(max_length=2000)]
 
 
@@ -93,6 +110,17 @@ class UpdateTimeSlotInput(BaseModel):
 class ValidationErrors(BaseModel):
     formErrors: list[str]
     fieldErrors: dict[str, list[str]]
+
+
+class AnalyticsSummaryRecord(BaseModel):
+    totalBookings: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    prevTotalBookings: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    seatsSold: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    prevSeatsSold: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    windowBookings: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    cancelledInWindow: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    trend: list[AnalyticsTrendDay]
+    byService: list[AnalyticsServiceCount]
 
 
 class AuthTicketPayload(BaseModel):
@@ -157,6 +185,10 @@ class BookingRecord(BaseModel):
     guestMessengerLogin: str | None
     selectedOptions: list[str] | None
     createdAt: str
+
+
+class BookingsEnvelope(BaseModel):
+    bookings: list[BookingRecord]
 
 
 class CancelBookingByOrganizerInput(BaseModel):
@@ -244,6 +276,31 @@ class GuestTicketResponse(BaseModel):
     displayName: str
 
 
+class InternalOrganizerLookupInput(BaseModel):
+    messenger: Literal['telegram'] | None = None
+    messengerId: str | None = None
+    organizerId: Annotated[
+        UUID | None,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ] = None
+
+
+class InternalOrganizerRecord(BaseModel):
+    id: Annotated[
+        UUID,
+        Field(
+            pattern='^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$'
+        ),
+    ]
+    name: Annotated[str, Field(max_length=100, min_length=1)]
+    slug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
+    photoUrl: str | None = None
+
+
 class InvalidBody(BaseModel):
     error: str
     details: ValidationErrors
@@ -257,6 +314,10 @@ class LoginLinkPayload(BaseModel):
         ),
     ]
     next: Annotated[str, Field(pattern='^\\/.*')]
+
+
+class LookupBookingByTokenInput(BaseModel):
+    manageToken: Annotated[str, Field(max_length=200, min_length=10)]
 
 
 class OrganizerProfile(BaseModel):
@@ -313,6 +374,14 @@ class RegisteredOrganizer(BaseModel):
     ]
 
 
+class ServiceCountsRecord(BaseModel):
+    serviceId: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
+    upcomingSlotsCount: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    confirmedBookingsCount: Annotated[
+        int, Field(ge=-9007199254740991, le=9007199254740991)
+    ]
+
+
 class ServiceRecord(BaseModel):
     id: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
     organizerId: Annotated[
@@ -337,6 +406,19 @@ class ServiceRecord(BaseModel):
 
 class ServicesEnvelope(BaseModel):
     services: list[ServiceRecord]
+
+
+class SitemapOrganizerEntry(BaseModel):
+    slug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
+
+
+class SitemapServiceEntry(BaseModel):
+    orgSlug: Annotated[
+        str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
+    ]
+    serviceId: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
 
 
 class TelegramWidgetPayload(BaseModel):
@@ -382,6 +464,11 @@ class BookingEnvelope(BaseModel):
     booking: BookingRecord
 
 
+class CabinetSummaryEnvelope(BaseModel):
+    serviceCounts: list[ServiceCountsRecord]
+    analytics: AnalyticsSummaryRecord
+
+
 class GuestBooking(BaseModel):
     id: Annotated[
         UUID,
@@ -409,8 +496,29 @@ class GuestBookingsEnvelope(BaseModel):
     bookings: list[GuestBooking]
 
 
+class InternalOrganizerEnvelope(BaseModel):
+    organizer: InternalOrganizerRecord
+
+
 class OrganizerEnvelope(BaseModel):
     organizer: OrganizerProfile
+
+
+class PublicOrganizerViewEnvelope(BaseModel):
+    organizer: PublicOrganizer
+    services: list[ServiceRecord]
+    slots: list[TimeSlotRecord]
+
+
+class PublicServiceViewEnvelope(BaseModel):
+    service: ServiceRecord
+    organizer: PublicOrganizer
+    slots: list[TimeSlotRecord]
+
+
+class PublicSitemapEnvelope(BaseModel):
+    organizers: list[SitemapOrganizerEntry]
+    services: list[SitemapServiceEntry]
 
 
 class RegisterOrganizerInput(BaseModel):

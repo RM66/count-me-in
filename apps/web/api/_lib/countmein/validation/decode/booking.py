@@ -18,6 +18,10 @@ def decode_cancel_booking_by_token_input(body: bytes) -> gen.CancelBookingByToke
     return _decode_model(gen.CancelBookingByTokenInput, _raw(body), "CancelBookingByTokenInput")
 
 
+def decode_lookup_booking_by_token_input(body: bytes) -> gen.LookupBookingByTokenInput:
+    return _decode_model(gen.LookupBookingByTokenInput, _raw(body), "LookupBookingByTokenInput")
+
+
 def decode_lookup_bookings_input(body: bytes) -> gen.LookupBookingsInput:
     return _decode_model(gen.LookupBookingsInput, _raw(body), "LookupBookingsInput")
 

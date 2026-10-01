@@ -16,6 +16,7 @@
     "lint:py": "turbo run lint:py",
     "generate:openapi": "turbo run generate:openapi",
     "generate:constants": "turbo run generate:constants",
+    "generate:py": "bun --filter=web run generate:py",
     "knip": "knip --exclude duplicates"
   },
   "devDependencies": {

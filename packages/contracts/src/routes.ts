@@ -26,17 +26,24 @@ import {
   cancelBookingByOrganizerInput,
   cancelBookingByTokenInput,
   createBookingInput,
+  lookupBookingByTokenInput,
   lookupBookingsInput,
 } from './booking'
 import {
   bookingEnvelope,
+  bookingsEnvelope,
+  cabinetSummaryEnvelope,
   deletedServiceEnvelope,
   deletedSlotEnvelope,
   errorBody,
   guestBookingEnvelope,
   guestBookingsEnvelope,
+  internalOrganizerEnvelope,
   invalidBody,
   organizerEnvelope,
+  publicOrganizerViewEnvelope,
+  publicServiceViewEnvelope,
+  publicSitemapEnvelope,
   serviceEnvelope,
   servicesEnvelope,
   slotEnvelope,
@@ -49,12 +56,13 @@ import {
   QUEUE_OUTBOX_SWEEP,
 } from './jobs'
 import {
+  internalOrganizerLookupInput,
   registered,
   registerOrganizerInput,
   updateOrganizerLanguageInput,
   updateOrganizerProfileInput,
 } from './organizer'
-import { serviceId, uuid } from './primitives'
+import { queryLimit, queryOffset, serviceId, slugShape, uuid } from './primitives'
 import { createServiceInput, updateServiceInput } from './service'
 import {
   createAvatarUploadInput,
@@ -82,6 +90,7 @@ export type ApiAuth =
   | 'sessionWritable'
   | 'sessionOrDemoRead'
   | 'qstashSignature'
+  | 'internal'
 
 export type ApiParam = {
   name: string
@@ -281,6 +290,62 @@ export const API_ROUTES: readonly ApiRoute[] = [
       INTERNAL,
     ],
   },
+  {
+    operationId: 'getCabinetSummary',
+    method: 'get',
+    path: '/api/cabinet/summary',
+    summary: 'Get cabinet summary counts and 30-day analytics for the organizer',
+    auth: 'sessionOrDemoRead',
+    responses: [
+      { status: 200, description: 'Cabinet summary and analytics', body: cabinetSummaryEnvelope },
+      INTERNAL,
+    ],
+  },
+
+  // ── Public ────────────────────────────────────────────────────────────────
+  {
+    operationId: 'getPublicOrganizer',
+    method: 'get',
+    path: '/api/public/organizers/{slug}',
+    summary: 'Get public organizer profile, services, and upcoming slots by slug',
+    auth: 'public',
+    params: [{ name: 'slug', in: 'path', required: true, schema: slugShape }],
+    rateLimit: { limit: 60, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Public organizer view', body: publicOrganizerViewEnvelope },
+      { status: 404, description: 'Organizer not found', body: errorBody },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
+  {
+    operationId: 'getPublicService',
+    method: 'get',
+    path: '/api/public/services/{id}',
+    summary: 'Get public service details, parent organizer, and upcoming slots',
+    auth: 'public',
+    params: [{ name: 'id', in: 'path', required: true, schema: serviceId }],
+    rateLimit: { limit: 60, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Public service view', body: publicServiceViewEnvelope },
+      { status: 404, description: 'Service not found', body: errorBody },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
+  {
+    operationId: 'getPublicSitemap',
+    method: 'get',
+    path: '/api/public/sitemap',
+    summary: 'List all public organizer slugs and service paths for sitemap generation',
+    auth: 'public',
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Public sitemap catalog', body: publicSitemapEnvelope },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
 
   // ── Services ──────────────────────────────────────────────────────────────
   {
@@ -443,6 +508,34 @@ export const API_ROUTES: readonly ApiRoute[] = [
 
   // ── Bookings ──────────────────────────────────────────────────────────────
   {
+    operationId: 'listBookings',
+    method: 'get',
+    path: '/api/bookings',
+    summary: 'List bookings of the organizer this request may view',
+    auth: 'sessionOrDemoRead',
+    params: [
+      {
+        name: 'limit',
+        in: 'query',
+        required: false,
+        schema: queryLimit,
+        description: 'Maximum bookings to return (default 50, max 100).',
+      },
+      {
+        name: 'offset',
+        in: 'query',
+        required: false,
+        schema: queryOffset,
+        description: 'Number of bookings to skip (default 0).',
+      },
+    ],
+    responses: [
+      { status: 200, description: 'Bookings', body: bookingsEnvelope },
+      { status: 400, description: 'Invalid query parameters', body: errorBody },
+      INTERNAL,
+    ],
+  },
+  {
     operationId: 'createBooking',
     method: 'post',
     path: '/api/bookings',
@@ -510,6 +603,26 @@ export const API_ROUTES: readonly ApiRoute[] = [
     ],
   },
   {
+    operationId: 'getBookingByManageToken',
+    method: 'post',
+    path: '/api/bookings/manage-lookup',
+    summary: 'Guest looks up a booking via manageToken',
+    auth: 'manageToken',
+    request: lookupBookingByTokenInput,
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Guest booking details', body: guestBookingEnvelope },
+      INVALID_BODY,
+      {
+        status: 404,
+        description: 'Booking not found or token expired',
+        body: errorBody,
+      },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
+  {
     operationId: 'cancelBookingByOrganizer',
     method: 'post',
     path: '/api/bookings/cancel-by-organizer',
@@ -558,6 +671,23 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 401, description: 'Missing or invalid upstash-signature' },
       { status: 404, description: 'Unknown queue name' },
       { status: 500, description: 'Handler failure (triggers a QStash retry)' },
+    ],
+  },
+
+  // ── Internal ──────────────────────────────────────────────────────────────
+  {
+    operationId: 'getOrganizerByMessenger',
+    method: 'post',
+    path: '/api/internal/auth/organizer-by-messenger',
+    summary: 'Internal lookup of organizer by messenger identity or organizer ID for Auth.js',
+    auth: 'internal',
+    request: internalOrganizerLookupInput,
+    responses: [
+      { status: 200, description: 'Organizer found', body: internalOrganizerEnvelope },
+      INVALID_BODY,
+      { status: 401, description: 'Invalid or missing internal secret', body: errorBody },
+      { status: 404, description: 'Organizer not found', body: errorBody },
+      INTERNAL,
     ],
   },
 ]

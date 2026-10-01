@@ -781,6 +781,7 @@
     "invalidInput": "Некорректные данные",
     "invalidOptions": "Выбранные опции недоступны для этой услуги",
     "ticketExpired": "Срок подтверждения через Telegram истёк — подтвердите личность ещё раз",
+    "unauthorizedInternal": "Неверный или отсутствующий внутренний секрет сервиса",
     "telegramNotConfigured": "Telegram-бот не настроен",
     "telegramInvalid": "Некорректные данные авторизации Telegram",
     "telegramValidationFailed": "Не удалось проверить авторизацию Telegram",

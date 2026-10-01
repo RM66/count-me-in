@@ -159,3 +159,9 @@ export const messengerId = z.string().min(BOUNDS.messengerId.min).max(BOUNDS.mes
  * Replaces the old `otpTicket` — same shape, new semantics (widget HMAC, not OTP code).
  */
 export const authTicket = z.string().min(BOUNDS.authTicket.min).max(BOUNDS.authTicket.max)
+
+/** Pagination: maximum number of records to return (1..100). */
+export const queryLimit = z.number().int().min(1).max(100)
+
+/** Pagination: number of records to skip (non-negative). */
+export const queryOffset = z.number().int().min(0)
