@@ -36,7 +36,7 @@ class ErrorBody(BaseModel):
         '__pydantic_extra__': Dict[str, Any],
     }
     error: str
-    code: str | None = None
+    code: str
     seatsLeft: Annotated[
         int | None, Field(ge=-9007199254740991, le=9007199254740991)
     ] = None
@@ -189,6 +189,7 @@ class BookingRecord(BaseModel):
 
 class BookingsEnvelope(BaseModel):
     bookings: list[BookingRecord]
+    hasMore: bool
 
 
 class CancelBookingByOrganizerInput(BaseModel):
@@ -303,6 +304,7 @@ class InternalOrganizerRecord(BaseModel):
 
 class InvalidBody(BaseModel):
     error: str
+    code: str
     details: ValidationErrors
 
 

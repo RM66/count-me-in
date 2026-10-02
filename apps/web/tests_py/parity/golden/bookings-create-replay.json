@@ -219,9 +219,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Your Telegram confirmation expired — authenticate again"
+          "error": "Your Telegram confirmation expired — authenticate again",
+          "code": "ticketExpired"
         },
-        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\"}",
+        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\",\"code\":\"ticketExpired\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

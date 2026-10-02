@@ -122,7 +122,7 @@ async def test_unknown_route_answers_json_404():
     async with _client(app) as client:
         r = await client.get("/api/does-not-exist")
         assert r.status_code == 404
-        assert r.json() == {"error": "Not found"}
+        assert r.json() == {"error": "Not found", "code": "notFound"}
         assert r.headers["content-type"] == "application/json"
 
 
@@ -136,7 +136,7 @@ async def test_path_restoration_middleware():
         assert r.status_code in (200, 503)
         r = await client.get("/api/index", params={"_path": "/evil/thing"})
         assert r.status_code == 404
-        assert r.json() == {"error": "Not found"}
+        assert r.json() == {"error": "Not found", "code": "notFound"}
 
 
 def test_strip_query_param():

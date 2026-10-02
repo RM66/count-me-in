@@ -152,9 +152,9 @@ async def delete_owned_service(
     guard runs first and answers a 409 the organizer can act on; the
     FK mapping below is the backstop. Returns None when nothing matched.
     The deleted cover URL rides along so the caller can remove the R2
-    object best-effort after the commit (same pattern as the PUT
+    object best-effort after the commit (same pattern as the PATCH
     handlers) — a separate read-then-delete would race with a
-    concurrent PUT pointing the row at a new cover."""
+    concurrent PATCH pointing the row at a new cover."""
     refuse_demo_write(organizer_id)
     async with session.begin():
         # Lock the service row so the check sees a stable parent: FOR

@@ -8,7 +8,7 @@ describe('API route manifest', () => {
     for (const route of API_ROUTES) {
       const schemas = [
         route.request,
-        ...route.responses.flatMap((r) => [r.body, ...(r.bodyOneOf ?? [])]),
+        ...route.responses.flatMap((r) => [r.body, ...(r.bodyAnyOf ?? [])]),
         ...(route.params ?? []).map((p) => ('enum' in p.schema ? undefined : p.schema)),
       ].filter((s) => s !== undefined)
       for (const schema of schemas) {

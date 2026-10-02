@@ -200,15 +200,16 @@ export async function listSlots(
   return envelope?.slots ?? []
 }
 
-/** Bookings of the viewer, newest first, paginated (default 50). */
+/** Bookings of the viewer, newest first, paginated (default 50).
+ * `hasMore` comes from the server — it fetched one row past the page. */
 export async function listBookings(
   options: { limit?: number; offset?: number } = {},
-): Promise<BookingRecord[]> {
+): Promise<{ bookings: BookingRecord[]; hasMore: boolean }> {
   const limit = options.limit ?? 50
   const offset = options.offset ?? 0
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
   const envelope = await fetchEnvelope(`/api/bookings?${params.toString()}`, bookingsEnvelope)
-  return envelope?.bookings ?? []
+  return { bookings: envelope?.bookings ?? [], hasMore: envelope?.hasMore ?? false }
 }
 
 /**

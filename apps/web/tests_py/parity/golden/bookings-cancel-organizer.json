@@ -279,9 +279,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Booking not found"
+          "error": "Booking not found",
+          "code": "bookingNotFound"
         },
-        "body_raw": "{\"error\":\"Booking not found\"}",
+        "body_raw": "{\"error\":\"Booking not found\",\"code\":\"bookingNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -361,9 +362,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This booking has already been cancelled"
+          "error": "This booking has already been cancelled",
+          "code": "alreadyCancelled"
         },
-        "body_raw": "{\"error\":\"This booking has already been cancelled\"}",
+        "body_raw": "{\"error\":\"This booking has already been cancelled\",\"code\":\"alreadyCancelled\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -391,6 +393,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -400,7 +403,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"bookingId\":[\"Required\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"bookingId\":[\"Required\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

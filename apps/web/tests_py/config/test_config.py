@@ -19,6 +19,11 @@ REQUIRED = [
     "QSTASH_TOKEN",
     "QSTASH_CURRENT_SIGNING_KEY",
     "TELEGRAM_BOT_TOKEN",
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+    "R2_PUBLIC_BASE_URL",
 ]
 
 
@@ -37,6 +42,11 @@ def full_prod_env(monkeypatch):
     monkeypatch.setenv("QSTASH_TOKEN", "prod-qstash-token")
     monkeypatch.setenv("QSTASH_CURRENT_SIGNING_KEY", "prod-signing-key")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "prod-bot-token")
+    monkeypatch.setenv("R2_ACCOUNT_ID", "prod-account")
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "prod-access")
+    monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "prod-secret-key")
+    monkeypatch.setenv("R2_BUCKET", "prod-bucket")
+    monkeypatch.setenv("R2_PUBLIC_BASE_URL", "https://media.countmein.group")
 
 
 def test_validate_skipped_outside_production(monkeypatch):

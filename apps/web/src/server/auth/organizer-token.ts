@@ -28,6 +28,8 @@
  * middleware (edge runtime) imports this via `proxy.ts`; server actions
  * import it via `server/api.ts`.
  */
+import { ORGANIZER_AUTH_AUD, ORGANIZER_AUTH_ISS } from '@repo/contracts'
+
 import 'server-only'
 
 const HEADER = { alg: 'HS256', typ: 'JWT' }
@@ -94,6 +96,8 @@ export async function mintOrganizerAuth(
 
   const now = Math.floor(Date.now() / 1000)
   const payload = {
+    iss: ORGANIZER_AUTH_ISS,
+    aud: ORGANIZER_AUTH_AUD,
     sub: organizerId,
     slug: slug ?? '',
     iat: now,

@@ -63,10 +63,10 @@ def _marshal_body(body: Any) -> Any:
     # JSON encoder cannot write (a 500 on every media-upload response);
     # json mode renders them as their canonical strings.
     if isinstance(body, ErrorBody):
-        # code/seatsLeft/maxSeats are optional extras — the plain error
-        # body is {"error": …} with the extras only when set.
+        # seatsLeft/maxSeats are optional extras — code is not (ADR-024):
+        # every error body is {error, code, …}, extras only when set.
         dumped = body.model_dump(mode="json", exclude_none=False, by_alias=True)
-        return {k: v for k, v in dumped.items() if v is not None or k == "error"}
+        return {k: v for k, v in dumped.items() if v is not None or k in ("error", "code")}
     if hasattr(body, "model_dump"):
         return body.model_dump(mode="json", exclude_none=False, by_alias=True)
     return body
@@ -92,10 +92,15 @@ def method_not_allowed(locale: str) -> Response:
     return error(405, locale, "methodNotAllowed")
 
 
-def error(status: int, locale: str, key: str) -> Response:
-    """Render {error: <localized message>} — the body carries the caller's
-    locale (ADR-011)."""
-    return Response(status=status, body=ErrorBody(error=api_error(locale, key)))
+def error(status: int, locale: str, key: str, code: str | None = None) -> Response:
+    """Render {error: <localized message>, code} — the body carries the
+    caller's locale (ADR-011) and a machine-readable code (ADR-024);
+    the i18n key doubles as the code unless the wire pins a different
+    token."""
+    return Response(
+        status=status,
+        body=ErrorBody(error=api_error(locale, key), code=code or key),
+    )
 
 
 def render_api_error(exc: ApiError, locale: str) -> Response:
@@ -111,17 +116,26 @@ def render_api_error(exc: ApiError, locale: str) -> Response:
     else:
         params = exc.params()
         if params is not None:
-            resp = error_params(exc.status, locale, key, params)
+            resp = error_params(exc.status, locale, key, params, code=exc.code())
         else:
-            resp = error(exc.status, locale, key)
+            resp = error(exc.status, locale, key, code=exc.code())
     headers = exc.headers()
     if headers is not None:
         resp.headers = {**resp.headers, **headers}
     return resp
 
 
-def error_params(status: int, locale: str, key: str, params: Mapping[str, Any] | None) -> Response:
-    return Response(status=status, body=ErrorBody(error=api_error(locale, key, params)))
+def error_params(
+    status: int,
+    locale: str,
+    key: str,
+    params: Mapping[str, Any] | None,
+    code: str | None = None,
+) -> Response:
+    return Response(
+        status=status,
+        body=ErrorBody(error=api_error(locale, key, params), code=code or key),
+    )
 
 
 def error_extras(
@@ -146,6 +160,7 @@ def invalid_body(locale: str, errs: Any) -> Response:
         400,
         InvalidBody(
             error=api_error(locale, "invalidInput"),
+            code="invalidInput",
             details=ValidationErrors(formErrors=errs.form, fieldErrors=errs.fields),
         ),
     )

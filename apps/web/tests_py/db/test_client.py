@@ -35,18 +35,30 @@ def test_engine_uses_queue_pool_in_container(monkeypatch):
         assert isinstance(eng.pool, AsyncAdaptedQueuePool), (
             f"container engine pool must be AsyncAdaptedQueuePool, got {type(eng.pool).__name__}"
         )
-        # Direct Postgres in the container: prepare_threshold must be
-        # pinned explicitly in db/client.py (unlike the serverless
-        # branch, which disables prepared statements behind a pooler).
-        # The creator closure captures connect_args — pool internals
-        # expose no accessor, so assert on the engine URL options the
-        # creator was built from instead of private attributes.
-        import inspect as _inspect
-
-        import countmein.db.client as client_mod
-
-        src = _inspect.getsource(client_mod.engine)
-        container_branch = src.split("Long-running container", 1)[1]
-        assert '"prepare_threshold": 5' in container_branch.replace("'", '"')
+        # Direct Postgres in the container: prepared statements stay on
+        # (unlike the serverless branch, which disables them behind a
+        # transaction-mode pooler).
+        assert client._CONTAINER_CONNECT_ARGS["prepare_threshold"] == 5
     finally:
         client.reset_for_test()
+
+
+def test_statement_timeout_on_both_pool_policies():
+    """ADR-024: every connection — pooled container or per-request
+    serverless — carries a server-side statement_timeout, so a runaway
+    query cannot hold a connection (or the function's maxDuration)."""
+    url = "postgresql://u:p@localhost:5432/db"
+    for base in (client._SERVERLESS_CONNECT_ARGS, client._CONTAINER_CONNECT_ARGS):
+        args = client._connect_args(base, url)
+        assert args["options"] == f"-c statement_timeout={client.STATEMENT_TIMEOUT_MS}"
+        assert client.STATEMENT_TIMEOUT_MS > 0
+
+
+def test_statement_timeout_merges_with_url_options():
+    """A libpq `options` already in POSTGRES_URL is preserved — psycopg
+    connect kwargs win over URL params on a duplicate key, so without
+    the merge the caller's options= would be silently dropped."""
+    url = "postgresql://u:p@localhost:5432/db?options=-c%20search_path%3Dapp"
+    args = client._connect_args(client._SERVERLESS_CONNECT_ARGS, url)
+    assert "search_path=app" in args["options"]
+    assert f"statement_timeout={client.STATEMENT_TIMEOUT_MS}" in args["options"]

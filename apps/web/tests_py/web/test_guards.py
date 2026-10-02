@@ -64,7 +64,16 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     )
     payload = (
         base64.urlsafe_b64encode(
-            json.dumps({"sub": sub, "slug": slug, "iat": int(time.time()), "exp": exp}).encode()
+            json.dumps(
+                {
+                    "iss": "countmein-web",
+                    "aud": "countmein-api",
+                    "sub": sub,
+                    "slug": slug,
+                    "iat": int(time.time()),
+                    "exp": exp,
+                }
+            ).encode()
         )
         .rstrip(b"=")
         .decode()
@@ -150,20 +159,20 @@ async def test_require_guest_identity_consume_once(fake_redis):
     ticket = await issue_ticket(guest_payload(TICKET_PURPOSE_GUEST))
 
     # First redemption: the payload comes back.
-    payload = await require_guest_identity(guard_request(), ticket)
+    payload = await require_guest_identity(ticket)
     assert payload.messenger_id == "123456789"
     assert payload.purpose == TICKET_PURPOSE_GUEST
 
     # Replay: the ticket was consumed (GETDEL), so the second attempt is
     # answered like an expired one — 401, never a second identity.
     with pytest.raises(TicketExpired) as exc_info:
-        await require_guest_identity(guard_request(), ticket)
+        await require_guest_identity(ticket)
     assert exc_info.value.status == 401, "replayed ticket must be a 401"
 
 
 async def test_require_guest_identity_unknown_ticket(fake_redis):
     with pytest.raises(TicketExpired) as exc_info:
-        await require_guest_identity(guard_request(), "no-such-ticket")
+        await require_guest_identity("no-such-ticket")
     assert exc_info.value.status == 401, "unknown ticket must be a 401"
 
 
@@ -173,18 +182,18 @@ async def test_require_guest_identity_signup_purpose_refused(fake_redis):
     # the caller cannot distinguish "wrong flow" from "unknown ticket".
     ticket = await issue_ticket(guest_payload(TICKET_PURPOSE_ORGANIZER))
     with pytest.raises(TicketExpired) as exc_info:
-        await require_guest_identity(guard_request(), ticket)
+        await require_guest_identity(ticket)
     assert exc_info.value.status == 401, "signup ticket in the booking flow must be a 401"
     # And the refusal must have consumed it — it cannot be retried as guest either.
     with pytest.raises(TicketExpired):
-        await require_guest_identity(guard_request(), ticket)
+        await require_guest_identity(ticket)
 
 
 async def test_require_guest_identity_broken_payload(fake_redis):
     # Corrupt JSON behind the key is "no payload usable" → 401, not a 500.
     await fake_redis.set("auth:ticket:broken", "not-json{")
     with pytest.raises(TicketExpired) as exc_info:
-        await require_guest_identity(guard_request(), "broken")
+        await require_guest_identity("broken")
     assert exc_info.value.status == 401, "broken ticket payload must be a 401"
 
 
@@ -200,7 +209,7 @@ async def test_require_guest_identity_redis_down(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setattr(redis_mod, "client", lambda: Dead())
     with pytest.raises(RuntimeError):
-        await require_guest_identity(guard_request(), "any-ticket")
+        await require_guest_identity("any-ticket")
 
 
 # ── read_body_or_413 ──────────────────────────────────────────────────────────

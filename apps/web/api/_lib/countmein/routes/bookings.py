@@ -20,8 +20,9 @@ construction rather than by convention.
 from __future__ import annotations
 
 import asyncio
+from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.requests import Request
@@ -33,7 +34,7 @@ from ..contracts.payloads import AuthTicketPayload
 from ..db.client import sessionmaker
 from ..db.rows import BookingChain, OutboxRow, from_model_booking
 from ..db.serializers import to_booking_record, to_guest_booking_chain
-from ..errors import BookingNotFound, InvalidInput
+from ..errors import BookingNotFound
 from ..queue import PublishSkipped, publish_outbox
 from ..repositories import booking_repo
 from ..services import booking_service
@@ -52,6 +53,7 @@ from ..web.deps import (
     decoded,
     get_db_session,
     guest_identity,
+    guest_ticket,
     ip_rate_limit,
 )
 from ..web.guards import require_writable_organizer
@@ -153,46 +155,48 @@ async def _mark_outbox_terminal(id: str, trace_id: str, skipped: bool) -> None:
 
 
 async def bookings_list(
-    request: Request,
     scope: tuple[str, bool] = Depends(cabinet_organizer),
     session: AsyncSession = Depends(get_db_session),
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> StarletteResponse:
-    """GET /api/bookings: list bookings of the organizer this request may view."""
+    """GET /api/bookings: list bookings of the organizer this request may
+    view. The bounds are the declared QueryLimit/QueryOffset — FastAPI's
+    query validation refuses out-of-range values with a 400 instead of
+    hand-parsing them here."""
     organizer_id, _is_demo = scope
-    raw_limit = request.query_params.get("limit")
-    raw_offset = request.query_params.get("offset")
-    try:
-        limit = int(raw_limit) if raw_limit is not None else 50
-        offset = int(raw_offset) if raw_offset is not None else 0
-        if limit < 1 or limit > 100 or offset < 0:
-            raise ValueError()
-    except (ValueError, TypeError):
-        raise InvalidInput("limit must be between 1 and 100, offset non-negative") from None
 
+    # Fetch one row past the page: hasMore reports whether a next page
+    # exists without a separate COUNT.
     bookings = await booking_repo.list_by_organizer(
-        session, organizer_id, limit=limit, offset=offset
+        session, organizer_id, limit=limit + 1, offset=offset
     )
-    records = [to_booking_record(from_model_booking(b)) for b in bookings]
-    return json_response(200, gen.BookingsEnvelope(bookings=records)).to_starlette()
+    has_more = len(bookings) > limit
+    records = [to_booking_record(from_model_booking(b)) for b in bookings[:limit]]
+    return json_response(
+        200, gen.BookingsEnvelope(bookings=records, hasMore=has_more)
+    ).to_starlette()
 
 
 async def booking_create(
     request: Request,
     _limited: None = Depends(ip_rate_limit("rl:booking:", 5, 60.0)),
     body: ValidatedBody[gen.CreateBookingInput] = Depends(_create_booking_dep),
-    identity: AuthTicketPayload = Depends(
-        guest_identity(_create_booking_dep, lambda m: str(m.guestTicket))
-    ),
+    ticket: str = Depends(guest_ticket(_create_booking_dep, lambda m: str(m.guestTicket))),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/bookings: a guest reserves seats (ADR-002). The public
     write of the whole product, and the only one with no session:
     authorization is the short-lived ticket from
-    /api/auth/telegram-guest, consumed here — which is what makes a
-    replayed request fail rather than double-book. Only guestName, the
-    slot and the options come from the body; the identity stored on the
-    row is read from the ticket server-side (invariant 8). Seats are
-    claimed by the atomic reserve in create_guest_booking (invariant 2)."""
+    /api/auth/telegram-guest — single-use, which is what makes a
+    replayed request fail rather than double-book. The dependency only
+    extracts the raw ticket; the service redeems it after the domain
+    refusals (sold out, party cap, invalid options), so a refused
+    attempt leaves the ticket reusable (ADR-024 B1). Only guestName,
+    the slot and the options come from the body; the identity stored on
+    the row is read from the ticket server-side (invariant 8). Seats
+    are claimed by the atomic reserve in create_guest_booking
+    (invariant 2)."""
     payload = body.model
 
     # Trace id: correlates this request across the async pipeline — the
@@ -217,7 +221,7 @@ async def booking_create(
             # so the value is never None here; the fallback is
             # belt-and-braces.
             guest_locale=str(payload.guestLocale or "en"),
-            guest=identity,
+            guest_ticket=ticket,
             trace_id=trace_id,
         ),
     )

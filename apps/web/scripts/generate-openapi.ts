@@ -22,8 +22,15 @@ import yaml from 'yaml'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const specFile = join(__dirname, '..', 'openapi.yaml')
+const specJsonFile = join(__dirname, '..', 'api', '_lib', 'countmein', 'contracts', 'spec_gen.json')
 
-const text = yaml.stringify(buildOpenApiDocument(), { indent: 2 })
+const document = buildOpenApiDocument()
 
-writeFileSync(specFile, text, 'utf8')
+writeFileSync(specFile, yaml.stringify(document, { indent: 2 }), 'utf8')
 console.log(`Wrote ${specFile}`)
+
+// The same document as JSON for the Python runtime (ADR-024): the API
+// validates against this bundled copy, so the deployed bundle never
+// depends on openapi.yaml being present or on a YAML parser.
+writeFileSync(specJsonFile, JSON.stringify(document, null, 2) + '\n', 'utf8')
+console.log(`Wrote ${specJsonFile}`)

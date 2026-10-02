@@ -22,6 +22,7 @@ def mint_session(secret: str, sub: str, slug: str, exp: int | None = None) -> st
     import base64
 
     from countmein.auth.session import derived_signing_key
+    from countmein.contracts.constants_gen import ORGANIZER_AUTH_AUD, ORGANIZER_AUTH_ISS
 
     header = (
         base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
@@ -33,6 +34,8 @@ def mint_session(secret: str, sub: str, slug: str, exp: int | None = None) -> st
         base64.urlsafe_b64encode(
             json.dumps(
                 {
+                    "iss": ORGANIZER_AUTH_ISS,
+                    "aud": ORGANIZER_AUTH_AUD,
                     "sub": sub,
                     "slug": slug,
                     "iat": now,

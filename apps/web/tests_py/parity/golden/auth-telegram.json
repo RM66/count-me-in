@@ -99,9 +99,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Telegram auth validation failed"
+          "error": "Telegram auth validation failed",
+          "code": "telegramValidationFailed"
         },
-        "body_raw": "{\"error\":\"Telegram auth validation failed\"}",
+        "body_raw": "{\"error\":\"Telegram auth validation failed\",\"code\":\"telegramValidationFailed\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -128,9 +129,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Invalid Telegram auth data"
+          "error": "Invalid Telegram auth data",
+          "code": "telegramInvalid"
         },
-        "body_raw": "{\"error\":\"Invalid Telegram auth data\"}",
+        "body_raw": "{\"error\":\"Invalid Telegram auth data\",\"code\":\"telegramInvalid\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -422,9 +424,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Too many requests — please try again in a moment"
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
         },
-        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false,
         "retryAfterWithinWindow": true
@@ -458,9 +461,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Too many requests — please try again in a moment"
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
         },
-        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false,
         "retryAfterWithinWindow": true
@@ -494,9 +498,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Too many requests — please try again in a moment"
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
         },
-        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false,
         "retryAfterWithinWindow": true
@@ -530,9 +535,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Too many requests — please try again in a moment"
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
         },
-        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false,
         "retryAfterWithinWindow": true

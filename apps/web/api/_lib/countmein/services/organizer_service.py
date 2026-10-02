@@ -37,7 +37,7 @@ async def get_organizer_profile_tx(session: AsyncSession, organizer_id: str) -> 
     """The profile for the organizer this request may view; None when the
     id does not exist (e.g. demo not yet seeded). The merge-patch route
     reads the current state and writes the merged state on one
-    transaction so concurrent PUTs cannot lose columns."""
+    transaction so concurrent PATCHes cannot lose columns."""
     model = await organizer_repo.get_by_id(session, organizer_id)
     return from_model_organizer(model) if model is not None else None
 

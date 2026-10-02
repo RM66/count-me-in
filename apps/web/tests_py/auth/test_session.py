@@ -31,7 +31,16 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     )
     payload = (
         base64.urlsafe_b64encode(
-            json.dumps({"sub": sub, "slug": slug, "iat": int(time.time()), "exp": exp}).encode()
+            json.dumps(
+                {
+                    "iss": "countmein-web",
+                    "aud": "countmein-api",
+                    "sub": sub,
+                    "slug": slug,
+                    "iat": int(time.time()),
+                    "exp": exp,
+                }
+            ).encode()
         )
         .rstrip(b"=")
         .decode()
@@ -166,6 +175,34 @@ def test_non_numeric_exp_is_anonymous():
 def test_verify_empty_sub():
     token = mint_test_token(TEST_SECRET, "", "slug", int(time.time()) + 60)
     assert verify_organizer_auth(token, TEST_SECRET) is None
+
+
+def test_verify_requires_iss_aud():
+    """ADR-024: a token without the matching iss/aud pair is not an
+    organizer-auth credential — replaying a token minted for a different
+    purpose under the same AUTH_SECRET must fail."""
+    token = mint_test_token(TEST_SECRET, "sub", "slug", int(time.time()) + 60)
+    header, payload, _sig = token.split(".")
+    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+
+    def resign(c):
+        p = base64.urlsafe_b64encode(json.dumps(c).encode()).rstrip(b"=").decode()
+        si = f"{header}.{p}"
+        s = hmac.new(derived_signing_key(TEST_SECRET), si.encode(), hashlib.sha256).digest()
+        return f"{si}.{base64.urlsafe_b64encode(s).rstrip(b'=').decode()}"
+
+    for drop in ("iss", "aud"):
+        c = dict(claims)
+        del c[drop]
+        assert verify_organizer_auth(resign(c), TEST_SECRET) is None, (
+            f"missing {drop} must not verify"
+        )
+    for claim, bad in (("iss", "other-issuer"), ("aud", "other-audience")):
+        c = dict(claims)
+        c[claim] = bad
+        assert verify_organizer_auth(resign(c), TEST_SECRET) is None, (
+            f"wrong {claim} must not verify"
+        )
 
 
 def _request(headers: dict[str, str] | None = None) -> Request:

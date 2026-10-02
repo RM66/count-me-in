@@ -215,9 +215,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Booking not found"
+          "error": "Booking not found",
+          "code": "bookingNotFound"
         },
-        "body_raw": "{\"error\":\"Booking not found\"}",
+        "body_raw": "{\"error\":\"Booking not found\",\"code\":\"bookingNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

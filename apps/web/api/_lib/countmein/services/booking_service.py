@@ -18,9 +18,9 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth.ticket import consume_guest_ticket
 from ..contracts import domain
 from ..contracts.constants_gen import QUEUE_BOOKING_CANCELLED, QUEUE_BOOKING_CREATED
-from ..contracts.payloads import AuthTicketPayload
 from ..db.rows import (
     BookingChain,
     OutboxRow,
@@ -51,9 +51,11 @@ MANAGE_TOKEN_GRACE_PERIOD = timedelta(hours=24)
 
 @dataclass(slots=True, frozen=True)
 class CreateBookingData:
-    """The validated booking input plus the resolved guest identity,
-    carried into the booking transaction (hand-written request plumbing,
-    not a wire type)."""
+    """The validated booking input plus the *raw* guest ticket, carried
+    into the booking transaction (hand-written request plumbing, not a
+    wire type). The ticket is redeemed inside create_guest_booking —
+    after every domain refusal — so a refused attempt leaves it
+    reusable (ADR-024 B1)."""
 
     service_id: str
     time_slot_id: str
@@ -61,7 +63,7 @@ class CreateBookingData:
     guest_name: str
     selected_options: list[str] | None
     guest_locale: str
-    guest: AuthTicketPayload
+    guest_ticket: str
     trace_id: str
 
 
@@ -194,6 +196,14 @@ async def create_guest_booking(
             # snapshot), and the number is UX copy, not an invariant.
             raise SoldOut(domain.seats_left(slot.capacity, slot.booked_count))
         claimed = from_model_slot(claimed_model)
+
+        # The guest ticket is spent here — after every refusal that a
+        # retry could fix (gone slot, invalid options, party cap, sold
+        # out) and only once a booking is genuinely attempted (ADR-024
+        # B1). An expired/foreign-purpose ticket raises TicketExpired;
+        # the transaction rolls back and the claimed seat is released.
+        guest = await consume_guest_ticket(data.guest_ticket)
+
         # manageToken expiry: the token is usable until the slot starts
         # plus a grace period — a past event's booking does not need
         # cancel access.
@@ -208,9 +218,9 @@ async def create_guest_booking(
                     "status": "confirmed",
                     "seats": data.seats,
                     "guest_name": data.guest_name,
-                    "guest_messenger": data.guest.messenger,
-                    "guest_messenger_id": data.guest.messenger_id,
-                    "guest_messenger_login": data.guest.messenger_login,
+                    "guest_messenger": guest.messenger,
+                    "guest_messenger_id": guest.messenger_id,
+                    "guest_messenger_login": guest.messenger_login,
                     "guest_locale": data.guest_locale,
                     "manage_token": token,
                     "manage_token_hash": hash_manage_token(token),

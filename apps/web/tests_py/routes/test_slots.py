@@ -1,4 +1,4 @@
-"""Slot route tests: create/list/get/put/delete, malformed UUID
+"""Slot route tests: create/list/get/patch/delete, malformed UUID
 envelope, demo refusal, 404, delete 409 guard, capacity-below-
 booked 409, validation envelope."""
 
@@ -79,8 +79,14 @@ async def test_slot_malformed_uuid_json_envelope(client, fake_redis, db):
     _, headers = await _setup(client, fake_redis, db, "slot-uuid-01")
     r = await client.get("/api/slots/not-a-uuid", headers=headers)
     assert r.status_code == 400
-    assert body_json(r) == {"error": "Invalid input"}
+    assert body_json(r) == {"error": "Invalid input", "code": "invalidInput"}
     r = await client.delete("/api/slots/not-a-uuid", headers=headers)
+    assert r.status_code == 400
+    r = await client.patch(
+        "/api/slots/not-a-uuid",
+        headers={**headers, "content-type": "application/merge-patch+json"},
+        content=b'{"capacity":5}',
+    )
     assert r.status_code == 400
 
 
@@ -92,10 +98,10 @@ async def test_slot_get_unknown_404(client, fake_redis, db):
 
 
 async def test_slot_put_merge_patch_absent_keeps(client, fake_redis, db):
-    _, headers = await _setup(client, fake_redis, db, "slot-put-01")
+    _, headers = await _setup(client, fake_redis, db, "slot-patch-01")
     svc = await create_service(client, headers)
     slot = await create_slot(client, headers, svc["id"])
-    r = await client.put(
+    r = await client.patch(
         f"/api/slots/{slot['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"capacity": 5}',
@@ -107,10 +113,10 @@ async def test_slot_put_merge_patch_absent_keeps(client, fake_redis, db):
 
 
 async def test_slot_put_requires_merge_patch_media_type(client, fake_redis, db):
-    _, headers = await _setup(client, fake_redis, db, "slot-put-02")
+    _, headers = await _setup(client, fake_redis, db, "slot-patch-02")
     svc = await create_service(client, headers)
     slot = await create_slot(client, headers, svc["id"])
-    r = await client.put(
+    r = await client.patch(
         f"/api/slots/{slot['id']}",
         headers={**headers, "content-type": "application/json"},
         content=b'{"capacity": 5}',
@@ -119,10 +125,10 @@ async def test_slot_put_requires_merge_patch_media_type(client, fake_redis, db):
 
 
 async def test_slot_put_nothing_to_update(client, fake_redis, db):
-    _, headers = await _setup(client, fake_redis, db, "slot-put-03")
+    _, headers = await _setup(client, fake_redis, db, "slot-patch-03")
     svc = await create_service(client, headers)
     slot = await create_slot(client, headers, svc["id"])
-    r = await client.put(
+    r = await client.patch(
         f"/api/slots/{slot['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b"{}",

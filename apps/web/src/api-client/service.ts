@@ -5,7 +5,7 @@ import { deletedServiceEnvelope, imageUploadTarget, serviceEnvelope } from '@rep
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
-import { del, post, put } from './client'
+import { del, patch, post } from './client'
 import { ApiError } from './error'
 import { resizeServicePhoto } from './image'
 
@@ -36,7 +36,7 @@ export function useCreateService() {
 export function useUpdateService(serviceId: string) {
   return useMutation({
     mutationFn: (input: UpdateServiceInput) =>
-      put(`/api/services/${serviceId}`, input, serviceEnvelope, 'application/merge-patch+json'),
+      patch(`/api/services/${serviceId}`, input, serviceEnvelope, 'application/merge-patch+json'),
   })
 }
 

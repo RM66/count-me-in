@@ -68,6 +68,34 @@ async def consume_ticket(token: str) -> AuthTicketPayload | None:
     return await _missing_or_broken(raw, None)
 
 
+async def consume_guest_ticket(token: str) -> AuthTicketPayload:
+    """Redeem a *guest-purpose* ticket: consume it and answer the
+    identity behind it, or raise TicketExpired. The only place a guest
+    ticket is spent — guards.py (booking lookup, where nothing precedes
+    consumption) and booking_service.create_guest_booking (after the
+    domain refusals, ADR-024 B1) both go through here, so the
+    purpose check and the failure semantics cannot drift.
+
+    Purpose claim: a ticket minted for organizer registration must not
+    be redeemable in the booking flow. Answered like an expired one —
+    the caller cannot distinguish "wrong flow" from "unknown ticket"."""
+    from .. import logx
+    from ..errors import TicketExpired
+    from .telegram import TICKET_PURPOSE_GUEST
+
+    try:
+        payload = await consume_ticket(token)
+    except Exception as err:
+        # Identity is NOT fail-open (ADR-019): a Redis outage is a 500.
+        # Logged here (with scope) because the recovery middleware sees
+        # only a bare RuntimeError.
+        logx.error(err, {"scope": "consume-ticket"})
+        raise RuntimeError("ticket consumption failed") from err
+    if payload is None or payload.purpose != TICKET_PURPOSE_GUEST:
+        raise TicketExpired()
+    return payload
+
+
 # ── One-time login links ─────────────────────────────────────────────────────
 # Notifications deep-link into the cabinet, but /cabinet needs no
 # session — without one the organizer would land in the read-only demo

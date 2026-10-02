@@ -28,7 +28,7 @@ def register_routes(app: FastAPI) -> None:
         organizer_avatar,
         organizer_me_get,
         organizer_me_language,
-        organizer_me_put,
+        organizer_me_patch,
         organizer_register,
         organizer_service_photo,
     )
@@ -40,11 +40,11 @@ def register_routes(app: FastAPI) -> None:
     from .services import (
         service_delete,
         service_get,
-        service_put,
+        service_patch,
         services_create,
         services_list,
     )
-    from .slots import slot_delete, slot_get, slot_put, slots_create, slots_list
+    from .slots import slot_delete, slot_get, slot_patch, slots_create, slots_list
 
     # /api/healthz is infrastructure, not a contract endpoint, so it
     # lives here instead of the spec.
@@ -87,7 +87,9 @@ def register_routes(app: FastAPI) -> None:
     # Organizers
     app.add_api_route("/api/organizers", organizer_register, methods=["POST"], response_model=None)
     app.add_api_route("/api/organizers/me", organizer_me_get, methods=["GET"], response_model=None)
-    app.add_api_route("/api/organizers/me", organizer_me_put, methods=["PUT"], response_model=None)
+    app.add_api_route(
+        "/api/organizers/me", organizer_me_patch, methods=["PATCH"], response_model=None
+    )
     app.add_api_route(
         "/api/organizers/me/language", organizer_me_language, methods=["PATCH"], response_model=None
     )
@@ -108,14 +110,14 @@ def register_routes(app: FastAPI) -> None:
     app.add_api_route("/api/services", services_list, methods=["GET"], response_model=None)
     app.add_api_route("/api/services", services_create, methods=["POST"], response_model=None)
     app.add_api_route("/api/services/{id}", service_get, methods=["GET"], response_model=None)
-    app.add_api_route("/api/services/{id}", service_put, methods=["PUT"], response_model=None)
+    app.add_api_route("/api/services/{id}", service_patch, methods=["PATCH"], response_model=None)
     app.add_api_route("/api/services/{id}", service_delete, methods=["DELETE"], response_model=None)
 
     # Time slots
     app.add_api_route("/api/slots", slots_list, methods=["GET"], response_model=None)
     app.add_api_route("/api/slots", slots_create, methods=["POST"], response_model=None)
     app.add_api_route("/api/slots/{id}", slot_get, methods=["GET"], response_model=None)
-    app.add_api_route("/api/slots/{id}", slot_put, methods=["PUT"], response_model=None)
+    app.add_api_route("/api/slots/{id}", slot_patch, methods=["PATCH"], response_model=None)
     app.add_api_route("/api/slots/{id}", slot_delete, methods=["DELETE"], response_model=None)
 
     # Bookings (ADR-002)

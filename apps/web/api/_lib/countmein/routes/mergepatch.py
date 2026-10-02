@@ -6,7 +6,7 @@ merges the patch into the current wire state, validates the *result*
 patch alone), and hands the db layer the merged state plus the set of
 touched keys so only intended columns are written.
 
-apply_merge_patch is the one transactional skeleton the three PUT
+apply_merge_patch is the one transactional skeleton the three PATCH
 handlers share: patch_keys → one transaction → fetch current → merge →
 decode the merged state → update_tx. The per-entity pieces (fetch,
 writable-state projection, merged decoder, update) are passed in; the
@@ -84,7 +84,7 @@ async def apply_merge_patch[RowT, StateT](
 ) -> tuple[RowT, RowT, dict[str, bool]]:
     """The shared merge-patch transaction: read → merge → write on one
     ORM transaction over the caller's request-scoped session (two
-    concurrent PUTs must not merge against different snapshots and
+    concurrent PATCHes must not merge against different snapshots and
     silently lose columns — the tx lives here, not in the caller, so
     the read and the write provably share it). fetch and update_tx
     raise the entity's not-found error themselves; decode_merged

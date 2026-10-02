@@ -213,9 +213,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This session has bookings and cannot be deleted"
+          "error": "This session has bookings and cannot be deleted",
+          "code": "slotHasActiveBookings"
         },
-        "body_raw": "{\"error\":\"This session has bookings and cannot be deleted\"}",
+        "body_raw": "{\"error\":\"This session has bookings and cannot be deleted\",\"code\":\"slotHasActiveBookings\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -328,9 +329,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This session has bookings and cannot be deleted"
+          "error": "This session has bookings and cannot be deleted",
+          "code": "slotHasActiveBookings"
         },
-        "body_raw": "{\"error\":\"This session has bookings and cannot be deleted\"}",
+        "body_raw": "{\"error\":\"This session has bookings and cannot be deleted\",\"code\":\"slotHasActiveBookings\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -357,9 +359,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This service has bookings in its sessions and cannot be deleted"
+          "error": "This service has bookings in its sessions and cannot be deleted",
+          "code": "serviceHasBookings"
         },
-        "body_raw": "{\"error\":\"This service has bookings in its sessions and cannot be deleted\"}",
+        "body_raw": "{\"error\":\"This service has bookings in its sessions and cannot be deleted\",\"code\":\"serviceHasBookings\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

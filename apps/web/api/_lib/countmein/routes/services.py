@@ -4,7 +4,7 @@ The handlers lean on the exception hierarchy: guards and
 decoders raise, the services layer raises ApiError subclasses, and the
 app-level handler renders them. The shared preamble is a set
 of FastAPI dependencies (web/deps.py) declared in the handler
-signature. The merge-patch PUT runs through the shared transactional
+signature. The merge-patch PATCH runs through the shared transactional
 skeleton (routes/mergepatch.apply_merge_patch) on the request's injected
 session; the media-ownership invariant is enforced inside the service
 write (services/service_service.py).
@@ -151,7 +151,7 @@ async def service_get(
 _update_service_dep = decoded(decode_update_service_input)
 
 
-async def service_put(
+async def service_patch(
     request: Request,
     id: str,
     organizer_id: str = Depends(require_writable_organizer),
@@ -160,7 +160,7 @@ async def service_put(
     body: ValidatedBody[gen.UpdateServiceInput] = Depends(_update_service_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """PUT /api/services/{id}. Takes a JSON Merge Patch body (absent key
+    """PATCH /api/services/{id}. Takes a JSON Merge Patch body (absent key
     = keep, explicit null = clear, RFC 7386/ADR-016): the patch is
     validated first (a null on a non-nullable key is rejected before any
     read), then merged into the current state and the result
@@ -209,7 +209,7 @@ async def service_delete(
     rows are guest history and nothing removes them. The cover object is
     removed from R2 best-effort after the delete (see
     cleanup_replaced_media) — the photo_url rides along in the DELETE …
-    RETURNING so a concurrent PUT cannot slip a new cover in between a
+    RETURNING so a concurrent PATCH cannot slip a new cover in between a
     read and the delete."""
     deleted = await service_service.delete_owned_service(session, organizer_id, id)
     if deleted is None or deleted[0] == "":

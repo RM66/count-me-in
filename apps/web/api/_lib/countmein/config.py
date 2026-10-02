@@ -19,6 +19,14 @@ _REQUIRED = [
     "QSTASH_TOKEN",
     "QSTASH_CURRENT_SIGNING_KEY",
     "TELEGRAM_BOT_TOKEN",
+    # Media uploads presign against R2 (ADR-007/024): absent vars used to
+    # surface only when the first upload was attempted — a deploy missing
+    # them passed health checks while every media flow was broken.
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+    "R2_PUBLIC_BASE_URL",
 ]
 
 

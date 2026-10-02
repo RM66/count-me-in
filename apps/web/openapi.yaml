@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+24a56afe04c6
+  version: 1.0.0+f481f3704de7
 servers:
   - url: https://countmein.group
     description: Production
@@ -155,7 +155,7 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
-    put:
+    patch:
       summary: Update organizer profile
       operationId: updateMyProfile
       security:
@@ -174,11 +174,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrganizerEnvelope"
         "400":
-          description: Validation error
+          description: Validation error or a plain coded refusal
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -456,11 +458,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServiceEnvelope"
         "400":
-          description: Validation error, or photoUrl outside the organizer media prefix
+          description: Body-shape failures answer invalidBody; photoUrl outside the
+            organizer media prefix answers errorBody
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -496,7 +501,7 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
-    put:
+    patch:
       summary: Update a service
       operationId: updateService
       security:
@@ -521,12 +526,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServiceEnvelope"
         "400":
-          description: Validation error, nothing to update, or photoUrl outside the
-            organizer media prefix
+          description: Validation error answers invalidBody; nothing to update or a
+            photoUrl outside the organizer media prefix answers errorBody
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -548,7 +555,7 @@ paths:
         "500":
           description: Internal error
     delete:
-      summary: Delete a service; slots and bookings cascade
+      summary: Delete a service; refuses when booking rows reference its slots
       operationId: deleteService
       security:
         - sessionCookie: []
@@ -577,6 +584,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Service still has bookings referencing its slots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
   /api/slots:
@@ -601,6 +614,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SlotsEnvelope"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
     post:
@@ -660,6 +679,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SlotEnvelope"
+        "400":
+          description: Malformed path parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Slot not found
           content:
@@ -668,7 +693,7 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
-    put:
+    patch:
       summary: Update a time slot; bookedCount is never writable
       operationId: updateSlot
       security:
@@ -693,11 +718,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/SlotEnvelope"
         "400":
-          description: Validation error or nothing to update
+          description: Validation error answers invalidBody; a malformed path id or
+            nothing to update answers errorBody
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -742,6 +770,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeletedSlotEnvelope"
+        "400":
+          description: Malformed path parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -817,12 +851,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/GuestBookingEnvelope"
         "400":
-          description: Validation error, invalid option selection, or party over the
-            per-booking cap
+          description: Body-shape failures answer invalidBody; domain refusals (invalid
+            option selection, party over the per-booking cap) answer errorBody
+            with a code
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "401":
           description: Guest ticket expired or already used
           content:
@@ -1094,11 +1131,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalOrganizerEnvelope"
         "400":
-          description: Validation error
+          description: Validation error or a plain coded refusal
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "401":
           description: Invalid or missing internal secret
           content:
@@ -1342,8 +1381,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BookingRecord"
+        hasMore:
+          type: boolean
       required:
         - bookings
+        - hasMore
     CabinetSummaryEnvelope:
       type: object
       properties:
@@ -1515,6 +1557,7 @@ components:
           maximum: 9007199254740991
       required:
         - error
+        - code
       additionalProperties: {}
     GuestBooking:
       type: object
@@ -1648,10 +1691,13 @@ components:
       properties:
         error:
           type: string
+        code:
+          type: string
         details:
           $ref: "#/components/schemas/ValidationErrors"
       required:
         - error
+        - code
         - details
     Location:
       type: string

@@ -107,6 +107,12 @@ class RestorePathMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        # The rewrite destination is the only path that may carry a
+        # trusted _path: everywhere else the parameter is client input —
+        # a _path on /api/bookings must not steer dispatch (ADR-024).
+        if scope["path"] != "/api/index":
+            await self.app(scope, receive, send)
+            return
         orig = _query_param(scope, "_path") or ""
         if orig:
             # _path is an internal rewrite artifact, never a client

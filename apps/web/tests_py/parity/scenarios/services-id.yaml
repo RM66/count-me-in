@@ -31,31 +31,31 @@ steps:
       { method: GET, path: /api/services/not-a-uuid, headers: { X-Organizer-Auth: <session> } }
     note: malformed path param → 404 (mux answers unknown id, never leaks shape)
   - request:
-      method: PUT
+      method: PATCH
       path: /api/services/<serviceId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/json }
       json: { title: X }
     note: wrong content type → 415
   - request:
-      method: PUT
+      method: PATCH
       path: /api/services/<serviceId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: { description: patched }
     note: absent keys kept → 200
   - request:
-      method: PUT
+      method: PATCH
       path: /api/services/<serviceId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: { options: null, optionsSelectMode: null }
     note: pair cleared together → 200
   - request:
-      method: PUT
+      method: PATCH
       path: /api/services/<serviceId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: { options: [Option One] }
     note: options set without mode → pair rule violation → 400
   - request:
-      method: PUT
+      method: PATCH
       path: /api/services/<serviceId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: {}

@@ -1,4 +1,4 @@
-"""Service route tests: create/list/get/put/delete, merge-patch
+"""Service route tests: create/list/get/patch/delete, merge-patch
 pair rule (options + optionsSelectMode), demo refusal, 404, delete 409
 guard, validation envelope."""
 
@@ -64,10 +64,10 @@ async def test_service_get_unknown_404(client, fake_redis, db):
     assert body_json(r).get("error")
 
 
-async def test_service_put_merge_patch_absent_keeps(client, fake_redis, db):
-    _, headers = await _setup(client, fake_redis, db, "svc-put-01")
+async def test_service_patch_merge_patch_absent_keeps(client, fake_redis, db):
+    _, headers = await _setup(client, fake_redis, db, "svc-patch-01")
     svc = await create_service(client, headers)
-    r = await client.put(
+    r = await client.patch(
         f"/api/services/{svc['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"title": "Renamed"}',
@@ -78,10 +78,10 @@ async def test_service_put_merge_patch_absent_keeps(client, fake_redis, db):
     assert body["defaultPrice"] == "20.00"
 
 
-async def test_service_put_null_clears(client, fake_redis, db):
-    _, headers = await _setup(client, fake_redis, db, "svc-put-02")
+async def test_service_patch_null_clears(client, fake_redis, db):
+    _, headers = await _setup(client, fake_redis, db, "svc-patch-02")
     svc = await create_service(client, headers)
-    r = await client.put(
+    r = await client.patch(
         f"/api/services/{svc['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"description": null}',
@@ -90,19 +90,19 @@ async def test_service_put_null_clears(client, fake_redis, db):
     assert r.json()["service"]["description"] is None
 
 
-async def test_service_put_options_pair_rule(client, fake_redis, db):
+async def test_service_patch_options_pair_rule(client, fake_redis, db):
     # options + optionsSelectMode must be patched together: setting
     # options without the mode (or vice versa) is a validation error on
     # the merged state.
-    _, headers = await _setup(client, fake_redis, db, "svc-put-03")
+    _, headers = await _setup(client, fake_redis, db, "svc-patch-03")
     svc = await create_service(client, headers)
-    r = await client.put(
+    r = await client.patch(
         f"/api/services/{svc['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"options": ["A"]}',
     )
     assert r.status_code == 400
-    r = await client.put(
+    r = await client.patch(
         f"/api/services/{svc['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"optionsSelectMode": "single"}',
@@ -110,10 +110,10 @@ async def test_service_put_options_pair_rule(client, fake_redis, db):
     assert r.status_code == 400
 
 
-async def test_service_put_nothing_to_update(client, fake_redis, db):
-    _, headers = await _setup(client, fake_redis, db, "svc-put-04")
+async def test_service_patch_nothing_to_update(client, fake_redis, db):
+    _, headers = await _setup(client, fake_redis, db, "svc-patch-04")
     svc = await create_service(client, headers)
-    r = await client.put(
+    r = await client.patch(
         f"/api/services/{svc['id']}",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b"{}",

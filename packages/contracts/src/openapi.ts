@@ -185,9 +185,12 @@ function buildPaths(): Record<string, Record<string, unknown>> {
     }
     operation.responses = Object.fromEntries(
       route.responses.map((response) => {
-        const body = response.bodyOneOf
+        const body = response.bodyAnyOf
           ? {
-              oneOf: response.bodyOneOf.map((s) =>
+              // anyOf, not oneOf: the validation envelope is an ErrorBody
+              // superset (error + code + details), so a body can satisfy
+              // more than one declared shape.
+              anyOf: response.bodyAnyOf.map((s) =>
                 schemaRef(s, `${route.operationId} ${response.status}`),
               ),
             }

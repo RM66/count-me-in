@@ -102,6 +102,14 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
     if not isinstance(claims, dict) or not claims.get("sub"):
         return None
 
+    # Audience binding (ADR-024): a token without the matching iss/aud
+    # pair is not an organizer-auth token — a credential minted for
+    # another purpose under the same AUTH_SECRET must not replay here.
+    from ..contracts.constants_gen import ORGANIZER_AUTH_AUD, ORGANIZER_AUTH_ISS
+
+    if claims.get("iss") != ORGANIZER_AUTH_ISS or claims.get("aud") != ORGANIZER_AUTH_AUD:
+        return None
+
     # Expiry (15s clock tolerance, matching the old decoder). exp is
     # required — the mint always sets it, so an absent or non-numeric
     # exp means a forged/malformed token: invalid (anonymous), never

@@ -50,12 +50,13 @@ export default async function CabinetOverviewPage({
   // entities. Slots are fetched in full rather than `upcomingOnly` because a
   // recent booking may sit on a session that has already happened, and it still
   // has to resolve Booking → TimeSlot → Service to name its service.
-  const [organizer, services, slots, bookings] = await Promise.all([
+  const [organizer, services, slots, bookingsPage] = await Promise.all([
     getOrganizerProfile(),
     listServices(),
     listSlots(),
     listBookings(),
   ])
+  const bookings = bookingsPage.bookings
 
   // Falls back to UTC only if the profile row is missing (e.g. the demo seed
   // has not run) — the page still renders rather than throwing.

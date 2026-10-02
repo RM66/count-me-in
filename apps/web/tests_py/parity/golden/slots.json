@@ -230,6 +230,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -239,7 +240,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"startsAt\":[\"Pick a time in the future — guests cannot book a session that has already started\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"startsAt\":[\"Pick a time in the future — guests cannot book a session that has already started\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -272,6 +273,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -281,7 +283,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"serviceId\":[\"string doesn't match the regular expression \\\"^[A-Za-z0-9_-]{6,32}$\\\"\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"serviceId\":[\"string doesn't match the regular expression \\\"^[A-Za-z0-9_-]{6,32}$\\\"\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

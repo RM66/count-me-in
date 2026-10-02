@@ -3,7 +3,7 @@
 The handlers lean on the exception hierarchy; the
 shared preamble (rate limit → body → decode → guard) is a set of FastAPI
 dependencies (web/deps.py) declared in the handler signature. The
-merge-patch PUT runs through the shared transactional skeleton
+merge-patch PATCH runs through the shared transactional skeleton
 (routes/mergepatch.apply_merge_patch) on the request's injected session;
 the media-ownership invariant is enforced inside the service update
 (services/organizer_service.update_organizer_profile_tx).
@@ -164,7 +164,7 @@ async def organizer_me_get(
     """GET /api/organizers/me: the organizer this request may view — the
     signed-in organizer, or the demo organizer with isDemo: true for
     anonymous visitors (/cabinet is open to everyone, ADR-010). Writes
-    are never inferred from the GET response: organizer_me_put
+    are never inferred from the GET response: organizer_me_patch
     re-checks the session independently."""
     organizer_id, is_demo = scope
 
@@ -183,14 +183,14 @@ async def organizer_me_get(
 _update_profile_dep = decoded(decode_update_organizer_profile_input)
 
 
-async def organizer_me_put(
+async def organizer_me_patch(
     request: Request,
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateOrganizerProfileInput] = Depends(_update_profile_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """PUT /api/organizers/me. Takes a JSON Merge Patch body
+    """PATCH /api/organizers/me. Takes a JSON Merge Patch body
     (RFC 7386/ADR-016): validate the patch, merge into the current state,
     validate the result."""
     try:

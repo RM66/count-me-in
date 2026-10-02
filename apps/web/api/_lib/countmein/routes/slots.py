@@ -6,13 +6,13 @@ app-level handler renders them. The 404s that are *answers* (unknown or
 foreign slot/service id) stay as explicit raises of the matching
 ApiError subclass. The shared preamble is a set of FastAPI
 dependencies (web/deps.py) declared in the handler signature. The
-merge-patch PUT runs through the shared transactional skeleton
+merge-patch PATCH runs through the shared transactional skeleton
 (routes/mergepatch.apply_merge_patch) on the request's injected session.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,13 +85,14 @@ async def slots_list(
     request: Request,
     scope: tuple[str, bool] = Depends(cabinet_organizer),
     session: AsyncSession = Depends(get_db_session),
-    upcoming: str | None = None,
+    upcoming: Literal["1"] | None = None,
 ) -> StarletteResponse:
     """GET /api/slots: lists slots across every service of the organizer
     this request may view (signed-in, or demo for anonymous visitors,
-    ADR-010). ?upcoming=1 drops slots that have already started."""
+    ADR-010). ?upcoming=1 drops slots that have already started; the
+    enum is the declared contract, so any other value answers 400."""
     organizer_id, _ = scope
-    upcoming_only = upcoming is not None and upcoming == "1"
+    upcoming_only = upcoming is not None
 
     rows = await slot_service.list_slots(session, organizer_id, upcoming_only)
     slots = [to_time_slot_record(row) for row in rows]
@@ -142,7 +143,7 @@ async def slot_get(
 _update_slot_dep = decoded(decode_update_time_slot_input)
 
 
-async def slot_put(
+async def slot_patch(
     request: Request,
     id: str = Depends(_uuid_id),
     organizer_id: str = Depends(require_writable_organizer),
@@ -151,7 +152,7 @@ async def slot_put(
     body: ValidatedBody[gen.UpdateTimeSlotInput] = Depends(_update_slot_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """PUT /api/slots/{id}. Cannot move a slot to another service and
+    """PATCH /api/slots/{id}. Cannot move a slot to another service and
     never touches bookedCount (seats change only through the booking
     flow's atomic reserve); shrinking capacity below the seats already
     sold answers 409. Takes a JSON Merge Patch body (RFC 7386/ADR-016):

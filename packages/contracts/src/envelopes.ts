@@ -55,7 +55,11 @@ export type GuestBookingEnvelope = z.infer<typeof guestBookingEnvelope>
 export const bookingEnvelope = z.object({ booking: bookingRecord })
 export type BookingEnvelope = z.infer<typeof bookingEnvelope>
 
-export const bookingsEnvelope = z.object({ bookings: z.array(bookingRecord) })
+export const bookingsEnvelope = z.object({
+  bookings: z.array(bookingRecord),
+  /** Whether another page exists past `offset + bookings.length`. */
+  hasMore: z.boolean(),
+})
 export type BookingsEnvelope = z.infer<typeof bookingsEnvelope>
 
 export const guestBookingsEnvelope = z.object({ bookings: z.array(guestBooking) })
@@ -72,7 +76,8 @@ export type DeletedSlotEnvelope = z.infer<typeof deletedSlotEnvelope>
 
 export const errorBody = z.looseObject({
   error: z.string(),
-  code: z.string().optional(),
+  /** Machine-readable error code — present on every error body (ADR-024). */
+  code: z.string(),
   seatsLeft: z.number().int().optional(),
   maxSeats: z.number().int().optional(),
 })
@@ -84,7 +89,12 @@ export const validationErrors = z.object({
 })
 export type ValidationErrors = z.infer<typeof validationErrors>
 
-export const invalidBody = z.object({ error: z.string(), details: validationErrors })
+export const invalidBody = z.object({
+  error: z.string(),
+  /** Machine-readable error code — present on every error body (ADR-024). */
+  code: z.string(),
+  details: validationErrors,
+})
 export type InvalidBody = z.infer<typeof invalidBody>
 
 export const serviceCountsRecord = z.object({

@@ -30,12 +30,13 @@ export default async function BookingsPage({
   // so the table needs all three lists to render a row; the profile supplies
   // the timezone every slot instant is shown in. Bookings on past slots are
   // history, not noise — nothing is filtered out here.
-  const [organizer, services, slots, bookings] = await Promise.all([
+  const [organizer, services, slots, bookingsPage] = await Promise.all([
     getOrganizerProfile(),
     listServices(),
     listSlots(),
     listBookings({ limit: PAGE_SIZE, offset }),
   ])
+  const { bookings, hasMore } = bookingsPage
 
   // The filters live in the URL so the services and slots pages can deep-link
   // into them and the browser's back button works — the same contract as the
@@ -102,7 +103,7 @@ export default async function BookingsPage({
           timezone={timezone}
           isReadOnly={isReadOnly}
           page={page}
-          pageSize={PAGE_SIZE}
+          hasMore={hasMore}
         />
       </div>
     </>

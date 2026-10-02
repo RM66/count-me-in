@@ -107,7 +107,7 @@ export type ApiResponse = {
   /** Absent means the response carries no body. */
   body?: z.ZodType
   /** Several payload shapes behind one status (the jobs receiver). */
-  bodyOneOf?: readonly z.ZodType[]
+  bodyAnyOf?: readonly z.ZodType[]
 }
 
 export type ApiRoute = {
@@ -142,6 +142,19 @@ const UNSUPPORTED_MEDIA_TYPE = {
 } as const
 const TOO_MANY = { status: 429, description: 'Rate limit exceeded', body: errorBody } as const
 const INVALID_BODY = { status: 400, description: 'Validation error', body: invalidBody } as const
+/** 400s that are not all body-shape failures: the validation envelope
+ * (invalidBody, details) shares the status with plain coded refusals —
+ * nothing to update, media-prefix or empty-criteria violations. */
+const BAD_REQUEST = {
+  status: 400,
+  description: 'Validation error or a plain coded refusal',
+  bodyAnyOf: [invalidBody, errorBody],
+} as const
+const MALFORMED_ID = {
+  status: 400,
+  description: 'Malformed path parameter',
+  body: errorBody,
+} as const
 const INTERNAL = { status: 500, description: 'Internal error' } as const
 const DEMO_FORBIDDEN = {
   status: 403,
@@ -229,7 +242,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   },
   {
     operationId: 'updateMyProfile',
-    method: 'put',
+    method: 'patch',
     path: '/api/organizers/me',
     summary: 'Update organizer profile',
     auth: 'sessionWritable',
@@ -238,7 +251,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     responses: [
       { status: 200, description: 'Updated profile', body: organizerEnvelope },
       UNSUPPORTED_MEDIA_TYPE,
-      INVALID_BODY,
+      BAD_REQUEST,
       DEMO_FORBIDDEN,
       { status: 404, description: 'Organizer not found', body: errorBody },
       INTERNAL,
@@ -367,8 +380,9 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 201, description: 'Service created', body: serviceEnvelope },
       {
         status: 400,
-        description: 'Validation error, or photoUrl outside the organizer media prefix',
-        body: invalidBody,
+        description:
+          'Body-shape failures answer invalidBody; photoUrl outside the organizer media prefix answers errorBody',
+        bodyAnyOf: [invalidBody, errorBody],
       },
       DEMO_FORBIDDEN,
       INTERNAL,
@@ -389,7 +403,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   },
   {
     operationId: 'updateService',
-    method: 'put',
+    method: 'patch',
     path: '/api/services/{id}',
     summary: 'Update a service',
     auth: 'sessionWritable',
@@ -402,8 +416,8 @@ export const API_ROUTES: readonly ApiRoute[] = [
       {
         status: 400,
         description:
-          'Validation error, nothing to update, or photoUrl outside the organizer media prefix',
-        body: invalidBody,
+          'Validation error answers invalidBody; nothing to update or a photoUrl outside the organizer media prefix answers errorBody',
+        bodyAnyOf: [invalidBody, errorBody],
       },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Service not found', body: errorBody },
@@ -414,13 +428,18 @@ export const API_ROUTES: readonly ApiRoute[] = [
     operationId: 'deleteService',
     method: 'delete',
     path: '/api/services/{id}',
-    summary: 'Delete a service; slots and bookings cascade',
+    summary: 'Delete a service; refuses when booking rows reference its slots',
     auth: 'sessionWritable',
     params: [{ name: 'id', in: 'path', required: true, schema: serviceId }],
     responses: [
       { status: 200, description: 'Service deleted', body: deletedServiceEnvelope },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Service not found', body: errorBody },
+      {
+        status: 409,
+        description: 'Service still has bookings referencing its slots',
+        body: errorBody,
+      },
       INTERNAL,
     ],
   },
@@ -441,7 +460,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
         description: 'When "1", slots that have already started are omitted.',
       },
     ],
-    responses: [{ status: 200, description: 'Slots', body: slotsEnvelope }, INTERNAL],
+    responses: [
+      { status: 200, description: 'Slots', body: slotsEnvelope },
+      { status: 400, description: 'Invalid query parameters', body: errorBody },
+      INTERNAL,
+    ],
   },
   {
     operationId: 'createSlot',
@@ -467,13 +490,14 @@ export const API_ROUTES: readonly ApiRoute[] = [
     params: [{ name: 'id', in: 'path', required: true, schema: uuid }],
     responses: [
       { status: 200, description: 'Slot', body: slotEnvelope },
+      MALFORMED_ID,
       { status: 404, description: 'Slot not found', body: errorBody },
       INTERNAL,
     ],
   },
   {
     operationId: 'updateSlot',
-    method: 'put',
+    method: 'patch',
     path: '/api/slots/{id}',
     summary: 'Update a time slot; bookedCount is never writable',
     auth: 'sessionWritable',
@@ -483,7 +507,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
     responses: [
       { status: 200, description: 'Slot updated', body: slotEnvelope },
       UNSUPPORTED_MEDIA_TYPE,
-      { status: 400, description: 'Validation error or nothing to update', body: invalidBody },
+      {
+        status: 400,
+        description:
+          'Validation error answers invalidBody; a malformed path id or nothing to update answers errorBody',
+        bodyAnyOf: [invalidBody, errorBody],
+      },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Slot not found', body: errorBody },
       { status: 409, description: 'Capacity below the seats already booked', body: errorBody },
@@ -499,6 +528,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     params: [{ name: 'id', in: 'path', required: true, schema: uuid }],
     responses: [
       { status: 200, description: 'Slot deleted', body: deletedSlotEnvelope },
+      MALFORMED_ID,
       DEMO_FORBIDDEN,
       { status: 404, description: 'Slot not found', body: errorBody },
       { status: 409, description: 'Slot still has confirmed bookings', body: errorBody },
@@ -548,8 +578,8 @@ export const API_ROUTES: readonly ApiRoute[] = [
       {
         status: 400,
         description:
-          'Validation error, invalid option selection, or party over the per-booking cap',
-        body: invalidBody,
+          'Body-shape failures answer invalidBody; domain refusals (invalid option selection, party over the per-booking cap) answer errorBody with a code',
+        bodyAnyOf: [invalidBody, errorBody],
       },
       { status: 401, description: 'Guest ticket expired or already used', body: errorBody },
       DEMO_FORBIDDEN,
@@ -684,7 +714,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     request: internalOrganizerLookupInput,
     responses: [
       { status: 200, description: 'Organizer found', body: internalOrganizerEnvelope },
-      INVALID_BODY,
+      BAD_REQUEST,
       { status: 401, description: 'Invalid or missing internal secret', body: errorBody },
       { status: 404, description: 'Organizer not found', body: errorBody },
       INTERNAL,

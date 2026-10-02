@@ -113,10 +113,40 @@ import { createTimeSlotInput, slotStartsAt, timeSlotRecord, updateTimeSlotInput 
 
 export type WireMeta = {
   id: string
+  /**
+   * The cross-language validation metadata (ADR-024 C2): what the wire
+   * schema expresses beyond JSON Schema, declared once here. `generate:rules`
+   * renders it into `validation/rules_gen.py`; the Zod schemas already carry
+   * the same behavior (`.trim()`/`.toLowerCase()` in primitives, the
+   * `.superRefine` tails), so both sides derive from this one declaration.
+   *
+   * - `transforms`: per-property pre-validation transforms applied to the raw
+   *   JSON object before schema validation ('trim' = jsTrim on strings and
+   *   string arrays, 'lowercase' = toLowerCase on strings).
+   * - `fieldRules`: per-property rules the schema cannot express, run when the
+   *   property parses to a non-null value ('ianaTimezone', 'slugNotReserved',
+   *   'httpUrl', 'startsAtNotPast' — the last is gated on the patch touching
+   *   the field in merged-state decode).
+   * - `refinements`: object-level cross-field rules ('optionsPair').
+   * - `mergedRequired`: update schemas only — the properties the *merged*
+   *   state must keep non-null (RFC 7386 null can erase them).
+   */
+  validation?: {
+    transforms?: Record<string, Array<'trim' | 'lowercase'>>
+    fieldRules?: Record<
+      string,
+      Array<'ianaTimezone' | 'slugNotReserved' | 'httpUrl' | 'startsAtNotPast'>
+    >
+    refinements?: Array<'optionsPair'>
+    mergedRequired?: string[]
+  }
 }
 
 /** Registered schemas keyed by their OpenAPI id — the registry itself. */
 export const WIRE_SCHEMAS: Record<string, z.ZodType> = {}
+
+/** Full registration meta keyed by id — the codegen input for rules_gen.py. */
+export const WIRE_META: Record<string, WireMeta> = {}
 
 export function register(schema: z.ZodType, meta: WireMeta): void {
   if (WIRE_SCHEMAS[meta.id] !== undefined) {
@@ -132,6 +162,7 @@ export function register(schema: z.ZodType, meta: WireMeta): void {
     }
   }
   WIRE_SCHEMAS[meta.id] = schema
+  WIRE_META[meta.id] = meta
 }
 
 /**
@@ -141,7 +172,7 @@ export function register(schema: z.ZodType, meta: WireMeta): void {
  */
 export function metaOfSchema(schema: z.ZodType): WireMeta | undefined {
   const id = Object.entries(WIRE_SCHEMAS).find(([, s]) => s === schema)?.[0]
-  return id === undefined ? undefined : { id }
+  return id === undefined ? undefined : WIRE_META[id]
 }
 
 // Primitives.
@@ -187,23 +218,101 @@ register(cancelActorEnum, { id: 'CancelActor' })
 register(appLocaleEnum, { id: 'AppLocale' })
 register(avatarContentType, { id: 'ImageContentType' })
 
-// Inputs / updates.
-register(createBookingInput, { id: 'CreateBookingInput' })
+// Inputs / updates. `validation` declares what the Zod builders already do
+// (ADR-024 C2); the API's decoder consumes it via validation/rules_gen.py.
+register(createBookingInput, {
+  id: 'CreateBookingInput',
+  validation: { transforms: { guestName: ['trim'], selectedOptions: ['trim'] } },
+})
 register(cancelBookingByTokenInput, { id: 'CancelBookingByTokenInput' })
 register(lookupBookingByTokenInput, { id: 'LookupBookingByTokenInput' })
 register(lookupBookingsInput, { id: 'LookupBookingsInput' })
 register(cancelBookingByOrganizerInput, { id: 'CancelBookingByOrganizerInput' })
-register(createServiceInput, { id: 'CreateServiceInput' })
-register(updateServiceInput, { id: 'UpdateServiceInput' })
-register(createTimeSlotInput, { id: 'CreateTimeSlotInput' })
-register(updateTimeSlotInput, { id: 'UpdateTimeSlotInput' })
-register(registerOrganizerInput, { id: 'RegisterOrganizerInput' })
+register(createServiceInput, {
+  id: 'CreateServiceInput',
+  validation: {
+    transforms: {
+      title: ['trim'],
+      description: ['trim'],
+      location: ['trim'],
+      contact: ['trim'],
+      defaultPrice: ['trim'],
+      options: ['trim'],
+    },
+    fieldRules: { photoUrl: ['httpUrl'] },
+    refinements: ['optionsPair'],
+  },
+})
+register(updateServiceInput, {
+  id: 'UpdateServiceInput',
+  validation: {
+    transforms: {
+      title: ['trim'],
+      description: ['trim'],
+      location: ['trim'],
+      contact: ['trim'],
+      defaultPrice: ['trim'],
+      options: ['trim'],
+    },
+    fieldRules: { photoUrl: ['httpUrl'] },
+    refinements: ['optionsPair'],
+    mergedRequired: [
+      'title',
+      'defaultPrice',
+      'defaultCapacity',
+      'defaultDurationMinutes',
+      'maxSeatsPerBooking',
+    ],
+  },
+})
+register(createTimeSlotInput, {
+  id: 'CreateTimeSlotInput',
+  validation: {
+    transforms: { price: ['trim'] },
+    fieldRules: { startsAt: ['startsAtNotPast'] },
+  },
+})
+register(updateTimeSlotInput, {
+  id: 'UpdateTimeSlotInput',
+  validation: {
+    transforms: { price: ['trim'] },
+    fieldRules: { startsAt: ['startsAtNotPast'] },
+    mergedRequired: ['startsAt', 'durationMinutes', 'capacity'],
+  },
+})
+register(registerOrganizerInput, {
+  id: 'RegisterOrganizerInput',
+  validation: {
+    transforms: { slug: ['trim', 'lowercase'], name: ['trim'], contact: ['trim'] },
+    fieldRules: { timezone: ['ianaTimezone'], slug: ['slugNotReserved'] },
+  },
+})
 register(internalOrganizerLookupInput, { id: 'InternalOrganizerLookupInput' })
-register(updateOrganizerProfileInput, { id: 'UpdateOrganizerProfileInput' })
+register(updateOrganizerProfileInput, {
+  id: 'UpdateOrganizerProfileInput',
+  validation: {
+    transforms: {
+      slug: ['trim', 'lowercase'],
+      name: ['trim'],
+      description: ['trim'],
+      location: ['trim'],
+      contact: ['trim'],
+    },
+    fieldRules: {
+      timezone: ['ianaTimezone'],
+      slug: ['slugNotReserved'],
+      photoUrl: ['httpUrl'],
+    },
+    mergedRequired: ['name', 'slug', 'timezone'],
+  },
+})
 register(updateOrganizerLanguageInput, { id: 'UpdateOrganizerLanguageInput' })
 register(createAvatarUploadInput, { id: 'CreateAvatarUploadInput' })
 register(createServicePhotoUploadInput, { id: 'CreateServicePhotoUploadInput' })
-register(telegramWidgetPayload, { id: 'TelegramWidgetPayload' })
+register(telegramWidgetPayload, {
+  id: 'TelegramWidgetPayload',
+  validation: { fieldRules: { photo_url: ['httpUrl'] } },
+})
 
 // Records.
 // imageUploadTarget and avatarUploadTarget are one object;

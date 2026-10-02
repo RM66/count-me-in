@@ -1,192 +1,289 @@
-"""The shared decode skeleton: spec-driven model validation
-with the API's pinned error messages, the UUID-pattern fallback, and the
-raw-body/finish plumbing every entity decoder builds on.
+"""The shared decode skeleton (ADR-024 C1): the committed OpenAPI document
+IS the request validator — raw dict → declared transforms (rules_gen.py)
+→ ``jsonschema`` against ``spec_gen.json`` → declared refinements → DTO
+built with ``model_construct`` (safe: the dict is already schema-valid).
+
+The Pydantic-validation layer is gone, and with it the lax-coercion gaps,
+the pattern-on-UUID TypeError fallback and the ``X | None`` nullability
+patching — JSON Schema answers all of it natively. ``_issue_reason``
+translates jsonschema's small error vocabulary into the pinned wire
+messages (the parity goldens hold them byte-for-byte); the validation
+vectors pin the field keys.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+import json as _json
+import re
+from typing import Any
 
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel
 
 from ...errors import ValidationFailed
-from ..errors import Errors, form_errors
+from ..errors import Errors
+from ..rules_gen import RULES
 from ..transforms import raw_object
+
+# ── jsonschema-error → wire message translation ─────────────────────────────
+
+
+def _kind_of_value(v: Any) -> str:
+    """The JSON kind name of a parsed value (bool before int — Python's
+    isinstance(True, int) trap)."""
+    if v is None:
+        return "null"
+    if isinstance(v, bool):
+        return "boolean"
+    if isinstance(v, str):
+        return "string"
+    if isinstance(v, (int, float)):
+        return "number"
+    if isinstance(v, list):
+        return "array"
+    return "object"
 
 
 def _issue_reason(err: Any) -> str:
-    """Translate a Pydantic issue into the Reason the API answers with
-    (the retired implementation's schemaErrReason) — the parity goldens
-    pin the exact strings."""
-    import json as _json
-
-    t = err.get("type")
-    ctx = err.get("ctx") or {}
-    if t == "missing":
+    """Translate a jsonschema error into the Reason the API answers with —
+    the same strings the Zod-era pipeline produced, pinned by the parity
+    goldens. A stable vocabulary: required/minLength/maxLength/enum/pattern/
+    numeric bounds carry pinned text; the rest falls back to a Zod-style
+    type message."""
+    v = err.validator
+    val = err.validator_value
+    if v == "required":
         return "Required"
-    if t == "string_too_short":
-        return f"minimum string length is {ctx.get('min_length')}"
-    if t == "literal_error":
-        # Pydantic renders expected as "'a', 'b' or 'c'" — the spec decode
-        # answers with the JSON array of allowed values.
-        raw = str(ctx.get("expected") or "").replace(" or ", ", ")
-        expected = [part.strip().strip("'\"") for part in raw.split(", ") if part.strip()]
+    if v == "minLength":
+        return f"minimum string length is {val}"
+    if v == "maxLength":
+        return f"maximum string length is {val}"
+    if v in ("enum", "const"):
+        allowed = val if isinstance(val, list) else [val]
         return "value is not one of the allowed values " + _json.dumps(
-            expected, separators=(",", ":")
+            allowed, separators=(",", ":")
         )
-    if t == "string_pattern_mismatch":
-        return f'string doesn\'t match the regular expression "{ctx.get("pattern")}"'
-    if t == "greater_than_equal":
-        return f"number must be at least {ctx.get('ge')}"
-    if t == "greater_than":
-        return f"number must be greater than {ctx.get('gt')}"
-    if t == "less_than_equal":
-        return f"number must be at most {ctx.get('le')}"
-    if t == "less_than":
-        return f"number must be less than {ctx.get('lt')}"
-    return err.get("msg") or "Invalid input"
+    if v == "pattern":
+        return f'string doesn\'t match the regular expression "{val}"'
+    if v == "minimum":
+        return f"number must be at least {val}"
+    if v == "exclusiveMinimum":
+        return f"number must be greater than {val}"
+    if v == "maximum":
+        return f"number must be at most {val}"
+    if v == "exclusiveMaximum":
+        return f"number must be less than {val}"
+    if v == "minItems":
+        return f"Too small: expected array to have >={val} items"
+    if v == "maxItems":
+        return f"Too big: expected array to have <={val} items"
+    if v == "type":
+        if err.instance is None:
+            return "Expected non-null value, received null"
+        expected = val if isinstance(val, str) else " or ".join(val)
+        return f"Invalid input: expected {expected}, received {_kind_of_value(err.instance)}"
+    if v == "format":
+        return f"Invalid input: expected {val}"
+    return err.message or "Invalid input"
 
 
-def _uuid_pattern_check(schema_name: str, key: str, value: Any, e: Errors) -> bool:
-    """UUID-typed properties: Pydantic cannot apply the generated pattern
-    constraint to a coerced UUID, so the check lives here — a string that
-    fails the spec pattern gets the spec pattern message (the
-    parity goldens pin the exact text, pattern verbatim). Returns True
-    when the property refs a `format: uuid` schema and the check ran."""
-    import re
-
-    from .. import spec
-
-    ref = spec.property_ref(schema_name, key)
-    if ref is None or spec.schema_format(ref) != "uuid":
-        return False
-    if not isinstance(value, str):
-        return False  # non-strings are not pinned by the goldens
-    pattern = spec.schema_pattern(ref)
-    if pattern and not re.fullmatch(pattern, value):
-        e.add(key, f'string doesn\'t match the regular expression "{pattern}"')
-    return True
+_REQUIRED_MSG = re.compile(r"^'([^']+)' is a required property")
 
 
-def _validate_model[T: BaseModel](
-    model_cls: type[T], m: dict[str, Any], schema_name: str
-) -> tuple[T | None, Errors | None]:
-    """Validate m against the generated model, collecting every issue
-    keyed like z.flattenError's fieldErrors: missing required keys and
-    per-property failures under the property name, everything else as
-    form errors. Unknown keys are ignored — Zod strips them, and the
-    spec deliberately carries no additionalProperties:false.
-
-    Explicit null on a non-nullable key is rejected first, from the
-    spec's nullability encoding (anyOf with {type: null}) — Pydantic's
-    `X | None` default would silently accept it."""
-    from .. import spec
-
-    e = Errors()
-    for mkey, value in m.items():
-        if value is None and not spec.is_nullable(schema_name, mkey):
-            e.add(mkey, "Expected non-null value, received null")
-    try:
-        out = model_cls.model_validate(m)
-    except ValidationError as exc:
-        for err in exc.errors():
-            loc = err.get("loc") or ()
-            first = loc[0] if loc else None
-            key: str | None = first if isinstance(first, str) else None
-            msg = _issue_reason(err)
-            if key is None or not isinstance(key, str):
-                e.add_form(msg)
-            else:
-                e.add(key, msg)
-        return None, e
-    except TypeError:
-        # The generated UUID models carry a pattern constraint that
-        # Pydantic cannot apply to a coerced UUID value. Fall back to
-        # per-field validation: each present key against its annotation
-        # (a constraint-application TypeError on one field means the
-        # format check already passed — UUID coercion is the check),
-        # missing required keys from the spec.
-        for name in spec.required_keys(schema_name):
-            if name not in m:
-                e.add(name, "Required")
-        fields = model_cls.model_fields
-        for key, value in m.items():
-            if key not in fields:
-                continue  # unknown key: stripped, like Zod
-            # UUID-typed properties: Pydantic cannot apply the generated
-            # pattern to a coerced UUID, so the spec pattern is checked
-            # here — a string that fails it gets the spec pattern
-            # message (the parity goldens pin the exact text).
-            if _uuid_pattern_check(schema_name, key, value, e):
-                continue
-            try:
-                # Annotated[...] carries the constraints; FieldInfo.annotation
-                # alone is the bare type (metadata would be silently skipped).
-                # Annotated[X] with no metadata is invalid — use the bare type.
-                field_type: Any = fields[key].annotation
-                if fields[key].metadata:
-                    field_type = Annotated[(field_type, *fields[key].metadata)]
-                TypeAdapter(field_type).validate_python(value)
-            except ValidationError as exc2:
-                for err in exc2.errors():
-                    e.add(key, _issue_reason(err))
-            except TypeError:
-                pass  # constraint not applicable to the coerced type
-        if not e.empty():
-            return None, e
-        # Construct without re-validating: the per-field pass above is
-        # the validation (the pattern constraint is unapplicable to the
-        # coerced UUID type — coercion itself is the format check).
-        return model_cls.model_construct(**m), None
-    if not e.empty():
-        return None, e
-    return out, None
-
-
-def _decode_model[T: BaseModel](model_cls: type[T], m: dict[str, Any], schema_name: str) -> T:
-    """Validate m and return the model — the one epilogue every entity
-    decoder funnels through: ValidationFailed on any spec error, the
-    unreachable-None guard kept explicit (python -O must not strip it)."""
-    out, errs = _validate_model(model_cls, m, schema_name)
-    if errs is not None:
-        raise ValidationFailed(errs)
-    if out is None:
-        # Unreachable by the decode/guard contract; a real None here is
-        # a bug, and python -O must not strip the check.
-        raise RuntimeError("out is None after its error guard")
-    return out
-
-
-def _decode_collect[T: BaseModel](
-    model_cls: type[T], m: dict[str, Any], schema_name: str
-) -> tuple[T | None, Errors]:
-    """decode for the inputs that must report spec errors and refinement
-    errors together: the collected field errors are returned even when
-    the body also fails model validation (a bad options array still
-    yields the optionsSelectMode consistency message). With no spec
-    errors a failed validation degrades to a generic form error.
-
-    Invariant: the returned Errors may be non-nil yet empty (validation
-    passed) — callers must funnel it through refinements and finish it,
-    which is what turns an empty Errors into no error."""
-    out, e = _validate_model(model_cls, m, schema_name)
-    if e is None:
-        e = Errors()
-    elif out is None:
-        if e.empty():
-            e = form_errors("Invalid JSON")
-        # Refinements must see the partial value even when spec
-        # validation failed (a bad options array still yields the
-        # optionsSelectMode consistency message). model_construct
-        # builds the model without re-validating, which is exactly
-        # that: the fields that parsed are present, the rest default.
-        try:
-            out = model_cls.model_construct(
-                **{k: v for k, v in m.items() if k in model_cls.model_fields and v is not None}
+def _emit(entries: list[tuple[str | None, str]], err: Any, *, key: str | None = None) -> None:
+    """Collect one jsonschema error as a (field, message) pair: missing
+    properties land under their own name (required yields one error per
+    missing key), combiner failures (oneOf/anyOf) recurse into their
+    sub-errors at the same key, everything else takes its first path
+    segment — object-level issues become form errors (None key)."""
+    if err.validator == "required":
+        m = _REQUIRED_MSG.match(err.message or "")
+        name = (
+            m.group(1)
+            if m
+            else next((k for k in err.validator_value if k not in (err.instance or {})), None)
+        )
+        entries.append((name, "Required"))
+        return
+    if key is None and err.absolute_path:
+        first = err.absolute_path[0]
+        if isinstance(first, str):
+            key = first
+    if err.validator in ("oneOf", "anyOf", "allOf") and err.context:
+        subs = err.context
+        # A union of plain type alternatives (the `X | null` encoding):
+        # collapse to a single "expected t1 or t2" message instead of one
+        # entry per rejected branch — Zod reports the union once.
+        if all(s.validator == "type" for s in subs):
+            expected: list[str] = []
+            for s in subs:
+                v = s.validator_value
+                expected.extend(v if isinstance(v, list) else [v])
+            entries.append(
+                (
+                    key,
+                    f"Invalid input: expected {' or '.join(expected)}, "
+                    f"received {_kind_of_value(err.instance)}",
+                )
             )
-        except Exception:
-            out = None
-    return out, e
+            return
+        for sub in subs:
+            _emit(entries, sub, key=key)
+        return
+    entries.append((key, _issue_reason(err)))
+
+
+def _validate_spec(schema_name: str, m: dict[str, Any]) -> Errors | None:
+    """Validate the raw object against the bundled spec — unknown keys pass
+    (Zod strips them; the spec carries no additionalProperties), nullability
+    and types are the schema's own words. fieldErrors are emitted in the
+    spec's property-declaration order (the parity goldens pin the key
+    order byte-for-byte)."""
+    from .. import spec
+
+    entries: list[tuple[str | None, str]] = []
+    for err in spec.validator(schema_name).iter_errors(m):
+        _emit(entries, err)
+    if not entries:
+        return None
+    order = {name: i for i, name in enumerate(spec.property_order(schema_name))}
+    entries.sort(key=lambda kv: order.get(kv[0], len(order)) if kv[0] else len(order))
+    e = Errors()
+    for key, msg in entries:
+        if key is None:
+            e.add_form(msg)
+        else:
+            e.add(key, msg)
+    return e
+
+
+# ── Declared transforms / rules (validation/rules_gen.py, ADR-024 C2) ────────
+
+
+def _apply_transforms(transforms: Any, m: dict[str, Any]) -> None:
+    from ..transforms import js_trim, lower_key
+
+    for key, names in (transforms or {}).items():
+        for name in names:
+            if name == "trim" and key in m:
+                v = m[key]
+                if isinstance(v, str):
+                    m[key] = js_trim(v)
+                elif isinstance(v, list):
+                    m[key] = [js_trim(i) if isinstance(i, str) else i for i in v]
+            elif name == "lowercase":
+                lower_key(m, key)
+
+
+def _run_field_rules(rules: Any, out: Any, e: Errors, *, touched: set[str] | None) -> None:
+    from .. import refine
+    from ..rules import is_reserved_slug, timezone_rule, url_rule
+
+    for field, names in (rules or {}).items():
+        v = getattr(out, field, None)
+        if v is None:
+            continue
+        for name in names:
+            if name == "ianaTimezone":
+                msg = timezone_rule(str(v))
+                if msg:
+                    e.add(field, msg)
+            elif name == "slugNotReserved":
+                if is_reserved_slug(str(v)):
+                    e.add(field, "this slug is reserved for system use — please choose another")
+            elif name == "httpUrl":
+                msg = url_rule(str(v))
+                if msg:
+                    e.add(field, msg)
+            elif name == "startsAtNotPast":
+                # In merged-state decode the current startsAt always rides
+                # along — the rule fires only when the patch touched it.
+                if touched is None or field in touched:
+                    refine.refine_slot_start(e, v)
+            else:  # pragma: no cover - generated vocabulary drift
+                raise RuntimeError(f"unknown field rule {name!r}")
+
+
+def _run_refinements(refinements: Any, out: Any, e: Errors) -> None:
+    from .. import refine
+
+    for name in refinements or []:
+        if name == "optionsPair":
+            refine.refine_service_options(e, out.options, out.optionsSelectMode)
+        else:  # pragma: no cover - generated vocabulary drift
+            raise RuntimeError(f"unknown refinement {name!r}")
+
+
+def _construct[T: BaseModel](model_cls: type[T], m: dict[str, Any]) -> T:
+    """The DTO: model_construct over the schema-valid dict (unknown keys
+    stripped like Zod, null-valued keys dropped — a patch null on a
+    non-nullable field must surface as missing, not as a coerced None)."""
+    fields = model_cls.model_fields
+    return model_cls.model_construct(
+        **{k: v for k, v in m.items() if k in fields and v is not None}
+    )
+
+
+def _order_fields(e: Errors, schema_name: str) -> None:
+    """fieldErrors in the spec's property-declaration order — the same
+    order spec errors are emitted in, so rule / merged-required errors
+    join them canonically instead of by whichever check ran last (the
+    wire pins the key order byte-for-byte)."""
+    if len(e.fields) < 2:
+        return
+    from .. import spec
+
+    order = {name: i for i, name in enumerate(spec.property_order(schema_name))}
+    e.fields = dict(sorted(e.fields.items(), key=lambda kv: order.get(kv[0], len(order))))
+
+
+def _decode[T: BaseModel](
+    model_cls: type[T], schema_name: str, m: dict[str, Any], *, merged_touched: set[str] | None
+) -> T:
+    """raw object → declared transforms → jsonschema → declared rules → DTO.
+    ``merged_touched`` is the patch's key set for the merged-state decoders
+    (gates startsAtNotPast); None for wire decodes and merged states where
+    no rule needs it."""
+    meta = RULES.get(schema_name, {})
+    _apply_transforms(meta.get("transforms"), m)
+    errs = _validate_spec(schema_name, m)
+    e = errs or Errors()
+    out = _construct(model_cls, m)
+    # Rules see the value only when the schema passed — except schemas
+    # declaring refinements (the service options pair), which collect
+    # spec and refinement issues together (a bad options array still
+    # yields the optionsSelectMode consistency message).
+    if errs is None or meta.get("refinements"):
+        _run_field_rules(meta.get("fieldRules"), out, e, touched=merged_touched)
+        _run_refinements(meta.get("refinements"), out, e)
+    _order_fields(e, schema_name)
+    return _finish(out, e)
+
+
+def decode_input[T: BaseModel](model_cls: type[T], schema_name: str, body: bytes) -> T:
+    """Wire decode: transforms → schema → field rules → refinements → DTO."""
+    return _decode(model_cls, schema_name, _raw(body), merged_touched=None)
+
+
+def decode_merged[T: BaseModel](
+    model_cls: type[T], schema_name: str, merged: bytes, touched: set[str] | None = None
+) -> T:
+    """Merged-state decode (RFC 7386): the update schema's rules plus the
+    declared mergedRequired — keys a patch-null would silently erase."""
+    meta = RULES.get(schema_name, {})
+    m = _raw(merged)
+    _apply_transforms(meta.get("transforms"), m)
+    errs = _validate_spec(schema_name, m)
+    e = errs or Errors()
+    out = _construct(model_cls, m)
+    if errs is None or meta.get("refinements"):
+        _run_field_rules(meta.get("fieldRules"), out, e, touched=touched)
+    for field_name in meta.get("mergedRequired", []):
+        if getattr(out, field_name, None) is None:
+            e.add(field_name, "Required")
+    if errs is None or meta.get("refinements"):
+        _run_refinements(meta.get("refinements"), out, e)
+    _order_fields(e, schema_name)
+    return _finish(out, e)
 
 
 def _raw(body: bytes) -> dict[str, Any]:

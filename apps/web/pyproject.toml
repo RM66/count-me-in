@@ -11,6 +11,10 @@ dependencies = [
     "redis>=5",
     "httpx",
     "qstash>=2",
+    "jsonschema>=4.23",
+    # Imported directly by validation/spec.py (the $ref registry) — declared
+    # explicitly even though jsonschema also pulls it transitively.
+    "referencing>=0.35",
     "boto3",
     "alembic>=1.13.0",
 ]
@@ -30,6 +34,7 @@ dev = [
     "pyyaml",
     "types-pyyaml",
     "python-dotenv",
+    "types-jsonschema>=4.26.0.20260518",
 ]
 
 [tool.pytest.ini_options]

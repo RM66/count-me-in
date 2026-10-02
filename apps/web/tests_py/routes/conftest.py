@@ -42,8 +42,13 @@ async def app(fake_redis):
 
 @pytest.fixture()
 async def client(app):
+    """Every response from a spec-declared operation is validated against
+    the bundled spec (ADR-024 B3) — serializer drift fails the test that
+    produced it."""
+    from _spec_check import ContractClient
+
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url=BASE, timeout=30.0) as c:
+    async with ContractClient(transport=transport, base_url=BASE, timeout=30.0) as c:
         yield c
 
 

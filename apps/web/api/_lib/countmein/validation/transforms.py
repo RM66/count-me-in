@@ -69,25 +69,6 @@ def raw_object(body: bytes) -> tuple[dict[str, Any] | None, Errors | None]:
     return m, None
 
 
-def _trim_value(raw: Any) -> Any:
-    """Trim a string, or every string inside a string array (Zod's .trim()
-    on option lists). Non-strings pass through unchanged."""
-    if isinstance(raw, str):
-        return js_trim(raw)
-    if isinstance(raw, list):
-        return [_trim_value(item) for item in raw]
-    return raw
-
-
-def trim_key(m: dict[str, Any], key: str) -> None:
-    """Apply jsTrim to a string property. Absent keys are left absent —
-    inserting a None entry would turn "untouched" into a validation
-    failure."""
-    if key not in m:
-        return
-    m[key] = _trim_value(m[key])
-
-
 def lower_key(m: dict[str, Any], key: str) -> None:
     """Lowercase a string property (Zod .toLowerCase())."""
     v = m.get(key)

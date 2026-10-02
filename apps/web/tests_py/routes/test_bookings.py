@@ -83,7 +83,16 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
     )
     payload = (
         base64.urlsafe_b64encode(
-            json.dumps({"sub": sub, "slug": slug, "iat": int(time.time()), "exp": exp}).encode()
+            json.dumps(
+                {
+                    "iss": "countmein-web",
+                    "aud": "countmein-api",
+                    "sub": sub,
+                    "slug": slug,
+                    "iat": int(time.time()),
+                    "exp": exp,
+                }
+            ).encode()
         )
         .rstrip(b"=")
         .decode()
@@ -124,32 +133,34 @@ async def test_booking_create_invalid_body(client):
 
 
 async def test_booking_create_unknown_ticket(client):
-    # Schema-valid body, unknown ticket: the guest identity door refuses
-    # before any DB access — a replayed or forged ticket must never
-    # reach the booking transaction.
+    # Schema-valid body, unknown ticket pointing at a nonexistent slot:
+    # the domain refusal runs before redemption (ADR-024 B1), so the
+    # answer is the slot's 404 — the ticket is not even consulted.
     body = (VALID_BOOKING_BODY % "unknown-ticket-aaaaaaaaaaaaaaaaaaaaaaaaa").encode()
     r = await client.post(
         "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.3"}
     )
-    assert r.status_code == 401
+    assert r.status_code == 404
 
 
 async def test_booking_create_raw_messenger_id_ignored(client):
     # Invariant 8: identity comes only from the ticket. A body claiming
-    # a messengerId must not authenticate the request — the unknown
-    # ticket still refuses it with a 401.
+    # a messengerId must not authenticate the request — nothing in it
+    # is trusted; the domain refusal answers before the ticket would
+    # even be looked at.
     body = (VALID_BOOKING_BODY % "unknown-ticket-bbbbbbbbbbbbbbbbbbbbbbbbb").encode()
     body = body[:-1] + b',"messengerId":"999999"}'
     r = await client.post(
         "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.4"}
     )
-    assert r.status_code == 401
+    assert r.status_code == 404
 
 
 async def test_validation_error_does_not_consume_guest_ticket(client, fake_redis):
-    """Order pin: the decode dependency runs BEFORE the ticket is
-    consumed — a body that fails validation must leave the ticket
-    redeemable, and a body that validates must burn it."""
+    """Order pin: the decode dependency runs BEFORE the ticket stage —
+    a body that fails validation must leave the ticket redeemable.
+    With ADR-024 B1 the same holds one stage further: a domain refusal
+    (here, a slot that does not exist) leaves it intact too."""
     ticket = await issue_ticket(
         AuthTicketPayload(
             messenger="telegram",
@@ -166,16 +177,16 @@ async def test_validation_error_does_not_consume_guest_ticket(client, fake_redis
     assert await fake_redis.exists(f"auth:ticket:{ticket}") == 1, (
         "a validation error must not consume the guest ticket"
     )
-    # Valid body with the same ticket: passes validation, consumes it
-    # (whatever the booking transaction then answers — without a DB it
-    # is a 500; the point here is the ticket is single-use).
+    # Valid body with the same ticket, pointing at a slot that does not
+    # exist: the domain refusal (404 SlotGone) runs before redemption,
+    # so the ticket survives intact.
     body = (VALID_BOOKING_BODY % ticket).encode()
     r = await client.post(
         "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.9"}
     )
-    assert r.status_code != 400, "the valid body must pass validation"
-    assert await fake_redis.exists(f"auth:ticket:{ticket}") == 0, (
-        "a validated request must consume the ticket (single-use)"
+    assert r.status_code == 404, "a nonexistent slot answers SlotGone"
+    assert await fake_redis.exists(f"auth:ticket:{ticket}") == 1, (
+        "a domain refusal must not consume the guest ticket (ADR-024 B1)"
     )
 
 
@@ -486,6 +497,74 @@ async def _sold_out(fixture, monkeypatch, client):
     b = json.loads(r.content)
     assert b.get("seatsLeft") == 0
     assert b.get("error"), "409 must carry localized error copy"
+
+
+async def test_booking_create_sold_out_leaves_ticket(client, fake_redis, monkeypatch):
+    """ADR-024 B1: a domain refusal must not burn the guest ticket —
+    after a 409 the same ticket stays redeemable (the guest retries
+    with different seats without re-running the widget)."""
+    fixture = await new_route_fixture(2, 2)  # full slot
+    try:
+        monkeypatch.setenv("QSTASH_TOKEN", "test-token")
+        monkeypatch.setenv("APP_URL", "https://example.com")
+
+        ticket = await guest_ticket("rt-soldout-reuse")
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 1,
+                "guestName": "Ann",
+                "guestTicket": ticket,
+            }
+        ).encode()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.23"}
+        )
+        assert r.status_code == 409, r.text
+        assert await fake_redis.exists(f"auth:ticket:{ticket}") == 1, (
+            "SoldOut must leave the guest ticket consumable"
+        )
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_booking_create_bad_ticket_on_real_slot(client, fake_redis, monkeypatch):
+    """A forged/expired ticket on a bookable slot: the seat is claimed
+    and released by the rollback — the refusal is 401 and booked_count
+    is unchanged."""
+    fixture = await new_route_fixture(10, 0)
+    try:
+        monkeypatch.setenv("QSTASH_TOKEN", "test-token")
+        monkeypatch.setenv("APP_URL", "https://example.com")
+
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 1,
+                "guestName": "Ann",
+                "guestTicket": "forged-ticket-xxxxxxxxxxxxxxxxxxxxxxxx",
+            }
+        ).encode()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.24"}
+        )
+        assert r.status_code == 401, r.text
+
+        from countmein.db.client import engine
+        from sqlalchemy import text
+
+        async with engine().connect() as conn:
+            booked = (
+                await conn.execute(
+                    text("SELECT booked_count FROM time_slots WHERE id = :id"),
+                    {"id": fixture.slot_id},
+                )
+            ).scalar_one()
+        assert booked == 0, "the rolled-back claim must not leak a seat"
+    finally:
+        await _cleanup_route_fixture(fixture)
 
 
 async def test_booking_cancel_unknown_token_is_404(client):

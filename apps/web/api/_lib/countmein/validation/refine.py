@@ -1,8 +1,8 @@
-"""Hand-written refinement tails for the decode_* inputs: everything Zod
-expresses via .refine/.superRefine that JSON Schema cannot carry. Called
-at the end of the decode functions; the merge-patch update endpoints
-run the *_merged_state variants on the merged result (RFC 7386
-semantics). Pinned by packages/contracts/vectors/validation/*.
+"""The rule-vocabulary implementations (ADR-024 C2): everything Zod
+expresses via .refine/.superRefine that JSON Schema cannot carry. Which
+schema gets which rule is generated metadata (rules_gen.py); these are
+the portable primitives each name maps to. Pinned by
+packages/contracts/vectors/validation/*.
 
 Note on message counts: the refinements read parsed values, while the
 Zod refinements read raw input — so an invalid optionsSelectMode value
@@ -28,66 +28,29 @@ def refine_service_options(
 ) -> None:
     """Check a concrete options/mode pair: non-empty, unique, and mode
     present exactly when options are. Shared by the create input (where
-    the pair is the whole payload) and the merged update state."""
-    if options is not None:
-        opts = [o for o in options]
-        if len(opts) == 0:
+    the pair is the whole payload) and the merged update state.
+
+    Runs even when spec validation failed (the service schemas declare
+    the refinement) — so `options` may be raw unvalidated JSON; every
+    read is guarded by isinstance (a non-list `options` is the spec
+    error's to report, not a TypeError's)."""
+    if isinstance(options, list):
+        if len(options) == 0:
             e.add("options", "Too small: expected array to have >=1 items")
         seen: set[str] = set()
-        for option in opts:
+        for option in options:
+            if not isinstance(option, str):
+                break  # non-string items are the spec error's to report
             if option in seen:
                 e.add("options", "options must be unique")
                 break
             seen.add(option)
-    has_options = options is not None and len(options) > 0
+    has_options = isinstance(options, list) and len(options) > 0
     has_mode = mode is not None and mode != ""
     if has_options and not has_mode:
         e.add("optionsSelectMode", "optionsSelectMode is required when options are set")
     if not has_options and has_mode:
         e.add("optionsSelectMode", "optionsSelectMode must be omitted when there are no options")
-
-
-def refine_service_merged_state(e: Errors, state: Any) -> None:
-    """Run the options/mode consistency check on the merged update state
-    (the handler calls it after the merge-patch). The non-nullable fields
-    that RFC 7386 could have removed (patch null on a non-nullable key
-    deletes it from the merged object) are checked here too — the schema
-    cannot, because in the update schema they are optional."""
-    if state.title is None:
-        e.add("title", "Required")
-    if state.defaultPrice is None:
-        e.add("defaultPrice", "Required")
-    if state.defaultCapacity is None:
-        e.add("defaultCapacity", "Required")
-    if state.defaultDurationMinutes is None:
-        e.add("defaultDurationMinutes", "Required")
-    if state.maxSeatsPerBooking is None:
-        e.add("maxSeatsPerBooking", "Required")
-    refine_service_options(e, state.options, state.optionsSelectMode)
-
-
-def refine_organizer_merged_state(e: Errors, state: Any) -> None:
-    """Same non-nullable-present checks for the organizer profile update."""
-    if state.name is None:
-        e.add("name", "Required")
-    if state.slug is None:
-        e.add("slug", "Required")
-    if state.timezone is None:
-        e.add("timezone", "Required")
-
-
-def refine_slot_merged_state(e: Errors, state: Any, starts_at_touched: bool) -> None:
-    """Same for the slot update; startsAt is only checked against the
-    past when the patch actually touched it (a merged state always
-    carries the current value, which may legitimately be past)."""
-    if state.startsAt is None:
-        e.add("startsAt", "Required")
-    if state.durationMinutes is None:
-        e.add("durationMinutes", "Required")
-    if state.capacity is None:
-        e.add("capacity", "Required")
-    if starts_at_touched and state.startsAt is not None:
-        refine_slot_start(e, state.startsAt)
 
 
 def refine_slot_start(e: Errors, starts_at: Any) -> None:

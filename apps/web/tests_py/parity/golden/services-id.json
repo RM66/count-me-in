@@ -124,9 +124,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Service not found"
+          "error": "Service not found",
+          "code": "serviceNotFound"
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"error\":\"Service not found\",\"code\":\"serviceNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -153,9 +154,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Service not found"
+          "error": "Service not found",
+          "code": "serviceNotFound"
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"error\":\"Service not found\",\"code\":\"serviceNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -164,7 +166,7 @@
     {
       "note": "wrong content type → 415",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/services/<sid:1>",
         "body": {
           "title": "X"
@@ -184,9 +186,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)"
+          "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)",
+          "code": "unsupportedMediaType"
         },
-        "body_raw": "{\"error\":\"This endpoint accepts only application/merge-patch+json (RFC 7386)\"}",
+        "body_raw": "{\"error\":\"This endpoint accepts only application/merge-patch+json (RFC 7386)\",\"code\":\"unsupportedMediaType\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -195,7 +198,7 @@
     {
       "note": "absent keys kept → 200",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/services/<sid:1>",
         "body": {
           "description": "patched"
@@ -243,7 +246,7 @@
     {
       "note": "pair cleared together → 200",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/services/<sid:1>",
         "body": {
           "options": null,
@@ -290,7 +293,7 @@
     {
       "note": "options set without mode → pair rule violation → 400",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/services/<sid:1>",
         "body": {
           "options": [
@@ -313,6 +316,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -322,7 +326,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"optionsSelectMode\":[\"optionsSelectMode is required when options are set\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"optionsSelectMode\":[\"optionsSelectMode is required when options are set\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -331,7 +335,7 @@
     {
       "note": "empty patch → 400 nothing to update",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/services/<sid:1>",
         "body": {}
       },
@@ -349,9 +353,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "No fields to update"
+          "error": "No fields to update",
+          "code": "nothingToUpdate"
         },
-        "body_raw": "{\"error\":\"No fields to update\"}",
+        "body_raw": "{\"error\":\"No fields to update\",\"code\":\"nothingToUpdate\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -450,9 +455,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Service not found"
+          "error": "Service not found",
+          "code": "serviceNotFound"
         },
-        "body_raw": "{\"error\":\"Service not found\"}",
+        "body_raw": "{\"error\":\"Service not found\",\"code\":\"serviceNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

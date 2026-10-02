@@ -25,25 +25,25 @@ steps:
       }
     note: unknown slot → 404
   - request:
-      method: PUT
+      method: PATCH
       path: /api/slots/<slotId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/json }
       json: { capacity: 5 }
     note: wrong content type → 415
   - request:
-      method: PUT
+      method: PATCH
       path: /api/slots/<slotId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: { price: '42.00' }
     note: absent keys kept → 200
   - request:
-      method: PUT
+      method: PATCH
       path: /api/slots/<slotId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: { capacity: 0 }
     note: capacity below booked (0 booked, but below min) → 400
   - request:
-      method: PUT
+      method: PATCH
       path: /api/slots/<slotId>
       headers: { X-Organizer-Auth: <session>, Content-Type: application/merge-patch+json }
       json: {}

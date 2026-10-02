@@ -21,6 +21,7 @@ set" instead of a None-deref 500.
 from __future__ import annotations
 
 import os
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
@@ -74,6 +75,32 @@ def _sanitize_query(url: str) -> str:
     return urlunsplit(parts._replace(query=urlencode(kept)))
 
 
+# Server-side cap on any single statement (ADR-024): a runaway query
+# must not hold a connection — and, on serverless, the function's
+# maxDuration — hostage. psycopg passes `options` through to libpq,
+# so the timeout rides on every connection of both pool policies.
+STATEMENT_TIMEOUT_MS = 8000
+
+_SERVERLESS_CONNECT_ARGS: dict[str, Any] = {
+    "prepare_threshold": None,
+    "connect_timeout": 5,
+}
+_CONTAINER_CONNECT_ARGS: dict[str, Any] = {
+    "prepare_threshold": 5,
+    "connect_timeout": 10,
+}
+
+
+def _connect_args(base: dict[str, Any], url: str) -> dict[str, Any]:
+    """base args + `options=-c statement_timeout=…`. A libpq `options`
+    already in the URL is preserved: psycopg connect kwargs win over URL
+    params on a duplicate key, so an unmerged options= would silently
+    drop it."""
+    url_options = dict(parse_qsl(urlsplit(url).query)).get("options", "")
+    merged = f"{url_options} -c statement_timeout={STATEMENT_TIMEOUT_MS}".strip()
+    return {**base, "options": merged}
+
+
 def engine() -> AsyncEngine:
     """Lazily open the shared engine. No lock: the body has no await, so
     it is atomic with respect to the event loop."""
@@ -95,7 +122,7 @@ def engine() -> AsyncEngine:
                 _engine = create_async_engine(
                     url,
                     poolclass=NullPool,
-                    connect_args={"prepare_threshold": None, "connect_timeout": 5},
+                    connect_args=_connect_args(_SERVERLESS_CONNECT_ARGS, url),
                 )
             else:
                 # Long-running container: pooled connections across
@@ -108,7 +135,7 @@ def engine() -> AsyncEngine:
                     pool_size=5,
                     max_overflow=10,
                     pool_pre_ping=True,
-                    connect_args={"prepare_threshold": 5, "connect_timeout": 10},
+                    connect_args=_connect_args(_CONTAINER_CONNECT_ARGS, url),
                 )
     if _init_err is not None:
         raise _init_err

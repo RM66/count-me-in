@@ -1,4 +1,4 @@
-"""Organizer route tests: register, me GET/PUT, language, demo
+"""Organizer route tests: register, me GET/PATCH, language, demo
 refusal, 404, merge-patch semantics, validation envelope."""
 
 from __future__ import annotations
@@ -86,11 +86,11 @@ async def test_me_get_happy_path(client, fake_redis, db):
     assert r.json()["organizer"]["id"] == org["id"]
 
 
-async def test_me_put_merge_patch_absent_keeps(client, fake_redis, db):
-    org = await register_organizer(client, fake_redis, "org-put-01")
+async def test_me_patch_merge_patch_absent_keeps(client, fake_redis, db):
+    org = await register_organizer(client, fake_redis, "org-patch-01")
     headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
     # Absent key = keep: only the name changes.
-    r = await client.put(
+    r = await client.patch(
         "/api/organizers/me",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"name": "Renamed"}',
@@ -98,13 +98,13 @@ async def test_me_put_merge_patch_absent_keeps(client, fake_redis, db):
     assert r.status_code == 200
     body = r.json()["organizer"]
     assert body["name"] == "Renamed"
-    assert body["slug"].startswith("org-put-01")
+    assert body["slug"].startswith("org-patch-01")
 
 
-async def test_me_put_null_clears(client, fake_redis, db):
-    org = await register_organizer(client, fake_redis, "org-put-02")
+async def test_me_patch_null_clears(client, fake_redis, db):
+    org = await register_organizer(client, fake_redis, "org-patch-02")
     headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
-    r = await client.put(
+    r = await client.patch(
         "/api/organizers/me",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b'{"description": null}',
@@ -113,10 +113,10 @@ async def test_me_put_null_clears(client, fake_redis, db):
     assert r.json()["organizer"]["description"] is None
 
 
-async def test_me_put_requires_merge_patch_media_type(client, fake_redis, db):
-    org = await register_organizer(client, fake_redis, "org-put-03")
+async def test_me_patch_requires_merge_patch_media_type(client, fake_redis, db):
+    org = await register_organizer(client, fake_redis, "org-patch-03")
     headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
-    r = await client.put(
+    r = await client.patch(
         "/api/organizers/me",
         headers={**headers, "content-type": "application/json"},
         content=b'{"name": "X"}',
@@ -124,10 +124,10 @@ async def test_me_put_requires_merge_patch_media_type(client, fake_redis, db):
     assert r.status_code == 415
 
 
-async def test_me_put_nothing_to_update(client, fake_redis, db):
-    org = await register_organizer(client, fake_redis, "org-put-04")
+async def test_me_patch_nothing_to_update(client, fake_redis, db):
+    org = await register_organizer(client, fake_redis, "org-patch-04")
     headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
-    r = await client.put(
+    r = await client.patch(
         "/api/organizers/me",
         headers={**headers, "content-type": "application/merge-patch+json"},
         content=b"{}",
@@ -135,12 +135,12 @@ async def test_me_put_nothing_to_update(client, fake_redis, db):
     assert r.status_code == 400
 
 
-async def test_me_put_demo_refused(client, fake_redis):
+async def test_me_patch_demo_refused(client, fake_redis):
     headers = {
         **auth_headers(sub=DEMO_ORGANIZER_ID, slug="demo"),
         "content-type": "application/merge-patch+json",
     }
-    r = await client.put("/api/organizers/me", headers=headers, content=b'{"name": "X"}')
+    r = await client.patch("/api/organizers/me", headers=headers, content=b'{"name": "X"}')
     assert r.status_code == 403
     assert body_json(r).get("code") == DEMO_READ_ONLY_CODE
 

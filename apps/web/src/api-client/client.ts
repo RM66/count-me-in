@@ -17,7 +17,7 @@ import { ApiError } from './error'
  */
 const POST_ERROR_FALLBACK = 'Something went wrong — try again'
 const GET_ERROR_FALLBACK = 'Failed to fetch data'
-const PUT_ERROR_FALLBACK = 'Update failed — try again'
+const PATCH_ERROR_FALLBACK = 'Update failed — try again'
 const DELETE_ERROR_FALLBACK = 'Delete failed — try again'
 
 function throwApiError(data: unknown, status: number, fallback: string): never {
@@ -78,24 +78,24 @@ export async function get<S extends z.ZodType>(url: string, schema: S): Promise<
 }
 
 /**
- * Generic PUT helper with error handling. The three partial-update
+ * Generic PATCH helper with error handling. The three partial-update
  * endpoints take JSON Merge Patch bodies (RFC 7386, ADR-016) — absent key
  * = keep, explicit null = clear — so they pass the merge-patch media
  * type; everything else keeps application/json.
  */
-export async function put<S extends z.ZodType>(
+export async function patch<S extends z.ZodType>(
   url: string,
   body: unknown,
   schema: S,
   contentType: 'application/json' | 'application/merge-patch+json' = 'application/json',
 ): Promise<z.input<S>> {
   const res = await fetch(url, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: { 'Content-Type': contentType },
     body: JSON.stringify(body),
   })
   if (!res.ok) {
-    throwApiError(await readJson(res), res.status, PUT_ERROR_FALLBACK)
+    throwApiError(await readJson(res), res.status, PATCH_ERROR_FALLBACK)
   }
   const data: unknown = await readJson(res)
   return checkContract(url, schema, data)

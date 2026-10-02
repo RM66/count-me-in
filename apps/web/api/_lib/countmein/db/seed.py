@@ -666,6 +666,14 @@ async def seed_demo(now: datetime) -> None:
     from ..repositories import booking_repo, organizer_repo, service_repo, slot_repo
 
     async with sessionmaker()() as session, session.begin():
+        # The seed is the one legitimately slow batch — it outruns the
+        # request-oriented statement_timeout carried on every connection
+        # (ADR-024), so the transaction widens it for itself (SET LOCAL
+        # ends with the transaction; the connection's default is intact
+        # when it returns to the pool).
+        from sqlalchemy import text as _text
+
+        await session.execute(_text("SET LOCAL statement_timeout = '60s'"))
         await organizer_repo.upsert_demo_organizer(
             session,
             id=DEMO_ORGANIZER_ID,

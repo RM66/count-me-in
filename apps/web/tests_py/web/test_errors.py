@@ -43,14 +43,14 @@ def _body(resp) -> dict:
     ("err", "want_status", "want_code", "want_seats", "want_max"),
     [
         (DemoReadOnly(), 403, DEMO_READ_ONLY_CODE, None, None),
-        (SlotGone(), 404, "", None, None),
-        (SoldOut(0), 409, "", 0, None),
-        (SoldOut(3), 409, "", 3, None),
+        (SlotGone(), 404, "slotGone", None, None),
+        (SoldOut(0), 409, "slot_sold_out", 0, None),
+        (SoldOut(3), 409, "slot_sold_out", 3, None),
         (DuplicateBooking(), 409, "duplicate_booking", None, None),
-        (AlreadyCancelled(), 409, "", None, None),
-        (BookingNotFound(), 404, "", None, None),
+        (AlreadyCancelled(), 409, "alreadyCancelled", None, None),
+        (BookingNotFound(), 404, "bookingNotFound", None, None),
         (InvalidOptions("bad"), 400, "invalid_option", None, None),
-        (PartyTooLarge(4), 400, "", None, 4),
+        (PartyTooLarge(4), 400, "partyTooLarge", None, 4),
     ],
     ids=[
         "demo read-only",
@@ -65,13 +65,15 @@ def _body(resp) -> dict:
     ],
 )
 def test_error_response(err, want_status, want_code, want_seats, want_max):
+    """ADR-024: every error body carries a machine-readable code — the
+    i18n key by default, the pinned token where the client contracts
+    one."""
     for locale in LOCALES:
         resp = render_api_error(err, locale)
         assert resp.status == want_status
         body = _body(resp)
         assert body["error"], f"{locale}: localized error copy must not be empty"
-        if want_code:
-            assert body["code"] == want_code
+        assert body["code"] == want_code
         if want_seats is not None:
             assert body["seatsLeft"] == want_seats
         if want_max is not None:
@@ -103,7 +105,9 @@ def test_cabinet_error_response(err, want_status):
     for locale in LOCALES:
         resp = render_api_error(err, locale)
         assert resp.status == want_status
-        assert _body(resp)["error"], f"{locale}: localized copy must not be empty"
+        body = _body(resp)
+        assert body["error"], f"{locale}: localized copy must not be empty"
+        assert body["code"], "every error body carries a machine-readable code"
 
 
 def test_rate_limited_headers():

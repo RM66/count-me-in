@@ -4,7 +4,7 @@ import type { CreateTimeSlotInput, UpdateTimeSlotInput } from '@repo/contracts'
 import { deletedSlotEnvelope, slotEnvelope } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
-import { del, post, put } from './client'
+import { del, patch, post } from './client'
 
 /**
  * Client-side API for the **TimeSlot** entity.
@@ -25,7 +25,7 @@ export function useCreateSlot() {
 export function useUpdateSlot(slotId: string) {
   return useMutation({
     mutationFn: (input: UpdateTimeSlotInput) =>
-      put(`/api/slots/${slotId}`, input, slotEnvelope, 'application/merge-patch+json'),
+      patch(`/api/slots/${slotId}`, input, slotEnvelope, 'application/merge-patch+json'),
   })
 }
 

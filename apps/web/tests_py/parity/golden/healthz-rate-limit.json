@@ -675,9 +675,10 @@
           "content-type": "application/json"
         },
         "body": {
-          "error": "Too many requests — please try again in a moment"
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
         },
-        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false,
         "retryAfterWithinWindow": true
@@ -698,9 +699,10 @@
           "content-type": "application/json"
         },
         "body": {
-          "error": "Too many requests — please try again in a moment"
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
         },
-        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\"}",
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false,
         "retryAfterWithinWindow": true

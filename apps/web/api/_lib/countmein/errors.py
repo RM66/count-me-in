@@ -52,8 +52,15 @@ class ApiError(Exception):
         """Extra response headers (e.g. Retry-After), if any."""
         return None
 
+    def code(self) -> str:
+        """The machine-readable error code on every error body (ADR-024):
+        the i18n key by default; subclasses override when the wire pins
+        a different stable token (slot_sold_out, duplicate_booking, …)."""
+        return self.response_key()
+
     def extras(self) -> ErrorBody | None:
-        """Additional ErrorBody fields (code/seatsLeft/maxSeats), if any."""
+        """Additional ErrorBody fields (seatsLeft/maxSeats), if any. The
+        code is always set — extras() fills it from code()."""
         return None
 
     def response_key(self) -> str:
@@ -80,10 +87,13 @@ class DemoReadOnly(ApiError):
     status = 403
     key = "demoReadOnly"
 
-    def extras(self) -> ErrorBody:
+    def code(self) -> str:
         from .contracts.constants_gen import DEMO_READ_ONLY_CODE
 
-        return ErrorBody(error="", code=DEMO_READ_ONLY_CODE)
+        return DEMO_READ_ONLY_CODE
+
+    def extras(self) -> ErrorBody:
+        return ErrorBody(error="", code=self.code())
 
 
 class RateLimited(ApiError):
@@ -180,8 +190,12 @@ class SoldOut(ApiError):
     def params(self) -> dict[str, object] | None:
         return None if self.seats_left == 0 else {"count": self.seats_left}
 
+    def code(self) -> str:
+        # Pinned by the client: the booking dialog reacts to this token.
+        return "slot_sold_out"
+
     def extras(self) -> ErrorBody:
-        return ErrorBody(error="", seatsLeft=self.seats_left)
+        return ErrorBody(error="", code=self.code(), seatsLeft=self.seats_left)
 
 
 class DuplicateBooking(ApiError):
@@ -190,8 +204,11 @@ class DuplicateBooking(ApiError):
     status = 409
     key = "duplicateBooking"
 
+    def code(self) -> str:
+        return "duplicate_booking"
+
     def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code="duplicate_booking")
+        return ErrorBody(error="", code=self.code())
 
 
 class AlreadyCancelled(ApiError):
@@ -221,8 +238,11 @@ class InvalidOptions(ApiError):
     def __init__(self, detail: str) -> None:
         super().__init__(detail)
 
+    def code(self) -> str:
+        return "invalid_option"
+
     def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code="invalid_option")
+        return ErrorBody(error="", code=self.code())
 
 
 class PartyTooLarge(ApiError):
@@ -239,7 +259,7 @@ class PartyTooLarge(ApiError):
         return {"maxSeats": self.max_seats}
 
     def extras(self) -> ErrorBody:
-        return ErrorBody(error="", maxSeats=self.max_seats)
+        return ErrorBody(error="", code=self.code(), maxSeats=self.max_seats)
 
 
 class NothingToUpdate(ApiError):

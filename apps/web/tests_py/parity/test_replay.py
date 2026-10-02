@@ -151,7 +151,16 @@ def mint_session(sub: str, slug: str) -> str:
     now = int(time.time())
     payload = (
         base64.urlsafe_b64encode(
-            json.dumps({"sub": sub, "slug": slug, "iat": now, "exp": now + 3600}).encode()
+            json.dumps(
+                {
+                    "iss": "countmein-web",
+                    "aud": "countmein-api",
+                    "sub": sub,
+                    "slug": slug,
+                    "iat": now,
+                    "exp": now + 3600,
+                }
+            ).encode()
         )
         .rstrip(b"=")
         .decode()

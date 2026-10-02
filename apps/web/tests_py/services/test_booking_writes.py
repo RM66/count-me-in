@@ -81,6 +81,21 @@ def require_postgres() -> None:
     _require()
 
 
+@pytest.fixture(autouse=True)
+async def fake_redis(monkeypatch):
+    # create_guest_booking redeems the raw guest ticket inside the
+    # transaction (ADR-024 B1) — the service tests therefore need a
+    # Redis stand-in to issue tickets into.
+    import fakeredis.aioredis
+    from countmein import redis as redis_mod
+
+    fake = fakeredis.aioredis.FakeRedis()
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setattr(redis_mod, "client", lambda: fake)
+    yield fake
+    await fake.aclose()
+
+
 @dataclass
 class SlotSpec:
     starts_at: datetime = field(default_factory=lambda: datetime.now(UTC) + timedelta(hours=48))
@@ -231,7 +246,7 @@ async def cleanup():
         await f.cleanup()
 
 
-def guest_identity(id_: str) -> AuthTicketPayload:
+def guest_payload(id_: str) -> AuthTicketPayload:
     return AuthTicketPayload(
         messenger="telegram",
         messenger_id="it-" + id_,
@@ -240,7 +255,15 @@ def guest_identity(id_: str) -> AuthTicketPayload:
     )
 
 
-def booking_data(f: Fixture, seats: int, options, guest: AuthTicketPayload) -> bw.CreateBookingData:
+async def guest_ticket(id_: str) -> str:
+    """Mint a real guest ticket — the service consumes it inside the
+    booking transaction (ADR-024 B1), so a bare payload no longer works."""
+    from countmein.auth.ticket import issue_ticket
+
+    return await issue_ticket(guest_payload(id_))
+
+
+def booking_data(f: Fixture, seats: int, options, ticket: str) -> bw.CreateBookingData:
     return bw.CreateBookingData(
         service_id=f.service_id,
         time_slot_id=f.slot_id,
@@ -248,7 +271,7 @@ def booking_data(f: Fixture, seats: int, options, guest: AuthTicketPayload) -> b
         guest_name="Ann",
         selected_options=options,
         guest_locale="en",
-        guest=guest,
+        guest_ticket=ticket,
         trace_id="it-trace",
     )
 
@@ -273,7 +296,7 @@ async def test_create_guest_booking_success(cleanup):
     cleanup.append(f)
 
     chain, outbox = await svc(
-        bw.create_guest_booking, booking_data(f, 2, None, guest_identity("g1"))
+        bw.create_guest_booking, booking_data(f, 2, None, await guest_ticket("g1"))
     )
     created = chain[0]
     f.track(created.id)
@@ -309,14 +332,14 @@ async def test_create_guest_booking_sold_out(cleanup):
     f = await new_fixture(lambda s: (setattr(s, "capacity", 3), setattr(s, "booked", 3)))
     cleanup.append(f)
     with pytest.raises(SoldOut) as exc_info:
-        await svc(bw.create_guest_booking, booking_data(f, 1, None, guest_identity("g2")))
+        await svc(bw.create_guest_booking, booking_data(f, 1, None, await guest_ticket("g2")))
     assert exc_info.value.seats_left == 0
 
     # Partial room: capacity 3, booked 2, party of 2 → 2+2 > 3, one seat left.
     f2 = await new_fixture(lambda s: (setattr(s, "capacity", 3), setattr(s, "booked", 2)))
     cleanup.append(f2)
     with pytest.raises(SoldOut) as exc_info:
-        await svc(bw.create_guest_booking, booking_data(f2, 2, None, guest_identity("g3")))
+        await svc(bw.create_guest_booking, booking_data(f2, 2, None, await guest_ticket("g3")))
     assert exc_info.value.seats_left == 1
 
 
@@ -324,7 +347,7 @@ async def test_create_guest_booking_past_slot(cleanup):
     f = await new_fixture(lambda s: setattr(s, "starts_at", datetime.now(UTC) - timedelta(hours=2)))
     cleanup.append(f)
     with pytest.raises(SlotGone):
-        await svc(bw.create_guest_booking, booking_data(f, 1, None, guest_identity("g4")))
+        await svc(bw.create_guest_booking, booking_data(f, 1, None, await guest_ticket("g4")))
     assert await f.booked_count() == 0, "a refused booking must not claim seats"
 
 
@@ -332,7 +355,7 @@ async def test_create_guest_booking_party_too_large(cleanup):
     f = await new_fixture(lambda s: setattr(s, "max_seats", 2))
     cleanup.append(f)
     with pytest.raises(PartyTooLarge) as exc_info:
-        await svc(bw.create_guest_booking, booking_data(f, 3, None, guest_identity("g5")))
+        await svc(bw.create_guest_booking, booking_data(f, 3, None, await guest_ticket("g5")))
     assert exc_info.value.max_seats == 2
     assert await f.booked_count() == 0, "a refused booking must not claim seats"
 
@@ -350,26 +373,32 @@ async def test_create_guest_booking_invalid_options(cleanup):
         )
         cleanup.append(f)
         with pytest.raises(InvalidOptions):
-            await svc(bw.create_guest_booking, booking_data(f, 1, selected, guest_identity("g6")))
+            await svc(
+                bw.create_guest_booking, booking_data(f, 1, selected, await guest_ticket("g6"))
+            )
 
 
 async def test_create_guest_booking_duplicate(cleanup):
     f = await new_fixture()
     cleanup.append(f)
-    guest = guest_identity("g7")
-
-    first, _ = await svc(bw.create_guest_booking, booking_data(f, 1, None, guest))
+    # Each attempt spends its own ticket — two tickets for the same
+    # messenger identity `it-g7` reproduce "the same guest books twice".
+    first, _ = await svc(
+        bw.create_guest_booking, booking_data(f, 1, None, await guest_ticket("g7"))
+    )
     f.track(first[0].id)
 
     # Same guest, same slot: the partial unique index rejects the second
     # INSERT with a 23505 → DuplicateBooking, and the transaction
     # rolls back — releasing the seat the second attempt had claimed.
     with pytest.raises(DuplicateBooking):
-        await svc(bw.create_guest_booking, booking_data(f, 2, None, guest))
+        await svc(bw.create_guest_booking, booking_data(f, 2, None, await guest_ticket("g7")))
     assert await f.booked_count() == 1, "rollback must release the claimed seats"
 
     # A different guest may still book the same slot.
-    other, _ = await svc(bw.create_guest_booking, booking_data(f, 1, None, guest_identity("g8")))
+    other, _ = await svc(
+        bw.create_guest_booking, booking_data(f, 1, None, await guest_ticket("g8"))
+    )
     f.track(other[0].id)
 
 
@@ -426,7 +455,7 @@ async def test_create_guest_booking_demo_refused(cleanup):
                     guest_name="Ann",
                     selected_options=None,
                     guest_locale="en",
-                    guest=guest_identity("g9"),
+                    guest_ticket=await guest_ticket("g9"),
                     trace_id="it-trace",
                 ),
             )
@@ -583,7 +612,7 @@ async def test_create_guest_booking_concurrent_last_seats(cleanup):
         # interfere — only the seat predicate decides who wins.
         try:
             chain, _ = await svc(
-                bw.create_guest_booking, booking_data(f, 1, None, guest_identity(f"race-{i}"))
+                bw.create_guest_booking, booking_data(f, 1, None, await guest_ticket(f"race-{i}"))
             )
         except SoldOut:
             return None

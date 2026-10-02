@@ -153,9 +153,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Slot not found"
+          "error": "Slot not found",
+          "code": "slotNotFound"
         },
-        "body_raw": "{\"error\":\"Slot not found\"}",
+        "body_raw": "{\"error\":\"Slot not found\",\"code\":\"slotNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -164,7 +165,7 @@
     {
       "note": "wrong content type → 415",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/slots/<uuid:2>",
         "body": {
           "capacity": 5
@@ -184,9 +185,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)"
+          "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)",
+          "code": "unsupportedMediaType"
         },
-        "body_raw": "{\"error\":\"This endpoint accepts only application/merge-patch+json (RFC 7386)\"}",
+        "body_raw": "{\"error\":\"This endpoint accepts only application/merge-patch+json (RFC 7386)\",\"code\":\"unsupportedMediaType\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -195,7 +197,7 @@
     {
       "note": "absent keys kept → 200",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/slots/<uuid:2>",
         "body": {
           "price": "42.00"
@@ -235,7 +237,7 @@
     {
       "note": "capacity below booked (0 booked, but below min) → 400",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/slots/<uuid:2>",
         "body": {
           "capacity": 0
@@ -256,6 +258,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -265,7 +268,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"capacity\":[\"number must be at least 1\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"capacity\":[\"number must be at least 1\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -274,7 +277,7 @@
     {
       "note": "empty patch → 400 nothing to update",
       "request": {
-        "method": "PUT",
+        "method": "PATCH",
         "path": "/api/slots/<uuid:2>",
         "body": {}
       },
@@ -292,9 +295,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "No fields to update"
+          "error": "No fields to update",
+          "code": "nothingToUpdate"
         },
-        "body_raw": "{\"error\":\"No fields to update\"}",
+        "body_raw": "{\"error\":\"No fields to update\",\"code\":\"nothingToUpdate\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -350,9 +354,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Slot not found"
+          "error": "Slot not found",
+          "code": "slotNotFound"
         },
-        "body_raw": "{\"error\":\"Slot not found\"}",
+        "body_raw": "{\"error\":\"Slot not found\",\"code\":\"slotNotFound\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

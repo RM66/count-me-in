@@ -93,6 +93,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -105,7 +106,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"contentType\":[\"value is not one of the allowed values [\\\"image/jpeg\\\",\\\"image/png\\\",\\\"image/webp\\\"]\"],\"size\":[\"Required\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"contentType\":[\"value is not one of the allowed values [\\\"image/jpeg\\\",\\\"image/png\\\",\\\"image/webp\\\"]\"],\"size\":[\"Required\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

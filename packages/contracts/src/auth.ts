@@ -14,6 +14,15 @@ export const SESSION_COOKIE_NAMES = [
 ] as const
 
 /**
+ * iss/aud claims of the organizer-auth JWT the Next.js middleware mints
+ * into X-Organizer-Auth and the Python API verifies (ADR-024). Bound so a
+ * token minted for some other purpose under the same AUTH_SECRET cannot
+ * be replayed as an organizer session.
+ */
+export const ORGANIZER_AUTH_ISS = 'countmein-web'
+export const ORGANIZER_AUTH_AUD = 'countmein-api'
+
+/**
  * Telegram numeric user id. Bounded rather than `.positive()` so the bound
  * is derivable as an inclusive JSON Schema range — an exclusive minimum
  * is not.

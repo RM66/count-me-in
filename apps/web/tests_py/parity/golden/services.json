@@ -189,6 +189,7 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
@@ -207,7 +208,7 @@
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"defaultPrice\":[\"Required\"],\"defaultCapacity\":[\"Required\"],\"defaultDurationMinutes\":[\"Required\"],\"maxSeatsPerBooking\":[\"Required\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"defaultPrice\":[\"Required\"],\"defaultCapacity\":[\"Required\"],\"defaultDurationMinutes\":[\"Required\"],\"maxSeatsPerBooking\":[\"Required\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

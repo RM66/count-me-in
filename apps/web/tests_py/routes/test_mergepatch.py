@@ -4,8 +4,44 @@ touched-key set the DB layer writes columns from."""
 import json
 
 import countmein.routes.mergepatch as mp
+from countmein.contracts import models_gen as gen
 from countmein.db.rows import TimeSlotRow
 from countmein.routes.slots import slot_writable_state
+
+
+def test_writable_state_pins_the_update_schema():
+    """ADR-024: the merge-patch base must expose exactly the update
+    schema's fields — a row attribute the wire forgot (or a wire field
+    the projection forgot) makes a patch silently unwritable."""
+    import dataclasses
+
+    from countmein.db.rows import OrganizerRow, ServiceRow
+    from countmein.routes.organizers import organizer_writable_state
+    from countmein.routes.services import service_writable_state
+
+    def blank_row(cls):
+        # Writable-state projections read plain attributes; a stub with
+        # every field set to a sentinel exercises all of them. Datetime
+        # columns need a real value (iso_date formats starts_at).
+        from datetime import UTC, datetime
+
+        fields = {
+            f.name: (datetime(2026, 1, 1, tzinfo=UTC) if "datetime" in str(f.type) else "x")
+            for f in dataclasses.fields(cls)
+        }
+        return cls(**fields)
+
+    cases = [
+        (service_writable_state, ServiceRow, gen.UpdateServiceInput),
+        (organizer_writable_state, OrganizerRow, gen.UpdateOrganizerProfileInput),
+        (slot_writable_state, TimeSlotRow, gen.UpdateTimeSlotInput),
+    ]
+    for project, row_cls, model in cases:
+        state = project(blank_row(row_cls))
+        assert set(state) == set(model.model_fields), (
+            f"{project.__name__} fields {sorted(state)} != "
+            f"{model.__name__} fields {sorted(model.model_fields)}"
+        )
 
 
 def service_state_fixture() -> dict:

@@ -14,5 +14,6 @@
       "status": "confirmed",
       "timeSlotId": "01930000-0000-7000-8000-000000000002"
     }
-  ]
+  ],
+  "hasMore": false
 }

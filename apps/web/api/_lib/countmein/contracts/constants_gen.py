@@ -22,6 +22,11 @@ QUEUE_OUTBOX_SWEEP = "notification.outbox.sweep"
 LOGIN_LINK_TTL_SECONDS = 2592000
 LOGIN_LINK_KEY_PREFIX = "auth:login-link:"
 
+# Organizer-auth JWT audience binding (ADR-024): the middleware mints
+# iss/aud, the API requires them — generated so the two sides cannot drift.
+ORGANIZER_AUTH_ISS = "countmein-web"
+ORGANIZER_AUTH_AUD = "countmein-api"
+
 # Slot validation tolerance.
 SLOT_START_TOLERANCE_MS = 60000
 SLOT_START_IN_PAST_MESSAGE = "Pick a time in the future — guests cannot book a session that has already started"

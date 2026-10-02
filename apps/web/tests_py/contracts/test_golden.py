@@ -293,7 +293,7 @@ def golden_samples() -> dict[str, Any]:
         "SlotsEnvelope": {"slots": [slot]},
         "GuestBookingEnvelope": {"booking": guest},
         "BookingEnvelope": {"booking": booking},
-        "BookingsEnvelope": {"bookings": [booking]},
+        "BookingsEnvelope": {"bookings": [booking], "hasMore": False},
         "GuestBookingsEnvelope": {"bookings": [guest]},
         "OrganizerEnvelope": {"organizer": organizer},
         "OrganizerEnvelope.demo": {"organizer": demo_profile},
@@ -346,13 +346,14 @@ def golden_samples() -> dict[str, Any]:
             "seatsLeft": 4,
             "maxSeats": 6,
         },
-        "ErrorBody.nulls": {"error": "Something went wrong"},
+        "ErrorBody.nulls": {"error": "Something went wrong", "code": "internal"},
         "ValidationErrors": {
             "formErrors": [],
             "fieldErrors": {"title": ["Required"]},
         },
         "InvalidBody": {
             "error": "Invalid input",
+            "code": "invalidInput",
             "details": {
                 "formErrors": [],
                 "fieldErrors": {"title": ["Required"]},

@@ -12,13 +12,11 @@ import math
 
 from starlette.requests import Request
 
-from .. import logx
 from ..auth import session as auth_session
-from ..auth.telegram import TICKET_PURPOSE_GUEST
-from ..auth.ticket import consume_ticket
+from ..auth.ticket import consume_guest_ticket
 from ..contracts.payloads import AuthTicketPayload
 from ..demo import is_read_only
-from ..errors import DemoReadOnly, PayloadTooLarge, RateLimited, TicketExpired
+from ..errors import DemoReadOnly, PayloadTooLarge, RateLimited
 from .ratelimit import RateLimitConfig, allow, client_ip
 
 # Every organizer write passes a per-organizer rate bucket (the cabinet
@@ -50,27 +48,15 @@ async def require_writable_organizer(request: Request) -> str:
     return organizer_id
 
 
-async def require_guest_identity(request: Request, ticket: str) -> AuthTicketPayload:
+async def require_guest_identity(ticket: str) -> AuthTicketPayload:
     """Redeem a guest auth ticket for the messenger identity behind it —
-    the guest counterpart of require_writable_organizer. The ticket is
-    consumed (GETDEL), not peeked: single-use, so a replayed request
-    finds nothing and is refused. The only way a guest identity may enter
-    a write: invariant 8 says it comes from a server-validated widget
-    payload, never from raw client input."""
-    try:
-        payload = await consume_ticket(ticket)
-    except Exception as err:
-        # Identity is NOT fail-open (ADR-019): a Redis outage is a 500.
-        # Logged here (with scope) because the recovery middleware sees
-        # only a bare RuntimeError.
-        logx.error(err, {"scope": "consume-ticket"})
-        raise RuntimeError("ticket consumption failed") from err
-    # Purpose claim: a ticket minted for organizer registration must not
-    # be redeemable in the booking flow. Answered like an expired one —
-    # the caller cannot distinguish "wrong flow" from "unknown ticket".
-    if payload is None or payload.purpose != TICKET_PURPOSE_GUEST:
-        raise TicketExpired()
-    return payload
+    the guest counterpart of require_writable_organizer, for the paths
+    where consuming the ticket IS the operation (booking lookup). The
+    booking-create path defers redemption to the service layer
+    (ADR-024 B1) so domain refusals leave the ticket intact — both go
+    through auth.ticket.consume_guest_ticket, so the single-use +
+    purpose-check semantics are identical."""
+    return await consume_guest_ticket(ticket)
 
 
 async def read_body_or_413(request: Request) -> bytes:

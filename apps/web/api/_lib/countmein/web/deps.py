@@ -9,7 +9,10 @@ which pins the order of side effects:
 2. body read (bounded, 413),
 3. decode (a validation failure must NOT consume the guest ticket —
    the ticket dependency sits after the decode dependency),
-4. identity/session guards.
+4. identity/session guards — guest-ticket *redemption* is deferred to
+   the service layer on booking_create (ADR-024 B1), so a domain
+   refusal leaves the ticket reusable; the dependency stage only
+   extracts the raw ticket from the decoded body.
 
 Errors raised here are the same exceptions the handlers raise
 (RateLimited, PayloadTooLarge, ValidationFailed, …) and are rendered by
@@ -197,12 +200,29 @@ def guest_identity(
     """Dependency factory: consume the guest ticket from the *already
     decoded* body (the decode dependency runs first — a validation
     failure must not burn the ticket) and redeem it for the messenger
-    identity. Single-use: a replayed request finds nothing (401)."""
+    identity. For the lookups, where consuming the ticket IS the
+    operation. Single-use: a replayed request finds nothing (401)."""
 
-    async def dep(
-        request: Request, body: ValidatedBody[Any] = Depends(decoded_dep)
-    ) -> AuthTicketPayload:
-        return await require_guest_identity(request, ticket_of(body.model))
+    async def dep(body: ValidatedBody[Any] = Depends(decoded_dep)) -> AuthTicketPayload:
+        return await require_guest_identity(ticket_of(body.model))
+
+    dep.__countmein_stage__ = _STAGE_TICKET  # type: ignore[attr-defined]
+    return dep
+
+
+def guest_ticket(
+    decoded_dep: Callable[..., Any],
+    ticket_of: Callable[[Any], str],
+) -> Callable[..., Any]:
+    """Dependency factory: hand the *raw* ticket string from the decoded
+    body to the handler — no redemption. For booking_create, where the
+    service consumes the ticket only after the domain refusals have
+    passed (ADR-024 B1): a SoldOut/InvalidOptions/PartyTooLarge answer
+    must leave the ticket reusable. Same pipeline position as
+    guest_identity — decode first, ticket read second."""
+
+    async def dep(body: ValidatedBody[Any] = Depends(decoded_dep)) -> str:
+        return ticket_of(body.model)
 
     dep.__countmein_stage__ = _STAGE_TICKET  # type: ignore[attr-defined]
     return dep

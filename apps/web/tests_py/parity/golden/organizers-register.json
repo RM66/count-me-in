@@ -66,9 +66,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "This handle is already taken — pick another one"
+          "error": "This handle is already taken — pick another one",
+          "code": "slugTaken"
         },
-        "body_raw": "{\"error\":\"This handle is already taken — pick another one\"}",
+        "body_raw": "{\"error\":\"This handle is already taken — pick another one\",\"code\":\"slugTaken\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -101,9 +102,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Your Telegram confirmation expired — authenticate again"
+          "error": "Your Telegram confirmation expired — authenticate again",
+          "code": "ticketExpired"
         },
-        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\"}",
+        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\",\"code\":\"ticketExpired\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -137,14 +139,17 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
-              "slug": ["minimum string length is 4"]
+              "slug": [
+                "minimum string length is 4"
+              ]
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -178,14 +183,17 @@
         },
         "body": {
           "error": "Invalid input",
+          "code": "invalidInput",
           "details": {
             "formErrors": [],
             "fieldErrors": {
-              "slug": ["minimum string length is 4"]
+              "slug": [
+                "minimum string length is 4"
+              ]
             }
           }
         },
-        "body_raw": "{\"error\":\"Invalid input\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -218,9 +226,10 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "error": "Your Telegram confirmation expired — authenticate again"
+          "error": "Your Telegram confirmation expired — authenticate again",
+          "code": "ticketExpired"
         },
-        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\"}",
+        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\",\"code\":\"ticketExpired\"}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

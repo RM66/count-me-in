@@ -8,8 +8,9 @@ handler's signature directly and asserts the load-bearing sequence:
 1. rate limit (before any body is read — a limited caller must not
    burn the body budget),
 2. body read (bounded, 413),
-3. decode (a validation failure must NOT consume the guest ticket),
-4. the ticket dependency (single-use identity).
+3. decode (a validation failure must NOT touch the guest ticket),
+4. the ticket stage — extraction on booking_create (consumption is
+   deferred to the service, ADR-024 B1), redemption on the lookups.
 
 The dependencies are tagged with their pipeline stage at creation
 (web/deps.py, `__countmein_stage__`), so the test reads the tags
@@ -33,18 +34,18 @@ from countmein.routes.bookings import (
 from countmein.routes.organizers import (
     organizer_avatar,
     organizer_me_language,
-    organizer_me_put,
+    organizer_me_patch,
     organizer_register,
     organizer_service_photo,
 )
 from countmein.routes.services import (
     service_delete,
-    service_put,
+    service_patch,
     services_create,
 )
 from countmein.routes.slots import (
     slot_delete,
-    slot_put,
+    slot_patch,
     slots_create,
 )
 
@@ -56,14 +57,14 @@ ALL_WRITE_HANDLERS = [
     booking_cancel,
     booking_cancel_by_organizer,
     organizer_register,
-    organizer_me_put,
+    organizer_me_patch,
     organizer_me_language,
     organizer_avatar,
     organizer_service_photo,
     services_create,
-    service_put,
+    service_patch,
     slots_create,
-    slot_put,
+    slot_patch,
 ]
 
 # The load-bearing pipeline order (see web/deps.py's module docstring).
@@ -110,8 +111,11 @@ def test_delete_handlers_have_no_pipeline_stages():
 
 def test_guest_ticket_sits_after_decode():
     """The single most load-bearing order: a validation failure must not
-    consume the guest ticket. Every handler that declares the ticket
-    dependency must also declare the decode dependency before it."""
+    reach the guest ticket at all. Every handler that declares the
+    ticket stage must also declare the decode dependency before it.
+    On booking_create the stage extracts the raw ticket only — the
+    service redeems it after the domain refusals (ADR-024 B1), so this
+    ordering test pins the extraction point, not the spend."""
     for handler in (booking_create, booking_lookup):
         stages = _stages(handler)
         assert "decode" in stages and "ticket" in stages, (

@@ -20,6 +20,8 @@ import {
   DEMO_READ_ONLY_CODE,
   DEMO_READ_ONLY_MESSAGE,
   DEMO_SERVICE_IDS,
+  ORGANIZER_AUTH_AUD,
+  ORGANIZER_AUTH_ISS,
 } from '@repo/contracts'
 import { LOGIN_LINK_KEY_PREFIX, LOGIN_LINK_TTL_S } from '@repo/contracts'
 import { DEFAULT_LOCALE, LOCALES } from '@repo/contracts'
@@ -68,6 +70,11 @@ QUEUE_OUTBOX_SWEEP = ${pyString(QUEUE_OUTBOX_SWEEP)}
 # Python writer and the TS reader cannot disagree on the Redis key.
 LOGIN_LINK_TTL_SECONDS = ${String(LOGIN_LINK_TTL_S)}
 LOGIN_LINK_KEY_PREFIX = ${pyString(LOGIN_LINK_KEY_PREFIX)}
+
+# Organizer-auth JWT audience binding (ADR-024): the middleware mints
+# iss/aud, the API requires them — generated so the two sides cannot drift.
+ORGANIZER_AUTH_ISS = ${pyString(ORGANIZER_AUTH_ISS)}
+ORGANIZER_AUTH_AUD = ${pyString(ORGANIZER_AUTH_AUD)}
 
 # Slot validation tolerance.
 SLOT_START_TOLERANCE_MS = ${String(SLOT_START_TOLERANCE_MS)}
