@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
+import { API_ROUTES } from './routes'
 import { serviceFormSchema } from './service-form'
+import { expandNowMarkers } from './test-helpers'
 import { metaOfSchema, WIRE_META, WIRE_SCHEMAS } from './wire'
 
 // Non-wire Zod schemas: the only consumer is the completeness test below, so
@@ -48,9 +50,9 @@ describe('wire registry completeness', () => {
   })
 
   it('update schemas accept an empty object (merge-patch: an empty patch is a no-op)', () => {
-    for (const id of ['UpdateServiceInput', 'UpdateTimeSlotInput', 'UpdateOrganizerProfileInput']) {
-      const schema = WIRE_SCHEMAS[id] as z.ZodType
-      expect(schema.safeParse({}).success, id).toBe(true)
+    for (const route of API_ROUTES) {
+      if (route.requestContentType !== 'application/merge-patch+json') continue
+      expect(route.request?.safeParse({}).success, route.operationId).toBe(true)
     }
   })
 })
@@ -77,9 +79,15 @@ describe('validation metadata ↔ schema parity', () => {
     startsAtNotPast: { bad: PAST, good: FUTURE },
   }
 
-  /** Inputs the metadata vocabulary can ever describe. */
-  const INPUT_IDS = Object.keys(WIRE_SCHEMAS).filter(
-    (id) => id.endsWith('Input') || id === 'TelegramWidgetPayload',
+  /**
+   * Inputs the metadata vocabulary can ever describe: exactly the request
+   * schemas of the route manifest — a new input can never slip through a
+   * naming heuristic.
+   */
+  const INPUT_IDS = new Set(
+    API_ROUTES.map((route) => route.request)
+      .filter((s): s is z.ZodType => s !== undefined)
+      .map((s) => metaOfSchema(s)!.id),
   )
 
   // Rules and refinements live on the *object* schema (superRefine), so
@@ -87,29 +95,13 @@ describe('validation metadata ↔ schema parity', () => {
   // own file (the coverage test guarantees one exists).
   const vectorsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'vectors', 'validation')
 
-  function expandNow(value: unknown): unknown {
-    if (typeof value === 'string') {
-      const m = /^\$now([+-]\d+)(s|m|h|d)$/.exec(value)
-      if (!m) return value
-      const unit = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2]!]!
-      return new Date(Date.now() + Number(m[1]) * unit).toISOString()
-    }
-    if (Array.isArray(value)) return value.map(expandNow)
-    if (value !== null && typeof value === 'object') {
-      return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, expandNow(v)]),
-      )
-    }
-    return value
-  }
-
   function validBase(id: string): Record<string, unknown> {
     const file = JSON.parse(readFileSync(join(vectorsDir, `${id}.json`), 'utf8')) as {
       cases: Array<{ name: string; body: unknown; valid?: boolean }>
     }
     const c = file.cases.find((c) => c.valid === true)
     expect(c, `${id}: no valid:true vector to build probes on`).toBeDefined()
-    return expandNow(c!.body) as Record<string, unknown>
+    return expandNowMarkers(c!.body) as Record<string, unknown>
   }
 
   function errorKeys(result: z.ZodSafeParseResult<unknown>): string[] {
@@ -207,6 +199,7 @@ describe('validation metadata ↔ schema parity', () => {
         for (const name of names) {
           const probe = RULE_PROBES[name]
           expect(probe, `${id}.${field}: unknown field rule ${name}`).toBeDefined()
+          if (!probe) continue
           const bad = schema.safeParse({ ...base, [field]: probe.bad })
           expect(
             !bad.success && errorKeys(bad).includes(field),

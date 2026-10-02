@@ -3,7 +3,7 @@
   "info": {
     "title": "CountMeIn API",
     "description": "API for group booking, organizer cabinet management, and notifications.",
-    "version": "1.0.0+f481f3704de7"
+    "version": "1.0.0+b7952d85095d"
   },
   "servers": [
     {
@@ -167,7 +167,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Registered"
+                  "$ref": "#/components/schemas/RegistrationResponse"
                 }
               }
             }
@@ -2071,8 +2071,7 @@
             "type": "string"
           },
           "photoUrl": {
-            "type": "string",
-            "format": "uri"
+            "$ref": "#/components/schemas/URL"
           },
           "messengerLogin": {
             "type": "string"
@@ -2362,15 +2361,6 @@
           "title": {
             "$ref": "#/components/schemas/DisplayName"
           },
-          "description": {
-            "$ref": "#/components/schemas/ServiceDescription"
-          },
-          "location": {
-            "$ref": "#/components/schemas/Location"
-          },
-          "contact": {
-            "$ref": "#/components/schemas/Contact"
-          },
           "defaultPrice": {
             "$ref": "#/components/schemas/PriceText"
           },
@@ -2382,6 +2372,15 @@
           },
           "maxSeatsPerBooking": {
             "$ref": "#/components/schemas/MaxSeatsPerBooking"
+          },
+          "description": {
+            "$ref": "#/components/schemas/ServiceDescription"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/Contact"
           },
           "options": {
             "$ref": "#/components/schemas/OptionsList"
@@ -2656,7 +2655,7 @@
             "$ref": "#/components/schemas/Messenger"
           },
           "messengerId": {
-            "type": "string"
+            "$ref": "#/components/schemas/MessengerID"
           },
           "organizerId": {
             "$ref": "#/components/schemas/UUID"
@@ -2689,7 +2688,8 @@
         "required": [
           "id",
           "name",
-          "slug"
+          "slug",
+          "photoUrl"
         ]
       },
       "InvalidBody": {
@@ -3088,17 +3088,6 @@
           "timezone"
         ]
       },
-      "Registered": {
-        "type": "object",
-        "properties": {
-          "organizer": {
-            "$ref": "#/components/schemas/RegisteredOrganizer"
-          }
-        },
-        "required": [
-          "organizer"
-        ]
-      },
       "RegisteredOrganizer": {
         "type": "object",
         "properties": {
@@ -3112,6 +3101,17 @@
         "required": [
           "id",
           "slug"
+        ]
+      },
+      "RegistrationResponse": {
+        "type": "object",
+        "properties": {
+          "organizer": {
+            "$ref": "#/components/schemas/RegisteredOrganizer"
+          }
+        },
+        "required": [
+          "organizer"
         ]
       },
       "Seats": {
@@ -3556,6 +3556,18 @@
           "title": {
             "$ref": "#/components/schemas/DisplayName"
           },
+          "defaultPrice": {
+            "$ref": "#/components/schemas/PriceText"
+          },
+          "defaultCapacity": {
+            "$ref": "#/components/schemas/Capacity"
+          },
+          "defaultDurationMinutes": {
+            "$ref": "#/components/schemas/DurationMinutes"
+          },
+          "maxSeatsPerBooking": {
+            "$ref": "#/components/schemas/MaxSeatsPerBooking"
+          },
           "description": {
             "anyOf": [
               {
@@ -3585,18 +3597,6 @@
                 "type": "null"
               }
             ]
-          },
-          "defaultPrice": {
-            "$ref": "#/components/schemas/PriceText"
-          },
-          "defaultCapacity": {
-            "$ref": "#/components/schemas/Capacity"
-          },
-          "defaultDurationMinutes": {
-            "$ref": "#/components/schemas/DurationMinutes"
-          },
-          "maxSeatsPerBooking": {
-            "$ref": "#/components/schemas/MaxSeatsPerBooking"
           },
           "options": {
             "anyOf": [

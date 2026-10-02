@@ -4,7 +4,7 @@ Every write path must reject it, including guest booking + cancel, and
 notifications must never be sent for it.
 """
 
-from ..contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG
+from ..contracts.constants_gen import DEMO_ORGANIZER_ID
 from ..errors import DemoReadOnly
 
 
@@ -13,10 +13,6 @@ def is_demo_organizer(organizer_id: str) -> bool:
     # a raw UUID == str comparison is always False and would silently
     # disable the read-only guard (ADR-010).
     return str(organizer_id) == DEMO_ORGANIZER_ID
-
-
-def is_demo_slug(slug: str) -> bool:
-    return slug == DEMO_ORGANIZER_SLUG
 
 
 def is_read_only(organizer_id: str) -> bool:

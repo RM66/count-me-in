@@ -52,8 +52,3 @@ export const DEMO_READ_ONLY_MESSAGE =
 export function isDemoOrganizerId(organizerId: string | null | undefined): boolean {
   return organizerId === DEMO_ORGANIZER_ID
 }
-
-/** True when the given slug belongs to the demo account. */
-export function isDemoOrganizerSlug(slug: string | null | undefined): boolean {
-  return slug?.toLowerCase() === DEMO_ORGANIZER_SLUG
-}

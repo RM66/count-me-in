@@ -146,7 +146,7 @@ async def organizer_register(
     # row, the route projects it.
     registered = gen.RegisteredOrganizer.model_construct(id=row.id, slug=row.slug)
 
-    star = json_response(201, gen.Registered(organizer=registered)).to_starlette()
+    star = json_response(201, gen.RegistrationResponse(organizer=registered)).to_starlette()
     # A new slug appears in the sitemap catalog and gets its own public
     # page — invalidate both tags after commit (best-effort, ADR-023).
     star.background = BackgroundTask(

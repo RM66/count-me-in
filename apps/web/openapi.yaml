@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+f481f3704de7
+  version: 1.0.0+b7952d85095d
 servers:
   - url: https://countmein.group
     description: Production
@@ -107,7 +107,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Registered"
+                $ref: "#/components/schemas/RegistrationResponse"
         "400":
           description: Validation error
           content:
@@ -1268,8 +1268,7 @@ components:
         displayName:
           type: string
         photoUrl:
-          type: string
-          format: uri
+          $ref: "#/components/schemas/URL"
         messengerLogin:
           type: string
         purpose:
@@ -1464,12 +1463,6 @@ components:
       properties:
         title:
           $ref: "#/components/schemas/DisplayName"
-        description:
-          $ref: "#/components/schemas/ServiceDescription"
-        location:
-          $ref: "#/components/schemas/Location"
-        contact:
-          $ref: "#/components/schemas/Contact"
         defaultPrice:
           $ref: "#/components/schemas/PriceText"
         defaultCapacity:
@@ -1478,6 +1471,12 @@ components:
           $ref: "#/components/schemas/DurationMinutes"
         maxSeatsPerBooking:
           $ref: "#/components/schemas/MaxSeatsPerBooking"
+        description:
+          $ref: "#/components/schemas/ServiceDescription"
+        location:
+          $ref: "#/components/schemas/Location"
+        contact:
+          $ref: "#/components/schemas/Contact"
         options:
           $ref: "#/components/schemas/OptionsList"
         optionsSelectMode:
@@ -1666,7 +1665,7 @@ components:
         messenger:
           $ref: "#/components/schemas/Messenger"
         messengerId:
-          type: string
+          $ref: "#/components/schemas/MessengerID"
         organizerId:
           $ref: "#/components/schemas/UUID"
     InternalOrganizerRecord:
@@ -1686,6 +1685,7 @@ components:
         - id
         - name
         - slug
+        - photoUrl
     InvalidBody:
       type: object
       properties:
@@ -1943,13 +1943,6 @@ components:
         - slug
         - name
         - timezone
-    Registered:
-      type: object
-      properties:
-        organizer:
-          $ref: "#/components/schemas/RegisteredOrganizer"
-      required:
-        - organizer
     RegisteredOrganizer:
       type: object
       properties:
@@ -1960,6 +1953,13 @@ components:
       required:
         - id
         - slug
+    RegistrationResponse:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/RegisteredOrganizer"
+      required:
+        - organizer
     Seats:
       type: integer
       minimum: 1
@@ -2239,6 +2239,14 @@ components:
       properties:
         title:
           $ref: "#/components/schemas/DisplayName"
+        defaultPrice:
+          $ref: "#/components/schemas/PriceText"
+        defaultCapacity:
+          $ref: "#/components/schemas/Capacity"
+        defaultDurationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        maxSeatsPerBooking:
+          $ref: "#/components/schemas/MaxSeatsPerBooking"
         description:
           anyOf:
             - $ref: "#/components/schemas/ServiceDescription"
@@ -2251,14 +2259,6 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Contact"
             - type: "null"
-        defaultPrice:
-          $ref: "#/components/schemas/PriceText"
-        defaultCapacity:
-          $ref: "#/components/schemas/Capacity"
-        defaultDurationMinutes:
-          $ref: "#/components/schemas/DurationMinutes"
-        maxSeatsPerBooking:
-          $ref: "#/components/schemas/MaxSeatsPerBooking"
         options:
           anyOf:
             - $ref: "#/components/schemas/OptionsList"

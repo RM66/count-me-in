@@ -27,13 +27,13 @@
  * re-exported from `index.ts` — import via `@repo/contracts/openapi`.
  */
 import { createHash } from 'node:crypto'
-import type { z } from 'zod'
+import { z } from 'zod'
 import { createDocument, type ZodOpenApiOverride } from 'zod-openapi'
 
 import { SESSION_COOKIE_NAMES } from './auth'
 import { SLUG_PATTERN } from './primitives'
-import { API_ROUTES, INTERNAL_RECORDS } from './routes'
-import { metaOfSchema, WIRE_SCHEMAS } from './wire'
+import { API_ROUTES } from './routes'
+import { INTERNAL_RECORDS, metaOfSchema, WIRE_SCHEMAS } from './wire'
 
 const slugShapeSchema = WIRE_SCHEMAS['SlugShape']
 const slugSchema = WIRE_SCHEMAS['Slug']
@@ -87,14 +87,14 @@ function schemaRef(schema: z.ZodType, where: string): { $ref: string } {
   return { $ref: `#/components/schemas/${meta.id}` }
 }
 
-function isLiteralEnum(schema: unknown): schema is { enum: readonly string[] } {
-  return (
-    typeof schema === 'object' &&
-    schema !== null &&
-    'enum' in schema &&
-    Array.isArray((schema as { enum: unknown }).enum) &&
-    !('_zod' in schema)
-  )
+/**
+ * An ad-hoc `{ enum: [...] }` param literal vs a real Zod schema: identity by
+ * class, not by duck-typing internals (`_zod`), which move between versions.
+ */
+function isLiteralEnum(schema: z.ZodType | { enum: readonly string[] }): schema is {
+  enum: readonly string[]
+} {
+  return !(schema instanceof z.ZodType)
 }
 
 /** Byte-order sort: localeCompare is ICU-dependent and can order the same ids differently on another machine. */
@@ -124,11 +124,14 @@ function stripAdditionalPropertiesFalse(schemas: Record<string, Record<string, u
 }
 
 /**
- * Spec version from a hash of the rendered content, so any semantic change
- * moves it.
+ * Spec version from a hash of the whole rendered document (minus the version
+ * itself), so any semantic change — paths, schemas, security schemes,
+ * x-internal records — moves it.
  */
-function specVersion(schemas: Record<string, unknown>, paths: Record<string, unknown>): string {
-  const digest = createHash('sha256').update(JSON.stringify({ paths, schemas })).digest('hex')
+function specVersion(document: Record<string, unknown>): string {
+  const docSansVersion = JSON.parse(JSON.stringify(document)) as Record<string, unknown>
+  delete (docSansVersion.info as Record<string, unknown>).version
+  const digest = createHash('sha256').update(JSON.stringify(docSansVersion)).digest('hex')
   return `1.0.0+${digest.slice(0, 12)}`
 }
 
@@ -251,44 +254,49 @@ function buildPaths(): Record<string, Record<string, unknown>> {
  * toolchain (datamodel-code-generator + the spec decode) — the former
  * 3.0.3 down-render is gone.
  */
+const API_INFO = {
+  title: 'CountMeIn API',
+  description: 'API for group booking, organizer cabinet management, and notifications.',
+}
+const API_SERVERS = [
+  { url: 'https://countmein.group', description: 'Production' },
+  { url: 'http://localhost:3000', description: 'Local development' },
+]
+
 export function buildOpenApiDocument(): Record<string, unknown> {
   if (SESSION_COOKIE_NAMES.length < 2) {
     throw new Error('openapi: SESSION_COOKIE_NAMES must list the https and http cookie names')
   }
 
+  // Redis JSON payloads never appear as HTTP bodies; they still travel as
+  // JSON between the API and Redis, so they are part of the wire.
+  const xInternal = INTERNAL_RECORDS.map((s, i) => schemaRef(s, `internal[${i}]`))
+  const securitySchemes = {
+    sessionCookie: {
+      type: 'apiKey',
+      in: 'cookie',
+      name: SESSION_COOKIE_NAMES[0],
+      description: `Auth.js session cookie: \`${SESSION_COOKIE_NAMES[0]}\` in production, \`${SESSION_COOKIE_NAMES[1]}\` in local development.`,
+    },
+    internalSecret: {
+      type: 'apiKey',
+      in: 'header',
+      name: 'x-internal-secret',
+      description:
+        'Internal secret header for service-to-service communication between Next.js BFF and Python API.',
+    },
+  } as const
+
   const document = createDocument(
     {
       openapi: '3.1.0',
-      info: {
-        title: 'CountMeIn API',
-        description: 'API for group booking, organizer cabinet management, and notifications.',
-        version: '0.0.0', // replaced by the content hash below
-      },
-      servers: [
-        { url: 'https://countmein.group', description: 'Production' },
-        { url: 'http://localhost:3000', description: 'Local development' },
-      ],
+      info: { ...API_INFO, version: '0.0.0' }, // replaced by the content hash below
+      servers: API_SERVERS,
       paths: buildPaths(),
-      // Redis JSON payloads never appear as HTTP bodies; they still travel as
-      // JSON between the API and Redis, so they are part of the wire.
-      'x-internal': INTERNAL_RECORDS.map((s, i) => schemaRef(s, `internal[${i}]`)),
+      'x-internal': xInternal,
       components: {
         schemas: WIRE_SCHEMAS as Record<string, z.ZodType>,
-        securitySchemes: {
-          sessionCookie: {
-            type: 'apiKey',
-            in: 'cookie',
-            name: SESSION_COOKIE_NAMES[0],
-            description: `Auth.js session cookie: \`${SESSION_COOKIE_NAMES[0]}\` in production, \`${SESSION_COOKIE_NAMES[1]}\` in local development.`,
-          },
-          internalSecret: {
-            type: 'apiKey',
-            in: 'header',
-            name: 'x-internal-secret',
-            description:
-              'Internal secret header for service-to-service communication between Next.js BFF and Python API.',
-          },
-        },
+        securitySchemes,
       },
     },
     {
@@ -301,7 +309,6 @@ export function buildOpenApiDocument(): Record<string, unknown> {
     paths: Record<string, Record<string, unknown>>
     components: {
       schemas: Record<string, Record<string, unknown>>
-      securitySchemes: Record<string, unknown>
     }
   }
 
@@ -315,22 +322,16 @@ export function buildOpenApiDocument(): Record<string, unknown> {
   if (!runJob?.requestBody) {
     throw new Error('openapi: the jobs receiver lost its requestBody')
   }
-  return {
+  const result = {
     openapi: '3.1.0',
-    info: {
-      title: 'CountMeIn API',
-      description: 'API for group booking, organizer cabinet management, and notifications.',
-      version: specVersion(schemas, paths),
-    },
-    servers: [
-      { url: 'https://countmein.group', description: 'Production' },
-      { url: 'http://localhost:3000', description: 'Local development' },
-    ],
+    info: { ...API_INFO, version: '' }, // filled below
+    servers: API_SERVERS,
     paths,
-    'x-internal': INTERNAL_RECORDS.map((s, i) => schemaRef(s, `internal[${i}]`)),
+    'x-internal': xInternal,
     components: {
-      securitySchemes: document.components.securitySchemes,
+      securitySchemes,
       schemas,
     },
   }
+  return { ...result, info: { ...API_INFO, version: specVersion(result) } }
 }

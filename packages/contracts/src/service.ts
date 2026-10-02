@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { optionsSelectModeEnum } from './enums'
+import { nullableFields, optionalFields } from './merge-patch'
 import { optionsList } from './options'
 import {
   capacity,
@@ -16,17 +17,27 @@ import {
   uuid,
 } from './primitives'
 
-const serviceFields = {
+/** Columns a service must always have — never clearable via patch. */
+const requiredServiceFields = {
   title: displayName,
-  description: serviceDescription.optional(),
-  location: location.optional(),
-  contact: contact.optional(),
   defaultPrice: priceText,
   defaultCapacity: capacity,
   defaultDurationMinutes: durationMinutes,
   maxSeatsPerBooking,
-  options: optionsList.optional(),
-  optionsSelectMode: optionsSelectModeEnum.optional(),
+}
+
+/**
+ * Display fields an organizer may clear: absent on create ("not set"),
+ * `null` on update ("clear the column"). One table, two wrappings — the
+ * create and update field lists cannot drift.
+ */
+const clearableServiceFields = {
+  description: serviceDescription,
+  location,
+  contact,
+  options: optionsList,
+  optionsSelectMode: optionsSelectModeEnum,
+  photoUrl: httpUrl,
 }
 
 /**
@@ -69,31 +80,22 @@ function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
 
 export const createServiceInput = refineOptionsConsistency(
   z.object({
-    ...serviceFields,
-    photoUrl: httpUrl.optional(),
+    ...requiredServiceFields,
+    ...optionalFields(clearableServiceFields),
   }),
 )
 export type CreateServiceInput = z.infer<typeof createServiceInput>
 
 /**
- * Cabinet edits. Every optional display field is additionally **nullable**:
+ * Cabinet edits (JSON Merge Patch). Every clearable field is **nullable**:
  * `undefined` means "leave unchanged", `null` means "clear it". Without that
  * distinction an organizer could never remove a description or a cover photo.
  */
 export const updateServiceInput = refineOptionsConsistency(
   z
     .object({
-      title: displayName,
-      description: serviceDescription.nullable(),
-      location: location.nullable(),
-      contact: contact.nullable(),
-      defaultPrice: priceText,
-      defaultCapacity: capacity,
-      defaultDurationMinutes: durationMinutes,
-      maxSeatsPerBooking,
-      options: optionsList.nullable(),
-      optionsSelectMode: optionsSelectModeEnum.nullable(),
-      photoUrl: httpUrl.nullable(), // null = remove cover photo
+      ...requiredServiceFields,
+      ...nullableFields(clearableServiceFields),
     })
     .partial(),
 )

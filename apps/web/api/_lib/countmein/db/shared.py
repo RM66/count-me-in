@@ -3,7 +3,8 @@ generation, the manage-token hash, and the merge-patch update contract.
 
 The manage-token hash is a cross-stack contract: SHA-256 hex, identical
 to hashManageToken in @repo/contracts/manage-token (server-only
-subpath), pinned by a parity vector test on both sides (ADR-020).
+subpath), pinned by the shared domain vector
+packages/contracts/vectors/domain/hashManageToken.json (ADR-020).
 """
 
 from __future__ import annotations

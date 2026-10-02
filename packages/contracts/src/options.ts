@@ -10,9 +10,11 @@ export const OPTIONS_MAX = 50
  * Shape-level cap on a booking's `selectedOptions`. The semantic check
  * (`buildSelectedOptionsSchema` / `ValidateSelectedOptions`) bounds a real
  * selection to the service's own list; this only rejects absurd payloads
- * before the service is loaded.
+ * before the service is loaded. Equal to {@link OPTIONS_MAX} by necessity:
+ * a service can never offer more options than that, so a larger selection
+ * is always invalid.
  */
-export const SELECTED_OPTIONS_MAX = 50
+export const SELECTED_OPTIONS_MAX = OPTIONS_MAX
 
 /** Allowed option labels on a service: unique, non-empty list. */
 export const optionsList = z

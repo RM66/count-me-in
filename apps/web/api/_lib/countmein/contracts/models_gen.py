@@ -85,13 +85,13 @@ class UpdateOrganizerLanguageInput(BaseModel):
 
 class UpdateServiceInput(BaseModel):
     title: Annotated[str | None, Field(max_length=100, min_length=1)] = None
-    description: ServiceDescription | None = None
-    location: Location | None = None
-    contact: Contact | None = None
     defaultPrice: Annotated[str | None, Field(max_length=50, min_length=1)] = None
     defaultCapacity: Annotated[int | None, Field(ge=1, le=100000)] = None
     defaultDurationMinutes: Annotated[int | None, Field(ge=1, le=1440)] = None
     maxSeatsPerBooking: Annotated[int | None, Field(ge=1, le=1000)] = None
+    description: ServiceDescription | None = None
+    location: Location | None = None
+    contact: Contact | None = None
     options: OptionsList | None = None
     optionsSelectMode: Literal['single', 'multi'] | None = None
     photoUrl: AnyUrl | None = None
@@ -227,13 +227,13 @@ class CreateBookingInput(BaseModel):
 
 class CreateServiceInput(BaseModel):
     title: Annotated[str, Field(max_length=100, min_length=1)]
-    description: Annotated[str | None, Field(max_length=2000)] = None
-    location: Annotated[str | None, Field(max_length=300, min_length=1)] = None
-    contact: Annotated[str | None, Field(max_length=300, min_length=1)] = None
     defaultPrice: Annotated[str, Field(max_length=50, min_length=1)]
     defaultCapacity: Annotated[int, Field(ge=1, le=100000)]
     defaultDurationMinutes: Annotated[int, Field(ge=1, le=1440)]
     maxSeatsPerBooking: Annotated[int, Field(ge=1, le=1000)]
+    description: Annotated[str | None, Field(max_length=2000)] = None
+    location: Annotated[str | None, Field(max_length=300, min_length=1)] = None
+    contact: Annotated[str | None, Field(max_length=300, min_length=1)] = None
     options: Annotated[list[OptionLabel] | None, Field(max_length=50, min_length=1)] = (
         None
     )
@@ -279,7 +279,7 @@ class GuestTicketResponse(BaseModel):
 
 class InternalOrganizerLookupInput(BaseModel):
     messenger: Literal['telegram'] | None = None
-    messengerId: str | None = None
+    messengerId: Annotated[str | None, Field(max_length=100, min_length=1)] = None
     organizerId: Annotated[
         UUID | None,
         Field(
@@ -299,7 +299,7 @@ class InternalOrganizerRecord(BaseModel):
     slug: Annotated[
         str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
     ]
-    photoUrl: str | None = None
+    photoUrl: str | None
 
 
 class InvalidBody(BaseModel):
@@ -374,6 +374,10 @@ class RegisteredOrganizer(BaseModel):
     slug: Annotated[
         str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
     ]
+
+
+class RegistrationResponse(BaseModel):
+    organizer: RegisteredOrganizer
 
 
 class ServiceCountsRecord(BaseModel):
@@ -532,10 +536,6 @@ class RegisterOrganizerInput(BaseModel):
     timezone: str
     contact: Annotated[str | None, Field(max_length=300, min_length=1)] = None
     language: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja'] = 'en'
-
-
-class Registered(BaseModel):
-    organizer: RegisteredOrganizer
 
 
 class ServiceEnvelope(BaseModel):

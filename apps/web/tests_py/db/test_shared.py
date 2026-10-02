@@ -6,7 +6,6 @@ from __future__ import annotations
 import re
 
 from countmein.db.shared import (
-    hash_manage_token,
     new_id,
     new_manage_token,
     new_service_id,
@@ -30,25 +29,6 @@ def test_new_service_id_shape():
         assert len(id_) == 21, f"nanoid length must be 21, got {len(id_)} ({id_!r})"
         for c in id_:
             assert c in NANOID_ALPHABET, f"nanoid charset violation: {id_!r}"
-
-
-def test_hash_manage_token_parity():
-    """The same SHA-256 hex as the TS helper (@repo/contracts/
-    manage-token) and the SQL lookup key — pinned on both sides of the
-    wire (manage-token.test.ts carries the same table)."""
-    cases = [
-        (
-            "countmein-parity-vector",
-            "fdacba0aa4450ff1b8a7a6c94795723794dc2987dac5bb0b2f81f6cadfd9f7a4",
-        ),
-        ("", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
-        ("0123456789", "84d89877f0d4041efb6bf91a16f0248f2fd573e6af05c19f96bedb9f882f7882"),
-        ("токен-🔑-парity", "af5cd9735dddab01d8c050b125086b0e655cdbb63c2b462d4f7fa1090cb606c0"),
-        ("A" * 64, "d53eda7a637c99cc7fb566d96e9fa109bf15c478410a3f5eb4d4c4e26cd081f6"),
-        ("A" * 256, "e075f2f51cad23d0537186cfcd50f911ea954f9c2e32a437f45327f1b7899bbb"),
-    ]
-    for token, want in cases:
-        assert hash_manage_token(token) == want, f"hash mismatch for {token!r}"
 
 
 def test_new_manage_token_shape():

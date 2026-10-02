@@ -77,7 +77,7 @@ export const authTicketPayload = z.object({
   messenger: messengerEnum,
   messengerId,
   displayName: z.string(),
-  photoUrl: z.string().url().optional(),
+  photoUrl: httpUrl.optional(),
   messengerLogin: z.string().optional(),
   purpose: z.enum(['guest', 'organizer']),
 })

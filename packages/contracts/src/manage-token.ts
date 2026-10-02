@@ -9,8 +9,10 @@ import { createHash } from 'node:crypto'
  * body, and the server hashes it before lookup.
  *
  * Parity: `hash_manage_token` in the API (countmein/db/shared.py) — the
- * same function on the API side. A change here requires the same change
- * there.
+ * same function on the API side. The TS implementation has no
+ * production callsite: it exists as the executable mirror pinned by the
+ * shared vector `vectors/domain/hashManageToken.json` (vitest and
+ * pytest run the same cases).
  */
 export function hashManageToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex')

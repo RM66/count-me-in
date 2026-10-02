@@ -57,6 +57,9 @@ One file per entity, each holding its input, update, and record schemas built fr
 - [`jobs.ts`](src/jobs.ts) — QStash queue names and job payloads.
 - [`routes.ts`](src/routes.ts) — HTTP surface (method, path, auth, request/response); subpath export, not in `index.ts`.
 - [`envelopes.ts`](src/envelopes.ts) — typed response wrappers (`ServiceEnvelope`, `SlotEnvelope`, …).
+- [`errors.ts`](src/errors.ts) — error bodies (`ErrorBody`, `InvalidBody`, `ValidationErrors`).
+- [`records.ts`](src/records.ts) — non-entity read models inside envelopes (sitemap entries, analytics, `InternalOrganizerRecord`).
+- [`merge-patch.ts`](src/merge-patch.ts) — `optionalFields`/`nullableFields`: one clearable-field table per entity feeds both the create (`optional`) and merge-patch update (`nullable` + `.partial()`) wire schemas.
 - [`i18n.ts`](src/i18n.ts) — supported locales, `matchLocale`.
 - [`demo.ts`](src/demo.ts) — demo organizer id/slug/constants.
 

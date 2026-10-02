@@ -2,9 +2,21 @@ import { z } from 'zod'
 
 import { bookingRecord, guestBooking } from './booking'
 import { organizerProfile, publicOrganizer } from './organizer'
-import { displayName, serviceId, slugShape, uuid } from './primitives'
+import { serviceId, uuid } from './primitives'
+import {
+  analyticsSummaryRecord,
+  internalOrganizerRecord,
+  serviceCountsRecord,
+  sitemapOrganizerEntry,
+  sitemapServiceEntry,
+} from './records'
 import { serviceRecord } from './service'
 import { timeSlotRecord } from './time-slot'
+
+/**
+ * Response envelopes: the named wrapper objects every endpoint returns.
+ * Record shapes live in `./records`, error bodies in `./errors`.
+ */
 
 export const publicOrganizerViewEnvelope = z.object({
   organizer: publicOrganizer,
@@ -19,17 +31,6 @@ export const publicServiceViewEnvelope = z.object({
   slots: z.array(timeSlotRecord),
 })
 export type PublicServiceViewEnvelope = z.infer<typeof publicServiceViewEnvelope>
-
-export const sitemapOrganizerEntry = z.object({
-  slug: slugShape,
-})
-export type SitemapOrganizerEntry = z.infer<typeof sitemapOrganizerEntry>
-
-export const sitemapServiceEntry = z.object({
-  orgSlug: slugShape,
-  serviceId: serviceId,
-})
-export type SitemapServiceEntry = z.infer<typeof sitemapServiceEntry>
 
 export const publicSitemapEnvelope = z.object({
   organizers: z.array(sitemapOrganizerEntry),
@@ -74,74 +75,11 @@ export type DeletedServiceEnvelope = z.infer<typeof deletedServiceEnvelope>
 export const deletedSlotEnvelope = z.object({ id: uuid })
 export type DeletedSlotEnvelope = z.infer<typeof deletedSlotEnvelope>
 
-export const errorBody = z.looseObject({
-  error: z.string(),
-  /** Machine-readable error code — present on every error body (ADR-024). */
-  code: z.string(),
-  seatsLeft: z.number().int().optional(),
-  maxSeats: z.number().int().optional(),
-})
-export type ErrorBody = z.infer<typeof errorBody>
-
-export const validationErrors = z.object({
-  formErrors: z.array(z.string()),
-  fieldErrors: z.record(z.string(), z.array(z.string())),
-})
-export type ValidationErrors = z.infer<typeof validationErrors>
-
-export const invalidBody = z.object({
-  error: z.string(),
-  /** Machine-readable error code — present on every error body (ADR-024). */
-  code: z.string(),
-  details: validationErrors,
-})
-export type InvalidBody = z.infer<typeof invalidBody>
-
-export const serviceCountsRecord = z.object({
-  serviceId,
-  upcomingSlotsCount: z.number().int(),
-  confirmedBookingsCount: z.number().int(),
-})
-export type ServiceCountsRecord = z.infer<typeof serviceCountsRecord>
-
-export const analyticsTrendDay = z.object({
-  day: z.string(),
-  bookings: z.number().int(),
-  seats: z.number().int(),
-})
-export type AnalyticsTrendDay = z.infer<typeof analyticsTrendDay>
-
-export const analyticsServiceCount = z.object({
-  service: z.string(),
-  bookings: z.number().int(),
-})
-export type AnalyticsServiceCount = z.infer<typeof analyticsServiceCount>
-
-export const analyticsSummaryRecord = z.object({
-  totalBookings: z.number().int(),
-  prevTotalBookings: z.number().int(),
-  seatsSold: z.number().int(),
-  prevSeatsSold: z.number().int(),
-  windowBookings: z.number().int(),
-  cancelledInWindow: z.number().int(),
-  trend: z.array(analyticsTrendDay),
-  byService: z.array(analyticsServiceCount),
-})
-export type AnalyticsSummaryRecord = z.infer<typeof analyticsSummaryRecord>
-
 export const cabinetSummaryEnvelope = z.object({
   serviceCounts: z.array(serviceCountsRecord),
   analytics: analyticsSummaryRecord,
 })
 export type CabinetSummaryEnvelope = z.infer<typeof cabinetSummaryEnvelope>
-
-export const internalOrganizerRecord = z.object({
-  id: uuid,
-  name: displayName,
-  slug: slugShape,
-  photoUrl: z.string().nullable().optional(),
-})
-export type InternalOrganizerRecord = z.infer<typeof internalOrganizerRecord>
 
 export const internalOrganizerEnvelope = z.object({
   organizer: internalOrganizerRecord,

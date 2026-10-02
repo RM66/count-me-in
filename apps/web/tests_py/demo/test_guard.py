@@ -4,9 +4,8 @@ The guard is the security seam every write path leans on, but until now
 it was only covered indirectly — via parity scenarios and the HTTP route
 integration tests. These tests pin the semantics with no database and
 no app: UUID normalization (a raw UUID object slipping past the row
-mappers must not silently disable the read-only guard), empty-id
-handling (the anonymous demo-cabinet visitor), and the exact-match slug
-rule.
+mappers must not silently disable the read-only guard) and empty-id
+handling (the anonymous demo-cabinet visitor).
 """
 
 from __future__ import annotations
@@ -14,10 +13,9 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_ORGANIZER_SLUG
+from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
 from countmein.demo.guard import (
     is_demo_organizer,
-    is_demo_slug,
     is_read_only,
     refuse_demo_write,
 )
@@ -44,16 +42,6 @@ def test_is_demo_organizer_unrelated_values():
     # A prefix/suffix of the demo id is not the demo id.
     assert not is_demo_organizer(DEMO_ORGANIZER_ID + "0")
     assert not is_demo_organizer("0" + DEMO_ORGANIZER_ID)
-
-
-def test_is_demo_slug_exact_match_only():
-    assert is_demo_slug(DEMO_ORGANIZER_SLUG)
-    # Slugs are lowercase by contract; casing is not normalized here —
-    # the decoder lowercases, the guard compares exactly.
-    assert not is_demo_slug(DEMO_ORGANIZER_SLUG.upper())
-    assert not is_demo_slug("")
-    assert not is_demo_slug("demo-")
-    assert not is_demo_slug("0" + DEMO_ORGANIZER_SLUG)
 
 
 def test_is_read_only_empty_and_demo():

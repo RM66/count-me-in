@@ -158,7 +158,7 @@ indistinguishable from real data at read time, which is the entire point.
 ## Implementation
 
 1. `packages/contracts/src/demo.ts` — id, slug, path, service ids, `DEMO_READ_ONLY` code and
-   message, `isDemoOrganizerId()` / `isDemoOrganizerSlug()`.
+   message, `isDemoOrganizerId()`.
 2. `packages/contracts/src/primitives.ts` — add `demo` to `RESERVED_SLUGS`.
 3. `packages/contracts/src/organizer.ts` — add `isDemo: boolean` to `organizerProfile`.
 4. Seed data and idempotent upsert — originally `packages/db/src/seed/`, since the Python API

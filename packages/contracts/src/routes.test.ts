@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { API_ROUTES, INTERNAL_RECORDS } from './routes'
-import { metaOfSchema } from './wire'
+import { API_ROUTES } from './routes'
+import { INTERNAL_RECORDS, metaOfSchema } from './wire'
 
 describe('API route manifest', () => {
   it('every referenced schema is registered in wire.ts', () => {

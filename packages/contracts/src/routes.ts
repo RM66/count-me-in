@@ -15,13 +15,7 @@
  */
 import type { z } from 'zod'
 
-import {
-  authTicketPayload,
-  authTicketResponse,
-  guestTicketResponse,
-  loginLinkPayload,
-  telegramWidgetPayload,
-} from './auth'
+import { authTicketResponse, guestTicketResponse, telegramWidgetPayload } from './auth'
 import {
   cancelBookingByOrganizerInput,
   cancelBookingByTokenInput,
@@ -35,11 +29,9 @@ import {
   cabinetSummaryEnvelope,
   deletedServiceEnvelope,
   deletedSlotEnvelope,
-  errorBody,
   guestBookingEnvelope,
   guestBookingsEnvelope,
   internalOrganizerEnvelope,
-  invalidBody,
   organizerEnvelope,
   publicOrganizerViewEnvelope,
   publicServiceViewEnvelope,
@@ -49,6 +41,7 @@ import {
   slotEnvelope,
   slotsEnvelope,
 } from './envelopes'
+import { errorBody, invalidBody } from './errors'
 import {
   QUEUE_BOOKING_CANCELLED,
   QUEUE_BOOKING_CREATED,
@@ -57,8 +50,8 @@ import {
 } from './jobs'
 import {
   internalOrganizerLookupInput,
-  registered,
   registerOrganizerInput,
+  registrationResponse,
   updateOrganizerLanguageInput,
   updateOrganizerProfileInput,
 } from './organizer'
@@ -162,13 +155,6 @@ const DEMO_FORBIDDEN = {
   body: errorBody,
 } as const
 
-/**
- * JSON payloads that travel outside HTTP (Redis). They have no operation,
- * but they are still on the wire — the generator $refs them so the orphan
- * check cannot treat them as unused.
- */
-export const INTERNAL_RECORDS: readonly z.ZodType[] = [authTicketPayload, loginLinkPayload]
-
 export const API_ROUTES: readonly ApiRoute[] = [
   // ── Auth (Telegram widget) ────────────────────────────────────────────────
   {
@@ -212,7 +198,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     request: registerOrganizerInput,
     rateLimit: { limit: 10, windowSeconds: 3600, per: 'ip' },
     responses: [
-      { status: 201, description: 'Organizer created', body: registered },
+      { status: 201, description: 'Organizer created', body: registrationResponse },
       INVALID_BODY,
       { status: 401, description: 'Auth ticket expired or unknown', body: errorBody },
       {

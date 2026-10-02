@@ -8,6 +8,7 @@ import {
   contact,
   displayName,
   durationMinutes,
+  httpUrl,
   location,
   maxSeatsPerBooking,
   optionLabel,
@@ -52,7 +53,7 @@ const serviceFormFields = {
       message: 'options must be unique',
     }),
   optionsSelectMode: optionsSelectModeEnum,
-  photoUrl: z.url().nullable(),
+  photoUrl: httpUrl.nullable(),
 }
 
 /**

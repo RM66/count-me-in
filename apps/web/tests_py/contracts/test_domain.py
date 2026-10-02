@@ -3,12 +3,42 @@ vectors in packages/contracts/vectors/domain (the same corpus vitest
 runs on the TS side)."""
 
 import json
+import re
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from countmein.contracts import domain
+from countmein.db.serializers import can_cancel_booking
+from countmein.db.shared import hash_manage_token
 
 VECTORS_DIR = Path(__file__).resolve().parents[4] / "packages" / "contracts" / "vectors" / "domain"
+
+# `$now±N{unit}` markers keep time-dependent vectors evergreen; the TS
+# side expands the same markers in test-helpers.ts (expandNowMarkers).
+_NOW_MARK = re.compile(r"^\$now([+-]\d+)(s|m|h|d)$")
+_UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def _expand_now(value):
+    if isinstance(value, str):
+        m = _NOW_MARK.match(value)
+        if not m:
+            return value
+        instant = datetime.now(UTC) + timedelta(seconds=int(m.group(1)) * _UNIT_SECONDS[m.group(2)])
+        return instant.isoformat().replace("+00:00", "Z")
+    if isinstance(value, list):
+        return [_expand_now(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _expand_now(v) for k, v in value.items()}
+    return value
+
+
+def _to_utc(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _load():
@@ -58,8 +88,27 @@ def test_domain_vectors(fn, c):
         assert domain.login_link_key(c["token"]) == c["expected"]
     elif fn == "isDemoOrganizerId":
         assert domain.is_demo_organizer_id(c.get("organizerId", "")) == c["expected"]
+    elif fn == "hashManageToken":
+        assert hash_manage_token(c["token"]) == c["expected"]
+    elif fn == "canCancelBooking":
+        case = _expand_now(c)
+        booking = SimpleNamespace(
+            status=case["status"],
+            manage_token_expires_at=_to_utc(case.get("expiresAt")),
+        )
+        assert can_cancel_booking(booking) == c["expected"]
     else:
         pytest.fail(f"unknown domain fn {fn}")
+
+
+def test_hash_manage_token_parity():
+    """The lookup key is the same SHA-256 hex as the TS helper
+    (@repo/contracts/manage-token). Dedicated named test so the
+    invariant index (test_invariants.py) points at a real pin; the
+    parametrized runner above also covers these cases."""
+    data = json.loads((VECTORS_DIR / "hashManageToken.json").read_text())
+    for c in data["cases"]:
+        assert hash_manage_token(c["token"]) == c["expected"], f"hash mismatch: {c.get('name')}"
 
 
 def test_wall_clock_roundtrip():

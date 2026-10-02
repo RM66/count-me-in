@@ -23,33 +23,24 @@ import {
 } from './booking'
 import { bookingStatusEnum, messengerEnum, optionsSelectModeEnum } from './enums'
 import {
-  analyticsServiceCount,
-  analyticsSummaryRecord,
-  analyticsTrendDay,
   bookingEnvelope,
   bookingsEnvelope,
   cabinetSummaryEnvelope,
   deletedServiceEnvelope,
   deletedSlotEnvelope,
-  errorBody,
   guestBookingEnvelope,
   guestBookingsEnvelope,
   internalOrganizerEnvelope,
-  internalOrganizerRecord,
-  invalidBody,
   organizerEnvelope,
   publicOrganizerViewEnvelope,
   publicServiceViewEnvelope,
   publicSitemapEnvelope,
-  serviceCountsRecord,
   serviceEnvelope,
   servicesEnvelope,
-  sitemapOrganizerEntry,
-  sitemapServiceEntry,
   slotEnvelope,
   slotsEnvelope,
-  validationErrors,
 } from './envelopes'
+import { errorBody, invalidBody, validationErrors } from './errors'
 import { appLocaleEnum } from './i18n'
 import {
   bookingCancelledJob,
@@ -62,9 +53,9 @@ import {
   internalOrganizerLookupInput,
   organizerProfile,
   publicOrganizer,
-  registered,
   registeredOrganizer,
   registerOrganizerInput,
+  registrationResponse,
   updateOrganizerLanguageInput,
   updateOrganizerProfileInput,
 } from './organizer'
@@ -92,6 +83,15 @@ import {
   timezone,
   uuid,
 } from './primitives'
+import {
+  analyticsServiceCount,
+  analyticsSummaryRecord,
+  analyticsTrendDay,
+  internalOrganizerRecord,
+  serviceCountsRecord,
+  sitemapOrganizerEntry,
+  sitemapServiceEntry,
+} from './records'
 import { createServiceInput, serviceRecord, updateServiceInput } from './service'
 import {
   avatarContentType,
@@ -148,21 +148,24 @@ export const WIRE_SCHEMAS: Record<string, z.ZodType> = {}
 /** Full registration meta keyed by id — the codegen input for rules_gen.py. */
 export const WIRE_META: Record<string, WireMeta> = {}
 
+/** Identity index for {@link metaOfSchema}; populated by {@link register}. */
+const META_BY_SCHEMA = new Map<z.ZodType, WireMeta>()
+
 export function register(schema: z.ZodType, meta: WireMeta): void {
   if (WIRE_SCHEMAS[meta.id] !== undefined) {
     throw new Error(`wire: duplicate id "${meta.id}"`)
   }
   // Aliased exports (imageUploadTarget === avatarUploadTarget) are one object;
   // a second id for it would make identity lookup return the wrong meta.
-  for (const [existingId, existingSchema] of Object.entries(WIRE_SCHEMAS)) {
-    if (existingSchema === schema) {
-      throw new Error(
-        `wire: schema already registered as "${existingId}" — cannot also register it as "${meta.id}"`,
-      )
-    }
+  const existing = META_BY_SCHEMA.get(schema)
+  if (existing !== undefined) {
+    throw new Error(
+      `wire: schema already registered as "${existing.id}" — cannot also register it as "${meta.id}"`,
+    )
   }
   WIRE_SCHEMAS[meta.id] = schema
   WIRE_META[meta.id] = meta
+  META_BY_SCHEMA.set(schema, meta)
 }
 
 /**
@@ -171,8 +174,7 @@ export function register(schema: z.ZodType, meta: WireMeta): void {
  * return `slugShape`'s meta for `slug`.
  */
 export function metaOfSchema(schema: z.ZodType): WireMeta | undefined {
-  const id = Object.entries(WIRE_SCHEMAS).find(([, s]) => s === schema)?.[0]
-  return id === undefined ? undefined : WIRE_META[id]
+  return META_BY_SCHEMA.get(schema)
 }
 
 // Primitives.
@@ -220,6 +222,25 @@ register(avatarContentType, { id: 'ImageContentType' })
 
 // Inputs / updates. `validation` declares what the Zod builders already do
 // (ADR-024 C2); the API's decoder consumes it via validation/rules_gen.py.
+// The create/update pair of each entity shares one declaration — only the
+// update carries `mergedRequired` (RFC 7386 null can erase those keys).
+const serviceInputValidation = {
+  transforms: {
+    title: ['trim'],
+    description: ['trim'],
+    location: ['trim'],
+    contact: ['trim'],
+    defaultPrice: ['trim'],
+    options: ['trim'],
+  },
+  fieldRules: { photoUrl: ['httpUrl'] },
+  refinements: ['optionsPair'],
+} satisfies WireMeta['validation']
+const timeSlotInputValidation = {
+  transforms: { price: ['trim'] },
+  fieldRules: { startsAt: ['startsAtNotPast'] },
+} satisfies WireMeta['validation']
+
 register(createBookingInput, {
   id: 'CreateBookingInput',
   validation: { transforms: { guestName: ['trim'], selectedOptions: ['trim'] } },
@@ -230,32 +251,12 @@ register(lookupBookingsInput, { id: 'LookupBookingsInput' })
 register(cancelBookingByOrganizerInput, { id: 'CancelBookingByOrganizerInput' })
 register(createServiceInput, {
   id: 'CreateServiceInput',
-  validation: {
-    transforms: {
-      title: ['trim'],
-      description: ['trim'],
-      location: ['trim'],
-      contact: ['trim'],
-      defaultPrice: ['trim'],
-      options: ['trim'],
-    },
-    fieldRules: { photoUrl: ['httpUrl'] },
-    refinements: ['optionsPair'],
-  },
+  validation: serviceInputValidation,
 })
 register(updateServiceInput, {
   id: 'UpdateServiceInput',
   validation: {
-    transforms: {
-      title: ['trim'],
-      description: ['trim'],
-      location: ['trim'],
-      contact: ['trim'],
-      defaultPrice: ['trim'],
-      options: ['trim'],
-    },
-    fieldRules: { photoUrl: ['httpUrl'] },
-    refinements: ['optionsPair'],
+    ...serviceInputValidation,
     mergedRequired: [
       'title',
       'defaultPrice',
@@ -267,16 +268,12 @@ register(updateServiceInput, {
 })
 register(createTimeSlotInput, {
   id: 'CreateTimeSlotInput',
-  validation: {
-    transforms: { price: ['trim'] },
-    fieldRules: { startsAt: ['startsAtNotPast'] },
-  },
+  validation: timeSlotInputValidation,
 })
 register(updateTimeSlotInput, {
   id: 'UpdateTimeSlotInput',
   validation: {
-    transforms: { price: ['trim'] },
-    fieldRules: { startsAt: ['startsAtNotPast'] },
+    ...timeSlotInputValidation,
     mergedRequired: ['startsAt', 'durationMinutes', 'capacity'],
   },
 })
@@ -326,7 +323,7 @@ register(bookingRecord, { id: 'BookingRecord' })
 register(guestBooking, { id: 'GuestBooking' })
 register(imageUploadTarget, { id: 'ImageUploadTarget' })
 register(registeredOrganizer, { id: 'RegisteredOrganizer' })
-register(registered, { id: 'Registered' })
+register(registrationResponse, { id: 'RegistrationResponse' })
 register(authTicketPayload, { id: 'AuthTicketPayload' })
 register(guestTicketResponse, { id: 'GuestTicketResponse' })
 register(authTicketResponse, { id: 'AuthTicketResponse' })
@@ -361,3 +358,10 @@ register(deletedSlotEnvelope, { id: 'DeletedSlotEnvelope' })
 register(errorBody, { id: 'ErrorBody' })
 register(validationErrors, { id: 'ValidationErrors' })
 register(invalidBody, { id: 'InvalidBody' })
+
+/**
+ * JSON payloads that travel outside HTTP (Redis). They have no operation,
+ * but they are still on the wire — the generator $refs them (x-internal)
+ * so the orphan check cannot treat them as unused.
+ */
+export const INTERNAL_RECORDS: readonly z.ZodType[] = [authTicketPayload, loginLinkPayload]

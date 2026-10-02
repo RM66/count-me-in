@@ -5,13 +5,17 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { loginLinkKey } from './auth'
+import { canCancelBooking } from './booking'
 import { isDemoOrganizerId } from './demo'
 import { matchLocale } from './i18n'
 import { cancelNotificationRecipient } from './jobs'
+import { hashManageToken } from './manage-token'
 import { buildSelectedOptionsSchema } from './options'
+import { API_ROUTES } from './routes'
 import { effectiveContact, effectiveLocation } from './service'
+import { expandNowMarkers } from './test-helpers'
 import { seatsLeft, slotPrice } from './time-slot'
-import { WIRE_SCHEMAS } from './wire'
+import { metaOfSchema, WIRE_SCHEMAS } from './wire'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const validationDir = join(here, '..', 'vectors', 'validation')
@@ -24,31 +28,6 @@ type ValidationCase = {
   fieldErrors?: string[]
   formErrors?: number
   skip?: { ts?: string }
-}
-
-function replaceNowMarkers(value: unknown): unknown {
-  if (typeof value === 'string') {
-    const match = /^\$now([+-]\d+)(s|m|h|d)$/.exec(value)
-    if (!match) return value
-    const amount = Number(match[1])
-    const unit = match[2]
-    const ms =
-      unit === 's'
-        ? amount * 1000
-        : unit === 'm'
-          ? amount * 60_000
-          : unit === 'h'
-            ? amount * 3_600_000
-            : amount * 86_400_000
-    return new Date(Date.now() + ms).toISOString()
-  }
-  if (Array.isArray(value)) return value.map(replaceNowMarkers)
-  if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, replaceNowMarkers(v)]),
-    )
-  }
-  return value
 }
 
 function shapeKeys(schema: z.ZodType): string[] {
@@ -72,7 +51,7 @@ describe('validation vectors', () => {
           if (c.skip?.ts) return
           const zodSchema = WIRE_SCHEMAS[schema]
           expect(zodSchema, `unknown schema ${schema}`).toBeDefined()
-          const result = (zodSchema as z.ZodType).safeParse(replaceNowMarkers(c.body))
+          const result = (zodSchema as z.ZodType).safeParse(expandNowMarkers(c.body))
           const valid = result.success
           if (c.valid !== undefined) expect(valid, c.name).toBe(c.valid)
           if (c.fieldErrors !== undefined) {
@@ -99,11 +78,19 @@ describe('validation vectors', () => {
       }
       filesBySchema.set(schema, cases)
     }
-    for (const [id, schema] of Object.entries(WIRE_SCHEMAS)) {
-      // Input/update schemas are the ones with validation vectors: every
-      // `*Input` plus the Telegram widget payload (kind tags died with the
-      // hand-written generator, so the set is derived from ids).
-      if (!id.endsWith('Input') && id !== 'TelegramWidgetPayload') continue
+    // Input schemas are exactly the request payloads of the route manifest —
+    // a new wire input can never slip through a naming heuristic.
+    const inputIds = new Set(
+      API_ROUTES.map((route) => route.request)
+        .filter((s): s is z.ZodType => s !== undefined)
+        .map((s) => {
+          const meta = metaOfSchema(s)
+          expect(meta, 'route request schema is not registered in wire.ts').toBeDefined()
+          return meta!.id
+        }),
+    )
+    for (const id of inputIds) {
+      const schema = WIRE_SCHEMAS[id]!
       const cases = filesBySchema.get(id)
       expect(cases, `missing vectors file for schema ${id}`).toBeDefined()
       expect(
@@ -197,6 +184,22 @@ describe('domain vectors', () => {
             }
             case 'loginLinkKey': {
               expect(loginLinkKey(c.token as string), name).toBe(c.expected)
+              break
+            }
+            case 'hashManageToken': {
+              expect(hashManageToken(c.token as string), name).toBe(c.expected)
+              break
+            }
+            case 'canCancelBooking': {
+              const expanded = expandNowMarkers(c) as {
+                status: 'confirmed' | 'cancelled'
+                expiresAt?: string | null
+              }
+              const expiresAt =
+                expanded.expiresAt === null || expanded.expiresAt === undefined
+                  ? null
+                  : new Date(expanded.expiresAt)
+              expect(canCancelBooking(expanded.status, expiresAt), name).toBe(c.expected)
               break
             }
             case 'isDemoOrganizerId': {

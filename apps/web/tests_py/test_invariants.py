@@ -202,7 +202,7 @@ def test_manage_token_hash_is_the_only_lookup_key():
     """Invariant: every credential check goes through the SHA-256 hash
     (parity with the TS helper, pinned by a shared vector); the raw
     column is not a lookup key."""
-    _assert_test_exists("tests_py.db.test_shared", "test_hash_manage_token_parity")
+    _assert_test_exists("tests_py.contracts.test_domain", "test_hash_manage_token_parity")
     _assert_test_exists(
         "tests_py.services.test_booking_writes", "test_cancel_guest_booking_unknown_token"
     )
