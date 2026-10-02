@@ -17,6 +17,7 @@
     "check-types": "NODE_ENV=development next typegen && tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "docs:api": "bun scripts/serve-api-docs.ts",
     "qstash:schedules": "bun scripts/ensure-qstash.ts",
     "test": "bun run test:web",
     "test:web": "vitest run",

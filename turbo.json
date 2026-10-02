@@ -20,6 +20,7 @@
     "NEXT_RUNTIME",
     "CI",
     "CHECK",
+    "DOCS_PORT",
     "SENTRY_DSN",
     "SENTRY_ORG",
     "SENTRY_PROJECT",

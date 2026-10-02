@@ -78,7 +78,7 @@ bun run db:seed:demo    # seed the /demo organizer (Python seed)
 
 ### Contracts codegen
 
-`bun run generate:py` renders everything derivable: `generate:i18n:py` (ICU messages → `i18n/translations_gen.py`), `generate:openapi` (Zod wire registry → `openapi.yaml` via zod-openapi), `generate:constants` (→ `contracts/constants_gen.py`) and `scripts/generate-py-models.sh` (datamodel-code-generator → `contracts/models_gen.py`). The route set is pinned to the spec by tests; request validation runs against the spec's constraints ([ADR-014](docs/decisions/014-contracts-wire-registry.md), [ADR-015](docs/decisions/015-api-route-manifest.md), [ADR-016](docs/decisions/016-standard-openapi-codegen.md), [ADR-021](docs/decisions/021-api-python-rewrite.md)). Never edit `*_gen.py` by hand.
+`bun run generate:py` renders everything derivable: `generate:i18n:py` (ICU messages → `i18n/translations_gen.py`), `generate:openapi` (Zod wire registry → `openapi.yaml` via zod-openapi), `generate:constants` (→ `contracts/constants_gen.py`) and `scripts/generate-py-models.sh` (datamodel-code-generator → `contracts/models_gen.py`). The route set is pinned to the spec by tests; request validation runs against the spec's constraints ([ADR-014](docs/decisions/014-contracts-wire-registry.md), [ADR-015](docs/decisions/015-api-route-manifest.md), [ADR-016](docs/decisions/016-standard-openapi-codegen.md), [ADR-021](docs/decisions/021-api-python-rewrite.md)). Never edit `*_gen.py` by hand. To browse the spec in a GUI: `bun run docs:api` serves a local Scalar preview of `openapi.yaml` on `http://localhost:3002`.
 
 ### Demo organizer
 
