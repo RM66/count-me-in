@@ -5,7 +5,6 @@ reviews/
 apps/web/openapi.yaml
 apps/web/tests_py/contracts/golden/
 packages/contracts/vectors/
-packages/db/drizzle/meta/
 
 # Tooling caches — never project source, only local noise.
 apps/web/.venv/

@@ -19,6 +19,8 @@ from countmein.db.rows import (
     OrganizerRow,
     ServiceRow,
     TimeSlotRow,
+)
+from countmein.db.serializers import (
     can_cancel_booking,
     to_guest_booking,
 )

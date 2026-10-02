@@ -26,7 +26,9 @@ import time
 from datetime import UTC, datetime, timedelta
 
 from .. import logx
-from ..db.outbox import (
+from ..db.client import sessionmaker
+from ..queue import PublishSkipped, publish_outbox
+from ..services.outbox_service import (
     bump_outbox_attempts,
     delete_sent_outbox_before,
     mark_outbox_failed,
@@ -35,7 +37,6 @@ from ..db.outbox import (
     outbox_backlog,
     sweep_outbox,
 )
-from ..queue import PublishSkipped, publish_outbox
 
 OUTBOX_GRACE_PERIOD = timedelta(seconds=30)
 OUTBOX_BATCH_LIMIT = 50
@@ -64,87 +65,92 @@ def _reset_for_test(function_budget: float | None = None) -> None:
 
 async def handle_outbox_sweep() -> None:
     started = time.monotonic()
-    # Backlog metric: emitted every sweep so "pending rows growing" and
-    # "oldest pending aging" are visible in the logs — the cheapest
-    # alertable signal for the async pipeline.
-    try:
-        pending, oldest_age = await outbox_backlog()
-        logx.info(
-            "outbox backlog",
-            {
-                "pending": pending,
-                "oldestAgeS": int(oldest_age.total_seconds()) if oldest_age else 0,
-            },
-        )
-    except Exception as err:
-        logx.error(err, {"source": "outbox-backlog"})
-
-    rows = await sweep_outbox(OUTBOX_GRACE_PERIOD, OUTBOX_BATCH_LIMIT)
-
-    for i, row in enumerate(rows):
-        # Deadline discipline: stop before starting a publish the
-        # remaining function budget no longer covers. Rows left behind
-        # keep their attempts unspent — the budget is spent per
-        # processed row below, not at claim time — so the next sweep
-        # (2 minutes later) picks them up on equal terms.
-        if time.monotonic() - started + SWEEP_ROW_BUDGET > SWEEP_FUNCTION_BUDGET:
+    # Worker context, not a request — the sweeper owns its session for
+    # the whole run; every service call below wraps its own begin().
+    async with sessionmaker()() as session:
+        # Backlog metric: emitted every sweep so "pending rows growing" and
+        # "oldest pending aging" are visible in the logs — the cheapest
+        # alertable signal for the async pipeline.
+        try:
+            pending, oldest_age = await outbox_backlog(session)
             logx.info(
-                "outbox sweep out of time — leaving the rest for the next sweep",
-                {"remaining": len(rows) - i},
+                "outbox backlog",
+                {
+                    "pending": pending,
+                    "oldestAgeS": int(oldest_age.total_seconds()) if oldest_age else 0,
+                },
             )
-            break
+        except Exception as err:
+            logx.error(err, {"source": "outbox-backlog"})
 
-        if row.attempts >= OUTBOX_MAX_ATTEMPTS:
-            logx.info(
-                "outbox row exceeded max attempts — marking failed",
-                {"outboxId": row.id, "queue": row.queue, "attempts": row.attempts},
+        rows = await sweep_outbox(session, OUTBOX_GRACE_PERIOD, OUTBOX_BATCH_LIMIT)
+
+        for i, row in enumerate(rows):
+            # Deadline discipline: stop before starting a publish the
+            # remaining function budget no longer covers. Rows left behind
+            # keep their attempts unspent — the budget is spent per
+            # processed row below, not at claim time — so the next sweep
+            # (2 minutes later) picks them up on equal terms.
+            if time.monotonic() - started + SWEEP_ROW_BUDGET > SWEEP_FUNCTION_BUDGET:
+                logx.info(
+                    "outbox sweep out of time — leaving the rest for the next sweep",
+                    {"remaining": len(rows) - i},
+                )
+                break
+
+            if row.attempts >= OUTBOX_MAX_ATTEMPTS:
+                logx.info(
+                    "outbox row exceeded max attempts — marking failed",
+                    {"outboxId": row.id, "queue": row.queue, "attempts": row.attempts},
+                )
+                try:
+                    await mark_outbox_failed(session, row.id)
+                except Exception as err:
+                    logx.error(err, {"outboxId": row.id, "source": "outbox-mark-failed"})
+                continue
+
+            # Re-publish to the original queue. The payload is the raw JSON
+            # stored in the outbox row — it carries ids only (no secrets).
+            # The row id doubles as the dedup id, so a delivery that
+            # already happened (inline path or an earlier sweep) is
+            # suppressed by QStash instead of duplicated.
+            try:
+                await publish_outbox(row.queue, row.payload, row.id, row.trace_id)
+            except PublishSkipped:
+                try:
+                    await mark_outbox_skipped(session, row.id)
+                except Exception as err:
+                    logx.error(err, {"outboxId": row.id, "source": "outbox-mark-skipped"})
+                continue
+            except Exception as err:
+                logx.error(err, {"outboxId": row.id, "queue": row.queue, "source": "outbox-sweep"})
+                # Spend the attempt: the row was processed and failed —
+                # leave pending, the next sweep retries within budget.
+                try:
+                    await bump_outbox_attempts(session, row.id)
+                except Exception as berr:
+                    logx.error(berr, {"outboxId": row.id, "source": "outbox-bump-attempts"})
+                continue  # leave pending — the next sweep retries
+
+            # Spend the attempt, then mark sent so the next sweep skips it.
+            # Bump-then-sent keeps the attempts column honest about how
+            # many sweep rounds the row cost.
+            try:
+                await bump_outbox_attempts(session, row.id)
+            except Exception as err:
+                logx.error(err, {"outboxId": row.id, "source": "outbox-bump-attempts"})
+            try:
+                await mark_outbox_sent(session, row.id)
+            except Exception as err:
+                logx.error(err, {"outboxId": row.id, "source": "outbox-mark-sent"})
+
+        # Retention: `sent` rows have no diagnostic value past the window —
+        # the trace id lives in logs, not in the table.
+        try:
+            deleted = await delete_sent_outbox_before(
+                session, datetime.now(tz=UTC) - OUTBOX_SENT_RETENTION
             )
-            try:
-                await mark_outbox_failed(row.id)
-            except Exception as err:
-                logx.error(err, {"outboxId": row.id, "source": "outbox-mark-failed"})
-            continue
-
-        # Re-publish to the original queue. The payload is the raw JSON
-        # stored in the outbox row — it carries ids only (no secrets).
-        # The row id doubles as the dedup id, so a delivery that
-        # already happened (inline path or an earlier sweep) is
-        # suppressed by QStash instead of duplicated.
-        try:
-            await publish_outbox(row.queue, row.payload, row.id, row.trace_id)
-        except PublishSkipped:
-            try:
-                await mark_outbox_skipped(row.id)
-            except Exception as err:
-                logx.error(err, {"outboxId": row.id, "source": "outbox-mark-skipped"})
-            continue
+            if deleted > 0:
+                logx.info("outbox retention deleted sent rows", {"deleted": deleted})
         except Exception as err:
-            logx.error(err, {"outboxId": row.id, "queue": row.queue, "source": "outbox-sweep"})
-            # Spend the attempt: the row was processed and failed —
-            # leave pending, the next sweep retries within budget.
-            try:
-                await bump_outbox_attempts(row.id)
-            except Exception as berr:
-                logx.error(berr, {"outboxId": row.id, "source": "outbox-bump-attempts"})
-            continue  # leave pending — the next sweep retries
-
-        # Spend the attempt, then mark sent so the next sweep skips it.
-        # Bump-then-sent keeps the attempts column honest about how
-        # many sweep rounds the row cost.
-        try:
-            await bump_outbox_attempts(row.id)
-        except Exception as err:
-            logx.error(err, {"outboxId": row.id, "source": "outbox-bump-attempts"})
-        try:
-            await mark_outbox_sent(row.id)
-        except Exception as err:
-            logx.error(err, {"outboxId": row.id, "source": "outbox-mark-sent"})
-
-    # Retention: `sent` rows have no diagnostic value past the window —
-    # the trace id lives in logs, not in the table.
-    try:
-        deleted = await delete_sent_outbox_before(datetime.now(tz=UTC) - OUTBOX_SENT_RETENTION)
-        if deleted > 0:
-            logx.info("outbox retention deleted sent rows", {"deleted": deleted})
-    except Exception as err:
-        logx.error(err, {"source": "outbox-retention"})
+            logx.error(err, {"source": "outbox-retention"})

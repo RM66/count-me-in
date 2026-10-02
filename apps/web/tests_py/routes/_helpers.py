@@ -111,13 +111,24 @@ async def create_service(
     return r.json()["service"]
 
 
-async def create_slot(client: httpx.AsyncClient, headers: dict, service_id: str) -> dict:
+async def create_slot(
+    client: httpx.AsyncClient,
+    headers: dict,
+    service_id: str,
+    starts_at: str | None = None,
+) -> dict:
+    # Default inside the 90-day public horizon (ADR-023) so the slot is
+    # visible on both the cabinet list and the public reads.
+    if starts_at is None:
+        from datetime import UTC, datetime, timedelta
+
+        starts_at = (datetime.now(UTC) + timedelta(hours=48)).isoformat()
     r = await client.post(
         "/api/slots",
         headers=headers,
         json={
             "serviceId": service_id,
-            "startsAt": "2031-06-01T10:00:00Z",
+            "startsAt": starts_at,
             "durationMinutes": 60,
             "capacity": 3,
         },

@@ -76,7 +76,7 @@ docs/
 
 **Form schemas are not wire schemas.** Controlled inputs hold `string` (including `''` mid-edit), while the API takes numbers and `null`. Each entity has a `*-form.ts` beside its wire schema, with adapters (`optionalText`, `numericText`) shared from `form-fields.ts`. Bounds compose from `primitives.ts`.
 
-**Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and server reads live in `server/api-client.ts`. Never reintroduce `services/`.
+**Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and server reads live in `server/api-client.ts`. Never reintroduce `services/` **in `src/`** — the rule is scoped to Next.js code; the Python API legitimately has `api/_lib/countmein/services/` (the application layer between routes and repositories, ADR-023).
 
 **`api-client/` vs the Python API** — two ends of one wire. `api-client/` is the browser client (React Query). The Python API (`apps/web/api/_lib/countmein`) holds the server handlers; `app/api/auth/[...nextauth]/route.ts` is the only TS route handler left (Auth.js). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
 

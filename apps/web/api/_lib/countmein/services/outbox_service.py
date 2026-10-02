@@ -1,45 +1,31 @@
-"""Transactional outbox for notification publishing. A row is written
-in the same transaction as the booking commit, carrying the queue name
-and the job payload (ids only). The inline publish runs after commit;
-on success it marks the row `sent` so the sweeper does not re-publish
-it. If the inline publish fails (function killed, network drop), the
-row stays `pending` and the sweeper re-publishes it past a grace
-period. Rows past the retry budget move to the terminal `failed`
-status; `sent` rows are deleted by retention.
+"""Transactional outbox for notification publishing (ADR-012).
+
+A row is written in the same transaction as the booking commit,
+carrying the queue name and the job payload (ids only). The inline
+publish runs after commit; on success it marks the row `sent` so the
+sweeper does not re-publish it. If the inline publish fails (function
+killed, network drop), the row stays `pending` and the sweeper
+re-publishes it past a grace period. Rows past the retry budget move to
+the terminal `failed` status; `sent` rows are deleted by retention.
+
+Like every service module, these functions take the caller's
+AsyncSession; the sweeper (a worker, not a request) opens its own.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..db.rows import OutboxRow, _str
+from ..db.shared import new_id
 from ..repositories import outbox_repo
-from .client import sessionmaker
-from .rows import _str
-from .shared import new_id
 
 
-@dataclass
-class OutboxRow:
-    """One pending, sent or failed notification job."""
-
-    id: str
-    queue: str
-    trace_id: str
-    status: str
-    attempts: int
-    created_at: datetime | None = None
-    sent_at: datetime | None = None
-    # Defaulted: enqueue_outbox builds the payload from the row id and
-    # assigns it right after construction.
-    payload: str = ""
-
-
-async def enqueue_outbox(
+async def enqueue_outbox_tx(
     session: AsyncSession,
     queue: str,
     build_payload: Callable[[str], object],
@@ -68,59 +54,57 @@ async def enqueue_outbox(
     return row
 
 
-async def mark_outbox_sent(id: str) -> None:
+async def mark_outbox_sent(session: AsyncSession, id: str) -> None:
     """Move a row to `sent` with a timestamp. Called by the inline
     publish after a successful QStash POST, and by the sweeper after a
     successful re-publish — so the row is delivered exactly once on the
     success path."""
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         await outbox_repo.mark_sent(session, id)
 
 
-async def mark_outbox_skipped(id: str) -> None:
+async def mark_outbox_skipped(session: AsyncSession, id: str) -> None:
     """Move a row to the terminal `skipped` status. Dev-only: without
     QSTASH_TOKEN the publish is deliberately never attempted (localhost
     is not routable from Upstash), and recording that as `sent` would
     lie in the backlog metrics. Skipped rows never match the sweeper's
     `pending` filter and are removed by retention."""
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         await outbox_repo.mark_skipped(session, id)
 
 
-async def bump_outbox_attempts(id: str) -> int | None:
+async def bump_outbox_attempts(session: AsyncSession, id: str) -> int | None:
     """Spend one retry-budget unit for a row that was actually processed
     (published or attempted), returning the post-increment value. Rows
     the sweeper skips on deadline never reach here, so a slow sweep no
-    longer burns the budget without a send. Must commit, so the UPDATE
-    runs on a begun session — otherwise the budget would never be spent
-    and the row could never reach `failed`."""
-    async with sessionmaker()() as session, session.begin():
+    longer burns the budget without a send."""
+    async with session.begin():
         return await outbox_repo.bump_attempts(session, id)
 
 
-async def mark_outbox_failed(id: str) -> None:
+async def mark_outbox_failed(session: AsyncSession, id: str) -> None:
     """Move a row past the retry budget to the terminal `failed` status.
     Terminal rows no longer match the sweeper's `pending` filter, so
     they cannot clog the batch (head-of-line blocking) and never get
     rescanned."""
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         await outbox_repo.mark_failed(session, id)
 
 
-async def delete_sent_outbox_before(cutoff: datetime) -> int:
+async def delete_sent_outbox_before(session: AsyncSession, cutoff: datetime) -> int:
     """Remove terminal `sent` and `skipped` rows older than the cutoff —
     retention so the table does not grow unbounded. Returns the number
     of deleted rows for the sweeper's log."""
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         return await outbox_repo.delete_sent_before(session, cutoff)
 
 
-async def outbox_backlog() -> tuple[int, timedelta | None]:
+async def outbox_backlog(session: AsyncSession) -> tuple[int, timedelta | None]:
     """The pending-row count and the age of the oldest pending row — the
     minimum alertable signal for the async pipeline. Called by the
     sweeper on every run so the numbers land in the logs on a schedule
     even when everything is fine."""
-    async with sessionmaker()() as session:
+    async with session.begin():
         pending, oldest = await outbox_repo.backlog(session)
     oldest_age: timedelta | None = None
     if oldest is not None:
@@ -128,7 +112,9 @@ async def outbox_backlog() -> tuple[int, timedelta | None]:
     return pending, oldest_age
 
 
-async def sweep_outbox(grace_period: timedelta, limit: int) -> list[OutboxRow]:
+async def sweep_outbox(
+    session: AsyncSession, grace_period: timedelta, limit: int
+) -> list[OutboxRow]:
     """Read up to `limit` `pending` rows older than the grace period,
     returning them for the sweeper to publish. Rows are claimed with
     SELECT … FOR UPDATE SKIP LOCKED so two concurrent sweepers do not
@@ -140,21 +126,21 @@ async def sweep_outbox(grace_period: timedelta, limit: int) -> list[OutboxRow]:
     dedup id (the outbox row id) plus the consumer's idempotency
     guard."""
     cutoff = datetime.now(UTC) - grace_period
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         models = await outbox_repo.sweep_pending(session, cutoff, limit)
-        return [
-            OutboxRow(
-                # _str: psycopg hands back a UUID object; the row id is
-                # a wire string (dedup header, logs), and every other
-                # scanner normalizes the same way.
-                id=_str(m.id),
-                queue=m.queue,
-                payload=m.payload if isinstance(m.payload, str) else _str(m.payload),
-                trace_id=m.trace_id or "",
-                status=str(m.status.value if hasattr(m.status, "value") else m.status),
-                attempts=m.attempts,
-                created_at=m.created_at,
-                sent_at=m.sent_at,
-            )
-            for m in models
-        ]
+    return [
+        OutboxRow(
+            # _str: psycopg hands back a UUID object; the row id is
+            # a wire string (dedup header, logs), and every other
+            # scanner normalizes the same way.
+            id=_str(m.id),
+            queue=m.queue,
+            payload=m.payload if isinstance(m.payload, str) else _str(m.payload),
+            trace_id=m.trace_id or "",
+            status=str(m.status.value if hasattr(m.status, "value") else m.status),
+            attempts=m.attempts,
+            created_at=m.created_at,
+            sent_at=m.sent_at,
+        )
+        for m in models
+    ]

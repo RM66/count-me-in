@@ -56,10 +56,10 @@ def test_seat_reserve_is_single_conditional_update():
     assert ".returning(TimeSlot)" in reserve_fn
     # The read-check-write shape must not appear in the write path: a
     # SELECT of booked_count feeding a plain UPDATE is the bug this
-    # invariant forbids. The shrink-capacity precheck in db/time_slot.py
+    # invariant forbids. The shrink-capacity precheck in services/slot_service.py
     # reads booked_count under FOR UPDATE but never writes it — allow
     # that file, forbid the pattern in the booking write path.
-    writes = (TESTS.parent / "api/_lib/countmein/db/booking_writes.py").read_text("utf-8")
+    writes = (TESTS.parent / "api/_lib/countmein/services/booking_service.py").read_text("utf-8")
     assert "time_slots SET booked_count" not in writes
     assert "SET booked_count = :seats" not in writes.replace(
         "booked_count = booked_count + :seats", ""
@@ -70,14 +70,16 @@ def test_seat_reserve_is_single_conditional_update():
     assert "cancel_booking_mark" in writes
     assert "Booking.status == BookingStatus.CONFIRMED" in src
     _assert_test_exists(
-        "tests_py.db.test_booking_writes", "test_create_guest_booking_concurrent_last_seats"
+        "tests_py.services.test_booking_writes", "test_create_guest_booking_concurrent_last_seats"
     )
 
 
 def test_cancel_releases_seats_and_is_idempotent():
     """Invariant: cancel moves the booking to cancelled and releases the
     seats exactly once — a double-tap must not double-decrement."""
-    _assert_test_exists("tests_py.db.test_booking_writes", "test_cancel_guest_booking_idempotent")
+    _assert_test_exists(
+        "tests_py.services.test_booking_writes", "test_cancel_guest_booking_idempotent"
+    )
 
 
 # ── Demo organizer is read-only ───────────────────────────────────────────────
@@ -85,13 +87,19 @@ def test_cancel_releases_seats_and_is_idempotent():
 
 def test_demo_organizer_rejected_on_every_write():
     """Invariant: every write path rejects the demo organizer id —
-    guest booking, cancel, cabinet CRUD, direct db calls — and
+    guest booking, cancel, cabinet CRUD, direct service calls — and
     notifications are never sent for it. The guard's own semantics
     (UUID normalization, empty id, exact slug match) are pinned in
     isolation by tests_py.demo.test_guard."""
-    _assert_test_exists("tests_py.db.test_booking_writes", "test_create_guest_booking_demo_refused")
-    _assert_test_exists("tests_py.db.test_booking_writes", "test_cancel_owned_booking_demo_refused")
-    _assert_test_exists("tests_py.db.test_booking_writes", "test_db_layer_refuses_demo_writes")
+    _assert_test_exists(
+        "tests_py.services.test_booking_writes", "test_create_guest_booking_demo_refused"
+    )
+    _assert_test_exists(
+        "tests_py.services.test_booking_writes", "test_cancel_owned_booking_demo_refused"
+    )
+    _assert_test_exists(
+        "tests_py.services.test_booking_writes", "test_service_layer_refuses_demo_writes"
+    )
     _assert_test_exists(
         "tests_py.routes.test_bookings", "test_booking_cancel_by_organizer_demo_session"
     )
@@ -196,7 +204,7 @@ def test_manage_token_hash_is_the_only_lookup_key():
     column is not a lookup key."""
     _assert_test_exists("tests_py.db.test_shared", "test_hash_manage_token_parity")
     _assert_test_exists(
-        "tests_py.db.test_booking_writes", "test_cancel_guest_booking_unknown_token"
+        "tests_py.services.test_booking_writes", "test_cancel_guest_booking_unknown_token"
     )
 
 
@@ -205,7 +213,7 @@ def test_expired_manage_token_refused_on_read_and_cancel():
     refused on cancel, and the guest DTO's canCancel (the shared rule)
     keeps the history listed without offering the dead link."""
     _assert_test_exists(
-        "tests_py.db.test_booking_writes", "test_cancel_guest_booking_expired_token"
+        "tests_py.services.test_booking_writes", "test_cancel_guest_booking_expired_token"
     )
     _assert_test_exists(
         "tests_py.jobs.test_demo_refresh", "test_expired_booking_stays_listed_with_can_cancel_false"
@@ -220,10 +228,10 @@ def test_delete_slot_with_cancelled_booking_is_409():
     any booking row references it — confirmed or cancelled; a stray
     23503 maps to the same 409, never a 500."""
     _assert_test_exists(
-        "tests_py.db.test_booking_writes", "test_delete_owned_slot_refuses_cancelled_bookings"
+        "tests_py.services.test_booking_writes", "test_delete_owned_slot_refuses_cancelled_bookings"
     )
     _assert_test_exists(
-        "tests_py.db.test_booking_writes", "test_delete_owned_service_refuses_bookings"
+        "tests_py.services.test_booking_writes", "test_delete_owned_service_refuses_bookings"
     )
 
 
@@ -253,7 +261,7 @@ def test_replaced_media_cleanup_is_best_effort_and_referenced():
     old/new resolve to different keys; failures are logged, never fail
     the request."""
     _assert_test_exists("tests_py.storage.test_storage", "test_delete_replaced_media")
-    _assert_test_exists("tests_py.db.test_booking_writes", "test_photo_url_referenced")
+    _assert_test_exists("tests_py.services.test_booking_writes", "test_photo_url_referenced")
 
 
 # ── Login links ───────────────────────────────────────────────────────────────
@@ -368,7 +376,9 @@ def test_booking_created_fans_out_one_job_per_recipient():
     """Invariant: booking.created fans out to one job per recipient
     (organizer + guest), each carrying ids only — the handler refetches
     at send time."""
-    _assert_test_exists("tests_py.db.test_booking_writes", "test_create_guest_booking_success")
+    _assert_test_exists(
+        "tests_py.services.test_booking_writes", "test_create_guest_booking_success"
+    )
     _assert_test_exists("tests_py.jobs.test_handlers", "test_handle_booking_created_per_recipient")
 
 

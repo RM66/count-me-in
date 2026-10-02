@@ -13,6 +13,7 @@ through to the global exception handler, which logs and returns the same
 from __future__ import annotations
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
@@ -23,9 +24,9 @@ from ..auth.telegram import (
 )
 from ..auth.ticket import issue_ticket
 from ..contracts import models_gen as gen
-from ..db import organizer as db_organizer
+from ..services import organizer_service
 from ..web import json_response
-from ..web.deps import ip_rate_limit, request_body
+from ..web.deps import get_db_session, ip_rate_limit, request_body
 
 
 async def telegram_guest(
@@ -57,6 +58,7 @@ async def telegram_signup(
     request: Request,
     _limited: None = Depends(ip_rate_limit("rl:signup:", 5, 60.0)),
     body: bytes = Depends(request_body),
+    session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/auth/telegram-signup: validates the widget payload via
     HMAC, then returns {organizerExists, ticket} so the client either
@@ -65,8 +67,8 @@ async def telegram_signup(
     form POSTs to /api/organizers."""
     identity = validate_telegram_widget(body)
 
-    exists = await db_organizer.exists_organizer_by_messenger(
-        identity.messenger, identity.messenger_id
+    exists = await organizer_service.exists_organizer_by_messenger(
+        session, identity.messenger, identity.messenger_id
     )
     ticket = await issue_ticket(identity.to_ticket_payload(TICKET_PURPOSE_ORGANIZER))
 

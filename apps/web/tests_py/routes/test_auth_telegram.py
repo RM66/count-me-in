@@ -55,10 +55,10 @@ async def client(fake_redis, monkeypatch):
 
     # The signup route's organizer-exists lookup is a DB read; patch it
     # so the route test stays at the HTTP seam.
-    async def fake_exists(messenger, messenger_id):
+    async def fake_exists(session, messenger, messenger_id):
         return messenger_id == "42"
 
-    monkeypatch.setattr(auth_routes.db_organizer, "exists_organizer_by_messenger", fake_exists)
+    monkeypatch.setattr(auth_routes.organizer_service, "exists_organizer_by_messenger", fake_exists)
     app = create_app()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:

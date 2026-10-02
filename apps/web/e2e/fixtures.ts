@@ -1,5 +1,9 @@
 import { loginLinkKey } from '@repo/contracts'
 import Redis from 'ioredis'
+// `postgres` is an E2E-only dependency: it exists in devDependencies
+// strictly for test database setup/teardown below. Production code must
+// never import it — Next.js has zero direct Postgres access; all server
+// reads go through src/server/api-client.ts over HTTP to the Python API.
 import postgres from 'postgres'
 
 /**

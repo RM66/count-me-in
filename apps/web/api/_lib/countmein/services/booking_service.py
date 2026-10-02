@@ -1,6 +1,14 @@
-"""Booking writes. Seats move only through the atomic reserve below; the
-demo guard runs inside the transaction because these routes carry no
-session — the organizer is only known once the slot joins its service.
+"""Booking service — the guest booking flow's reads and writes
+(ADR-002) plus the cabinet-side cancel.
+
+Seats move only through the atomic reserve below; the demo guard runs
+inside the transaction because the guest routes carry no session — the
+organizer is only known once the slot joins its service.
+
+Boundary: every function takes the caller's AsyncSession and returns
+detached Row chains (db/rows.BookingChain), never wire DTOs — the route
+serializes via db/serializers.py, and notification jobs consume the same
+chain for its non-wire fields (chat id, manage token, timezone).
 """
 
 from __future__ import annotations
@@ -8,9 +16,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..contracts import domain
-from ..contracts import models_gen as gen
+from ..contracts.constants_gen import QUEUE_BOOKING_CANCELLED, QUEUE_BOOKING_CREATED
 from ..contracts.payloads import AuthTicketPayload
+from ..db.rows import (
+    BookingChain,
+    OutboxRow,
+    from_model_booking,
+    from_model_organizer,
+    from_model_service,
+    from_model_slot,
+)
+from ..db.shared import hash_manage_token, new_id, new_manage_token, unique_violation
 from ..demo import refuse_demo_write
 from ..errors import (
     AlreadyCancelled,
@@ -22,28 +41,12 @@ from ..errors import (
     SoldOut,
 )
 from ..repositories import booking_repo, slot_repo
-from .client import sessionmaker
-from .outbox import OutboxRow, enqueue_outbox
-from .rows import (
-    from_model_booking,
-    from_model_organizer,
-    from_model_service,
-    from_model_slot,
-    to_booking_record,
-    to_guest_booking,
-)
-from .shared import hash_manage_token, new_id, new_manage_token, unique_violation
+from .outbox_service import enqueue_outbox_tx
 
 # How long after the slot starts the manageToken stays usable. A guest
 # may need to cancel shortly after the session begins (ran late, wrong
 # day); 24h covers that without making the token permanent.
 MANAGE_TOKEN_GRACE_PERIOD = timedelta(hours=24)
-
-# Queue names (ADR-012) — jobs carry ids only.
-from ..contracts.constants_gen import (  # noqa: E402
-    QUEUE_BOOKING_CANCELLED,
-    QUEUE_BOOKING_CREATED,
-)
 
 
 @dataclass(slots=True, frozen=True)
@@ -62,9 +65,71 @@ class CreateBookingData:
     trace_id: str
 
 
+async def list_guest_bookings(
+    session: AsyncSession, messenger: str, messenger_id: str
+) -> list[BookingChain]:
+    """Every booking of one messenger identity, newest first (ADR-002,
+    entry path 2). Cancelled bookings are included: a guest looking for
+    "my bookings" is often checking whether a cancellation went through.
+    Expired manageTokens stay listed too (the DTO marks them
+    canCancel=false): dropping the row would silently erase the guest's
+    booking history 24h after the slot, and the caller of this endpoint
+    *is* the owner of the identity, so the expired token is not a leak."""
+    async with session.begin():
+        chains = await booking_repo.list_guest_bookings(session, messenger, messenger_id)
+    return [
+        (
+            from_model_booking(b),
+            from_model_slot(slot),
+            from_model_service(service),
+            from_model_organizer(organizer),
+        )
+        for b, slot, service, organizer in chains
+    ]
+
+
+async def get_booking_chain(session: AsyncSession, booking_id: str) -> BookingChain | None:
+    """The fresh chain a notification job refetches at send time (jobs
+    carry ids only). Raw rows, not DTOs: a notification needs the
+    timezone, chat id, manageToken and display overrides."""
+    async with session.begin():
+        chain = await booking_repo.get_booking_chain_by_id(session, booking_id)
+    if chain is None:
+        return None
+    b, slot, service, organizer = chain
+    return (
+        from_model_booking(b),
+        from_model_slot(slot),
+        from_model_service(service),
+        from_model_organizer(organizer),
+    )
+
+
+async def get_guest_booking_by_token(session: AsyncSession, token: str) -> BookingChain | None:
+    """Lookup a guest booking's chain by raw manageToken. Checks
+    manage_token_hash and expiry — an expired token answers like an
+    unknown one so the endpoint cannot probe for token existence."""
+    token_hash = hash_manage_token(token)
+    async with session.begin():
+        chain = await booking_repo.get_chain_by_manage_token_hash(session, token_hash)
+    if chain is None:
+        return None
+    b, slot, service, organizer = chain
+    # Expired token is refused on lookup (ADR-020)
+    now = datetime.now(UTC)
+    if b.manage_token_expires_at is not None and b.manage_token_expires_at <= now:
+        return None
+    return (
+        from_model_booking(b),
+        from_model_slot(slot),
+        from_model_service(service),
+        from_model_organizer(organizer),
+    )
+
+
 async def create_guest_booking(
-    data: CreateBookingData,
-) -> tuple[gen.GuestBooking, list[OutboxRow]]:
+    session: AsyncSession, data: CreateBookingData
+) -> tuple[BookingChain, list[OutboxRow]]:
     """Reserve seats and insert the confirmed booking — the guest
     booking flow's one write (invariant 2).
 
@@ -81,7 +146,7 @@ async def create_guest_booking(
     transaction: the caller publishes them inline after commit and marks
     each `sent` on success, so the sweeper never re-publishes a delivered
     row."""
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         # A slot in the past is not bookable: the UI filters them out,
         # but the API must not rely on that — knowing the id must not
         # let anyone book a session that already started (its
@@ -168,7 +233,7 @@ async def create_guest_booking(
         # which owns the inline delivery and the `sent` marking.
         outbox: list[OutboxRow] = []
         for recipient in ("organizer", "guest"):
-            row = await enqueue_outbox(
+            row = await enqueue_outbox_tx(
                 session,
                 QUEUE_BOOKING_CREATED,
                 lambda outbox_id, r=recipient: {  # type: ignore[misc]
@@ -180,13 +245,12 @@ async def create_guest_booking(
             )
             outbox.append(row)
 
-    guest = to_guest_booking(created, claimed, service, organizer)
-    return guest, outbox
+    return (created, claimed, service, organizer), outbox
 
 
 async def cancel_guest_booking_by_token(
-    token: str, trace_id: str
-) -> tuple[gen.GuestBooking, list[OutboxRow]] | None:
+    session: AsyncSession, token: str, trace_id: str
+) -> tuple[BookingChain, list[OutboxRow]] | None:
     """Cancel by manageToken and release the seats (ADR-002). Status
     flip and bookedCount decrement happen in one transaction — invariant
     1: the counter equals the seats held by confirmed bookings. The
@@ -196,7 +260,7 @@ async def cancel_guest_booking_by_token(
 
     Returns None for an unknown token (caller answers 404 without
     confirming whether the token exists)."""
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         # Credential check goes through the hash: the raw token column
         # is not a lookup key anymore.
         models = await booking_repo.get_chain_by_manage_token_hash(
@@ -236,7 +300,7 @@ async def cancel_guest_booking_by_token(
         # cancellation. One row — the counterparty only (ADR-012). The
         # row travels back to the caller for the inline publish + `sent`
         # marking.
-        outbox_row = await enqueue_outbox(
+        outbox_row = await enqueue_outbox_tx(
             session,
             QUEUE_BOOKING_CANCELLED,
             lambda outbox_id: {
@@ -247,42 +311,50 @@ async def cancel_guest_booking_by_token(
             trace_id,
         )
 
-    guest = to_guest_booking(cancelled, released, service, organizer)
-    return guest, [outbox_row]
+    return (cancelled, released, service, organizer), [outbox_row]
 
 
 async def cancel_owned_booking(
-    organizer_id: str, booking_id: str, trace_id: str
-) -> tuple[gen.BookingRecord, list[OutboxRow]] | None:
+    session: AsyncSession, organizer_id: str, booking_id: str, trace_id: str
+) -> tuple[BookingChain, list[OutboxRow]] | None:
     """The cabinet counterpart of cancel_guest_booking_by_token: same
     state transition and seat release, reached by a different
     credential. The organizer proves ownership by owning the service the
     booking hangs off, so the id is scoped through the owned-services
-    chain. Returns the organizer's DTO, which drops manageToken: the
-    cabinet must never receive it, even as a side effect."""
+    chain. The returned chain lets the caller project the organizer's
+    DTO (which drops manageToken: the cabinet must never receive it,
+    even as a side effect) and invalidate the public slot's cache."""
     refuse_demo_write(organizer_id)
 
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         # Unknown id and a booking on someone else's service are
         # answered identically, so the endpoint cannot probe for foreign
         # ids.
-        owned = await booking_repo.get_owned_booking(session, organizer_id, booking_id)
-        if owned is None:
+        chain = await booking_repo.get_owned_booking_chain(session, organizer_id, booking_id)
+        if chain is None:
             return None
-        target = from_model_booking(owned)
+        booking_model, slot_model, service_model, organizer_model = chain
+        target = from_model_booking(booking_model)
 
         cancelled_model = await booking_repo.cancel_booking_mark(session, target.id)
         if cancelled_model is None:
             raise AlreadyCancelled()
         cancelled = from_model_booking(cancelled_model)
 
-        await booking_repo.release_seats(session, cancelled.time_slot_id, cancelled.seats)
+        released_model = await booking_repo.release_seats_returning(
+            session, cancelled.time_slot_id, cancelled.seats
+        )
+        released = (
+            from_model_slot(released_model)
+            if released_model is not None
+            else from_model_slot(slot_model)
+        )
 
         # Transactional outbox: the guest is notified of the organizer's
         # cancellation. One row — the counterparty only (ADR-012). The
         # row travels back to the caller for the inline publish + `sent`
         # marking.
-        outbox_row = await enqueue_outbox(
+        outbox_row = await enqueue_outbox_tx(
             session,
             QUEUE_BOOKING_CANCELLED,
             lambda outbox_id: {
@@ -293,5 +365,9 @@ async def cancel_owned_booking(
             trace_id,
         )
 
-    record = to_booking_record(cancelled)
-    return record, [outbox_row]
+    return (
+        cancelled,
+        released,
+        from_model_service(service_model),
+        from_model_organizer(organizer_model),
+    ), [outbox_row]

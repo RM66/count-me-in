@@ -149,20 +149,23 @@ async def get_booking_by_id(session: AsyncSession, booking_id: str) -> Booking |
     return result.scalar_one_or_none()
 
 
-async def get_owned_booking(
+async def get_owned_booking_chain(
     session: AsyncSession, organizer_id: str, booking_id: str
-) -> Booking | None:
-    """A booking scoped through the owned-services chain — a foreign id
-    misses rather than leaks, answered like an unknown one."""
-    stmt = (
-        select(Booking)
-        .join(TimeSlot, Booking.time_slot_id == TimeSlot.id)
-        .join(Service, TimeSlot.service_id == Service.id)
+) -> BookingChain | None:
+    """The full chain scoped through the owned-services join — a foreign
+    id misses rather than leaks, answered like an unknown one. The whole
+    chain comes back because the caller (organizer cancel) needs the
+    slot/service/organizer rows for the post-commit work as well."""
+    result = await session.execute(
+        _chain_select()
         .where(Booking.id == booking_id, Service.organizer_id == organizer_id)
         .limit(1)
     )
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    row = result.first()
+    if row is None:
+        return None
+    booking, slot, service, organizer = row
+    return (booking, slot, service, organizer)
 
 
 async def cancel_booking_mark(session: AsyncSession, booking_id: str) -> Booking | None:

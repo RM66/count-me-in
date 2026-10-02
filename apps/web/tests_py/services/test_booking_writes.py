@@ -6,8 +6,12 @@ outbox rows. Mocks cannot test the conditional UPDATE (invariant 2): the
 whole point is that Postgres evaluates the predicate against the row it
 locks.
 
+Service functions take the caller's AsyncSession — `svc()` wraps each
+call in a fresh one (the request-scoped session's stand-in) and each
+bare-named call commits its own unit.
+
 Runs against the local docker Postgres when POSTGRES_URL is set and
-migrated (docker-compose.yml + drizzle migrations); skipped locally
+migrated (docker-compose.yml + Alembic migrations); skipped locally
 without it, failed in CI (the workflow provides the service).
 """
 
@@ -25,21 +29,6 @@ from countmein.contracts.constants_gen import (
     QUEUE_BOOKING_CREATED,
 )
 from countmein.contracts.payloads import AuthTicketPayload
-from countmein.db import (
-    booking_writes as bw,
-)
-from countmein.db import (
-    media,
-)
-from countmein.db import (
-    organizer as organizer_db,
-)
-from countmein.db import (
-    service as service_db,
-)
-from countmein.db import (
-    time_slot as slot_db,
-)
 from countmein.db.client import engine
 from countmein.db.shared import (
     hash_manage_token,
@@ -59,7 +48,24 @@ from countmein.errors import (
     SlotHasActiveBookings,
     SoldOut,
 )
+from countmein.services import (
+    booking_service as bw,
+)
+from countmein.services import (
+    media_service as media,
+)
+from countmein.services import (
+    organizer_service as organizer_svc,
+)
+from countmein.services import (
+    service_service as service_svc,
+)
+from countmein.services import (
+    slot_service as slot_svc,
+)
 from sqlalchemy import text
+
+from ._helpers import svc
 
 # Every test in this module needs the live Postgres (the atomic reserve
 # cannot be mocked) — the whole module is integration.
@@ -259,16 +265,6 @@ async def outbox_rows_for(booking_id: str) -> list[tuple]:
         return list(result)
 
 
-def _uuid_str(value) -> str:
-    """GuestBooking.id is a UUIDModel root — unwrap to the plain string."""
-    return str(getattr(value, "root", value))
-
-
-def _root_str(value) -> str:
-    """Scalar DTO fields (status, …) are RootModel roots — unwrap."""
-    return str(getattr(value, "root", value))
-
-
 # ── CreateGuestBooking ───────────────────────────────────────────────────────
 
 
@@ -276,13 +272,16 @@ async def test_create_guest_booking_success(cleanup):
     f = await new_fixture()
     cleanup.append(f)
 
-    created, outbox = await bw.create_guest_booking(booking_data(f, 2, None, guest_identity("g1")))
-    f.track(_uuid_str(created.id))
+    chain, outbox = await svc(
+        bw.create_guest_booking, booking_data(f, 2, None, guest_identity("g1"))
+    )
+    created = chain[0]
+    f.track(created.id)
 
-    assert _root_str(created.status) == "confirmed"
-    assert int(getattr(created.seats, "root", created.seats)) == 2
-    assert created.manageToken != "", (
-        "the guest DTO must carry the manageToken (their management link)"
+    assert created.status == "confirmed"
+    assert created.seats == 2
+    assert created.manage_token != "", (
+        "the booking row must carry the manageToken (the guest's management link)"
     )
     assert await f.booked_count() == 2, "atomic reserve"
 
@@ -294,13 +293,13 @@ async def test_create_guest_booking_success(cleanup):
         assert row.queue == QUEUE_BOOKING_CREATED
         assert row.trace_id == "it-trace"
         job = json.loads(row.payload)
-        assert job["bookingId"] == _uuid_str(created.id)
+        assert job["bookingId"] == created.id
         recipients.add(job["recipient"])
     assert recipients == {"organizer", "guest"}, "fan-out must cover organizer and guest"
 
     # The rows are durable and pending in the DB (the caller publishes
     # after commit and marks them sent).
-    stored = await outbox_rows_for(_uuid_str(created.id))
+    stored = await outbox_rows_for(created.id)
     assert len(stored) == 2
     for row in stored:
         assert row[4] == "pending"
@@ -310,14 +309,14 @@ async def test_create_guest_booking_sold_out(cleanup):
     f = await new_fixture(lambda s: (setattr(s, "capacity", 3), setattr(s, "booked", 3)))
     cleanup.append(f)
     with pytest.raises(SoldOut) as exc_info:
-        await bw.create_guest_booking(booking_data(f, 1, None, guest_identity("g2")))
+        await svc(bw.create_guest_booking, booking_data(f, 1, None, guest_identity("g2")))
     assert exc_info.value.seats_left == 0
 
     # Partial room: capacity 3, booked 2, party of 2 → 2+2 > 3, one seat left.
     f2 = await new_fixture(lambda s: (setattr(s, "capacity", 3), setattr(s, "booked", 2)))
     cleanup.append(f2)
     with pytest.raises(SoldOut) as exc_info:
-        await bw.create_guest_booking(booking_data(f2, 2, None, guest_identity("g3")))
+        await svc(bw.create_guest_booking, booking_data(f2, 2, None, guest_identity("g3")))
     assert exc_info.value.seats_left == 1
 
 
@@ -325,7 +324,7 @@ async def test_create_guest_booking_past_slot(cleanup):
     f = await new_fixture(lambda s: setattr(s, "starts_at", datetime.now(UTC) - timedelta(hours=2)))
     cleanup.append(f)
     with pytest.raises(SlotGone):
-        await bw.create_guest_booking(booking_data(f, 1, None, guest_identity("g4")))
+        await svc(bw.create_guest_booking, booking_data(f, 1, None, guest_identity("g4")))
     assert await f.booked_count() == 0, "a refused booking must not claim seats"
 
 
@@ -333,7 +332,7 @@ async def test_create_guest_booking_party_too_large(cleanup):
     f = await new_fixture(lambda s: setattr(s, "max_seats", 2))
     cleanup.append(f)
     with pytest.raises(PartyTooLarge) as exc_info:
-        await bw.create_guest_booking(booking_data(f, 3, None, guest_identity("g5")))
+        await svc(bw.create_guest_booking, booking_data(f, 3, None, guest_identity("g5")))
     assert exc_info.value.max_seats == 2
     assert await f.booked_count() == 0, "a refused booking must not claim seats"
 
@@ -351,7 +350,7 @@ async def test_create_guest_booking_invalid_options(cleanup):
         )
         cleanup.append(f)
         with pytest.raises(InvalidOptions):
-            await bw.create_guest_booking(booking_data(f, 1, selected, guest_identity("g6")))
+            await svc(bw.create_guest_booking, booking_data(f, 1, selected, guest_identity("g6")))
 
 
 async def test_create_guest_booking_duplicate(cleanup):
@@ -359,19 +358,19 @@ async def test_create_guest_booking_duplicate(cleanup):
     cleanup.append(f)
     guest = guest_identity("g7")
 
-    first, _ = await bw.create_guest_booking(booking_data(f, 1, None, guest))
-    f.track(_uuid_str(first.id))
+    first, _ = await svc(bw.create_guest_booking, booking_data(f, 1, None, guest))
+    f.track(first[0].id)
 
     # Same guest, same slot: the partial unique index rejects the second
     # INSERT with a 23505 → DuplicateBooking, and the transaction
     # rolls back — releasing the seat the second attempt had claimed.
     with pytest.raises(DuplicateBooking):
-        await bw.create_guest_booking(booking_data(f, 2, None, guest))
+        await svc(bw.create_guest_booking, booking_data(f, 2, None, guest))
     assert await f.booked_count() == 1, "rollback must release the claimed seats"
 
     # A different guest may still book the same slot.
-    other, _ = await bw.create_guest_booking(booking_data(f, 1, None, guest_identity("g8")))
-    f.track(_uuid_str(other.id))
+    other, _ = await svc(bw.create_guest_booking, booking_data(f, 1, None, guest_identity("g8")))
+    f.track(other[0].id)
 
 
 async def test_create_guest_booking_demo_refused(cleanup):
@@ -418,7 +417,8 @@ async def test_create_guest_booking_demo_refused(cleanup):
         )
     try:
         with pytest.raises(DemoReadOnly):
-            await bw.create_guest_booking(
+            await svc(
+                bw.create_guest_booking,
                 bw.CreateBookingData(
                     service_id=service_id,
                     time_slot_id=slot_id,
@@ -428,7 +428,7 @@ async def test_create_guest_booking_demo_refused(cleanup):
                     guest_locale="en",
                     guest=guest_identity("g9"),
                     trace_id="it-trace",
-                )
+                ),
             )
         async with engine().connect() as conn:
             result = await conn.execute(
@@ -451,9 +451,10 @@ async def test_cancel_guest_booking_by_token_success(cleanup):
     cleanup.append(f)
     booking_id, token = await f.insert_booking(2, None)
 
-    cancelled, outbox = await bw.cancel_guest_booking_by_token(token, "it-trace")
-    assert cancelled is not None, "cancel must return the booking"
-    assert _root_str(cancelled.status) == "cancelled"
+    result = await svc(bw.cancel_guest_booking_by_token, token, "it-trace")
+    assert result is not None, "cancel must return the booking chain"
+    chain, outbox = result
+    assert chain[0].status == "cancelled"
     assert await f.booked_count() == 0, "cancel must release the seats"
 
     # One outbox row — the counterparty only (guest cancels → organizer
@@ -470,13 +471,13 @@ async def test_cancel_guest_booking_idempotent(cleanup):
     cleanup.append(f)
     _, token = await f.insert_booking(2, None)
 
-    await bw.cancel_guest_booking_by_token(token, "it-trace")
+    await svc(bw.cancel_guest_booking_by_token, token, "it-trace")
     after_first = await f.booked_count()
 
     # Double-tap: the status='confirmed' predicate updates no row —
     # reported as already cancelled, never a second decrement.
     with pytest.raises(AlreadyCancelled):
-        await bw.cancel_guest_booking_by_token(token, "it-trace")
+        await svc(bw.cancel_guest_booking_by_token, token, "it-trace")
     assert await f.booked_count() == after_first, "re-cancel must not double-decrement"
 
 
@@ -488,19 +489,21 @@ async def test_cancel_guest_booking_unknown_token(cleanup):
     # Unknown token → None: the caller answers 404 without confirming
     # whether the token exists.
     assert (
-        await bw.cancel_guest_booking_by_token("no-such-token-aaaaaaaaaaaaaaaaaaaa", "it-trace")
+        await svc(
+            bw.cancel_guest_booking_by_token, "no-such-token-aaaaaaaaaaaaaaaaaaaa", "it-trace"
+        )
         is None
     )
 
     # Almost-right is still unknown: a single-char mutation of a real
     # token matches no hash.
-    assert await bw.cancel_guest_booking_by_token(token + "x", "it-trace") is None
+    assert await svc(bw.cancel_guest_booking_by_token, token + "x", "it-trace") is None
 
     # The SHA-256 hex itself is not a valid credential either: the lookup
     # key is hash_manage_token(input), so presenting the stored hash only
     # matches if hash(hash) == hash, which SHA-256 never yields here —
     # the raw token column is not a lookup key (ADR-020).
-    assert await bw.cancel_guest_booking_by_token(hash_manage_token(token), "it-trace") is None
+    assert await svc(bw.cancel_guest_booking_by_token, hash_manage_token(token), "it-trace") is None
 
 
 async def test_cancel_guest_booking_expired_token(cleanup):
@@ -510,7 +513,7 @@ async def test_cancel_guest_booking_expired_token(cleanup):
     _, token = await f.insert_booking(1, expired)
 
     with pytest.raises(BookingNotFound):
-        await bw.cancel_guest_booking_by_token(token, "it-trace")
+        await svc(bw.cancel_guest_booking_by_token, token, "it-trace")
     assert await f.booked_count() == 1, "an expired cancel must not release seats"
 
 
@@ -522,9 +525,10 @@ async def test_cancel_owned_booking_success(cleanup):
     cleanup.append(f)
     booking_id, _ = await f.insert_booking(3, None)
 
-    record, outbox = await bw.cancel_owned_booking(f.organizer_id, booking_id, "it-trace")
-    assert record is not None
-    assert _root_str(record.status) == "cancelled"
+    result = await svc(bw.cancel_owned_booking, f.organizer_id, booking_id, "it-trace")
+    assert result is not None
+    chain, outbox = result
+    assert chain[0].status == "cancelled"
     assert await f.booked_count() == 0, "cancel must release the seats"
 
     # The guest is notified — one row, cancelledBy=organizer.
@@ -544,11 +548,11 @@ async def test_cancel_owned_booking_foreign_service(cleanup):
     cleanup.append(theirs)
     booking_id, _ = await theirs.insert_booking(1, None)
 
-    assert await bw.cancel_owned_booking(mine.organizer_id, booking_id, "it-trace") is None
+    assert await svc(bw.cancel_owned_booking, mine.organizer_id, booking_id, "it-trace") is None
     assert await theirs.booked_count() == 1, "a foreign cancel must not release seats"
 
     # Unknown booking id: same answer.
-    assert await bw.cancel_owned_booking(mine.organizer_id, new_id(), "it-trace") is None
+    assert await svc(bw.cancel_owned_booking, mine.organizer_id, new_id(), "it-trace") is None
 
 
 async def test_cancel_owned_booking_demo_refused(cleanup):
@@ -557,7 +561,7 @@ async def test_cancel_owned_booking_demo_refused(cleanup):
     booking_id, _ = await f.insert_booking(1, None)
 
     with pytest.raises(DemoReadOnly):
-        await bw.cancel_owned_booking(DEMO_ORGANIZER_ID, booking_id, "it-trace")
+        await svc(bw.cancel_owned_booking, DEMO_ORGANIZER_ID, booking_id, "it-trace")
     assert await f.booked_count() == 1, "demo refusal must not release seats"
 
 
@@ -578,12 +582,12 @@ async def test_create_guest_booking_concurrent_last_seats(cleanup):
         # Unique guest per racer: the partial unique index must never
         # interfere — only the seat predicate decides who wins.
         try:
-            created, _ = await bw.create_guest_booking(
-                booking_data(f, 1, None, guest_identity(f"race-{i}"))
+            chain, _ = await svc(
+                bw.create_guest_booking, booking_data(f, 1, None, guest_identity(f"race-{i}"))
             )
         except SoldOut:
             return None
-        return _uuid_str(created.id)
+        return chain[0].id
 
     won_ids = await asyncio.gather(*(race(i) for i in range(racers)))
     won = [id_ for id_ in won_ids if id_ is not None]
@@ -602,19 +606,19 @@ async def test_create_guest_booking_concurrent_last_seats(cleanup):
 # ── Delete guards ────────────────────────────────────────────────────────────
 
 
-async def test_db_layer_refuses_demo_writes():
-    """A direct db call with the demo (or an absent) organizer id must be
-    refused before touching Postgres — the route guard is the first
-    line, this is the second (ADR-010)."""
+async def test_service_layer_refuses_demo_writes():
+    """A direct service call with the demo (or an absent) organizer id
+    must be refused before touching Postgres — the route guard is the
+    first line, this is the second (ADR-010)."""
     for id_ in (DEMO_ORGANIZER_ID, ""):
         with pytest.raises(DemoReadOnly):
-            await slot_db.delete_owned_slot(id_, new_id())
+            await svc(slot_svc.delete_owned_slot, id_, new_id())
         with pytest.raises(DemoReadOnly):
-            await service_db.delete_owned_service(id_, "svc")
+            await svc(service_svc.delete_owned_service, id_, "svc")
         with pytest.raises(DemoReadOnly):
-            await slot_db.create_slot(id_, None)
+            await svc(slot_svc.create_slot, id_, None)
         with pytest.raises(DemoReadOnly):
-            await organizer_db.update_organizer_language(id_, "en")
+            await svc(organizer_svc.update_organizer_language, id_, "en")
 
 
 async def test_delete_owned_slot_refuses_cancelled_bookings(cleanup):
@@ -632,7 +636,7 @@ async def test_delete_owned_slot_refuses_cancelled_bookings(cleanup):
         )
 
     with pytest.raises(SlotHasActiveBookings):
-        await slot_db.delete_owned_slot(f.organizer_id, f.slot_id)
+        await svc(slot_svc.delete_owned_slot, f.organizer_id, f.slot_id)
     async with engine().connect() as conn:
         result = await conn.execute(
             text("SELECT count(*) > 0 FROM time_slots WHERE id = :id"), {"id": f.slot_id}
@@ -641,8 +645,8 @@ async def test_delete_owned_slot_refuses_cancelled_bookings(cleanup):
 
     async with engine().begin() as conn:
         await conn.execute(text("DELETE FROM bookings WHERE id = :id"), {"id": booking_id})
-    deleted = await slot_db.delete_owned_slot(f.organizer_id, f.slot_id)
-    assert deleted == f.slot_id
+    deleted = await svc(slot_svc.delete_owned_slot, f.organizer_id, f.slot_id)
+    assert deleted is not None and deleted.id == f.slot_id
 
 
 async def test_delete_owned_service_refuses_bookings(cleanup):
@@ -654,7 +658,7 @@ async def test_delete_owned_service_refuses_bookings(cleanup):
     await f.insert_booking(1, expires_at)
 
     with pytest.raises(ServiceHasBookings):
-        await service_db.delete_owned_service(f.organizer_id, f.service_id)
+        await svc(service_svc.delete_owned_service, f.organizer_id, f.service_id)
 
 
 # ── Media ────────────────────────────────────────────────────────────────────

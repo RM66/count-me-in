@@ -24,7 +24,7 @@ import 'server-only'
  * Parity is pinned by the golden vector in `internal-api.test.ts`.
  */
 
-const INTERNAL_SECRET_HEADER = 'x-internal-secret'
+export const INTERNAL_SECRET_HEADER = 'x-internal-secret'
 const INTERNAL_HKDF_SALT = 'countmein'
 const INTERNAL_HKDF_INFO = 'CountMeIn Internal Service Key v1'
 
@@ -36,6 +36,20 @@ export function derivedInternalSecret(authSecret: string): string {
     .digest()
     .subarray(0, 32)
     .toString('hex')
+}
+
+/**
+ * The x-internal-secret header for trusted server-side calls, or {} when
+ * AUTH_SECRET is absent. Every Next.js→Python server-to-server request
+ * carries it: the API counts it against a dedicated rate-limit bucket
+ * instead of the caller-IP one — serverless SSR shares Vercel egress
+ * IPs, so a crawler burst would otherwise drain the shared bucket and
+ * 429 every SSR fetch site-wide (ADR-023 Phase 1).
+ */
+export function internalSecretHeaders(): Record<string, string> {
+  const authSecret = process.env.AUTH_SECRET
+  if (!authSecret) return {}
+  return { [INTERNAL_SECRET_HEADER]: derivedInternalSecret(authSecret) }
 }
 
 /**
@@ -61,7 +75,7 @@ export async function getInternalOrganizer(lookup: {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      [INTERNAL_SECRET_HEADER]: derivedInternalSecret(authSecret),
+      ...internalSecretHeaders(),
     },
     body: JSON.stringify(parsed.data),
     // Service-to-service credential lookup: never cacheable.

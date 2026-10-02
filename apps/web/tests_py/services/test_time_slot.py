@@ -1,8 +1,8 @@
-"""Standalone slot db-layer tests: direct slot queries, updates and the
+"""Standalone slot service tests: direct slot queries, updates and the
 delete guard, against the live Postgres — the booking-write tests cover
 slots only as fixtures of the booking flow; this module pins the slot
 operations themselves (ownership scoping, the capacity precheck, the
-merge-patch update contract, the delete guard).
+merge-patch update contract, the delete guard, the rolling horizon).
 
 Requires POSTGRES_URL — skipped locally without it, failed in CI (the
 shared rule in tests_py/_env.py).
@@ -14,11 +14,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from countmein.contracts import models_gen as gen
-from countmein.db import time_slot as slot_db
 from countmein.db.client import engine, sessionmaker
 from countmein.db.shared import TouchedUpdate, new_id, new_service_id
 from countmein.errors import CapacityBelowBooked, DemoReadOnly, NothingToUpdate
+from countmein.services import slot_service as slot_svc
 from sqlalchemy import text
+
+from ._helpers import svc
 
 # Every test needs the live Postgres — the whole module is integration.
 pytestmark = pytest.mark.integration
@@ -30,7 +32,7 @@ def require_postgres() -> None:
     _require()
 
 
-async def _fixture() -> tuple[str, str, str]:
+async def _fixture(starts_at: datetime | None = None) -> tuple[str, str, str]:
     """(organizer_id, service_id, slot_id) — one organizer + service +
     one future slot, unique per run. Cleanup cascades from the
     organizer row."""
@@ -69,7 +71,7 @@ async def _fixture() -> tuple[str, str, str]:
             {
                 "id": slot_id,
                 "service_id": service_id,
-                "starts_at": datetime.now(UTC) + timedelta(hours=48),
+                "starts_at": starts_at or datetime.now(UTC) + timedelta(hours=48),
             },
         )
     return organizer_id, service_id, slot_id
@@ -91,9 +93,9 @@ async def test_list_slots_scopes_to_owner_and_orders(fx):
     org_id, _service_id, slot_id = fx
     other_org, _, _ = await _fixture()
     try:
-        rows = await slot_db.list_slots(org_id, upcoming_only=False)
+        rows = await svc(slot_svc.list_slots, org_id, False)
         assert [r.id for r in rows] == [slot_id], "only the owner's slots, earliest first"
-        assert not any(r.id == slot_id for r in await slot_db.list_slots(other_org, False))
+        assert not any(r.id == slot_id for r in await svc(slot_svc.list_slots, other_org, False))
     finally:
         await _cleanup(other_org)
 
@@ -115,18 +117,62 @@ async def test_list_slots_upcoming_only_drops_past(fx):
                 "starts_at": datetime.now(UTC) - timedelta(hours=2),
             },
         )
-    rows = await slot_db.list_slots(org_id, upcoming_only=True)
+    rows = await svc(slot_svc.list_slots, org_id, True)
     assert [r.id for r in rows] == [slot_id], "the past slot is dropped"
+
+
+async def test_public_slots_bounded_by_horizon():
+    """The rolling public horizon: a slot further out than now + 90
+    days stays in the DB and stays on the cabinet's own list, but the
+    public upcoming-slots read must not return it — a schedule seeded
+    seasons ahead must not grow the public payload (ADR-023 Phase 2).
+    The cabinet list is deliberately unbounded: the organizer owns the
+    whole schedule."""
+    from countmein.repositories import slot_repo
+    from countmein.services.slot_service import SLOT_HORIZON
+
+    org_id, service_id, slot_id = await _fixture()
+    far_id = new_id()
+    try:
+        async with engine().begin() as conn:
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, capacity, booked_count)
+                    VALUES (:id, :service_id, :starts_at, 60, 10, 0)
+                    """
+                ),
+                {
+                    "id": far_id,
+                    "service_id": service_id,
+                    "starts_at": datetime.now(UTC) + timedelta(days=120),
+                },
+            )
+
+        # Cabinet list: both slots — the organizer sees the whole schedule.
+        rows = await svc(slot_svc.list_slots, org_id, False)
+        assert {r.id for r in rows} == {slot_id, far_id}
+
+        # The public read (same query the public routes run): the +120d
+        # slot is beyond the horizon, the +48h one is listed.
+        now = datetime.now(UTC)
+        async with sessionmaker()() as session:
+            public = await slot_repo.list_upcoming_by_services(
+                session, [service_id], now, until_time=now + SLOT_HORIZON
+            )
+        assert [str(s.id) for s in public] == [slot_id]
+    finally:
+        await _cleanup(org_id)
 
 
 async def test_get_owned_slot_hides_foreign_ids(fx):
     org_id, _service_id, slot_id = fx
     other_org, _, _ = await _fixture()
     try:
-        assert (await slot_db.get_owned_slot(org_id, slot_id)) is not None
+        assert (await svc(slot_svc.get_owned_slot, org_id, slot_id)) is not None
         # A foreign organizer must not see the slot — None, like unknown.
-        assert await slot_db.get_owned_slot(other_org, slot_id) is None
-        assert await slot_db.get_owned_slot(org_id, new_id()) is None
+        assert await svc(slot_svc.get_owned_slot, other_org, slot_id) is None
+        assert await svc(slot_svc.get_owned_slot, org_id, new_id()) is None
     finally:
         await _cleanup(other_org)
 
@@ -141,7 +187,7 @@ async def test_create_slot_under_foreign_service_answers_none(fx):
             durationMinutes=60,
             capacity=5,
         )
-        assert await slot_db.create_slot(org_id, payload) is None, (
+        assert await svc(slot_svc.create_slot, org_id, payload) is None, (
             "a foreign service id must answer None (the caller 404s without confirming it)"
         )
     finally:
@@ -158,7 +204,7 @@ async def test_create_slot_demo_refused(fx):
         capacity=5,
     )
     with pytest.raises(DemoReadOnly):
-        await slot_db.create_slot(DEMO_ORGANIZER_ID, payload)
+        await svc(slot_svc.create_slot, DEMO_ORGANIZER_ID, payload)
 
 
 async def test_update_owned_slot_tx_touches_only_touched_columns(fx):
@@ -168,7 +214,7 @@ async def test_update_owned_slot_tx_touches_only_touched_columns(fx):
     )
     touched = {"startsAt": False, "durationMinutes": True, "capacity": False, "price": True}
     async with sessionmaker()() as session, session.begin():
-        row = await slot_db.update_owned_slot_tx(
+        row = await slot_svc.update_owned_slot_tx(
             session, org_id, slot_id, TouchedUpdate(state, touched)
         )
     assert row is not None
@@ -188,7 +234,7 @@ async def test_update_owned_slot_tx_capacity_below_booked_is_409(fx):
     touched = {"startsAt": False, "durationMinutes": False, "capacity": True, "price": False}
     async with sessionmaker()() as session, session.begin():
         with pytest.raises(CapacityBelowBooked):
-            await slot_db.update_owned_slot_tx(
+            await slot_svc.update_owned_slot_tx(
                 session, org_id, slot_id, TouchedUpdate(state, touched)
             )
 
@@ -199,7 +245,7 @@ async def test_update_owned_slot_tx_nothing_touched_raises(fx):
     touched = {"startsAt": False, "durationMinutes": False, "capacity": False, "price": False}
     async with sessionmaker()() as session, session.begin():
         with pytest.raises(NothingToUpdate):
-            await slot_db.update_owned_slot_tx(
+            await slot_svc.update_owned_slot_tx(
                 session, org_id, slot_id, TouchedUpdate(state, touched)
             )
 
@@ -214,7 +260,7 @@ async def test_update_owned_slot_tx_foreign_organizer_answers_none(fx):
         touched = {"startsAt": False, "durationMinutes": True, "capacity": False, "price": False}
         async with sessionmaker()() as session, session.begin():
             assert (
-                await slot_db.update_owned_slot_tx(
+                await slot_svc.update_owned_slot_tx(
                     session, other_org, slot_id, TouchedUpdate(state, touched)
                 )
                 is None
@@ -225,18 +271,19 @@ async def test_update_owned_slot_tx_foreign_organizer_answers_none(fx):
 
 async def test_delete_owned_slot_success_and_unknown(fx):
     org_id, _service_id, slot_id = fx
-    assert await slot_db.delete_owned_slot(org_id, slot_id) == slot_id
+    deleted = await svc(slot_svc.delete_owned_slot, org_id, slot_id)
+    assert deleted is not None and deleted.id == slot_id
     # Second delete: nothing matched.
-    assert await slot_db.delete_owned_slot(org_id, slot_id) is None
-    assert await slot_db.delete_owned_slot(org_id, new_id()) is None
+    assert await svc(slot_svc.delete_owned_slot, org_id, slot_id) is None
+    assert await svc(slot_svc.delete_owned_slot, org_id, new_id()) is None
 
 
 async def test_delete_owned_slot_foreign_organizer_answers_none(fx):
     org_id, _service_id, slot_id = fx
     other_org, _, _ = await _fixture()
     try:
-        assert await slot_db.delete_owned_slot(other_org, slot_id) is None
+        assert await svc(slot_svc.delete_owned_slot, other_org, slot_id) is None
         # The slot survives.
-        assert await slot_db.get_owned_slot(org_id, slot_id) is not None
+        assert await svc(slot_svc.get_owned_slot, org_id, slot_id) is not None
     finally:
         await _cleanup(other_org)

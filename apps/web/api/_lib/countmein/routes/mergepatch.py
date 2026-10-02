@@ -21,7 +21,6 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..db.client import sessionmaker
 from ..db.shared import TouchedUpdate
 from ..errors import InvalidInput, NothingToUpdate
 
@@ -75,6 +74,7 @@ def _merge(current_json: str, patch: Any) -> Any:
 
 
 async def apply_merge_patch[RowT, StateT](
+    session: AsyncSession,
     raw: bytes,
     *,
     fetch: Callable[[AsyncSession], Awaitable[RowT]],
@@ -83,8 +83,10 @@ async def apply_merge_patch[RowT, StateT](
     update_tx: Callable[[AsyncSession, StateT, dict[str, bool]], Awaitable[RowT]],
 ) -> tuple[RowT, RowT, dict[str, bool]]:
     """The shared merge-patch transaction: read → merge → write on one
-    ORM session transaction (two concurrent PUTs must not merge against
-    different snapshots and silently lose columns). fetch and update_tx
+    ORM transaction over the caller's request-scoped session (two
+    concurrent PUTs must not merge against different snapshots and
+    silently lose columns — the tx lives here, not in the caller, so
+    the read and the write provably share it). fetch and update_tx
     raise the entity's not-found error themselves; decode_merged
     receives the touched-key set alongside the merged bytes (the slot
     decoder checks startsAt only when the patch touched it). Returns
@@ -93,7 +95,7 @@ async def apply_merge_patch[RowT, StateT](
     touched = patch_keys(raw)
     if touched is None:
         raise NothingToUpdate()
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         current = await fetch(session)
         try:
             merged = merge_patch(writable_state(current), raw)

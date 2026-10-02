@@ -1,16 +1,19 @@
-"""Row types, ORM mapping and DTO mapping shared by the entity modules.
+"""Detached domain snapshots (Row dataclasses) and the ORM→Row mapping.
+
+This module is deliberately free of wire concerns: services return Rows,
+routes project Rows to the generated DTOs via db/serializers.py. A Row
+carries everything a *server-side* consumer needs — including fields no
+wire contract may expose (guest_messenger_id, manage_token_hash,
+internal timestamps), which is why jobs consume the same Rows the
+services return.
 
 Ownership is transitive: there is no organizerId on bookings — a
 booking belongs to a slot, the slot to a service, the service to an
-organizer. Every read scopes through the parent chain.
+organizer. Every read scopes through the parent chain, which is why the
+shared shape is the 4-part BookingChain below.
 
-Two audiences, two DTOs: BookingRecord is the organizer's view and
-drops manageToken; GuestBooking is the guest's own booking and keeps
-it, because that token is their link to the management page.
-
-Every live read maps ORM attributes via from_model_* — the raw-SQL
-positional scans (row[i]) were removed with the repository migration,
-so a reordered column can never silently swap fields.
+Every live read maps ORM attributes via from_model_* — a reordered
+column can never silently swap fields.
 """
 
 from __future__ import annotations
@@ -19,9 +22,6 @@ import enum
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
-
-from ..contracts import domain
-from ..contracts import models_gen as gen
 
 if TYPE_CHECKING:
     from ..models.booking import Booking
@@ -95,6 +95,30 @@ class BookingRow:
     guest_messenger_login: str | None = None
     selected_options: list[str] | None = None
     manage_token_expires_at: datetime | None = None
+
+
+@dataclass
+class OutboxRow:
+    """One pending, sent or failed notification job (transactional
+    outbox, ADR-012)."""
+
+    id: str
+    queue: str
+    trace_id: str
+    status: str
+    attempts: int
+    created_at: datetime | None = None
+    sent_at: datetime | None = None
+    # Defaulted: enqueue_outbox_tx builds the payload from the row id
+    # and assigns it right after construction.
+    payload: str = ""
+
+
+# The booking's full ownership chain as detached Rows — booking, slot,
+# service, organizer. Reads that need the wire answer serialize it via
+# db/serializers; notification jobs need exactly this (chat id, manage
+# token, timezone — none of which a wire DTO carries).
+BookingChain = tuple[BookingRow, TimeSlotRow, ServiceRow, OrganizerRow]
 
 
 def _str(value: Any) -> str:
@@ -192,138 +216,4 @@ def from_model_booking(b: Booking) -> BookingRow:
         selected_options=list(b.selected_options) if b.selected_options is not None else None,
         created_at=b.created_at,
         manage_token_expires_at=b.manage_token_expires_at,
-    )
-
-
-# ── DTO mappers ──────────────────────────────────────────────────────────────
-
-
-def _uuid(value: Any) -> str:
-    """Render a uuid column as its canonical string — the wire form of
-    an id. The mappers build records with model_construct (no
-    validation), so this is also where the canonical form is fixed."""
-    return str(value)
-
-
-# model_construct (not model_validate) in every mapper below: the
-# generated UUID fields carry a pattern constraint pydantic-core cannot
-# apply to a UUID schema (TypeError on every construct), and the rows
-# come straight from the database — already canonical.
-
-
-def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
-    return gen.TimeSlotRecord.model_construct(
-        id=_uuid(s.id),
-        serviceId=s.service_id,
-        startsAt=domain.iso_date(s.starts_at),
-        durationMinutes=s.duration_minutes,
-        capacity=s.capacity,
-        bookedCount=s.booked_count,
-        price=s.price,
-        createdAt=domain.iso_date(s.created_at),
-    )
-
-
-def to_service_record(s: ServiceRow) -> gen.ServiceRecord:
-    return gen.ServiceRecord.model_construct(
-        id=s.id,
-        organizerId=_uuid(s.organizer_id),
-        title=s.title,
-        description=s.description,
-        photoUrl=s.photo_url,
-        location=s.location,
-        contact=s.contact,
-        defaultPrice=s.default_price,
-        defaultCapacity=s.default_capacity,
-        defaultDurationMinutes=s.default_duration_minutes,
-        maxSeatsPerBooking=s.max_seats_per_booking,
-        options=s.options,
-        optionsSelectMode=s.options_select_mode,
-        createdAt=domain.iso_date(s.created_at),
-    )
-
-
-def to_public_organizer(o: OrganizerRow) -> gen.PublicOrganizer:
-    return gen.PublicOrganizer.model_construct(
-        id=_uuid(o.id),
-        slug=o.slug,
-        name=o.name,
-        timezone=o.timezone,
-        description=o.description,
-        photoUrl=o.photo_url,
-        location=o.location,
-        contact=o.contact,
-        isDemo=domain.is_demo_organizer_id(o.id),
-    )
-
-
-def to_organizer_profile(o: OrganizerRow, is_demo: bool) -> gen.OrganizerProfile:
-    # Language clamped to the supported set (a stale column value must
-    # not break rendering).
-    language = o.language if domain.is_app_locale(o.language) else domain.DEFAULT_LOCALE
-    return gen.OrganizerProfile.model_construct(
-        id=_uuid(o.id),
-        slug=o.slug,
-        name=o.name,
-        messenger=o.messenger,
-        messengerId=o.messenger_id,
-        timezone=o.timezone,
-        description=o.description,
-        photoUrl=o.photo_url,
-        location=o.location,
-        contact=o.contact,
-        language=language,
-        createdAt=domain.iso_date(o.created_at),
-        isDemo=is_demo,
-    )
-
-
-def to_booking_record(b: BookingRow) -> gen.BookingRecord:
-    return gen.BookingRecord.model_construct(
-        id=_uuid(b.id),
-        timeSlotId=_uuid(b.time_slot_id),
-        status=b.status,
-        seats=b.seats,
-        guestName=b.guest_name,
-        guestMessenger=b.guest_messenger,
-        guestMessengerId=b.guest_messenger_id,
-        guestMessengerLogin=b.guest_messenger_login,
-        selectedOptions=b.selected_options,
-        createdAt=domain.iso_date(b.created_at),
-    )
-
-
-def can_cancel_booking(b: BookingRow, now: datetime | None = None) -> bool:
-    """The guest may still act on this booking: it is confirmed and its
-    manageToken has not expired. None expiry means a legacy row created
-    before the column existed (ADR-020) and stays cancellable, matching
-    the cancel write's check. The guest DTO carries this as canCancel so
-    the management link is only offered while it works."""
-    from datetime import UTC
-    from datetime import datetime as dt
-
-    if b.status != "confirmed":
-        return False
-    if b.manage_token_expires_at is None:
-        return True
-    if now is None:
-        now = dt.now(UTC)
-    return b.manage_token_expires_at > now
-
-
-def to_guest_booking(
-    b: BookingRow, slot: TimeSlotRow, service: ServiceRow, organizer: OrganizerRow
-) -> gen.GuestBooking:
-    return gen.GuestBooking.model_construct(
-        id=_uuid(b.id),
-        status=b.status,
-        seats=b.seats,
-        guestName=b.guest_name,
-        selectedOptions=b.selected_options,
-        createdAt=domain.iso_date(b.created_at),
-        manageToken=b.manage_token,
-        canCancel=can_cancel_booking(b),
-        slot=to_time_slot_record(slot),
-        service=to_service_record(service),
-        organizer=to_public_organizer(organizer),
     )

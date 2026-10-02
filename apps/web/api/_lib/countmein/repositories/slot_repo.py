@@ -15,9 +15,14 @@ from ..models.time_slot import TimeSlot
 
 
 async def list_by_organizer(
-    session: AsyncSession, organizer_id: str, upcoming_only: bool = False
+    session: AsyncSession,
+    organizer_id: str,
+    upcoming_only: bool = False,
+    until_time: datetime | None = None,
 ) -> list[TimeSlot]:
-    """Slots across all of the organizer's services (cabinet list)."""
+    """Slots across all of the organizer's services (cabinet list).
+    `until_time` bounds the upper end — the rolling horizon the caller
+    applies so a schedule years deep cannot stream unbounded rows."""
     stmt = (
         select(TimeSlot)
         .join(Service, TimeSlot.service_id == Service.id)
@@ -26,6 +31,8 @@ async def list_by_organizer(
     )
     if upcoming_only:
         stmt = stmt.where(TimeSlot.starts_at >= func.now())
+    if until_time is not None:
+        stmt = stmt.where(TimeSlot.starts_at <= until_time)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -41,8 +48,12 @@ async def list_upcoming_by_services(
     session: AsyncSession,
     service_ids: list[str],
     from_time: datetime,
+    until_time: datetime | None = None,
     limit: int | None = None,
 ) -> list[TimeSlot]:
+    """Upcoming slots across services in [from_time, until_time] —
+    the rolling-horizon window the public reads apply (ADR-023 Phase 2)
+    so a schedule years deep cannot grow the payload unboundedly."""
     if not service_ids:
         return []
     stmt = (
@@ -50,6 +61,8 @@ async def list_upcoming_by_services(
         .where(TimeSlot.service_id.in_(service_ids), TimeSlot.starts_at >= from_time)
         .order_by(TimeSlot.starts_at)
     )
+    if until_time is not None:
+        stmt = stmt.where(TimeSlot.starts_at <= until_time)
     if limit is not None:
         stmt = stmt.limit(limit)
     result = await session.execute(stmt)

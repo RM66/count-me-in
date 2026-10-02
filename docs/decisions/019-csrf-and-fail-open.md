@@ -31,3 +31,18 @@ The limiter's `allow` returns `true` when Redis is unreachable or `REDIS_URL` is
 
 - Both decisions are enforced by absence: no `Origin` parsing in the API's HTTP layer (`countmein/web`; Go `pkg/httpx`, removed), fail-open in `Allow`. Any change to either is a visible diff against this ADR.
 - The limiter's atomicity was fixed as part of this decision: the sliding window is one Lua script, so concurrent requests cannot interleave past the limit.
+
+## Failure Modes & Degradation Matrix (ADR-023 follow-up)
+
+The fail-open decision is unchanged; what changed is **observability** and **who counts against which bucket**. The matrix pins the behavior:
+
+| Condition                         | Behavior                                                                                   | Signal                                                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_URL` unset                 | Fail open — nothing to count against                                                       | none (config absence is not an outage)                                                                                                                                |
+| Redis error during `allow()`      | Fail open                                                                                  | `ratelimit.fail_open` structured event (ERROR in production, WARN elsewhere), throttled per bucket to once per 60s; generic `warn_every` heartbeat stays as catch-all |
+| Redis up, under limit             | Allow, count the hit                                                                       | —                                                                                                                                                                     |
+| Redis up, over limit              | 429 + `Retry-After`                                                                        | —                                                                                                                                                                     |
+| Valid `x-internal-secret`         | Counts against the dedicated `rl:internal-ssr:` bucket (10k/min), not the caller-IP bucket | —                                                                                                                                                                     |
+| Forged/absent `x-internal-secret` | Normal caller-IP bucket                                                                    | —                                                                                                                                                                     |
+
+The internal bucket exists because Next.js SSR shares Vercel egress IPs: a crawler burst would drain the public bucket and 429 every SSR fetch site-wide. It is a bucket, not a bypass — a runaway server-side loop still trips a 429 rather than falling through to Postgres unbounded. The check is the cryptographic `verify_internal_secret`, never mere header presence.

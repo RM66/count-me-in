@@ -22,7 +22,7 @@ from ..contracts.constants_gen import (
     DEMO_SERVICE_POTTERY,
     DEMO_SERVICE_YOGA,
 )
-from .booking_writes import MANAGE_TOKEN_GRACE_PERIOD
+from ..services.booking_service import MANAGE_TOKEN_GRACE_PERIOD
 from .client import sessionmaker
 from .rows import BookingRow, TimeSlotRow
 from .shared import hash_manage_token, new_manage_token

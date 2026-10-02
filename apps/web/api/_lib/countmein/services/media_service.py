@@ -4,6 +4,9 @@ replace/delete: the ownership check (storage.is_own_media_url) validates
 only the organizer's prefix, not uniqueness, so one object can legally
 back the avatar and a cover, or two covers — deleting it while another
 row still serves it would break that row's image.
+
+A leaf query, not a unit of work: the caller (post-commit cleanup)
+manages its own session/connection.
 """
 
 from __future__ import annotations

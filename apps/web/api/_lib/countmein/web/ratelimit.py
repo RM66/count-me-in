@@ -14,12 +14,13 @@ from __future__ import annotations
 
 import os
 import random
+import threading
 import time
 from dataclasses import dataclass
 
 from starlette.requests import Request
 
-from .. import logx
+from .. import config, logx
 
 # KEYS[1] = rate key; ARGV[1] = now (ns), ARGV[2] = window (ns),
 # ARGV[3] = limit, ARGV[4] = unique member.
@@ -46,10 +47,53 @@ return {1, 0}
 
 @dataclass(frozen=True)
 class RateLimitConfig:
-    """At most `limit` requests per `window` seconds per key."""
+    """At most `limit` requests per `window` seconds per key.
+
+    `label` is the bucket's human name (e.g. "rl:public-org:") — it
+    travels with the config so fail-open observability can name the
+    affected bucket even though callers pass per-key ids, not buckets.
+    """
 
     limit: int
     window: float  # seconds
+    label: str = ""
+
+
+# The structured degradation signal (ADR-019): allow() fails open on a
+# Redis outage so traffic keeps flowing, but the outage itself is an
+# incident — `_report_fail_open` emits a dedicated `ratelimit.fail_open`
+# event a log drain can alert on, per bucket and throttled to once per
+# interval. The generic warn_every heartbeat inside allow() stays as
+# the catch-all for logs without a drain.
+_FAIL_OPEN_INTERVAL = 60.0
+_fail_open_last: dict[str, float] = {}
+_fail_open_lock = threading.Lock()
+
+
+def _report_fail_open(bucket: str, err: BaseException) -> None:
+    """Emit the alertable fail-open event for `bucket`, at most once per
+    _FAIL_OPEN_INTERVAL — a sustained outage must not flood the log,
+    but it also must not be silent. ERROR level in production (it is a
+    real incident there), WARN elsewhere (a dev machine without Redis
+    is normal)."""
+    now = time.monotonic()
+    with _fail_open_lock:
+        last = _fail_open_last.get(bucket)
+        if last is not None and now - last < _FAIL_OPEN_INTERVAL:
+            return
+        _fail_open_last[bucket] = now
+    fields: dict[str, object] = {"event": "ratelimit.fail_open", "bucket": bucket}
+    if config.is_production():
+        logx.error(err, fields)
+    else:
+        logx.warn("ratelimit.fail_open", fields)
+
+
+def _reset_for_test() -> None:
+    """Drop the fail-open throttle — test_ratchet's tests must observe a
+    fresh throttle state regardless of which test ran before."""
+    with _fail_open_lock:
+        _fail_open_last.clear()
 
 
 async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
@@ -79,6 +123,7 @@ async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
             "rate limiter unavailable — failing open",
             {"scope": "rate-limit", "error": str(err)},
         )
+        _report_fail_open(cfg.label or key, err)
         return True, 0.0
     if not isinstance(res, (list, tuple)) or len(res) < 2:
         return True, 0.0

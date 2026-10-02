@@ -125,6 +125,13 @@ async def ping() -> None:
         await conn.execute(text("SELECT 1"))
 
 
+def sessionmaker_for(eng: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    """A session factory bound to a specific engine — the request-time
+    factory behind web.deps.get_db_session (the app.state override
+    path) and the test seam."""
+    return async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)
+
+
 def sessionmaker() -> async_sessionmaker[AsyncSession]:
     """ORM session factory bound to the shared engine.
 
@@ -132,11 +139,14 @@ def sessionmaker() -> async_sessionmaker[AsyncSession]:
     update(Model).returning(Model)) — only AsyncSession.execute loads
     model instances; AsyncConnection.execute would return raw column
     tuples. expire_on_commit=False: repositories return detached models
-    that row mappers read after commit without triggering lazy IO."""
+    that row mappers read after commit without triggering lazy IO.
+    Worker entry points (jobs, seed, media cleanup — outside the
+    request lifecycle) own sessions via this factory; request handlers
+    go through web.deps.get_db_session instead."""
     global _sessionmaker, _sessionmaker_engine
     eng = engine()
     if _sessionmaker is None or _sessionmaker_engine is not eng:
-        _sessionmaker = async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)
+        _sessionmaker = sessionmaker_for(eng)
         _sessionmaker_engine = eng
     return _sessionmaker
 

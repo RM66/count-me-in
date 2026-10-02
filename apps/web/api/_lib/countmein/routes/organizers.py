@@ -4,8 +4,9 @@ The handlers lean on the exception hierarchy; the
 shared preamble (rate limit → body → decode → guard) is a set of FastAPI
 dependencies (web/deps.py) declared in the handler signature. The
 merge-patch PUT runs through the shared transactional skeleton
-(routes/mergepatch.apply_merge_patch); the media-ownership invariant is
-enforced inside the db update (db/organizer.update_organizer_profile_tx).
+(routes/mergepatch.apply_merge_patch) on the request's injected session;
+the media-ownership invariant is enforced inside the service update
+(services/organizer_service.update_organizer_profile_tx).
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from typing import Any
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.background import BackgroundTask
+from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
@@ -22,14 +23,8 @@ from .. import storage
 from ..auth.telegram import TICKET_PURPOSE_ORGANIZER
 from ..auth.ticket import peek_ticket
 from ..contracts import models_gen as gen
-from ..db.organizer import (
-    get_organizer_profile,
-    get_organizer_profile_tx,
-    insert_organizer,
-    update_organizer_language,
-    update_organizer_profile_tx,
-)
-from ..db.rows import OrganizerRow, to_organizer_profile
+from ..db.rows import OrganizerRow
+from ..db.serializers import to_organizer_profile
 from ..errors import (
     AccountExists,
     DemoNotSeeded,
@@ -38,6 +33,7 @@ from ..errors import (
     TicketExpired,
     walk_exception_chain,
 )
+from ..services import organizer_service
 from ..validation.decode import (
     decode_create_avatar_upload_input,
     decode_create_service_photo_upload_input,
@@ -51,11 +47,13 @@ from ..web.deps import (
     ValidatedBody,
     cabinet_organizer,
     decoded,
+    get_db_session,
     ip_rate_limit,
     merge_patch_content_type,
     organizer_rate_limit,
 )
 from ..web.guards import require_writable_organizer
+from ..web.revalidate import public_tags, trigger_revalidation
 from .media import cleanup_replaced_media
 from .mergepatch import apply_merge_patch, touched_update
 
@@ -88,7 +86,7 @@ def organizer_writable_state(o: OrganizerRow) -> dict[str, Any]:
 
 
 async def _fetch_profile(session: AsyncSession, organizer_id: str) -> OrganizerRow:
-    row = await get_organizer_profile_tx(session, organizer_id)
+    row = await organizer_service.get_organizer_profile_tx(session, organizer_id)
     if row is None:
         raise OrganizerNotFound()
     return row
@@ -99,7 +97,7 @@ async def _update_profile(
     organizer_id: str,
     update: Any,
 ) -> OrganizerRow:
-    row = await update_organizer_profile_tx(session, organizer_id, update)
+    row = await organizer_service.update_organizer_profile_tx(session, organizer_id, update)
     if row is None:
         raise OrganizerNotFound()
     return row
@@ -115,6 +113,7 @@ async def organizer_register(
     # hammered. IP-keyed bucket keeps that cheap.
     _limited: None = Depends(ip_rate_limit("rl:register:", 10, 3600.0)),
     body: ValidatedBody[gen.RegisterOrganizerInput] = Depends(_register_dep),
+    session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/organizers (ADR-008). The messenger identity comes from
     the auth ticket (validated server-side via the Telegram widget HMAC —
@@ -132,7 +131,7 @@ async def organizer_register(
         raise TicketExpired()
 
     try:
-        registered = await insert_organizer(payload, identity)
+        row = await organizer_service.insert_organizer(session, payload, identity)
     except Exception as err:
         # Unique violations (23505): slug vs messenger identity, told
         # apart by constraint name.
@@ -143,12 +142,24 @@ async def organizer_register(
             raise AccountExists() from err
         raise
 
-    return json_response(201, gen.Registered(organizer=registered)).to_starlette()
+    # RegisteredOrganizer is the wire record — the service returns the
+    # row, the route projects it.
+    registered = gen.RegisteredOrganizer.model_construct(id=row.id, slug=row.slug)
+
+    star = json_response(201, gen.Registered(organizer=registered)).to_starlette()
+    # A new slug appears in the sitemap catalog and gets its own public
+    # page — invalidate both tags after commit (best-effort, ADR-023).
+    star.background = BackgroundTask(
+        trigger_revalidation,
+        public_tags(organizer_slug=row.slug, sitemap=True),
+    )
+    return star
 
 
 async def organizer_me_get(
     request: Request,
     scope: tuple[str, bool] = Depends(cabinet_organizer),
+    session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """GET /api/organizers/me: the organizer this request may view — the
     signed-in organizer, or the demo organizer with isDemo: true for
@@ -157,7 +168,7 @@ async def organizer_me_get(
     re-checks the session independently."""
     organizer_id, is_demo = scope
 
-    row = await get_organizer_profile(organizer_id)
+    row = await organizer_service.get_organizer_profile(session, organizer_id)
     if row is None:
         # For the demo id this means the seed has not been run.
         if is_demo:
@@ -177,18 +188,20 @@ async def organizer_me_put(
     organizer_id: str = Depends(require_writable_organizer),
     _ct: None = Depends(merge_patch_content_type),
     body: ValidatedBody[gen.UpdateOrganizerProfileInput] = Depends(_update_profile_dep),
+    session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """PUT /api/organizers/me. Takes a JSON Merge Patch body
     (RFC 7386/ADR-016): validate the patch, merge into the current state,
     validate the result."""
     try:
         row, current, touched = await apply_merge_patch(
+            session,
             body.raw,
-            fetch=lambda session: _fetch_profile(session, organizer_id),
+            fetch=lambda s: _fetch_profile(s, organizer_id),
             writable_state=organizer_writable_state,
             decode_merged=lambda merged, _touched: decode_merged_organizer_input(merged),
-            update_tx=lambda session, state, touched: _update_profile(
-                session, organizer_id, touched_update(state, touched)
+            update_tx=lambda s, state, touched: _update_profile(
+                s, organizer_id, touched_update(state, touched)
             ),
         )
     except Exception as err:
@@ -201,17 +214,33 @@ async def organizer_me_put(
             raise SlugTaken() from err
         raise
 
-    out = json_response(200, gen.OrganizerEnvelope(organizer=to_organizer_profile(row, False)))
-    star = out.to_starlette()
+    star = json_response(
+        200, gen.OrganizerEnvelope(organizer=to_organizer_profile(row, False))
+    ).to_starlette()
+
+    tasks = [
+        # The public organizer page embeds every touched field — and
+        # when the slug itself moved, the OLD slug's cached page must
+        # go stale too (it now answers 404), plus the sitemap catalog.
+        BackgroundTask(
+            trigger_revalidation,
+            public_tags(
+                organizer_slug=row.slug,
+                sitemap=touched.get("slug", False),
+            )
+            + (public_tags(organizer_slug=current.slug) if current.slug != row.slug else []),
+        )
+    ]
 
     # The replaced avatar object is removed best-effort after the commit
     # (see cleanup_replaced_media) — a storage failure must not fail an
     # already-committed update. The ownership check ran inside the
-    # transaction (db/organizer.update_organizer_profile_tx).
+    # transaction (services/organizer_service.update_organizer_profile_tx).
     if touched.get("photoUrl"):
         old = current.photo_url or ""
         new = row.photo_url or ""
-        star.background = BackgroundTask(cleanup_replaced_media, organizer_id, old, new)
+        tasks.append(BackgroundTask(cleanup_replaced_media, organizer_id, old, new))
+    star.background = BackgroundTasks(tasks)
     return star
 
 
@@ -222,6 +251,7 @@ async def organizer_me_language(
     request: Request,
     organizer_id: str = Depends(require_writable_organizer),
     body: ValidatedBody[gen.UpdateOrganizerLanguageInput] = Depends(_update_language_dep),
+    session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """PATCH /api/organizers/me/language (ADR-011). The language
     switcher's server action calls this to persist the organizer's
@@ -229,7 +259,9 @@ async def organizer_me_language(
     syncs the column so notification jobs render in the right locale.
     An unknown id answers 404 (0 rows affected); demo/anonymous callers
     are refused by require_writable_organizer."""
-    await update_organizer_language(organizer_id, str(body.model.language))
+    await organizer_service.update_organizer_language(
+        session, organizer_id, str(body.model.language)
+    )
     return empty(204).to_starlette()
 
 

@@ -21,7 +21,7 @@ from countmein.auth.telegram import TICKET_PURPOSE_GUEST
 from countmein.auth.ticket import issue_ticket
 from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
 from countmein.contracts.payloads import AuthTicketPayload
-from countmein.db.outbox import OutboxRow
+from countmein.db.rows import OutboxRow
 
 TEST_SECRET = "guards-test-golden-secret"
 BASE = "http://testserver"

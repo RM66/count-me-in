@@ -8,7 +8,7 @@ import asyncio
 
 from .. import logx, storage
 from ..db.client import sessionmaker
-from ..db.media import photo_url_referenced
+from ..services.media_service import photo_url_referenced
 
 # Caps the post-response R2 work — it runs inline after the commit, so
 # it must not hold the function open (maxDuration is 10s in

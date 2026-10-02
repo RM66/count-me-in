@@ -51,6 +51,21 @@ def test_derived_signing_key_golden():
     assert derived_signing_key(TEST_SECRET) == want
 
 
+def test_derived_internal_secret_golden():
+    """Pin the internal-service derivation to the TS twin
+    (src/server/internal-api.ts): HMAC-SHA256 under salt 'countmein',
+    info 'CountMeIn Internal Service Key v1'. If this drifts, the
+    Python API stops accepting x-internal-secret from Next.js — SSR
+    reads fall back to the public rate bucket and the revalidation
+    endpoint answers 401."""
+    from countmein.auth.internal import derived_internal_secret
+
+    assert (
+        derived_internal_secret("test-auth-secret")
+        == "73b1b535eb4ded0b2f67951c5f9baf63b26be71360d8401d8a49d2a24c1dd106"
+    )
+
+
 def test_verify_valid():
     token = mint_test_token(
         TEST_SECRET, "01930000-0000-7000-8000-000000000001", "studio", int(time.time()) + 60

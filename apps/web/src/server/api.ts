@@ -1,6 +1,7 @@
 import { resolveApiOrigin } from '@/server/api-origin'
 import { auth } from '@/server/auth'
 import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
+import { internalSecretHeaders } from '@/server/internal-api'
 
 import 'server-only'
 
@@ -35,6 +36,14 @@ export { resolveApiOrigin }
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const origin = await resolveApiOrigin()
   const reqHeaders = new Headers(init.headers)
+
+  // Server-to-server calls carry the internal secret so they count
+  // against the dedicated SSR rate-limit bucket, not the caller-IP one
+  // (ADR-023 Phase 1). Server actions share Vercel egress IPs with SSR
+  // fetches, so the distinction is "trusted caller", not "which edge".
+  for (const [key, value] of Object.entries(internalSecretHeaders())) {
+    reqHeaders.set(key, value)
+  }
 
   const session = await auth()
   if (session?.user?.id) {

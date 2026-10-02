@@ -24,6 +24,7 @@ import { cache } from 'react'
 import type { z } from 'zod'
 
 import { apiFetch, resolveApiOrigin } from '@/server/api'
+import { internalSecretHeaders } from '@/server/internal-api'
 
 import 'server-only'
 
@@ -78,9 +79,17 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
   // Public catalog reads are unauthenticated and shared: cache them for
   // a short window so generateMetadata + page + OG image share one
   // origin fetch instead of three. Tags allow on-demand invalidation
-  // when an organizer mutates public content.
+  // when an organizer mutates public content. The internal-secret
+  // header marks this as a trusted SSR call, so it counts against the
+  // dedicated server-side rate-limit bucket rather than the shared
+  // public egress-IP one (ADR-023 Phase 1).
+  const headers = new Headers(init.headers)
+  for (const [key, value] of Object.entries(internalSecretHeaders())) {
+    headers.set(key, value)
+  }
   const res = await fetch(`${origin}${path}`, {
     ...init,
+    headers,
     next: { tags, revalidate: revalidateSeconds },
   })
   if (res.status === 404) return null
@@ -145,7 +154,7 @@ export async function getGuestBooking(manageToken: string): Promise<GuestBooking
   const origin = await resolveApiOrigin()
   const res = await fetch(`${origin}/api/bookings/manage-lookup`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...internalSecretHeaders() },
     body: JSON.stringify({ manageToken }),
     cache: 'no-store',
   })

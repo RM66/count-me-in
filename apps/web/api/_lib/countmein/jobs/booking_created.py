@@ -11,7 +11,8 @@ from ..auth import issue_login_link
 from ..contracts import domain
 from ..contracts import models_gen as gen
 from ..contracts.constants_gen import QUEUE_BOOKING_CREATED
-from ..db.booking_reads import get_booking_chain
+from ..db.client import sessionmaker
+from ..services.booking_service import get_booking_chain
 from .env import Env
 from .links import cabinet_slot_path, login_link_url, manage_booking_url
 from .telegram import send_message
@@ -27,7 +28,9 @@ async def handle_booking_created(env: Env, job: gen.BookingCreatedJob, trace_id:
     """Notify one recipient about a fresh booking. PostHog captures from
     the TS handler are not ported (no SDK in the dependency set);
     delivery logging covers the remainder."""
-    chain = await get_booking_chain(str(job.bookingId))
+    # Worker context, not a request — the handler owns its session.
+    async with sessionmaker()() as session:
+        chain = await get_booking_chain(session, str(job.bookingId))
     # Deliberately a fresh read at send time: a job that waited out a
     # retry backoff must render the booking as it is now, not as it was
     # when the transaction committed.

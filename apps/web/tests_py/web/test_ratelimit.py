@@ -79,6 +79,42 @@ def test_client_ip_remote_addr_fallback(clean_env):
     assert client_ip(r) != "", "expected RemoteAddr fallback to be non-empty"
 
 
+async def test_internal_secret_uses_dedicated_bucket(monkeypatch):
+    """ADR-023: a request carrying a valid x-internal-secret is trusted
+    server-side traffic — it counts against the high-capacity internal
+    bucket, not the caller's public IP bucket. The pin: the public
+    bucket is already exhausted, yet the internal request passes; a
+    forged secret gets the normal IP bucket and is refused."""
+    import countmein.redis as redis_mod
+    import fakeredis.aioredis
+    from countmein.auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
+    from countmein.errors import RateLimited
+    from countmein.web.deps import ip_rate_limit
+
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("AUTH_SECRET", "ssr-bypass-test-secret")
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
+    fake = fakeredis.aioredis.FakeRedis()
+    monkeypatch.setattr(redis_mod, "client", lambda: fake)
+
+    dep = ip_rate_limit("rl:pub-test:", limit=2, window=60.0)
+    ip = "198.51.100.77"
+
+    # Exhaust the public bucket for this IP.
+    for _ in range(2):
+        await dep(_request({"x-forwarded-for": ip}))
+    with pytest.raises(RateLimited):
+        await dep(_request({"x-forwarded-for": ip}))
+
+    # The trusted internal request passes — it is not the same bucket.
+    good = derived_internal_secret("ssr-bypass-test-secret")
+    await dep(_request({"x-forwarded-for": ip, INTERNAL_SECRET_HEADER: good}))
+
+    # A forged secret is not trusted: same public bucket, still full.
+    with pytest.raises(RateLimited):
+        await dep(_request({"x-forwarded-for": ip, INTERNAL_SECRET_HEADER: "forged"}))
+
+
 async def test_sliding_window_enforces_limit(monkeypatch):
     """The Lua script against fakeredis: limit 2 per 60s — the third hit
     is refused with a positive retry-after."""

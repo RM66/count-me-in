@@ -33,8 +33,10 @@ from .guards import read_body_or_413, require_guest_identity, require_writable_o
 from .ratelimit import RateLimitConfig, allow, client_ip
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from redis.asyncio import Redis
-    from sqlalchemy.ext.asyncio import AsyncEngine
+    from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 
 def get_db_engine(request: Request) -> AsyncEngine:
@@ -49,6 +51,26 @@ def get_db_engine(request: Request) -> AsyncEngine:
     from ..db.client import engine
 
     return engine()
+
+
+async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
+    """The request-scoped AsyncSession — bound to the request's engine
+    (get_db_engine's override seam) so dependency_overrides and
+    app-state engines both reach it.
+
+    Every handler declares `Depends(get_db_session)` and passes the
+    session into the services layer; a handler NEVER opens its own
+    sessionmaker. FastAPI closes the session after the response; a
+    transaction left open by an exception is rolled back here so the
+    connection returns to the pool clean."""
+    from ..db.client import sessionmaker_for
+
+    async with sessionmaker_for(get_db_engine(request))() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
 
 def get_redis(request: Request) -> Redis:
@@ -106,29 +128,14 @@ def decoded(decoder: Callable[[bytes], Any]) -> Callable[..., Any]:
     return dep
 
 
-def rate_limit(key: Callable[[Request], str], limit: int, window: float) -> Callable[..., Any]:
-    """Dependency factory: enforce a sliding-window bucket keyed by
-    `key(request)` (IP, organizer id, …). Raises RateLimited (429 with
-    Retry-After) when exhausted; fails open on a Redis outage (ADR-019)."""
-
-    async def dep(request: Request) -> None:
-        allowed_flag, retry_after = await allow(
-            key(request), RateLimitConfig(limit=limit, window=window)
-        )
-        if not allowed_flag:
-            raise RateLimited(math.ceil(retry_after))
-
-    dep.__countmein_stage__ = _STAGE_RATE_LIMIT  # type: ignore[attr-defined]
-    return dep
-
-
 def organizer_rate_limit(prefix: str, limit: int, window: float) -> Callable[..., Any]:
     """Dependency factory: a bucket keyed by the signed-in organizer's
     id — runs after (and therefore only for) a writable organizer."""
 
     async def dep(organizer_id: str = Depends(require_writable_organizer)) -> None:
         allowed_flag, retry_after = await allow(
-            prefix + organizer_id, RateLimitConfig(limit=limit, window=window)
+            prefix + organizer_id,
+            RateLimitConfig(limit=limit, window=window, label=prefix),
         )
         if not allowed_flag:
             raise RateLimited(math.ceil(retry_after))
@@ -137,9 +144,42 @@ def organizer_rate_limit(prefix: str, limit: int, window: float) -> Callable[...
     return dep
 
 
+# The dedicated bucket for trusted server-side calls. The Next.js BFF's
+# SSR fetches share Vercel's egress IPs: a crawler burst would drain the
+# caller-sized public bucket and 429 every SSR fetch site-wide
+# (ADR-023). A request carrying a valid x-internal-secret is not a
+# browser — it counts against this high-capacity bucket instead. The
+# bucket is still real (a runaway server-side loop trips a 429 rather
+# than falling through to Postgres unbounded), and a forged or absent
+# secret gets the normal IP bucket: the check is cryptographic, not
+# header-presence.
+_INTERNAL_SSR_KEY = "rl:internal-ssr:"
+_INTERNAL_SSR_CFG = RateLimitConfig(limit=10_000, window=60.0, label=_INTERNAL_SSR_KEY)
+
+
 def ip_rate_limit(prefix: str, limit: int, window: float) -> Callable[..., Any]:
-    """Dependency factory: a bucket keyed by the caller's IP."""
-    return rate_limit(lambda request: prefix + client_ip(request), limit, window)
+    """Dependency factory: a bucket keyed by the caller's IP — except
+    trusted server-side calls (valid x-internal-secret), which count
+    against the dedicated internal bucket above. Raises RateLimited
+    (429 with Retry-After) when exhausted; fails open on a Redis
+    outage (ADR-019)."""
+
+    async def dep(request: Request) -> None:
+        from ..auth.internal import INTERNAL_SECRET_HEADER, verify_internal_secret
+
+        if verify_internal_secret(request.headers.get(INTERNAL_SECRET_HEADER)):
+            key, cfg = _INTERNAL_SSR_KEY, _INTERNAL_SSR_CFG
+        else:
+            key, cfg = (
+                prefix + client_ip(request),
+                RateLimitConfig(limit=limit, window=window, label=prefix),
+            )
+        allowed_flag, retry_after = await allow(key, cfg)
+        if not allowed_flag:
+            raise RateLimited(math.ceil(retry_after))
+
+    dep.__countmein_stage__ = _STAGE_RATE_LIMIT  # type: ignore[attr-defined]
+    return dep
 
 
 def merge_patch_content_type(request: Request) -> None:
@@ -205,6 +245,17 @@ def session_organizer(request: Request) -> str:
     from ..auth.session import session_organizer_id
 
     return session_organizer_id(request)
+
+
+def session_slug(request: Request) -> str:
+    """The signed-in organizer's slug claim, "" when anonymous — the
+    public-cache tag half a mutation invalidates (ADR-023). Guards that
+    require an organizer still declare require_writable_organizer; this
+    dependency only reads the claim."""
+    from ..auth.session import session_from_request
+
+    session = session_from_request(request)
+    return session.slug if session is not None else ""
 
 
 def require_internal_secret(request: Request) -> None:

@@ -97,9 +97,13 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
 
 /**
  * Match the auth pages (redirect) and the API-owned routes (header
- * minting). The Auth.js routes (`/api/auth/*`) stay on Next.js and need no
- * organizer-auth header — they are excluded so the middleware does not
- * run on them.
+ * minting). Two /api subtrees stay on Next.js and are excluded:
+ *
+ * - `/api/auth/*` — the Auth.js routes need no organizer-auth header.
+ * - `/api/internal/revalidate` — the Python→Next.js cache-invalidation
+ *   route (ADR-023 Phase 3). The middleware would rewrite it to API_URL
+ *   in the container twin (a Python 404 loop) and mint an organizer
+ *   header it must not carry; it authenticates by x-internal-secret.
  *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
@@ -108,5 +112,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
  * `resolveCabinetOrganizerId()`, and writes are guarded in the API layer.
  */
 export const config = {
-  matcher: ['/login', '/signup', '/api/((?!auth/).*)'],
+  matcher: ['/login', '/signup', '/api/((?!auth/|internal/revalidate).*)'],
 }

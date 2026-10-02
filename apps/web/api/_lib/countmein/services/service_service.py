@@ -1,7 +1,8 @@
-"""Server-side reads, writes and DTO mapping for services. Every write
-is owner-scoped: organizer_id sits in the WHERE clause rather than
-being checked by a preceding SELECT, so a foreign id matches no row and
-there is no read-then-write gap to exploit.
+"""Service service — the cabinet's service CRUD.
+
+Every write is owner-scoped: organizer_id sits in the WHERE clause
+rather than being checked by a preceding SELECT, so a foreign id matches
+no row and there is no read-then-write gap to exploit.
 """
 
 from __future__ import annotations
@@ -12,37 +13,42 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import storage
 from ..contracts import models_gen as gen
+from ..db.rows import ServiceRow, from_model_service
+from ..db.shared import TouchedUpdate, is_foreign_key_violation, new_service_id
 from ..demo import refuse_demo_write
 from ..errors import NothingToUpdate, PhotoPrefix, ServiceHasBookings
 from ..repositories import service_repo
-from .client import sessionmaker
-from .rows import ServiceRow, from_model_service
-from .shared import TouchedUpdate, is_foreign_key_violation, new_service_id
 
 
-async def list_services(organizer_id: str) -> list[ServiceRow]:
+async def list_services(session: AsyncSession, organizer_id: str) -> list[ServiceRow]:
     """All services of an organizer, oldest first."""
-    async with sessionmaker()() as session:
+    async with session.begin():
         models = await service_repo.list_by_organizer(session, organizer_id)
-        return [from_model_service(m) for m in models]
+    return [from_model_service(m) for m in models]
 
 
-async def get_owned_service(organizer_id: str, service_id: str) -> ServiceRow | None:
+async def get_owned_service(
+    session: AsyncSession, organizer_id: str, service_id: str
+) -> ServiceRow | None:
     """None when the id does not exist *or* belongs to someone else, so
     callers cannot leak another organizer's service by guessing ids.
     Ownership sits in the WHERE clause like every sibling query."""
-    async with sessionmaker()() as session:
+    async with session.begin():
         return await get_owned_service_tx(session, organizer_id, service_id)
 
 
 async def get_owned_service_tx(
     session: AsyncSession, organizer_id: str, service_id: str
 ) -> ServiceRow | None:
+    """The caller's-transaction variant — the merge-patch skeleton reads
+    and writes on one tx."""
     model = await service_repo.get_owned_service(session, organizer_id, service_id)
     return from_model_service(model) if model is not None else None
 
 
-async def create_service(organizer_id: str, payload: gen.CreateServiceInput) -> ServiceRow | None:
+async def create_service(
+    session: AsyncSession, organizer_id: str, payload: gen.CreateServiceInput
+) -> ServiceRow | None:
     """The owner always comes from the session, never the payload;
     optional columns are normalized to null. The media-ownership
     invariant lives here — a photoUrl must stay under this organizer's
@@ -57,7 +63,7 @@ async def create_service(organizer_id: str, payload: gen.CreateServiceInput) -> 
     options = None
     if payload.options is not None:
         options = [o for o in payload.options]
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         model = await service_repo.create_service(
             session,
             {
@@ -76,7 +82,7 @@ async def create_service(organizer_id: str, payload: gen.CreateServiceInput) -> 
                 "options_select_mode": mode,
             },
         )
-        return from_model_service(model)
+    return from_model_service(model)
 
 
 async def update_owned_service_tx(
@@ -91,7 +97,7 @@ async def update_owned_service_tx(
     on one merge-patch transaction.
 
     Defense in depth: routes already refuse the demo account via
-    require_writable_organizer — a direct db call must not write it
+    require_writable_organizer — a direct service call must not write it
     either. The media-ownership invariant lives here too — a touched
     photoUrl must stay under this organizer's media prefix, checked
     inside the transaction before any column is written."""
@@ -136,7 +142,9 @@ async def update_owned_service_tx(
     return from_model_service(model) if model is not None else None
 
 
-async def delete_owned_service(organizer_id: str, service_id: str) -> tuple[str, str | None] | None:
+async def delete_owned_service(
+    session: AsyncSession, organizer_id: str, service_id: str
+) -> tuple[str, str | None] | None:
     """Refuse to delete a service whose slots are referenced by any
     booking row. Slots cascade on the services FK, but bookings hold
     their slots with ON DELETE RESTRICT, so the cascade stops at the
@@ -148,7 +156,7 @@ async def delete_owned_service(organizer_id: str, service_id: str) -> tuple[str,
     handlers) — a separate read-then-delete would race with a
     concurrent PUT pointing the row at a new cover."""
     refuse_demo_write(organizer_id)
-    async with sessionmaker()() as session, session.begin():
+    async with session.begin():
         # Lock the service row so the check sees a stable parent: FOR
         # UPDATE serializes against a concurrent service delete, not
         # against a concurrent booking INSERT (bookings lock the slot

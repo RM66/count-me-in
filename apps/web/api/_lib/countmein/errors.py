@@ -342,8 +342,8 @@ class PhotoPrefix(ApiError):
 
 class CannotCreateService(ApiError):
     """Structurally unreachable empty INSERT … RETURNING (500) — kept
-    as defensive parity with the TS check, where drizzle's .returning()
-    could yield an empty array."""
+    as a defensive backstop: pg_insert().returning() either errors or
+    returns the row, but a silent empty result must never 201."""
 
     status = 500
     key = "cannotCreateService"

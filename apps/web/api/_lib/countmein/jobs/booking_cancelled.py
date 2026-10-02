@@ -10,7 +10,8 @@ from ..auth import issue_login_link
 from ..contracts import domain
 from ..contracts import models_gen as gen
 from ..contracts.constants_gen import QUEUE_BOOKING_CANCELLED
-from ..db.booking_reads import get_booking_chain
+from ..db.client import sessionmaker
+from ..services.booking_service import get_booking_chain
 from .env import Env
 from .links import cabinet_slot_path, login_link_url, organizer_page_url
 from .telegram import send_message
@@ -23,7 +24,9 @@ from .templates import (
 
 
 async def handle_booking_cancelled(env: Env, job: gen.BookingCancelledJob, trace_id: str) -> None:
-    chain = await get_booking_chain(str(job.bookingId))
+    # Worker context, not a request — the handler owns its session.
+    async with sessionmaker()() as session:
+        chain = await get_booking_chain(session, str(job.bookingId))
     if chain is None:
         fields = {"queue": QUEUE_BOOKING_CANCELLED, "bookingId": str(job.bookingId)}
         if trace_id != "":
