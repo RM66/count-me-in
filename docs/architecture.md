@@ -9,7 +9,7 @@ High-level system design for CountMeIn. Product domain in [domain.md](domain.md)
 | Landing           | `apps/web`     | Prospects  | Marketing, organizer sign-up                                                                                                               |
 | Public booking    | `apps/web`     | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book                                                                                |
 | Organizer cabinet | `apps/web`     | Organizers | Services, slots, bookings, profile — opened from messenger links                                                                           |
-| API               | `apps/web/api` | Clients    | HTTP API (a single Python ASGI Vercel Function); Auth.js `[...nextauth]` stays in Next.js ([ADR-021](decisions/021-api-python-rewrite.md)) |
+| API               | `apps/web/api` | Clients    | HTTP API (a single Python ASGI Vercel Function); two TS handlers stay in Next.js — Auth.js `[...nextauth]` and `/api/internal/revalidate` ([ADR-021](decisions/021-api-python-rewrite.md)) |
 | Jobs              | `apps/web/api` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                          |
 
 **MVP entry for organizers:** register via Telegram Login Widget → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
@@ -93,7 +93,8 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 | ------------------- | ---------------------------- | --------------------------------------- |
 | `booking.created`   | `{ bookingId, recipient }`   | **Two** — one per recipient             |
 | `booking.cancelled` | `{ bookingId, cancelledBy }` | One — counterparty only                 |
-| `demo.refresh`      | —                            | Scheduled daily (`seedDemo()`, ADR-010) |
+| `demo.refresh`                | —                            | Scheduled daily (`seed_demo()`, ADR-010)          |
+| `notification.outbox.sweep`   | —                            | Scheduled sweeper — re-publishes `pending` outbox rows past grace, retires `failed`, prunes `sent` |
 
 **One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — the handler refetches at send time, so `manageToken` and login tokens never leave the database boundary. Contracts in `packages/contracts/src/jobs.ts`.
 
@@ -131,13 +132,13 @@ Two tools, one job each — Sentry for errors and performance, PostHog for produ
 
 | Tool        | Scope                                                                      | Where it runs                                                                     |
 | ----------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload | `apps/web` (client + server via `instrumentation.ts` + `sentry.client.config.ts`) |
+| **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload | `apps/web` (client + server via `instrumentation.ts` + `instrumentation-client.ts`) |
 | **PostHog** | Page views, funnels, feature flags, session replay                         | `apps/web` (browser via `lib/posthog.ts`)                                         |
 
 ### Sentry
 
 - **Server init:** [`apps/web/src/instrumentation.ts`](../apps/web/src/instrumentation.ts) — `src/`-root Next.js convention (like `proxy.ts`); do not move. No-op without `SENTRY_DSN`.
-- **Client init:** [`apps/web/sentry.client.config.ts`](../apps/web/sentry.client.config.ts) — loaded automatically by `@sentry/nextjs` in the browser bundle.
+- **Client init:** [`apps/web/src/instrumentation-client.ts`](../apps/web/src/instrumentation-client.ts) — the Next 16 convention (Turbopack ignores a root `sentry.client.config.ts`); no-op without DSN.
 - **Error boundaries:** [`apps/web/src/app/error.tsx`](../apps/web/src/app/error.tsx) and [`apps/web/src/app/global-error.tsx`](../apps/web/src/app/global-error.tsx) call `Sentry.captureException`. The global boundary catches root-layout errors the regular boundary cannot.
 - **Job dispatch:** [`apps/web/api/_lib/countmein/jobs/run.py`](../apps/web/api/_lib/countmein/jobs/run.py) captures unretriable failures (recipient unreachable); handler errors bubble to the route's `500`, captured by Vercel log drains via `logx`. The publisher captures its own failures inline.
 - **Source maps:** `withSentryConfig` in [`apps/web/next.config.js`](../apps/web/next.config.js) uploads source maps during CI builds when `SENTRY_AUTH_TOKEN` is set.

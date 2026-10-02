@@ -21,7 +21,7 @@ Target audience and product framing: see [README.md](README.md) — organizers o
 - **Jobs:** Upstash QStash — `apps/web` publishes after commit, `POST /api/jobs/{queue}` consumes ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links in messages
 - **Observability:** PostHog, Sentry (web); structured JSON stdout logs (`countmein/logx.py`) in the Python API
-- **API:** `apps/web/api` — a single Python 3.12 FastAPI (ASGI) Vercel Function: `api/index.py` exports the app from `api/_lib/countmein/app.py`; the TS route handlers have been deleted, `auth/[...nextauth]` stays in Next.js permanently ([ADR-021](docs/decisions/021-api-python-rewrite.md), amends [ADR-016](docs/decisions/016-standard-openapi-codegen.md)). `apps/web/` is the Vercel project root (single project for web + Python API, so env vars are configured once).
+- **API:** `apps/web/api` — a single Python 3.12 FastAPI (ASGI) Vercel Function: `api/index.py` exports the app from `api/_lib/countmein/app.py`; the TS route handlers have been deleted except two permanent Next.js keepers: `auth/[...nextauth]` (Auth.js) and `app/api/internal/revalidate` (`revalidateTag` is a Next.js runtime primitive) ([ADR-021](docs/decisions/021-api-python-rewrite.md), amends [ADR-016](docs/decisions/016-standard-openapi-codegen.md)). `apps/web/` is the Vercel project root (single project for web + Python API, so env vars are configured once).
 
 No separate organizer native app in MVP — [ADR-006](docs/decisions/006-organizer-capacitor.md). WebSockets out of MVP — [ADR-003](docs/decisions/003-no-websocket-mvp.md).
 
@@ -34,14 +34,16 @@ apps/
       app/             # App Router: pages, layouts, route handlers
       components/      # React components (shadcn/ui + app components)
       hooks/           # React hooks (shadcn-owned alias `@/hooks`)
-      server/          # server-only: api-client (reads), auth, demo (import 'server-only')
+      server/          # server-only: api-client (reads), auth, demo, internal-api, redis (import 'server-only')
       api-client/      # client-only React Query layer — the browser end of the wire
-      helpers/         # pure presentation utilities (date, name, contact)
-      constants/       # static data tables (timezones, site)
-      lib/             # cross-cutting singletons: posthog.ts, og/, utils.ts (cn)
+      helpers/         # pure presentation utilities (date, name, contact, location)
+      constants/       # static data tables (timezones, languages, site)
+      i18n/            # next-intl request config + locale actions
+      lib/             # cross-cutting singletons: posthog.ts, og/, seo.ts, utils.ts (cn)
       types/           # TypeScript utility types
       proxy.ts         # Auth.js v5 middleware — src/ root, do not move
-      instrumentation.ts # Sentry server-side init
+      instrumentation.ts        # Sentry server-side init
+      instrumentation-client.ts # Sentry client init (Next 16 convention; replaces sentry.client.config.ts)
     public/            # Static assets
     pyproject.toml / uv.lock / requirements.txt / .python-version  # uv-managed Python deps; requirements.txt is the Vercel install input
     vercel.json        # function maxDuration config + rewrites routing /api/* to the single Python entry (api/index.py)
@@ -62,13 +64,14 @@ docs/
 
 **`apps/web/src/` structure — the data wire is the load-bearing seam:**
 
-- `server/` — **server-only** code; every module carries `import 'server-only'`. Reads go over HTTP to the Python API via `server/api-client.ts` (`api.ts` mints `X-Organizer-Auth`, `internal-api.ts` serves Auth.js); `server/db/` is deleted — Next.js has zero direct Postgres access. The write side (route handlers, guards, QStash, storage, jobs) lives in the Python API.
-  - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`, `login-link.ts`
+- `server/` — **server-only** code; every module carries `import 'server-only'`. Reads go over HTTP to the Python API via `server/api-client.ts` (`api.ts` mints `X-Organizer-Auth`, `internal-api.ts` holds the `x-internal-secret` service credential, `api-origin.ts` resolves the API base URL, `redis.ts` the session-side client); `server/db/` is deleted — Next.js has zero direct Postgres access. The write side (route handlers, guards, QStash, storage, jobs) lives in the Python API.
+  - `auth/` — Auth.js config (`index.ts`), signup tickets (`ticket.ts`), `telegram-provider.ts`, `login-link.ts`, `organizer-token.ts` (the `X-Organizer-Auth` minter)
   - `demo.ts` — cabinet organizer resolution: `resolveCabinetOrganizerId()` (whose data to show) and `isDemoSession()`. Write-side demo guards live in the Python API.
-- `api-client/` — **client-only** React Query layer, one file per entity (`organizer.ts`, `service.ts`, `auth.ts`), each holding queries _and_ mutations. `keys.ts` is the cache-key factory, `client.ts` the fetch helpers, `image.ts` browser-side downscaling. Import via `@/api-client`. The browser end of the wire.
-- `helpers/` — pure presentation utilities: formatting and adapters (`date.ts`, `name.ts`, `contact.ts`).
-- `constants/` — static data tables (`timezones.ts`, `site.ts`).
-- `lib/` — cross-cutting singletons that don't fit a semantic bucket: `posthog.ts` (analytics), `og/` (OpenGraph image assets), `utils.ts` (`cn()`). **`utils.ts` is shadcn-owned:** path is the `utils` alias in `components.json`. Do not add non-shadcn helpers here.
+- `api-client/` — **client-only** React Query layer, one file per entity (`organizer.ts`, `service.ts`, `time-slot.ts`, `booking.ts`, `auth.ts`), each holding queries _and_ mutations. `keys.ts` is the cache-key factory, `client.ts` the fetch helpers, `contract.ts`/`error.ts` wire-schema parsing and error classification, `image.ts` browser-side downscaling. Import via `@/api-client`. The browser end of the wire.
+- `helpers/` — pure presentation utilities: formatting and adapters (`date.ts`, `name.ts`, `contact.ts`, `location.ts`).
+- `constants/` — static data tables (`timezones.ts`, `languages.ts`, `site.ts`).
+- `i18n/` — next-intl wiring: `request.ts` (request config), `actions.ts` (locale cookie), `global.d.ts` (`IntlMessages` augmentation).
+- `lib/` — cross-cutting singletons that don't fit a semantic bucket: `posthog.ts` (analytics), `og/` (OpenGraph image assets), `seo.ts` (metadata helpers), `utils.ts` (`cn()`). **`utils.ts` is shadcn-owned:** path is the `utils` alias in `components.json`. Do not add non-shadcn helpers here.
 
 **No `lib/domain/`** — deleted as dead code. Entity invariants live in `packages/contracts` when both client and server need them. Slot calculations (`seatsLeft`, `fillLabel`, `slotEnd`, `slotPrice`) and location/contact override (`effectiveLocation`, `effectiveContact`) live in `@repo/contracts`. Never add a new app-local rules layer — see [ADR-001](docs/decisions/001-monorepo-layout.md).
 
@@ -80,7 +83,7 @@ docs/
 
 **Naming rule — `service` is ambiguous.** The server layer is called `server/`, not `services/`, and server reads live in `server/api-client.ts`. Never reintroduce `services/` **in `src/`** — the rule is scoped to Next.js code; the Python API legitimately has `api/_lib/countmein/services/` (the application layer between routes and repositories, ADR-023).
 
-**`api-client/` vs the Python API** — two ends of one wire. `api-client/` is the browser client (React Query). The Python API (`apps/web/api/_lib/countmein`) holds the server handlers; `app/api/auth/[...nextauth]/route.ts` is the only TS route handler left (Auth.js). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
+**`api-client/` vs the Python API** — two ends of one wire. `api-client/` is the browser client (React Query). The Python API (`apps/web/api/_lib/countmein`) holds the server handlers; the only TS route handlers left are `app/api/auth/[...nextauth]/route.ts` (Auth.js) and `app/api/internal/revalidate/route.ts` (Data Cache invalidation — `revalidateTag` is a Next.js primitive; the Python API POSTs tags there after committed writes). They never import each other — contract is HTTP + Zod schemas in `packages/contracts`.
 
 **What belongs in `helpers/`:** a _rendering_ — turns a value into something displayable (`detectContactKind`, `formatDate`). A static table is `constants/`. A _rule_ traceable to [domain.md](docs/domain.md) goes in the layer that enforces it or in `packages/contracts`.
 
@@ -100,7 +103,7 @@ bun run test:py      # the Python API suite (pytest) — a separate, mandatory c
 bun run test:watch   # watch mode (vitest)
 ```
 
-Per-package: `cd <package> && bun run test`. In `apps/web`: `bun run test:web` (Vitest only) or `bun run test:py` (pytest only); `bun run lint:py` runs ruff + mypy.
+Per-package: `cd <package> && bun run test`. In `apps/web`: `bun run test:web` (Vitest only), `bun run test:py` (pytest only), `bun run test:e2e` (Playwright; three smoke specs in `e2e/` — spins up both dev servers itself, needs docker Postgres + Redis and a migrated schema); `bun run lint:py` runs ruff + mypy.
 
 `bun run test` deliberately does **not** include pytest: the Python suite needs real Postgres/Redis (integration tests fail hard in CI without them), so it runs as its own command and its own CI job (`python-api`), not inside the generic turbo `test` pipeline.
 
@@ -133,7 +136,7 @@ Per-package: `cd <package> && bun run test`. In `apps/web`: `bun run test:web` (
 - **QStash deliveries arrive at `POST /api/jobs/{queue}`** (Python: `apps/web/api/_lib/countmein/routes/jobs.py`, routed via the single entry + `vercel.json` rewrite): verify `upstash-signature` before anything else; `500` makes QStash retry, `400`/`404` do not, and dispatch lives in `apps/web/api/_lib/countmein/jobs/run.py`.
 - **Organizer deep links are one-time login links.** The notification job mints `{ organizerId, next }` into Redis (`issueLoginLink` in `src/server/auth/login-link.ts`) and links to `/login/link/{token}`, consumed on **`POST`** (never `GET` — previewers fetch URLs before a human clicks). Single-use, `noindex`, demo id refused.
 - A Telegram bot may only message users who pressed **Start**: unreachable recipient (`403`, `chat not found`) completes the delivery with a log instead of retrying — only `429`/`5xx`/network are retried.
-- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in the Python API, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers. The Next.js guest page reads it via the server API client (`src/server/api-client.ts`) but never generates it. **Every credential check goes through the SHA-256 hash** (`manage_token_hash`, unique): `hash_manage_token` in `countmein/db/shared.py`, `hashManageToken` in `@repo/contracts/manage-token` (server-only subpath export — never import it from client code), pinned by a parity vector test on both sides. The raw column stays for the `booking.created` deep-link and re-issue flows only ([ADR-020](docs/decisions/020-manage-token-hash.md)). Tokens expire at slot start + 24h grace (`manage_token_expires_at`; legacy rows backfilled by migration `0014`). Expired tokens are refused on read and on cancel alike; the guest DTO carries `canCancel` (the shared rule: `can_cancel_booking` in the API, `canCancelBooking` in `@repo/contracts`) so the history stays listed but the dead link is not offered — the guest list must never drop rows.
+- `manageToken` is the guest's credential for `/booking/{manageToken}`: generated server-side in the Python API, returned only in `GuestBooking` DTO, passed in **request body** on cancel to stay out of logs and `Referer` headers. The Next.js guest page reads it via the server API client (`src/server/api-client.ts`) but never generates it. **Every credential check goes through the SHA-256 hash** (`manage_token_hash`, unique): `hash_manage_token` in `countmein/db/shared.py`, `hashManageToken` in `@repo/contracts/manage-token` (server-only subpath export — never import it from client code), pinned by a parity vector test on both sides. The raw column stays for the `booking.created` deep-link and re-issue flows only ([ADR-020](docs/decisions/020-manage-token-hash.md)). Tokens expire at slot start + 24h grace (`manage_token_expires_at`; in the Alembic baseline since schema ownership moved from Drizzle). Expired tokens are refused on read and on cancel alike; the guest DTO carries `canCancel` (the shared rule: `can_cancel_booking` in the API, `canCancelBooking` in `@repo/contracts`) so the history stays listed but the dead link is not offered — the guest list must never drop rows.
 - **Replaced/deleted media is cleaned up best-effort after the commit** (`cleanup_replaced_media` in `countmein/routes` → `storage.delete_replaced_media`): the old R2 object is deleted only if it is the organizer's own media, no `organizers`/`services` row references it (`db.photo_url_referenced` — prefix check, not uniqueness), and old/new URLs resolve to different keys (a cache-buster query string is the same object). Runs as a background task after the response is sent, on a 3s timeout; failures are logged, never fail the request. Orphaned uploads (never saved) are out of scope.
 - **Health & security headers:** `/api/healthz` is mounted in `countmein/app.py` outside the OpenAPI spec and needs its `vercel.json` rewrite (pinned by `test_healthz_rewrite`); the probe recovers its own panics (missing connection env → JSON 503 naming the variables) and is IP-rate-limited. `config.validate` fails the production cold start on missing connection/QStash/Telegram vars and on a malformed `APP_URL`; `STRICT_ENV=1` opts any non-production environment into the same validation. `TRUST_PROXY_HEADERS=1` opts a non-Vercel topology into honoring `X-Forwarded-For` (`client_ip`); without it (and outside Vercel) forwarding headers are ignored so a spoofed IP cannot rotate rate-limit keys. CSP is assembled in `next.config.js` from env (R2/PostHog/Sentry origins, telegram.org script, oauth.telegram.org frame); `script-src` carries `'unsafe-eval'` because the Telegram widget evals `data-onauth` — the long-term fix is the OAuth-redirect flow. CSRF stance: no Origin check, minted-header + SameSite is the defense; rate limiter fails open ([ADR-018](docs/decisions/018-cors-same-origin.md), [ADR-019](docs/decisions/019-csrf-and-fail-open.md)); runtime strategy in [ADR-017](docs/decisions/017-runtime-strategy.md), superseded on the API side by [ADR-021](docs/decisions/021-api-python-rewrite.md).
 - **i18n (ADR-011):** locale = cookie `NEXT_LOCALE` → `Accept-Language` → `en`, never in URL. Supported set: `LOCALES` (`packages/contracts/src/i18n.ts`); copy in `packages/translations` (`messages/` web, `notifications/` job handlers, `api-errors/` route error copy; en defines the shape). Server `getTranslations`, client `useTranslations`; no hardcoded user-visible strings — ESLint rule `countmein/no-untranslated-strings` enforces it. API errors: the Python route handlers translate via the generated `api-errors` copy (error classes keep EN messages for logs); api-client fallbacks are named English constants (documented as such), the display site translates server copy. Job-handler responses carry no body (QStash reads status codes). Notifications: organizer `organizers.language`, guest `bookings.guest_locale`. Times always in the organizer's timezone.

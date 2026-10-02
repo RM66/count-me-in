@@ -37,7 +37,7 @@ square, longest edge 512 px, re-encoded as WebP (quality 0.85). That lands at
 ~30–60 KB — a 50–100× reduction — pushing the same bucket past ~200 000 uploads
 and making object cleanup unnecessary for the foreseeable future.
 
-Implemented in `apps/web/lib/api/image.ts` via `createImageBitmap` +
+Implemented in `apps/web/src/api-client/image.ts` via `createImageBitmap` +
 `OffscreenCanvas`; constants live in `packages/contracts` (`storage.ts`) so
 client and server agree. Resizing must happen **before** the signed URL is
 issued, since the signature commits to an exact `Content-Type` and

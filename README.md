@@ -47,7 +47,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Notifications:** messengers primary (Telegram first); cabinet deep links
 - **Observability:** PostHog, Sentry
 
-Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md).
+Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md), plain-language overview (RU): [`HUMANS.md`](HUMANS.md).
 
 ## Develop
 
@@ -94,7 +94,7 @@ bun run test:py       # the Python API suite (pytest) — a separate, mandatory 
 bun run test:watch    # watch mode (vitest)
 ```
 
-In `apps/web`: `bun run test:web` (Vitest) or `bun run test:py` (pytest).
+In `apps/web`: `bun run test:web` (Vitest), `bun run test:py` (pytest), `bun run test:e2e` (Playwright — three smoke specs in `e2e/` covering the guest booking round-trip, the cabinet create flow, and demo read-only; boots both dev servers itself, needs docker Postgres + Redis and a migrated schema). `bun run lint:py` runs ruff + mypy on the API.
 
 Coverage spans Zod schemas and slot/timezone logic (`packages/contracts`), helpers, API client, React hooks and components, and the Python API (`apps/web/api/_lib` + `tests_py`).
 

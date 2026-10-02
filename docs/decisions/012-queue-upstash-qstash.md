@@ -30,7 +30,7 @@ Replace pg-boss + `apps/worker` with **Upstash QStash**; dissolve the worker's c
 
 **2026-09-22 — transactional outbox completed.** The outbox table existed since migration `0009` but the inline publish never marked rows `sent`, so the sweeper re-published every notification (duplicates), and rows past the retry budget stayed `pending` forever, clogging the sweeper batch. Now:
 
-- `EnqueueOutbox` returns the row; the booking/cancel transactions return their outbox rows to the route handler, which publishes each and calls `MarkOutboxSent` on success (best-effort, in its own context).
+- `enqueue_outbox` returns the row; the booking/cancel transactions return their outbox rows to the route handler, which publishes each and calls `mark_outbox_sent` on success (best-effort, in its own context).
 - Every publish sends `Upstash-Deduplication-Id = <outbox row id>` — the inline path, the sweeper and QStash retries converge on one delivery per row.
 - Rows past `outboxMaxAttempts` move to the terminal `failed` status (migration `0011_outbox_failed_status`); they no longer match the sweeper's `pending` filter, so they cannot block the batch.
 - `sent` rows older than 7 days are deleted by the sweeper (retention), keeping the table bounded.

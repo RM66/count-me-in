@@ -19,6 +19,7 @@ erDiagram
     string messenger
     string messengerId UK
     string timezone
+    string language
     string description_md "optional"
     string photoUrl "optional"
     string location "optional"
@@ -36,6 +37,7 @@ erDiagram
     string defaultPrice
     int defaultCapacity
     int defaultDurationMinutes
+    int maxSeatsPerBooking
     string_array options "optional"
     enum optionsSelectMode "single|multi"
     datetime createdAt
@@ -60,7 +62,10 @@ erDiagram
     string guestMessenger
     string guestMessengerId
     string guestMessengerLogin "optional"
+    string guestLocale
     string manageToken
+    string manageTokenHash
+    datetime manageTokenExpiresAt
     string_array selectedOptions "optional"
     datetime createdAt
   }
@@ -95,6 +100,7 @@ Auth.js account (`id` is sole PK). Login identity is messenger account ([ADR-008
 | `messenger`   | yes      | Auth/notification channel (`telegram` in MVP)            |
 | `messengerId` | yes      | Stable messenger user id; unique with `messenger`        |
 | `timezone`    | yes      | IANA tz (e.g. `Europe/Belgrade`); all slots in this zone |
+| `language`    | yes      | Notification/UI locale (default `en`) — [ADR-011](decisions/011-i18n.md) |
 | `description` | no       | Markdown for public page                                 |
 | `photoUrl`    | no       | Avatar (object storage)                                  |
 | `location`    | no       | Display address; default for services                    |
@@ -118,6 +124,7 @@ Bookable offering owned by an organizer.
 | `defaultPrice`           | yes                | **Display text** (e.g. `1500 UAH`) — not a payment amount |
 | `defaultCapacity`        | yes                | Template for new slots                                    |
 | `defaultDurationMinutes` | yes                | Template for new slots (minutes; `> 0`)                   |
+| `maxSeatsPerBooking`     | yes                | Cap on `Booking.seats` per booking (server default `1`)   |
 | `options`                | no                 | Variation labels as plain strings (`text[]`)              |
 | `optionsSelectMode`      | when `options` set | `single` or `multi`                                       |
 | `createdAt`              | yes                | UTC timestamp                                             |
@@ -157,7 +164,9 @@ Reservation on a slot by a guest (no Auth.js account). Guest identified by messe
 | `guestMessenger`      | yes      | Messenger enum (`telegram` in MVP)                                                                                                                                                                           |
 | `guestMessengerId`    | yes      | Stable messenger user id; indexed with `guestMessenger` for "my bookings"                                                                                                                                    |
 | `guestMessengerLogin` | no       | Human-readable handle (e.g. @username)                                                                                                                                                                       |
+| `guestLocale`         | yes      | UI locale at booking time — notifications go in this language (default `en`)                                                                                                                                  |
 | `manageToken`         | yes      | Opaque secret in messenger deep link; raw value stored for deep-link re-issue, **every credential check goes through the SHA-256 hash** (`manage_token_hash`, [ADR-020](decisions/020-manage-token-hash.md)) |
+| `manageTokenExpiresAt`| yes      | Slot start + 24h grace; expired tokens are refused on read and cancel (the row stays listed — `canCancel` on the DTO marks it dead)                                                                            |
 | `selectedOptions`     | no       | String values from `Service.options` (`text[]`; null when no options)                                                                                                                                        |
 | `status`              | yes      | Lifecycle                                                                                                                                                                                                    |
 | `createdAt`           | yes      | UTC timestamp                                                                                                                                                                                                |
@@ -180,7 +189,7 @@ MVP flow: guest authenticates **before** booking row exists (short-lived ticket;
 1. **Capacity:** for every slot, sum of `seats` over `confirmed` bookings equals `bookedCount`, and `bookedCount <= capacity`.
 2. **Atomic reserve:** seats claimed with **single conditional statement** — `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` — inside booking transaction. `Booking` inserted only if statement affected a row. Never read `bookedCount`, check in JS, then write back.
 3. **Public access:** visitors read/book only via organizer `slug`; no organizer dashboard APIs.
-4. **One active booking per guest per slot:** a guest may hold at most one `confirmed` booking on a given slot. Enforced by a partial unique index `bookings_one_active_per_guest_per_slot` on `(timeSlotId, guestMessenger, guestMessengerId) WHERE status = 'confirmed'`, so a guest who cancels and re-books is not blocked. The second `INSERT` raises a `23505` that `createGuestBooking` maps to a `DuplicateBookingError` (`409`).
+4. **One active booking per guest per slot:** a guest may hold at most one `confirmed` booking on a given slot. Enforced by a partial unique index `bookings_one_active_per_guest_per_slot` on `(timeSlotId, guestMessenger, guestMessengerId) WHERE status = 'confirmed'`, so a guest who cancels and re-books is not blocked. The second `INSERT` raises a `23505` that `create_guest_booking` maps to a `DuplicateBooking` (`409`).
 5. **Transitive ownership:** there is no `organizerId` on bookings — a booking belongs to a slot, the slot to a service, the service to an organizer. Every read scopes through the parent chain; unknown id and foreign id are answered identically.
 6. **Options validity:** every `selectedOptions` entry must be in the service's `options`; count respects `optionsSelectMode` (`single` = at most one). The pair (`options`, `optionsSelectMode`) is always patched together.
 7. **Demo read-only ([ADR-010](decisions/010-demo-organizer-account.md)):** the demo organizer id and anonymous cabinet visitors are refused on **every** write path (guest booking/cancel included), never sent notifications.

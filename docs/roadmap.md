@@ -6,8 +6,8 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 ## MVP
 
-- Turborepo: `apps/web`, packages (`db`, `contracts`, `translations`, `eslint-config`, `typescript-config`).
-- `apps/web`: landing + public booking + **organizer cabinet** + HTTP API + job handlers.
+- Turborepo: `apps/web`, packages (`contracts`, `translations`, `eslint-config`, `typescript-config`) — `@repo/db` was dissolved when Alembic took schema ownership ([ADR-022](decisions/022-backend-refactoring-plan.md)).
+- `apps/web`: landing + public booking + **organizer cabinet** (services, slots, week calendar, bookings, analytics) + HTTP API + job handlers.
 - Organizer flow: messenger login widget → notifications → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
 - Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
@@ -34,9 +34,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Reminder jobs; more messenger providers.
 - Optional Capacitor organizer shell if web-in-messenger insufficient ([ADR-006](decisions/006-organizer-capacitor.md)).
 - Image variants / CDN resize if needed (browser-side downscaling already in MVP — [ADR-007](decisions/007-cloudflare-r2.md)).
-- Cleanup of superseded R2 objects on avatar change (deferred: versioned keys + small objects).
 - Waitlist / notify-on-free-seat; realtime capacity if demand justifies.
-- Occupancy analytics dashboard: fill-rate heatmap by hour/day, per service/slot.
 - Localized routes + hreflang when non-English organic search matters: locales currently share one URL via cookie/header negotiation ([ADR-011](decisions/011-i18n.md)), so only the English rendering is indexable. Trigger to revisit: meaningful non-EN search traffic.
 
 ## Phase 3+
