@@ -20,10 +20,13 @@ from ..models.service import Service
 from ..models.time_slot import TimeSlot
 
 
-async def list_by_organizer(session: AsyncSession, organizer_id: str) -> list[Service]:
-    result = await session.execute(
-        select(Service).where(Service.organizer_id == organizer_id).order_by(Service.created_at)
-    )
+async def list_by_organizer(
+    session: AsyncSession, organizer_id: str, limit: int | None = None
+) -> list[Service]:
+    stmt = select(Service).where(Service.organizer_id == organizer_id).order_by(Service.created_at)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
 
 
@@ -47,7 +50,8 @@ async def get_service_with_organizer(
     row = result.first()
     if row is None:
         return None
-    return (row[0], row[1])
+    service, organizer = row
+    return (service, organizer)
 
 
 async def list_public_service_paths(session: AsyncSession) -> list[tuple[str, str]]:

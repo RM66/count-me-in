@@ -23,6 +23,14 @@ from ..repositories import organizer_repo, service_repo, slot_repo
 from ..web.deps import ip_rate_limit
 from ..web.response import json_response
 
+# Defensive bounds on the public envelopes: there is no pagination, so a
+# runaway organizer (hundreds of services x thousands of upcoming slots)
+# must not turn one page render into an unbounded query and a multi-MB
+# payload. The caps sit far above any realistic catalog; past them the
+# view truncates rather than fails.
+_PUBLIC_SERVICES_LIMIT = 200
+_PUBLIC_SLOTS_LIMIT = 500
+
 
 async def get_public_organizer(
     request: Request,
@@ -36,10 +44,14 @@ async def get_public_organizer(
         if organizer is None:
             raise OrganizerNotFound()
 
-        services = await service_repo.list_by_organizer(session, str(organizer.id))
+        services = await service_repo.list_by_organizer(
+            session, str(organizer.id), limit=_PUBLIC_SERVICES_LIMIT
+        )
         service_ids = [str(s.id) for s in services]
         slots = (
-            await slot_repo.list_upcoming_by_services(session, service_ids, datetime.now(UTC))
+            await slot_repo.list_upcoming_by_services(
+                session, service_ids, datetime.now(UTC), limit=_PUBLIC_SLOTS_LIMIT
+            )
             if service_ids
             else []
         )
@@ -66,7 +78,7 @@ async def get_public_service(
         service_model, organizer_model = models
 
         slots = await slot_repo.list_upcoming_by_services(
-            session, [str(service_model.id)], datetime.now(UTC)
+            session, [str(service_model.id)], datetime.now(UTC), limit=_PUBLIC_SLOTS_LIMIT
         )
 
         view = gen.PublicServiceViewEnvelope(

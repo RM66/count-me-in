@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from uuid import UUID
-
 from fastapi import Depends
 from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
@@ -41,11 +39,14 @@ async def organizer_by_messenger(
         if organizer is None:
             raise OrganizerNotFound()
 
-        org_id = organizer.id if isinstance(organizer.id, UUID) else UUID(str(organizer.id))
-        record = gen.InternalOrganizerRecord(
-            id=org_id,
+        # model_construct, like the db/rows mappers: the generated UUID
+        # field carries a pattern constraint Pydantic cannot apply to a
+        # coerced UUID, so the validating constructor raises TypeError.
+        record = gen.InternalOrganizerRecord.model_construct(
+            id=str(organizer.id),
             name=str(organizer.name),
             slug=str(organizer.slug),
             photoUrl=organizer.photo_url,
         )
-        return json_response(200, gen.InternalOrganizerEnvelope(organizer=record)).to_starlette()
+        envelope = gen.InternalOrganizerEnvelope.model_construct(organizer=record)
+        return json_response(200, envelope).to_starlette()

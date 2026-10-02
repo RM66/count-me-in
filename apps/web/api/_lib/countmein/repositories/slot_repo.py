@@ -38,15 +38,21 @@ async def list_by_service(session: AsyncSession, service_id: str) -> list[TimeSl
 
 
 async def list_upcoming_by_services(
-    session: AsyncSession, service_ids: list[str], from_time: datetime
+    session: AsyncSession,
+    service_ids: list[str],
+    from_time: datetime,
+    limit: int | None = None,
 ) -> list[TimeSlot]:
     if not service_ids:
         return []
-    result = await session.execute(
+    stmt = (
         select(TimeSlot)
         .where(TimeSlot.service_id.in_(service_ids), TimeSlot.starts_at >= from_time)
         .order_by(TimeSlot.starts_at)
     )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
 
 

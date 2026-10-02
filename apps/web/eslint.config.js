@@ -37,4 +37,42 @@ export default [
       ],
     },
   },
+  {
+    // Architectural guard (backend refactoring, plan 022): src/ has ZERO
+    // direct Postgres access — every server read goes through
+    // src/server/api-client.ts over HTTP to the Python API. Forbid DB
+    // driver imports so the seam cannot silently re-open.
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'pg',
+              message:
+                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+            {
+              name: 'postgres',
+              message:
+                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+            {
+              name: 'drizzle-orm',
+              message:
+                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['drizzle-orm/*', '@repo/db', '@repo/db/*', '**/server/db/**'],
+              message:
+                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]
