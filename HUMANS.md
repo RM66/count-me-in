@@ -208,7 +208,7 @@ CI при каждом пуше в master.
 **Локально:**
 
 ```sh
-bun install && uv sync          # JS + Python зависимости
+bun run setup                   # зависимости (bun + uv) + .env и симлинк apps/web/.env, если их нет
 docker compose up postgres redis
 bun run db:migrate:py           # alembic upgrade head
 bun run db:seed:demo            # засеять /demo

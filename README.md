@@ -52,8 +52,7 @@ Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md)
 ## Develop
 
 ```sh
-bun install
-cp .env.example .env          # DB + Redis connection strings
+bun run setup                 # deps (bun + uv) + .env from .env.example + apps/web/.env symlink
 docker compose up -d          # full stack: Postgres + Redis + API + web
 bun run dev                   # host dev servers (Next :3000 + API :3001)
 ```
@@ -65,7 +64,7 @@ reaches the API at `API_URL` (explicit `API_URL` wins over same-origin
 even with `NODE_ENV=production`). Vercel serverless stays the
 production web path; containers are the local/AWS twin.
 
-Package manager: **Bun** (see `.vscode/settings.json`); Python toolchain managed by **uv** — run `uv sync` in `apps/web` once after cloning (the local API dev server is uvicorn via `bun run dev:api:py`).
+Package manager: **Bun** (see `.vscode/settings.json`); Python toolchain managed by **uv** — `bun run setup` runs `uv sync` in `apps/web` for you (the local API dev server is uvicorn via `bun run dev:api:py`). Env vars live in the repo-root `.env`; `apps/web/.env` is a symlink to it (Next.js only reads env files from its own directory) — `setup` creates both if missing.
 
 ### Database
 

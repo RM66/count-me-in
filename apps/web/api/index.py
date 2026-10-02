@@ -41,8 +41,12 @@ def _load_dot_env(path: str) -> None:
 if os.environ.get("VERCEL", "") == "":
     # Resolve from the module location, not cwd: uvicorn may be started
     # from any directory; apps/web (the parent of api/) is the project
-    # root that owns .env.
-    _load_dot_env(os.path.join(os.path.dirname(__file__), "..", ".env"))
+    # root that owns .env. The monorepo root .env is a fallback — today
+    # apps/web/.env is a symlink to it, but the symlink is gitignored and
+    # absent on a fresh clone.
+    _dir = os.path.dirname(__file__)
+    _load_dot_env(os.path.join(_dir, "..", ".env"))
+    _load_dot_env(os.path.join(_dir, "..", "..", "..", ".env"))
 
 # Vercel's runtime imports this entrypoint by absolute path and does NOT
 # put its directory on sys.path (unlike `uvicorn --app-dir api` locally),

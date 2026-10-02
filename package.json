@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "setup": "bun install && uv sync --directory apps/web && bun run setup:env",
+    "setup:env": "([ -f .env ] || cp .env.example .env) && ([ -e apps/web/.env ] || ln -s ../../.env apps/web/.env)",
+    "predev": "bun run setup:env",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

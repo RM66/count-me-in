@@ -76,7 +76,7 @@ def _load_dot_env(path: str) -> None:
 # vars, so the closer file wins.
 _base_dir = os.path.dirname(os.path.abspath(__file__))
 _load_dot_env(os.path.join(_base_dir, "..", ".env"))
-_load_dot_env(os.path.join(_base_dir, "..", "..", ".env"))
+_load_dot_env(os.path.join(_base_dir, "..", "..", "..", ".env"))
 
 _LIBPQ_OPTIONS = frozenset(
     {
