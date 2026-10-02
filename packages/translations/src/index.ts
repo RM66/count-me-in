@@ -1,6 +1,14 @@
 import type { AppLocale } from '@repo/contracts'
 import { DEFAULT_LOCALE } from '@repo/contracts'
 
+import apiErrorsAr from '../api-errors/ar.json'
+import apiErrorsDe from '../api-errors/de.json'
+import apiErrorsEn from '../api-errors/en.json'
+import apiErrorsEs from '../api-errors/es.json'
+import apiErrorsFr from '../api-errors/fr.json'
+import apiErrorsJa from '../api-errors/ja.json'
+import apiErrorsPt from '../api-errors/pt.json'
+import apiErrorsRu from '../api-errors/ru.json'
 import messagesAr from '../messages/ar.json'
 import messagesDe from '../messages/de.json'
 import messagesEn from '../messages/en.json'
@@ -25,15 +33,20 @@ import notificationsRu from '../notifications/ru.json'
  * through the same `@repo/*` seam as the contracts, and adding a language is a
  * change in one package, not in two apps.
  *
- * Two surfaces, two dictionaries:
+ * Three surfaces, three dictionaries:
  *
  * - {@link WEB_MESSAGES} — the web UI (`apps/web`), namespaced by page and
  *   consumed through next-intl's `useTranslations` / `getTranslations`. The
  *   web's `IntlMessages` global is declared from {@link WebMessages}.
- * - {@link NOTIFICATION_MESSAGES} — the Telegram notifications (the QStash
- *   job handlers), consumed through `createTranslator<NotificationMessages>`.
+ * - {@link NOTIFICATION_MESSAGES} — the Telegram notification corpus for the
+ *   Python API's QStash job handlers. It reaches Python through
+ *   `scripts/generate-i18n-py.ts` → `i18n/translations_gen.py`; on the TS side
+ *   it exists for the parity tests.
+ * - {@link API_ERROR_MESSAGES} — route error copy, likewise consumed by the
+ *   Python API via `translations_gen.py` (`API_ERRORS`). Kept out of
+ *   `WEB_MESSAGES` so server-only copy never ships to the browser.
  *
- * English is the source of truth for the *shape* of both: every translated
+ * English is the source of truth for the *shape* of all three: every translated
  * message mirrors an `en` key, enforced by parity tests. TypeScript infers JSON module
  * types with literal keys, which is what makes `t('...')` calls and the
  * `IntlMessages` augmentation type-safe without a code generator.
@@ -45,24 +58,35 @@ import notificationsRu from '../notifications/ru.json'
 
 export const WEB_MESSAGES = {
   en: messagesEn,
-  ru: messagesRu,
-  es: messagesEs,
   de: messagesDe,
-  ja: messagesJa,
+  es: messagesEs,
   fr: messagesFr,
   pt: messagesPt,
+  ru: messagesRu,
   ar: messagesAr,
+  ja: messagesJa,
 } as const satisfies Record<AppLocale, unknown>
 
 export const NOTIFICATION_MESSAGES = {
   en: notificationsEn,
-  ru: notificationsRu,
-  es: notificationsEs,
   de: notificationsDe,
-  ja: notificationsJa,
+  es: notificationsEs,
   fr: notificationsFr,
   pt: notificationsPt,
+  ru: notificationsRu,
   ar: notificationsAr,
+  ja: notificationsJa,
+} as const satisfies Record<AppLocale, unknown>
+
+export const API_ERROR_MESSAGES = {
+  en: apiErrorsEn,
+  de: apiErrorsDe,
+  es: apiErrorsEs,
+  fr: apiErrorsFr,
+  pt: apiErrorsPt,
+  ru: apiErrorsRu,
+  ar: apiErrorsAr,
+  ja: apiErrorsJa,
 } as const satisfies Record<AppLocale, unknown>
 
 /** The web UI message shape shared by every locale; English keys are the source of truth. */
@@ -70,3 +94,6 @@ export type WebMessages = (typeof WEB_MESSAGES)[typeof DEFAULT_LOCALE]
 
 /** The notification message shape shared by every locale; English keys are the source of truth. */
 export type NotificationMessages = (typeof NOTIFICATION_MESSAGES)[typeof DEFAULT_LOCALE]
+
+/** The API error message shape shared by every locale; English keys are the source of truth. */
+export type ApiErrorMessages = (typeof API_ERROR_MESSAGES)[typeof DEFAULT_LOCALE]

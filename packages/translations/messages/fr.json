@@ -67,8 +67,7 @@
     "errPartyTooLarge": "Tu peux réserver au maximum {maxSeats, plural, =1 {# place} other {# places}} en une seule réservation",
     "errDuplicate": "Tu as déjà une réservation pour cette séance",
     "errGone": "Cette séance n’est plus disponible",
-    "errInvalidOptions": "Les options sélectionnées ne sont pas valides pour cette activité",
-    "errAlreadyCancelled": "Cette réservation a déjà été annulée"
+    "errInvalidOptions": "Les options sélectionnées ne sont pas valides pour cette activité"
   },
   "SuccessStep": {
     "confirmedNote": "Ta place est réservée. Notre bot t’enverra une confirmation dans ta messagerie.",
@@ -419,15 +418,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Consentement aux cookies",
-    "text": "Nous utilisons des cookies d’analyse pour comprendre l’utilisation de CountMeIn et l’améliorer. ",
-    "essential": "Les cookies essentiels à la connexion et à la réservation sont toujours actifs. ",
+    "text": "Nous utilisons des cookies d’analyse pour comprendre l’utilisation de CountMeIn et l’améliorer.",
+    "essential": "Les cookies essentiels à la connexion et à la réservation sont toujours actifs.",
     "privacyPolicy": "Politique de confidentialité",
     "reject": "Refuser",
     "accept": "Accepter"
   },
   "Ui": {
     "close": "Fermer",
-    "navigation": "Navigation",
     "loading": "Chargement",
     "more": "Plus",
     "sidebar": "Barre latérale",
@@ -526,8 +524,7 @@
       "changeDay": "Filtré sur {day}. Changer de jour",
       "filterByDay": "Filtrer {entity} par jour",
       "showEveryBooking": "Afficher toutes les réservations",
-      "showEveryService": "Afficher toutes les activités",
-      "showEverySlot": "Afficher tous les créneaux"
+      "showEveryService": "Afficher toutes les activités"
     },
     "demoBanner": {
       "readOnly": "Démo en lecture seule.",
@@ -683,8 +680,6 @@
       "createFailed": "Impossible de créer l’activité",
       "updateFailed": "Impossible de mettre à jour l’activité",
       "deleteFailed": "Impossible de supprimer l’activité",
-      "notFound": "Activité introuvable",
-      "backToList": "Retour aux activités",
       "pricePlaceholder": "12 €",
       "editSubtitle": "Modifie les détails et les options de l’activité."
     },
@@ -776,39 +771,5 @@
       "full": "Complet",
       "left": "Encore {count}"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Saisie invalide",
-    "invalidOptions": "Les options sélectionnées ne sont pas valides pour cette activité",
-    "ticketExpired": "Ta confirmation Telegram a expiré — authentifie-toi de nouveau",
-    "unauthorizedInternal": "Secret de service interne invalide ou manquant",
-    "telegramNotConfigured": "Le bot Telegram n’est pas configuré",
-    "telegramInvalid": "Données d’authentification Telegram invalides",
-    "telegramValidationFailed": "Échec de la validation de l’authentification Telegram",
-    "organizerNotFound": "Compte organisateur introuvable",
-    "demoNotSeeded": "Le compte de démonstration n’est pas initialisé",
-    "serviceNotFound": "Activité introuvable",
-    "slotNotFound": "Créneau introuvable",
-    "bookingNotFound": "Réservation introuvable",
-    "photoPrefix": "photoUrl invalide : l’image doit appartenir à ton espace média",
-    "cannotCreateService": "Impossible de créer l’activité",
-    "slugTaken": "Cet identifiant est déjà pris — choisis-en un autre",
-    "accountExists": "Un compte associé à cette identité Telegram existe déjà — connecte-toi plutôt",
-    "nothingToUpdate": "Aucun champ à mettre à jour",
-    "unsupportedMediaType": "Ce point de terminaison n'accepte que application/merge-patch+json (RFC 7386)",
-    "notFound": "Introuvable",
-    "methodNotAllowed": "Méthode non autorisée",
-    "capacityBelowBooked": "La capacité ne peut pas être inférieure au nombre de places déjà réservées : {count, plural, =1 {# place} other {# places}}",
-    "demoReadOnly": "Ce compte de démonstration est en lecture seule — inscris-toi pour créer tes propres activités réservables.",
-    "soldOut": "Cette séance est complète",
-    "seatsLeftOnSession": "Il ne reste que {count, plural, =1 {# place} other {# places}} pour cette séance",
-    "partyTooLarge": "Tu peux réserver au maximum {maxSeats, plural, =1 {# place} other {# places}} en une seule réservation",
-    "duplicateBooking": "Tu as déjà une réservation pour cette séance",
-    "alreadyCancelled": "Cette réservation a déjà été annulée",
-    "slotGone": "Cette séance n’est plus disponible",
-    "tooManyRequests": "Trop de requêtes — réessayez dans un instant",
-    "slotHasActiveBookings": "Cette séance a des réservations et ne peut pas être supprimée",
-    "serviceHasBookings": "Ce service a des réservations dans ses séances et ne peut pas être supprimé",
-    "bodyTooLarge": "Le corps de la requête est trop volumineux"
   }
 }

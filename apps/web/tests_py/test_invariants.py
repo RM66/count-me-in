@@ -334,7 +334,7 @@ def test_cold_import_stays_lean():
 
 
 def test_api_errors_are_localized():
-    """Invariant: API error copy is localized per request (ApiErrors
+    """Invariant: API error copy is localized per request (api-errors
     dictionaries); error classes keep EN messages for logs."""
     _assert_test_exists("tests_py.web.test_errors", "test_booking_error_response_localized")
     _assert_test_exists("tests_py.i18n.test_i18n", "test_every_locale_has_api_errors")

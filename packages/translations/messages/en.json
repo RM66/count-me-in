@@ -67,8 +67,7 @@
     "errPartyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
     "errDuplicate": "You already have a booking for this session",
     "errGone": "This session is no longer available",
-    "errInvalidOptions": "Selected options are not valid for this service",
-    "errAlreadyCancelled": "This booking has already been cancelled"
+    "errInvalidOptions": "Selected options are not valid for this service"
   },
   "SuccessStep": {
     "confirmedNote": "Your seat is booked. A confirmation will arrive in your messenger from our bot.",
@@ -419,15 +418,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Cookie consent",
-    "text": "We use analytics cookies to understand how CountMeIn is used and improve it. ",
-    "essential": "Essential cookies for sign-in and booking are always on. ",
+    "text": "We use analytics cookies to understand how CountMeIn is used and improve it.",
+    "essential": "Essential cookies for sign-in and booking are always on.",
     "privacyPolicy": "Privacy Policy",
     "reject": "Reject",
     "accept": "Accept"
   },
   "Ui": {
     "close": "Close",
-    "navigation": "Navigation",
     "loading": "Loading",
     "more": "More",
     "sidebar": "Sidebar",
@@ -526,8 +524,7 @@
       "changeDay": "Filtering by {day}. Change day",
       "filterByDay": "Filter {entity} by day",
       "showEveryBooking": "Show every booking",
-      "showEveryService": "Show every service",
-      "showEverySlot": "Show every slot"
+      "showEveryService": "Show every service"
     },
     "demoBanner": {
       "readOnly": "Read-only demo.",
@@ -683,8 +680,6 @@
       "createFailed": "Failed to create the service",
       "updateFailed": "Failed to update the service",
       "deleteFailed": "Failed to delete the service",
-      "notFound": "Service not found",
-      "backToList": "Back to services",
       "pricePlaceholder": "$12",
       "editSubtitle": "Edit service details and options."
     },
@@ -776,39 +771,5 @@
       "full": "Full",
       "left": "{count} left"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Invalid input",
-    "invalidOptions": "Selected options are not valid for this service",
-    "ticketExpired": "Your Telegram confirmation expired — authenticate again",
-    "unauthorizedInternal": "Invalid or missing internal service secret",
-    "telegramNotConfigured": "Telegram bot not configured",
-    "telegramInvalid": "Invalid Telegram auth data",
-    "telegramValidationFailed": "Telegram auth validation failed",
-    "organizerNotFound": "Organizer not found",
-    "demoNotSeeded": "Demo organizer is not seeded",
-    "serviceNotFound": "Service not found",
-    "slotNotFound": "Slot not found",
-    "bookingNotFound": "Booking not found",
-    "photoPrefix": "Invalid photoUrl: must belong to your media prefix",
-    "cannotCreateService": "Could not create the service",
-    "slugTaken": "This handle is already taken — pick another one",
-    "accountExists": "An account with this Telegram identity already exists — log in instead",
-    "nothingToUpdate": "No fields to update",
-    "unsupportedMediaType": "This endpoint accepts only application/merge-patch+json (RFC 7386)",
-    "notFound": "Not found",
-    "methodNotAllowed": "Method not allowed",
-    "capacityBelowBooked": "Capacity cannot be lower than the {count, plural, =1 {# seat} other {# seats}} already booked",
-    "demoReadOnly": "This is a read-only demo account — sign up to create your own bookable services.",
-    "soldOut": "This session is fully booked",
-    "seatsLeftOnSession": "Only {count, plural, =1 {# seat} other {# seats}} left on this session",
-    "partyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
-    "duplicateBooking": "You already have a booking for this session",
-    "alreadyCancelled": "This booking has already been cancelled",
-    "slotGone": "This session is no longer available",
-    "tooManyRequests": "Too many requests — please try again in a moment",
-    "slotHasActiveBookings": "This session has bookings and cannot be deleted",
-    "serviceHasBookings": "This service has bookings in its sessions and cannot be deleted",
-    "bodyTooLarge": "The request body is too large"
   }
 }

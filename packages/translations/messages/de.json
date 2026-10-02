@@ -67,8 +67,7 @@
     "errPartyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
     "errDuplicate": "Du hast für diesen Termin bereits eine Buchung",
     "errGone": "Dieser Termin ist nicht mehr verfügbar",
-    "errInvalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
-    "errAlreadyCancelled": "Diese Buchung wurde bereits storniert"
+    "errInvalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig"
   },
   "SuccessStep": {
     "confirmedNote": "Dein Platz ist gebucht. Unser Bot sendet dir eine Bestätigung in deinem Messenger.",
@@ -419,15 +418,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Cookie-Einwilligung",
-    "text": "Wir verwenden Analyse-Cookies, um zu verstehen, wie CountMeIn genutzt wird, und um den Dienst zu verbessern. ",
-    "essential": "Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv. ",
+    "text": "Wir verwenden Analyse-Cookies, um zu verstehen, wie CountMeIn genutzt wird, und um den Dienst zu verbessern.",
+    "essential": "Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv.",
     "privacyPolicy": "Datenschutzerklärung",
     "reject": "Ablehnen",
     "accept": "Akzeptieren"
   },
   "Ui": {
     "close": "Schließen",
-    "navigation": "Navigation",
     "loading": "Wird geladen",
     "more": "Mehr",
     "sidebar": "Seitenleiste",
@@ -526,8 +524,7 @@
       "changeDay": "Nach {day} gefiltert. Tag ändern",
       "filterByDay": "{entity} nach Tag filtern",
       "showEveryBooking": "Alle Buchungen anzeigen",
-      "showEveryService": "Alle Angebote anzeigen",
-      "showEverySlot": "Alle Termine anzeigen"
+      "showEveryService": "Alle Angebote anzeigen"
     },
     "demoBanner": {
       "readOnly": "Schreibgeschützte Demo.",
@@ -683,8 +680,6 @@
       "createFailed": "Das Angebot konnte nicht erstellt werden",
       "updateFailed": "Das Angebot konnte nicht aktualisiert werden",
       "deleteFailed": "Das Angebot konnte nicht gelöscht werden",
-      "notFound": "Angebot nicht gefunden",
-      "backToList": "Zurück zu den Angeboten",
       "pricePlaceholder": "$12",
       "editSubtitle": "Details und Optionen des Angebots bearbeiten."
     },
@@ -776,39 +771,5 @@
       "full": "Ausgebucht",
       "left": "Noch {count}"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Ungültige Eingabe",
-    "invalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
-    "ticketExpired": "Deine Telegram-Bestätigung ist abgelaufen — authentifiziere dich erneut",
-    "unauthorizedInternal": "Ungültiges oder fehlendes internes Service-Geheimnis",
-    "telegramNotConfigured": "Der Telegram-Bot ist nicht eingerichtet",
-    "telegramInvalid": "Ungültige Telegram-Authentifizierungsdaten",
-    "telegramValidationFailed": "Die Telegram-Authentifizierung konnte nicht validiert werden",
-    "organizerNotFound": "Veranstalter nicht gefunden",
-    "demoNotSeeded": "Der Demo-Veranstalter wurde nicht angelegt",
-    "serviceNotFound": "Angebot nicht gefunden",
-    "slotNotFound": "Termin nicht gefunden",
-    "bookingNotFound": "Buchung nicht gefunden",
-    "photoPrefix": "Ungültige photoUrl: Die URL muss zu deinem Medienpräfix gehören",
-    "cannotCreateService": "Das Angebot konnte nicht erstellt werden",
-    "slugTaken": "Dieser öffentliche Kurzname ist bereits vergeben — wähle einen anderen",
-    "accountExists": "Für diese Telegram-Identität besteht bereits ein Konto — melde dich stattdessen an",
-    "nothingToUpdate": "Keine Felder zum Aktualisieren",
-    "unsupportedMediaType": "Dieser Endpunkt akzeptiert nur application/merge-patch+json (RFC 7386)",
-    "notFound": "Nicht gefunden",
-    "methodNotAllowed": "Methode nicht erlaubt",
-    "capacityBelowBooked": "Die Kapazität darf nicht unter {count, plural, =1 {dem bereits gebuchten # Platz} other {den bereits gebuchten # Plätzen}} liegen",
-    "demoReadOnly": "Dies ist ein schreibgeschütztes Demokonto — registriere dich, um eigene buchbare Angebote zu erstellen.",
-    "soldOut": "Dieser Termin ist ausgebucht",
-    "seatsLeftOnSession": "Bei diesem Termin sind nur noch {count, plural, =1 {# Platz} other {# Plätze}} frei",
-    "partyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
-    "duplicateBooking": "Du hast für diesen Termin bereits eine Buchung",
-    "alreadyCancelled": "Diese Buchung wurde bereits storniert",
-    "slotGone": "Dieser Termin ist nicht mehr verfügbar",
-    "tooManyRequests": "Zu viele Anfragen — bitte versuchen Sie es gleich noch einmal",
-    "slotHasActiveBookings": "Dieser Termin hat Buchungen und kann nicht gelöscht werden",
-    "serviceHasBookings": "Dieses Angebot hat Buchungen in seinen Terminen und kann nicht gelöscht werden",
-    "bodyTooLarge": "Der Anforderungstext ist zu groß"
   }
 }

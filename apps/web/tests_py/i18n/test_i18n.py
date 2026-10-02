@@ -1,5 +1,5 @@
 """The i18n tests: the ICU
-subset renderer and the ApiErrors/notifications lookup with fallbacks.
+subset renderer and the api-errors/notifications lookup with fallbacks.
 """
 
 from countmein.contracts.constants_gen import DEFAULT_LOCALE, LOCALES

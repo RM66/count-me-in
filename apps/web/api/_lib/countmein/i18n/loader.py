@@ -1,9 +1,9 @@
 """Translation lookup over the generated corpus.
 
-The API only needs two slices of the full corpus: the ApiErrors
-section of the web messages (route error copy) and all notification
-copy (Telegram bot). translations_gen.py compiles those slices at
-build time — packages/translations remains the single source of truth.
+The API only needs two slices of the full corpus: the api-errors
+dictionaries (route error copy) and all notification copy (Telegram
+bot). translations_gen.py compiles those slices at build time —
+packages/translations remains the single source of truth.
 """
 
 from collections.abc import Mapping
@@ -15,8 +15,8 @@ from .translations_gen import API_ERRORS, NOTIFICATIONS_SECTIONS, NOTIFICATIONS_
 
 
 def api_error(locale: str, key: str, params: Mapping[str, Any] | None = None) -> str:
-    """Render a localized API error (the ApiErrors section), falling back
-    to English, then to the key itself."""
+    """Render a localized API error (the api-errors dictionaries), falling
+    back to English, then to the key itself."""
     msg = API_ERRORS.get(locale, {}).get(key)
     if msg is None:
         msg = API_ERRORS.get(DEFAULT_LOCALE, {}).get(key)

@@ -3,7 +3,7 @@
  *
  * The i18n generator for the Python API: it only needs two slices of the
  * full corpus —
- *   - the `ApiErrors` section of `messages/*.json` (route error copy)
+ *   - all of `api-errors/*.json` (route error copy)
  *   - all of `notifications/*.json` (Telegram bot copy)
  * — compiled directly into dict literals in
  *   `api/_lib/countmein/i18n/translations_gen.py` (no runtime JSON parsing,
@@ -16,10 +16,11 @@ import { execSync } from 'node:child_process'
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DEFAULT_LOCALE, LOCALES } from '@repo/contracts'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const rootDir = join(__dirname, '..', '..', '..')
-const messagesDir = join(rootDir, 'packages', 'translations', 'messages')
+const apiErrorsDir = join(rootDir, 'packages', 'translations', 'api-errors')
 const notificationsDir = join(rootDir, 'packages', 'translations', 'notifications')
 const targetFile = join(__dirname, '..', 'api', '_lib', 'countmein', 'i18n', 'translations_gen.py')
 
@@ -30,11 +31,45 @@ function pyString(str: string): string {
   return JSON.stringify(str)
 }
 
-function generate(): void {
-  const locales = readdirSync(messagesDir)
+/**
+ * Read `{locale}.json` from `dir`. Fails loudly on a missing file and on
+ * nested values — both dictionaries are flat key → ICU string maps, and a
+ * non-string leaf would otherwise be silently dropped from the Python side.
+ */
+function readDictionary(dir: string, locale: string): Record<string, unknown> {
+  const file = join(dir, `${locale}.json`)
+  return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
+}
+
+function flatStrings(dir: string, locale: string, node: Record<string, unknown>): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const [key, val] of Object.entries(node)) {
+    if (typeof val !== 'string') {
+      throw new Error(`${dir.split('/').pop()}/${locale}.json: key "${key}" is not a string`)
+    }
+    map[key] = val
+  }
+  return map
+}
+
+/** The on-disk file set must be exactly LOCALES — no more, no less. */
+function assertLocaleSet(dir: string): void {
+  const onDisk = readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
     .map((f) => f.replace('.json', ''))
     .sort()
+  const expected = [...LOCALES].sort()
+  if (JSON.stringify(onDisk) !== JSON.stringify(expected)) {
+    throw new Error(
+      `${dir}: files [${onDisk.join(', ')}] do not match LOCALES [${expected.join(', ')}]`,
+    )
+  }
+}
+
+function generate(): void {
+  assertLocaleSet(apiErrorsDir)
+  assertLocaleSet(notificationsDir)
+  const locales = LOCALES
 
   const apiErrorsByLocale: Record<string, Record<string, string>> = {}
   const notificationsByLocale: Record<
@@ -43,37 +78,29 @@ function generate(): void {
   > = {}
 
   for (const locale of locales) {
-    // 1. Extract only ApiErrors from messages.
-    const msgContent = JSON.parse(
-      readFileSync(join(messagesDir, `${locale}.json`), 'utf8'),
-    ) as Record<string, unknown>
-    const apiErrors = (msgContent.ApiErrors ?? {}) as Record<string, unknown>
-    const errMap: Record<string, string> = {}
-    for (const [key, val] of Object.entries(apiErrors)) {
-      if (typeof val === 'string') {
-        errMap[key] = val
-      }
-    }
-    apiErrorsByLocale[locale] = errMap
+    // 1. api-errors/<locale>.json — a flat key → message map.
+    apiErrorsByLocale[locale] = flatStrings(
+      apiErrorsDir,
+      locale,
+      readDictionary(apiErrorsDir, locale),
+    )
 
-    // 2. Extract notifications (top-level strings + nested sections).
-    const notifContent = JSON.parse(
-      readFileSync(join(notificationsDir, `${locale}.json`), 'utf8'),
-    ) as Record<string, unknown>
+    // 2. notifications/<locale>.json — top-level strings + nested sections.
+    const notifContent = readDictionary(notificationsDir, locale)
     const topMap: Record<string, string> = {}
     const sectionsMap: Record<string, Record<string, string>> = {}
 
     for (const [section, val] of Object.entries(notifContent)) {
       if (typeof val === 'string') {
         topMap[section] = val
-      } else if (typeof val === 'object' && val !== null) {
-        const flat: Record<string, string> = {}
-        for (const [k, s] of Object.entries(val as Record<string, unknown>)) {
-          if (typeof s === 'string') {
-            flat[k] = s
-          }
-        }
-        sectionsMap[section] = flat
+      } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+        sectionsMap[section] = flatStrings(
+          notificationsDir,
+          locale,
+          val as Record<string, unknown>,
+        )
+      } else {
+        throw new Error(`notifications/${locale}.json: key "${section}" has an unsupported shape`)
       }
     }
     notificationsByLocale[locale] = { top: topMap, sections: sectionsMap }
@@ -82,14 +109,14 @@ function generate(): void {
   // Shape parity guard: `en` defines the corpus shape (ADR-011); a locale
   // missing a key would silently fall back to English at runtime. Fail the
   // generation instead, so the gap is fixed at the source.
-  const enErrors = apiErrorsByLocale['en'] ?? {}
-  const enNotifs = notificationsByLocale['en'] ?? { top: {}, sections: {} }
+  const enErrors = apiErrorsByLocale[DEFAULT_LOCALE] ?? {}
+  const enNotifs = notificationsByLocale[DEFAULT_LOCALE] ?? { top: {}, sections: {} }
   for (const locale of locales) {
     const errs = apiErrorsByLocale[locale] ?? {}
     for (const key of Object.keys(enErrors)) {
       if (!(key in errs)) {
         throw new Error(
-          `messages/${locale}.json: ApiErrors is missing key "${key}" (present in en)`,
+          `api-errors/${locale}.json: missing key "${key}" (present in ${DEFAULT_LOCALE})`,
         )
       }
     }
@@ -97,7 +124,7 @@ function generate(): void {
     for (const key of Object.keys(enNotifs.top)) {
       if (!(key in notifs.top)) {
         throw new Error(
-          `notifications/${locale}.json: missing top-level key "${key}" (present in en)`,
+          `notifications/${locale}.json: missing top-level key "${key}" (present in ${DEFAULT_LOCALE})`,
         )
       }
     }
@@ -106,7 +133,7 @@ function generate(): void {
       for (const key of Object.keys(keys)) {
         if (!(key in local)) {
           throw new Error(
-            `notifications/${locale}.json: section "${section}" is missing key "${key}" (present in en)`,
+            `notifications/${locale}.json: section "${section}" is missing key "${key}" (present in ${DEFAULT_LOCALE})`,
           )
         }
       }

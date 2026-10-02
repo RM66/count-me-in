@@ -7,7 +7,7 @@ The API origin is reached via beforeFiles rewrites in next.config.js,
 so the Next.js headers() config does not apply to its responses — the
 API side must set its own:
   - Vary: Accept-Language — API error copy is localized per request
-    (ApiErrors dictionaries), so shared caches must key by language.
+    (api-errors dictionaries), so shared caches must key by language.
   - X-Robots-Tag: noindex — mirrors the next.config.js rule for
     /api/:path*; belt-and-braces alongside the meta robots on pages.
 """

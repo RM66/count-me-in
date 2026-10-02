@@ -105,6 +105,7 @@
     "generate:i18n:py": {
       "inputs": [
         "$TURBO_ROOT$/packages/translations/**",
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
         "scripts/generate-i18n-py.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
