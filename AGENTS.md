@@ -1,3 +1,5 @@
+Working-style rules (interaction, code quality, git discipline, verification) live in [INSTRUCTIONS.md](INSTRUCTIONS.md) — read it first. It is kept project-agnostic on purpose; everything CountMeIn-specific is here.
+
 # CountMeIn — Agent Guide
 
 Simple online booking for group events: organizers publish services with time slots and capacity; guests book on a public web page; organizers manage a web cabinet opened from messenger notification links.
