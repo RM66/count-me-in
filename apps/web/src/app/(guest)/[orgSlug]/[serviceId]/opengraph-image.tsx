@@ -32,7 +32,7 @@ export default async function ServiceOgImage({
   // organizer's card would render under another's name.
   const organizer =
     view && view.organizer.slug.toLowerCase() === orgSlug.toLowerCase() ? view.organizer : null
-  const service = organizer ? view?.service ?? null : null
+  const service = organizer ? (view?.service ?? null) : null
 
   // Satori cannot fetch remote URLs, so R2-hosted photos are inlined as data
   // URIs (same approach as the logo). Each falls back to `null` on failure so

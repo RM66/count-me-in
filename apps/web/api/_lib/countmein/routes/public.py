@@ -60,21 +60,18 @@ async def get_public_service(
     """GET /api/public/services/{id}: public service details, parent organizer,
     and upcoming slots."""
     async with sessionmaker()() as session:
-        service = await service_repo.get_by_id(session, id)
-        if service is None:
+        models = await service_repo.get_service_with_organizer(session, id)
+        if models is None:
             raise ServiceNotFound()
-
-        organizer = await organizer_repo.get_by_id(session, str(service.organizer_id))
-        if organizer is None:
-            raise ServiceNotFound()
+        service_model, organizer_model = models
 
         slots = await slot_repo.list_upcoming_by_services(
-            session, [str(service.id)], datetime.now(UTC)
+            session, [str(service_model.id)], datetime.now(UTC)
         )
 
         view = gen.PublicServiceViewEnvelope(
-            service=to_service_record(from_model_service(service)),
-            organizer=to_public_organizer(from_model_organizer(organizer)),
+            service=to_service_record(from_model_service(service_model)),
+            organizer=to_public_organizer(from_model_organizer(organizer_model)),
             slots=[to_time_slot_record(from_model_slot(slot)) for slot in slots],
         )
         return json_response(200, view).to_starlette()

@@ -47,9 +47,11 @@ export function derivedInternalSecret(authSecret: string): string {
  * server misconfiguration, not "unknown organizer", so it throws
  * instead of returning null (review fix 2.1).
  */
-export async function getInternalOrganizer(
-  lookup: { messenger?: string; messengerId?: string; organizerId?: string },
-): Promise<InternalOrganizerRecord | null> {
+export async function getInternalOrganizer(lookup: {
+  messenger?: string
+  messengerId?: string
+  organizerId?: string
+}): Promise<InternalOrganizerRecord | null> {
   const authSecret = process.env.AUTH_SECRET
   if (!authSecret) return null
   const parsed = internalOrganizerLookupInput.safeParse(lookup)

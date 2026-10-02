@@ -153,6 +153,16 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
+    """Refuse a placeholder URL with a named error: the ini default
+    (`driver://...`) exists so offline `alembic revision` runs without a
+    DB, but an online command (upgrade/check/current) reaching this point
+    with it would die deep inside SQLAlchemy's dialect loader.
+    `NoSuchModuleError: sqlalchemy.dialects:driver` names nothing useful."""
+    if _resolve_url().startswith("driver://"):
+        raise RuntimeError(
+            "No database URL: set POSTGRES_URL (env or apps/web/.env). "
+            "Only `alembic revision` (no autogenerate) works without one."
+        )
     asyncio.run(run_async_migrations())
 
 

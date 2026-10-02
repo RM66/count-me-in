@@ -180,6 +180,13 @@ jobs:
         working-directory: apps/web
         run: bun run db:migrate:py
 
+      - name: Check models match migrations
+        # `alembic check` diffs the SQLAlchemy 2.0 metadata against the
+        # schema the migrations just built — catches model/migration drift
+        # that no parser-based test sees.
+        working-directory: apps/web
+        run: uv run alembic check
+
       - name: Generate Python artifacts
         # i18n copy, the OpenAPI spec, the constants and the Pydantic
         # models — all derived from the Zod manifests.

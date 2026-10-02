@@ -32,6 +32,24 @@ async def get_by_id(session: AsyncSession, service_id: str) -> Service | None:
     return result.scalar_one_or_none()
 
 
+async def get_service_with_organizer(
+    session: AsyncSession, service_id: str
+) -> tuple[Service, Organizer] | None:
+    """Service and its parent organizer in one join. The FK makes a
+    dangling organizer impossible, so the only miss is an unknown
+    service id — callers answer it as one 404."""
+    result = await session.execute(
+        select(Service, Organizer)
+        .join(Organizer, Service.organizer_id == Organizer.id)
+        .where(Service.id == service_id)
+        .limit(1)
+    )
+    row = result.first()
+    if row is None:
+        return None
+    return (row[0], row[1])
+
+
 async def list_public_service_paths(session: AsyncSession) -> list[tuple[str, str]]:
     stmt = (
         select(Organizer.slug.label("org_slug"), Service.id.label("service_id"))

@@ -183,7 +183,9 @@ export async function getOwnedService(serviceId: string): Promise<ServiceRecord 
 }
 
 /** Slots across the viewer's services, earliest first. */
-export async function listSlots(options: { upcomingOnly?: boolean } = {}): Promise<TimeSlotRecord[]> {
+export async function listSlots(
+  options: { upcomingOnly?: boolean } = {},
+): Promise<TimeSlotRecord[]> {
   const path = options.upcomingOnly ? '/api/slots?upcoming=1' : '/api/slots'
   const envelope = await fetchEnvelope(path, slotsEnvelope)
   return envelope?.slots ?? []

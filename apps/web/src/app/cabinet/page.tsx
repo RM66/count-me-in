@@ -22,12 +22,7 @@ import { Separator } from '@/components/ui/separator'
 import { SITE_DOMAIN } from '@/constants/site'
 import { formatDateTime } from '@/helpers/date'
 import { cn } from '@/lib/utils'
-import {
-  getOrganizerProfile,
-  listBookings,
-  listServices,
-  listSlots,
-} from '@/server/api-client'
+import { getOrganizerProfile, listBookings, listServices, listSlots } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000

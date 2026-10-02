@@ -282,7 +282,8 @@ export function buildOpenApiDocument(): Record<string, unknown> {
             type: 'apiKey',
             in: 'header',
             name: 'x-internal-secret',
-            description: 'Internal secret header for service-to-service communication between Next.js BFF and Python API.',
+            description:
+              'Internal secret header for service-to-service communication between Next.js BFF and Python API.',
           },
         },
       },

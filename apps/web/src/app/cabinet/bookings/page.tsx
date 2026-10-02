@@ -3,12 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { BookingsTable } from '@/app/cabinet/bookings/_components/bookings-table'
 import { formatDateTime } from '@/helpers/date'
-import {
-  getOrganizerProfile,
-  listBookings,
-  listServices,
-  listSlots,
-} from '@/server/api-client'
+import { getOrganizerProfile, listBookings, listServices, listSlots } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function BookingsPage({

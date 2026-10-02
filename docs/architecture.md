@@ -44,16 +44,16 @@ flowchart LR
 
 ## Component roles
 
-| Component                                      | Role                                                                                                                               |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`                                     | Next.js: landing, public booking, cabinet, Auth.js; server reads go over HTTP to the Python API (no direct Postgres)              |
+| Component                                      | Role                                                                                                                                                                             |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`                                     | Next.js: landing, public booking, cabinet, Auth.js; server reads go over HTTP to the Python API (no direct Postgres)                                                             |
 | `apps/web/api`                                 | Python API: a single FastAPI ASGI Vercel Function — all API routes + job handlers ([ADR-021](decisions/021-api-python-rewrite.md)); Alembic owns the schema (`apps/web/alembic`) |
-| `packages/contracts`                           | Zod schemas shared across the web app's layers                                                                                     |
-| `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                                                                           |
-| Postgres                                       | Domain data                                                                                                                        |
-| Redis                                          | Sessions, short-lived auth tickets, rate limits                                                                                    |
-| Upstash QStash                                 | Job queue: at-least-once delivery, retries, demo-refresh cron                                                                      |
-| Cloudflare R2                                  | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md))                                                      |
+| `packages/contracts`                           | Zod schemas shared across the web app's layers                                                                                                                                   |
+| `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                                                                                                                         |
+| Postgres                                       | Domain data                                                                                                                                                                      |
+| Redis                                          | Sessions, short-lived auth tickets, rate limits                                                                                                                                  |
+| Upstash QStash                                 | Job queue: at-least-once delivery, retries, demo-refresh cron                                                                                                                    |
+| Cloudflare R2                                  | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md))                                                                                                    |
 
 ## Critical flow: create booking (guest)
 

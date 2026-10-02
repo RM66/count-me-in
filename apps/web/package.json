@@ -81,6 +81,7 @@
     "concurrently": "^10.0.5",
     "eslint": "^9.39.1",
     "happy-dom": "^18.0.0",
+    "postgres": "^3.4.9",
     "shadcn": "^4.13.1",
     "storybook": "^10.5.4",
     "tailwindcss": "^4.3.3",
