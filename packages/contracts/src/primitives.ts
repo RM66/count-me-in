@@ -43,17 +43,14 @@ export const BOUNDS = {
 
 /**
  * Length semantics (assessed, safe by construction):
- * Zod's `.max()` counts UTF-16 code units, while JSON Schema `maxLength`
- * (the API's spec decode) and Postgres `char_length` count **code
- * points** — an
- * emoji is 2 units but 1 point. The layers therefore diverge only in one
- * direction: a string within N UTF-16 units always has ≤ N code points, so
- * **Zod-pass ⇒ spec-pass ⇒ DB-pass** — no layer can reject what an earlier
- * layer accepted, and no `contractViolation` noise is possible. The cost is
- * that Zod rejects some astral-heavy strings the spec decode would accept
- * (e.g. 60 emoji in a 100-char name); the browser client always validates
- * with Zod first, so users never see the gap. Do not "fix" this by dropping
- * `.max()` — it is what emits `maxLength` into the OpenAPI spec for the API.
+ * Zod ≥4.5, JSON Schema `maxLength` (the API's spec decode — Pydantic
+ * `len()`) and Postgres `char_length` all count Unicode **code points** —
+ * an emoji is one on every layer, so **Zod-pass ⇒ spec-pass ⇒ DB-pass**
+ * with no divergence at all, and no `contractViolation` noise is possible.
+ * (Zod <4.5 counted UTF-16 code units and was merely stricter for
+ * astral-heavy text; the invariant held in that direction too.) Do not
+ * "fix" this by dropping `.max()` — it is what emits `maxLength` into the
+ * OpenAPI spec for the API.
  */
 
 /**
