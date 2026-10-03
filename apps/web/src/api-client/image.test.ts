@@ -147,9 +147,7 @@ describe('render fallbacks', () => {
         cb(new Blob(['x'], { type }))
       },
     }
-    vi.spyOn(document, 'createElement').mockReturnValue(
-      fakeDomCanvas as unknown as HTMLElement,
-    )
+    vi.spyOn(document, 'createElement').mockReturnValue(fakeDomCanvas as unknown as HTMLElement)
 
     const blob = await resizeAvatar(new Blob(['img']))
 
@@ -170,9 +168,7 @@ describe('render fallbacks', () => {
     }
     vi.stubGlobal('OffscreenCanvas', ContextlessCanvas)
 
-    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(
-      /could not process the image/i,
-    )
+    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(/could not process the image/i)
     expect(closedBitmaps).toBe(1)
   })
 
@@ -185,9 +181,7 @@ describe('render fallbacks', () => {
     }
     vi.stubGlobal('OffscreenCanvas', EmptyBlobCanvas)
 
-    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(
-      /could not process the image/i,
-    )
+    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(/could not process the image/i)
   })
 
   it('rejects when the encoder fails outright', async () => {
@@ -199,9 +193,7 @@ describe('render fallbacks', () => {
     }
     vi.stubGlobal('OffscreenCanvas', FailingBlobCanvas)
 
-    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(
-      /could not process the image/i,
-    )
+    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(/could not process the image/i)
   })
 })
 
