@@ -166,7 +166,10 @@ const nextConfig = {
       // JSON-LD XSS vector is closed by escaping, and 'unsafe-inline'
       // is already granted — the marginal loss is
       // small. The long-term fix is the OAuth-redirect flow.
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org ${posthogWildcard}${posthogExtra}`,
+      // va.vercel-scripts.com hosts the <Analytics/> and <SpeedInsights/>
+      // loader scripts (providers.tsx); their beacons post to same-origin
+      // /_vercel/* endpoints already covered by connect-src 'self'.
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}`,
       "style-src 'self' 'unsafe-inline'",
       `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${r2UploadOrigin} ${posthogWildcard}${posthogExtra}`,
       "font-src 'self' data:",
