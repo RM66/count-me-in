@@ -1,18 +1,18 @@
 """The ORM models mirror the migrated schema: no drift.
 
-Builds a scratch database from the Alembic migrations (0001 baseline),
-then runs `alembic check` against it — any model/metadata change that
-would generate upgrade ops fails here instead of surfacing as a
-runtime SQL error or a silently skipped migration.
+Builds a scratch database from the Alembic migrations, then runs
+`alembic check` — any model/metadata change that would generate upgrade
+ops fails here instead of surfacing as a runtime SQL error or a skipped
+migration.
 
-Also pins the Phase 2 relationship contract (lazy="raise" everywhere,
-passive_deletes on the one-to-many sides the DB cascades/restricts)
-and the Python-side id defaults (uuidv7/nanoid fill in on flush —
-no DB default exists for these columns).
+Also pins the relationship contract (lazy="raise" everywhere,
+passive_deletes on the one-to-many sides the DB cascades/restricts) and
+the Python-side id defaults (uuidv7/nanoid fill in on flush — no DB
+default exists for these columns).
 
-Requires POSTGRES_URL — skipped locally without it, failed in CI (the
-shared rule in tests_py/_env.py). The scratch database is dropped
-after the run so repeated runs never see a stale schema.
+Requires POSTGRES_URL — skipped locally without it, failed in CI. The
+scratch database is dropped after the run so repeated runs never see a
+stale schema.
 """
 
 from __future__ import annotations
@@ -37,9 +37,9 @@ def _web_root() -> Path:
 
 
 def _alembic_config(url: str):
-    """Alembic Config pointing at url — the same wiring conftest's
-    _migrate uses (ini + script_location + explicit sqlalchemy.url so
-    env.py never falls back to whatever .env points at)."""
+    """Alembic Config pointing at url — ini + script_location + explicit
+    sqlalchemy.url so env.py never falls back to whatever .env points
+    at."""
     from alembic.config import Config as AlembicConfig
 
     web_root = _web_root()
@@ -80,9 +80,8 @@ def test_models_match_migrated_schema():
 
 def test_relationship_loading_contract():
     """lazy="raise" on every relationship (no silent async
-    MissingGreenlet); passive_deletes on the one-to-many sides so
-    session.delete() lets the DB cascade/restrict instead of
-    SELECT-then-nullifying NOT NULL FKs."""
+    MissingGreenlet); passive_deletes on one-to-many so session.delete()
+    lets the DB cascade/restrict instead of nullifying NOT NULL FKs."""
     from countmein.models import Booking, Organizer, Service, TimeSlot
 
     one_to_many = [
@@ -107,7 +106,7 @@ def test_relationship_loading_contract():
 
 def test_id_defaults_fill_python_side():
     """The id columns have no DB default (Drizzle's $defaultFn ran
-    JS-side): the ORM column defaults generate uuidv7/nanoid ids so
+    JS-side) — the ORM defaults generate uuidv7/nanoid ids so
     repositories can build entities without explicit ids."""
     import re
 
@@ -115,8 +114,8 @@ def test_id_defaults_fill_python_side():
     from countmein.models import Booking, Organizer, Service, TimeSlot
 
     # NOTE: assert on __wrapped__ — SQLAlchemy wraps a plain-function
-    # default in its own callable (schema.py), so `default.arg` is the
-    # wrapper, not the original function object (`is new_id` fails).
+    # default in its own callable, so `default.arg` is the wrapper (`is
+    # new_id` fails).
     assert Organizer.__table__.c.id.default is not None
     assert Organizer.__table__.c.id.default.arg.__wrapped__ is new_id
     assert TimeSlot.__table__.c.id.default is not None

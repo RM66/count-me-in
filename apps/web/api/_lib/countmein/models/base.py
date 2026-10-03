@@ -1,9 +1,9 @@
 """SQLAlchemy 2.0 declarative base and shared Postgres enums.
 
-The four custom Postgres types are owned by migration 0001 (created via
-op.execute CREATE TYPE). Models reference them with create_type=False so
-autogenerate never tries to re-create them — the metadata only mirrors
-the live schema for `alembic check` / future autogenerate runs.
+The four custom Postgres types are owned by migration 0001 (op.execute
+CREATE TYPE). Models reference them with create_type=False so
+autogenerate never re-creates them — the metadata only mirrors the live
+schema for `alembic check`.
 """
 
 from __future__ import annotations

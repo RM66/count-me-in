@@ -1,9 +1,9 @@
 """logx — the observability floor.
 
-One JSON object per line on stdout, field names: time, level, msg +
-extras. These tests pin the wire
-format of the log lines: Vercel log drains parse them as JSON, so a
-drift in the shape is a production incident, not a style issue.
+One JSON object per line on stdout: time, level, msg + extras. These
+tests pin the wire format of the log lines — Vercel log drains parse
+them as JSON, so a drift in the shape is a production incident, not a
+style issue.
 """
 
 from __future__ import annotations
@@ -53,9 +53,9 @@ def test_info_emits_one_json_line(capture):
 
 
 def test_line_carries_time_and_level_keys(capture):
-    """Every line always carries time and level — the drain
-    queries group by them, so both keys must exist on every line. The
-    level names are uppercase (INFO/WARN/ERROR — never "WARNING")."""
+    """Every line carries time and level — the drain queries group by
+    them. Level names are uppercase (INFO/WARN/ERROR — never
+    "WARNING")."""
     logx.info("x")
     logx.warn("y")
     logx.error(RuntimeError("z"))
@@ -70,7 +70,7 @@ def test_line_carries_time_and_level_keys(capture):
 
 def test_error_none_is_dropped(capture):
     """Callers pass optional errors straight through — None must not
-    produce a line."""
+    emit a line."""
     logx.error(None)
     assert capture.lines == []
 

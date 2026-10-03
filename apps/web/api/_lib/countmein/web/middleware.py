@@ -32,9 +32,8 @@ DEFAULT_HEADERS = {
     # API responses are per-request (auth, rate limits, live seat
     # counts) — no shared or browser cache may store them.
     "Cache-Control": "no-store",
-    # Security headers: the API origin bypasses next.config.js
-    # headers(), so the API must set its own. No CSP here — API
-    # responses are JSON, never HTML documents.
+    # The API origin bypasses next.config.js headers(), so it sets its
+    # own. No CSP — API responses are JSON, never HTML.
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -47,24 +46,17 @@ _MAX_STACK = 8 << 10
 
 def _not_found_response(scope: Scope) -> StarletteResponse:
     """The JSON 404 envelope for a non-/api/ _path — localized like
-    every other API error, never plain text."""
+    every other API error. Wrapping the scope in a Request reuses the
+    cookie + Accept-Language rule of deps.locale."""
+
+    from starlette.requests import Request
 
     from ..i18n.locale import detect_locale
     from .response import not_found
 
-    headers = scope.get("headers") or []
-    cookies = {}
-    accept_language = ""
-    for k, v in headers:
-        if k == b"cookie":
-            from http.cookies import SimpleCookie
-
-            c = SimpleCookie()
-            c.load(v.decode("latin-1"))
-            cookies = {key: morsel.value for key, morsel in c.items()}
-        elif k == b"accept-language":
-            accept_language = v.decode("latin-1")
-    return not_found(detect_locale(cookies, accept_language)).to_starlette()
+    request = Request(scope)
+    locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
+    return not_found(locale).to_starlette()
 
 
 def _query_param(scope: Scope, key: str) -> str | None:
@@ -107,18 +99,17 @@ class RestorePathMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        # The rewrite destination is the only path that may carry a
-        # trusted _path: everywhere else the parameter is client input —
-        # a _path on /api/bookings must not steer dispatch (ADR-024).
+        # Only the rewrite destination may carry a trusted _path:
+        # elsewhere it is client input — a _path on /api/bookings must
+        # not steer dispatch (ADR-024).
         if scope["path"] != "/api/index":
             await self.app(scope, receive, send)
             return
         orig = _query_param(scope, "_path") or ""
         if orig:
-            # _path is an internal rewrite artifact, never a client
-            # input: only /api/... prefixes are rewritten here, anything
-            # else is answered 404. Stripped from the query string so
-            # logged URLs do not echo the artifact.
+            # _path is an internal rewrite artifact: only /api/...
+            # prefixes are honored, anything else is 404. Stripped from
+            # the query string so logged URLs don't echo it.
             if not orig.startswith("/api/"):
                 resp = _not_found_response(scope)
                 await resp(scope, receive, send)
@@ -146,11 +137,9 @@ class DefaultHeadersAndRecovery:
             return
         started = time.perf_counter()
         response_started = False
-        # /api/healthz answers bare (Content-Type only), so monitors see
-        # dependency state without the API's header set. It is also
-        # outside the access log: external monitors poll it continuously
-        # and would flood the drain (the platform's own probe logs
-        # cover it).
+        # /api/healthz answers bare (Content-Type only) and is outside
+        # the access log — monitors poll it continuously and would flood
+        # the drain (platform probe logs cover it).
         is_healthz = scope["path"] == "/api/healthz"
         status: dict[str, Any] = {"code": None}
 
@@ -159,10 +148,8 @@ class DefaultHeadersAndRecovery:
             if message["type"] == "http.response.start":
                 response_started = True
                 status["code"] = message["status"]
-                # The scope dict is shared with RestorePathMiddleware, so
-                # by the time a response starts the path is the restored
-                # one — the same post-rewrite view the old middleware
-                # had when it touched the headers.
+                # The scope dict is shared with RestorePathMiddleware —
+                # by now the path is the restored, post-rewrite one.
                 if scope["path"] != "/api/healthz":
                     headers = MutableHeaders(scope=message)
                     for key, value in DEFAULT_HEADERS.items():
@@ -172,9 +159,8 @@ class DefaultHeadersAndRecovery:
         try:
             await self.app(scope, receive, send_wrapper)
         except Exception:
-            # The stack is the only trace of where the panic came from —
-            # the exception value alone cannot be mapped back to a line.
-            # Truncated so a deep recursive failure cannot flood the log.
+            # The stack is the only trace of where the panic came from;
+            # truncated so a deep recursion cannot flood the log.
             stack = "".join(traceback.format_exc())[-_MAX_STACK:]
             logx.error(
                 RuntimeError(f"panic: {scope['path']}"),
@@ -182,9 +168,8 @@ class DefaultHeadersAndRecovery:
             )
             if response_started:
                 # The response head already went out — a second
-                # http.response.start would corrupt the stream. Log and
-                # drop the connection; the client sees a truncated body,
-                # which is the honest outcome of a mid-response crash.
+                # http.response.start would corrupt the stream. Log,
+                # drop the connection; the client sees a truncated body.
                 raise
             status["code"] = 500
             resp = PlainTextResponse(status_code=500)
@@ -200,8 +185,7 @@ class DefaultHeadersAndRecovery:
     def _access_log(scope: Scope, code: int, started: float) -> None:
         """One access-log line per request — in a finally, so the early
         returns above log too. x-vercel-id is Vercel's per-request
-        correlation id — the same field the platform's own logs carry,
-        so a function log line and a platform log line join on it."""
+        correlation id — function and platform log lines join on it."""
         fields: dict[str, object] = {
             "method": scope["method"],
             "path": scope["path"],

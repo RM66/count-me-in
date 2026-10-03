@@ -92,20 +92,20 @@ Organizer reaches bookings **transitively** (`Organizer → Service → TimeSlot
 
 Auth.js account (`id` is sole PK). Login identity is messenger account ([ADR-008](decisions/008-messenger-only-auth.md)) — **no phone column**.
 
-| Field         | Required | Meaning                                                  |
-| ------------- | -------- | -------------------------------------------------------- |
-| `id`          | yes      | PK; Auth.js user id                                      |
-| `slug`        | yes      | Public URL segment                                       |
-| `name`        | yes      | Display name                                             |
-| `messenger`   | yes      | Auth/notification channel (`telegram` in MVP)            |
-| `messengerId` | yes      | Stable messenger user id; unique with `messenger`        |
-| `timezone`    | yes      | IANA tz (e.g. `Europe/Belgrade`); all slots in this zone |
+| Field         | Required | Meaning                                                                  |
+| ------------- | -------- | ------------------------------------------------------------------------ |
+| `id`          | yes      | PK; Auth.js user id                                                      |
+| `slug`        | yes      | Public URL segment                                                       |
+| `name`        | yes      | Display name                                                             |
+| `messenger`   | yes      | Auth/notification channel (`telegram` in MVP)                            |
+| `messengerId` | yes      | Stable messenger user id; unique with `messenger`                        |
+| `timezone`    | yes      | IANA tz (e.g. `Europe/Belgrade`); all slots in this zone                 |
 | `language`    | yes      | Notification/UI locale (default `en`) — [ADR-011](decisions/011-i18n.md) |
-| `description` | no       | Markdown for public page                                 |
-| `photoUrl`    | no       | Avatar (object storage)                                  |
-| `location`    | no       | Display address; default for services                    |
-| `contact`     | no       | Display "how to reach me"; default for services          |
-| `createdAt`   | yes      | UTC timestamp                                            |
+| `description` | no       | Markdown for public page                                                 |
+| `photoUrl`    | no       | Avatar (object storage)                                                  |
+| `location`    | no       | Display address; default for services                                    |
+| `contact`     | no       | Display "how to reach me"; default for services                          |
+| `createdAt`   | yes      | UTC timestamp                                                            |
 
 MVP: one organizer = one person. Multi-staff post-MVP.
 
@@ -156,20 +156,20 @@ Interval: half-open `[startsAt, endsAt)`. `durationMinutes` is source of truth; 
 
 Reservation on a slot by a guest (no Auth.js account). Guest identified by messenger account, verified via login widget at booking time ([ADR-002](decisions/002-guest-booking.md), [ADR-008](decisions/008-messenger-only-auth.md)).
 
-| Field                 | Required | Meaning                                                                                                                                                                                                      |
-| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `timeSlotId`          | yes      | FK → TimeSlot                                                                                                                                                                                                |
-| `seats`               | yes      | `>= 1`                                                                                                                                                                                                       |
-| `guestName`           | yes      | Display name                                                                                                                                                                                                 |
-| `guestMessenger`      | yes      | Messenger enum (`telegram` in MVP)                                                                                                                                                                           |
-| `guestMessengerId`    | yes      | Stable messenger user id; indexed with `guestMessenger` for "my bookings"                                                                                                                                    |
-| `guestMessengerLogin` | no       | Human-readable handle (e.g. @username)                                                                                                                                                                       |
-| `guestLocale`         | yes      | UI locale at booking time — notifications go in this language (default `en`)                                                                                                                                  |
-| `manageToken`         | yes      | Opaque secret in messenger deep link; raw value stored for deep-link re-issue, **every credential check goes through the SHA-256 hash** (`manage_token_hash`, [ADR-020](decisions/020-manage-token-hash.md)) |
-| `manageTokenExpiresAt`| yes      | Slot start + 24h grace; expired tokens are refused on read and cancel (the row stays listed — `canCancel` on the DTO marks it dead)                                                                            |
-| `selectedOptions`     | no       | String values from `Service.options` (`text[]`; null when no options)                                                                                                                                        |
-| `status`              | yes      | Lifecycle                                                                                                                                                                                                    |
-| `createdAt`           | yes      | UTC timestamp                                                                                                                                                                                                |
+| Field                  | Required | Meaning                                                                                                                                                                                                      |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `timeSlotId`           | yes      | FK → TimeSlot                                                                                                                                                                                                |
+| `seats`                | yes      | `>= 1`                                                                                                                                                                                                       |
+| `guestName`            | yes      | Display name                                                                                                                                                                                                 |
+| `guestMessenger`       | yes      | Messenger enum (`telegram` in MVP)                                                                                                                                                                           |
+| `guestMessengerId`     | yes      | Stable messenger user id; indexed with `guestMessenger` for "my bookings"                                                                                                                                    |
+| `guestMessengerLogin`  | no       | Human-readable handle (e.g. @username)                                                                                                                                                                       |
+| `guestLocale`          | yes      | UI locale at booking time — notifications go in this language (default `en`)                                                                                                                                 |
+| `manageToken`          | yes      | Opaque secret in messenger deep link; raw value stored for deep-link re-issue, **every credential check goes through the SHA-256 hash** (`manage_token_hash`, [ADR-020](decisions/020-manage-token-hash.md)) |
+| `manageTokenExpiresAt` | yes      | Slot start + 24h grace; expired tokens are refused on read and cancel (the row stays listed — `canCancel` on the DTO marks it dead)                                                                          |
+| `selectedOptions`      | no       | String values from `Service.options` (`text[]`; null when no options)                                                                                                                                        |
+| `status`               | yes      | Lifecycle                                                                                                                                                                                                    |
+| `createdAt`            | yes      | UTC timestamp                                                                                                                                                                                                |
 
 Validation: every `selectedOptions` entry must be in service's `options`; count respects `optionsSelectMode`.
 

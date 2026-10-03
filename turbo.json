@@ -82,7 +82,13 @@
       "outputs": []
     },
     "generate:py": {
-      "dependsOn": ["generate:i18n:py", "generate:openapi", "generate:constants"],
+      "dependsOn": [
+        "generate:i18n:py",
+        "generate:openapi",
+        "generate:constants",
+        "generate:rules",
+        "generate:models"
+      ],
       "inputs": [
         "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
         "$TURBO_ROOT$/packages/translations/**",
@@ -92,6 +98,8 @@
       "outputs": [
         "api/_lib/countmein/contracts/models_gen.py",
         "api/_lib/countmein/contracts/constants_gen.py",
+        "api/_lib/countmein/contracts/spec_gen.json",
+        "api/_lib/countmein/validation/rules_gen.py",
         "api/_lib/countmein/i18n/translations_gen.py",
         "openapi.yaml"
       ]
@@ -118,7 +126,20 @@
         "scripts/generate-openapi.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["openapi.yaml"]
+      "outputs": ["openapi.yaml", "api/_lib/countmein/contracts/spec_gen.json"]
+    },
+    "generate:rules": {
+      "inputs": [
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
+        "scripts/generate-rules.ts",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": ["api/_lib/countmein/validation/rules_gen.py"]
+    },
+    "generate:models": {
+      "dependsOn": ["generate:openapi"],
+      "inputs": ["openapi.yaml", "scripts/generate-py-models.sh", "uv.lock"],
+      "outputs": ["api/_lib/countmein/contracts/models_gen.py"]
     },
     "generate:constants": {
       "inputs": [

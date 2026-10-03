@@ -1,14 +1,7 @@
 import type { ServiceCountsRecord } from '@repo/contracts'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import 'server-only'
-
-vi.mock('@/server/api', () => ({
-  apiFetch: vi.fn(),
-  resolveApiOrigin: vi.fn(async () => 'http://127.0.0.1:3001'),
-}))
-
-const { serviceCountsById, toChartTrend } = await import('@/server/api-client')
+import { serviceCountsById, toChartTrend } from '@/helpers/analytics'
 
 describe('serviceCountsById', () => {
   it('keys per-service counts by service id', () => {

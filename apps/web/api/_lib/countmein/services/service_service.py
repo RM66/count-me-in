@@ -30,9 +30,9 @@ async def list_services(session: AsyncSession, organizer_id: str) -> list[Servic
 async def get_owned_service(
     session: AsyncSession, organizer_id: str, service_id: str
 ) -> ServiceRow | None:
-    """None when the id does not exist *or* belongs to someone else, so
-    callers cannot leak another organizer's service by guessing ids.
-    Ownership sits in the WHERE clause like every sibling query."""
+    """None when the id does not exist *or* belongs to someone else —
+    no leaking a foreign service by guessing ids. Ownership sits in the
+    WHERE clause like every sibling query."""
     async with session.begin():
         return await get_owned_service_tx(session, organizer_id, service_id)
 
@@ -49,10 +49,9 @@ async def get_owned_service_tx(
 async def create_service(
     session: AsyncSession, organizer_id: str, payload: gen.CreateServiceInput
 ) -> ServiceRow | None:
-    """The owner always comes from the session, never the payload;
-    optional columns are normalized to null. The media-ownership
-    invariant lives here — a photoUrl must stay under this organizer's
-    media prefix, checked before the INSERT."""
+    """Owner comes from the session, never the payload. The
+    media-ownership invariant lives here — photoUrl must stay under
+    this organizer's media prefix, checked before the INSERT."""
     refuse_demo_write(organizer_id)
     if payload.photoUrl is not None:
         if not storage.is_own_media_url(organizer_id, str(payload.photoUrl)):
@@ -92,24 +91,23 @@ async def update_owned_service_tx(
     update: TouchedUpdate[gen.UpdateServiceInput],
 ) -> ServiceRow | None:
     """None when the id does not exist or belongs to someone else
-    (caller answers 404 either way); NothingToUpdate when the
-    payload carries no writable field. Paired with get_owned_service_tx
-    on one merge-patch transaction.
+    (caller answers 404); NothingToUpdate when the payload carries no
+    writable field. Paired with get_owned_service_tx on one merge-patch
+    transaction.
 
-    Defense in depth: routes already refuse the demo account via
-    require_writable_organizer — a direct service call must not write it
-    either. The media-ownership invariant lives here too — a touched
-    photoUrl must stay under this organizer's media prefix, checked
-    inside the transaction before any column is written."""
+    Defense in depth: routes already refuse the demo account, but a
+    direct service call must not write it either. The media-ownership
+    invariant lives here too — a touched photoUrl must stay under this
+    organizer's media prefix, checked in the tx before any write."""
     refuse_demo_write(organizer_id)
     state = update.state
     touched = update.touched
     if touched.get("photoUrl") and state.photoUrl is not None:
         if not storage.is_own_media_url(organizer_id, str(state.photoUrl)):
             raise PhotoPrefix()
-    # Column-keyed touched values: absent keys are left untouched,
-    # explicit nulls clear the column (merge-patch semantics, ADR-016).
-    # Core update() instead of f-string SET concatenation.
+    # Column-keyed touched values: absent keys untouched, explicit
+    # nulls clear the column (merge-patch, ADR-016). Core update(), not
+    # f-string SET.
     values: dict[str, Any] = {}
     if touched.get("title") and state.title is not None:
         values["title"] = str(state.title)
@@ -147,22 +145,18 @@ async def delete_owned_service(
 ) -> tuple[str, str | None] | None:
     """Refuse to delete a service whose slots are referenced by any
     booking row. Slots cascade on the services FK, but bookings hold
-    their slots with ON DELETE RESTRICT, so the cascade stops at the
-    first booked slot and the raw FK error would surface as a 500. The
-    guard runs first and answers a 409 the organizer can act on; the
-    FK mapping below is the backstop. Returns None when nothing matched.
-    The deleted cover URL rides along so the caller can remove the R2
-    object best-effort after the commit (same pattern as the PATCH
-    handlers) — a separate read-then-delete would race with a
-    concurrent PATCH pointing the row at a new cover."""
+    slots with ON DELETE RESTRICT — the cascade stops at the first
+    booked slot and the raw FK error would surface as a 500. The guard
+    answers a 409; the FK mapping below is the backstop. None when
+    nothing matched. The deleted cover URL rides along so the caller
+    removes the R2 object after the commit — a separate read-then-delete
+    would race a concurrent PATCH pointing the row at a new cover."""
     refuse_demo_write(organizer_id)
     async with session.begin():
-        # Lock the service row so the check sees a stable parent: FOR
-        # UPDATE serializes against a concurrent service delete, not
-        # against a concurrent booking INSERT (bookings lock the slot
-        # row, not the service row). A booking landing between the guard
-        # and the DELETE is caught by the FK backstop below, which
-        # answers the same 409.
+        # Lock the service row for a stable parent. FOR UPDATE
+        # serializes against a service delete, not a booking INSERT
+        # (bookings lock the slot row) — a booking landing between the
+        # guard and the DELETE is caught by the FK backstop below.
         locked = await service_repo.get_owned_service_for_update(session, organizer_id, service_id)
         if locked is None:
             return None
@@ -174,13 +168,13 @@ async def delete_owned_service(
         try:
             deleted = await service_repo.delete_owned_service(session, organizer_id, scoped_id)
         except Exception as err:
-            # Backstop: a stray FK violation must surface as the same
-            # 409, never a bare 500.
+            # Backstop: a stray FK violation surfaces as the same 409,
+            # never a bare 500.
             if is_foreign_key_violation(err):
                 raise ServiceHasBookings() from err
             raise
         if deleted is None:
             return None
-        # psycopg hands back a UUID object; the caller compares and
-        # interpolates the canonical string.
+        # psycopg hands back a UUID object; the caller interpolates the
+        # canonical string.
         return scoped_id, deleted.photo_url

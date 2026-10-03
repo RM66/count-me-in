@@ -1,5 +1,5 @@
-"""The widget HMAC contract, replay
-protection, and malformed-payload handling."""
+"""The widget HMAC contract, replay protection, and malformed-payload
+handling."""
 
 from __future__ import annotations
 
@@ -22,9 +22,8 @@ TEST_BOT_TOKEN = "123456789:TEST-BOT-TOKEN-abcdef"
 
 
 def fresh_auth_date() -> str:
-    """A current timestamp — the validator rejects widget payloads older
-    than 24h (hasDataExpired in the TS validator), so fixtures must not
-    use frozen historical dates."""
+    """A current timestamp — the validator rejects payloads older than
+    24h, so fixtures must not use frozen historical dates."""
     return str(int(time.time()))
 
 
@@ -37,9 +36,8 @@ def future_auth_date() -> str:
 
 
 def sign_widget(bot_token: str, fields: dict[str, str]) -> str:
-    """Compute the Telegram widget hash independently of the production
-    code path (same algorithm, hand-written here) so the test anchors
-    the HMAC contract, not just itself."""
+    """Compute the widget hash independently of the production path (same
+    algorithm, hand-written) so the test anchors the HMAC contract."""
     keys = sorted(k for k in fields if k != "hash")
     dcs = "\n".join(f"{k}={fields[k]}" for k in keys)
     secret = hashlib.sha256(bot_token.encode()).digest()
@@ -49,8 +47,8 @@ def sign_widget(bot_token: str, fields: dict[str, str]) -> str:
 def widget_body(
     id_: int, first_name: str, last_name: str, username: str, auth_date: str, hash_: str
 ) -> bytes:
-    """Marshal the numeric fields the widget actually sends (id and
-    auth_date are JSON numbers) plus the string fields."""
+    """Marshal the fields the widget sends (id and auth_date are JSON
+    numbers)."""
     body: dict = {"id": id_, "first_name": first_name, "auth_date": int(auth_date), "hash": hash_}
     if last_name:
         body["last_name"] = last_name
@@ -97,7 +95,7 @@ def test_valid_widget_no_username(monkeypatch):
 def test_expired_widget(monkeypatch):
     """Replay protection: a correctly signed but stale payload must be
     refused — otherwise a captured widget body could mint tickets
-    forever (hasDataExpired in the TS validator, 24h window)."""
+    forever (24h window)."""
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", TEST_BOT_TOKEN)
     fields = {"auth_date": expired_auth_date(), "first_name": "Mila", "id": "123456789"}
     fields["hash"] = sign_widget(TEST_BOT_TOKEN, fields)
@@ -109,8 +107,8 @@ def test_expired_widget(monkeypatch):
 
 
 def test_future_widget_rejected(monkeypatch):
-    """A future auth_date is a forged claim, not a slow clock: the past
-    window is 24h, the future direction only clock skew (5 minutes)."""
+    """A future auth_date is a forged claim: the past window is 24h, the
+    future direction only clock skew (5 minutes)."""
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", TEST_BOT_TOKEN)
     fields = {"auth_date": future_auth_date(), "first_name": "Mila", "id": "123456789"}
     fields["hash"] = sign_widget(TEST_BOT_TOKEN, fields)
@@ -181,9 +179,9 @@ def test_not_configured(monkeypatch):
 
 
 def test_extra_field_participates_in_hmac(monkeypatch):
-    """The data-check-string must cover every submitted field except
-    hash — extra fields participate in the HMAC even though the schema
-    ignores them, exactly like objectToAuthDataMap in the TS validator."""
+    """The data-check-string covers every submitted field except hash —
+    extra fields participate in the HMAC even though the schema ignores
+    them."""
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", TEST_BOT_TOKEN)
     auth_date = fresh_auth_date()
 
@@ -207,7 +205,7 @@ def test_extra_field_participates_in_hmac(monkeypatch):
     validate_telegram_widget(body)  # must not raise
 
     # A hash signed over the base fields only must fail once the extra
-    # field travels along — the check-string covers every field.
+    # field travels along.
     base = {"auth_date": auth_date, "first_name": "Mila", "id": "123456789"}
     stale_hash = sign_widget(TEST_BOT_TOKEN, base)
     body = json.dumps(

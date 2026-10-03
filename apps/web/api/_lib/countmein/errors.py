@@ -1,20 +1,16 @@
 """The API exception hierarchy.
 
 One base class carries everything a handler needs to answer an error:
-status, i18n key, optional ICU params, and optional ErrorBody extras.
+status, i18n key, optional ICU params, optional ErrorBody extras.
 Subclasses are the domain failure modes — raised where they happen,
-rendered by the app-level `ApiError` exception handler, so route
-handlers stop pattern-matching exception chains (`_errors_as` is gone)
-and never flatten an unexpected error into a misleading 4xx: anything
-that is not an ApiError keeps propagating to the 500 recovery.
+rendered by the app-level `ApiError` handler, so route handlers never
+pattern-match exception chains or flatten an unexpected error into a
+misleading 4xx: anything that is not an ApiError propagates to the 500
+recovery.
 
-This module deliberately holds only data: the error→Response conversion
-lives in the transport (web/response.render_api_error) and is wired in
-exactly one place — the exception handler registered in app.py — so the
-lower layer never depends on the transport.
-
-Byte-identical bodies: render_api_error reuses the existing renderer
-(web/response.py), which the parity goldens pin.
+This module holds only data: the error→Response conversion lives in
+web/response.render_api_error, wired once in app.py — the lower layer
+never depends on the transport.
 """
 
 from __future__ import annotations
@@ -26,10 +22,9 @@ from .contracts.models_gen import ErrorBody
 
 def walk_exception_chain(err: BaseException) -> Iterator[BaseException]:
     """Yield err and everything it wraps via __cause__/__context__, each
-    exception once. A wrapped driver error must not slip past a mapping
-    into a bare 500 — the three former word-for-word copies of this walk
-    (SQLSTATE classification, unique-constraint naming, job error
-    mapping) all build on it."""
+    once. A wrapped driver error must not slip past a mapping into a
+    bare 500 — SQLSTATE classification, unique-constraint naming and
+    job error mapping all build on this."""
     seen: set[int] = set()
     current: BaseException | None = err
     while current is not None and id(current) not in seen:
@@ -59,22 +54,21 @@ class ApiError(Exception):
         return self.response_key()
 
     def extras(self) -> ErrorBody | None:
-        """Additional ErrorBody fields (seatsLeft/maxSeats), if any. The
-        code is always set — extras() fills it from code()."""
+        """Additional ErrorBody fields (seatsLeft/maxSeats), if any."""
         return None
 
     def response_key(self) -> str:
-        """The i18n key the response renders — a hook for the errors
-        whose copy depends on the instance (SoldOut)."""
+        """The i18n key the response renders — a hook for errors whose
+        copy depends on the instance (SoldOut)."""
         return self.key
 
 
 class ValidationFailed(Exception):
     """A request body failed schema validation (400).
 
-    Deliberately NOT an ApiError: the body shape is the shared
-    invalid_body envelope ({error, details}), rendered by the app-level
-    handler so route handlers never catch ValidationFailed locally."""
+    Deliberately NOT an ApiError: the body is the shared invalid_body
+    envelope ({error, details}), rendered by the app-level handler so
+    routes never catch ValidationFailed locally."""
 
     def __init__(self, errors: object) -> None:
         self.errors = errors
@@ -126,8 +120,8 @@ class UnsupportedMediaType(ApiError):
 
 class TicketExpired(ApiError):
     """A guest/organizer ticket is unknown, expired, or wrong-purpose
-    (401) — answered identically so the endpoint cannot be used to
-    test whether a ticket exists."""
+    (401) — answered identically, so the endpoint cannot probe whether
+    a ticket exists."""
 
     status = 401
     key = "ticketExpired"
@@ -141,7 +135,7 @@ class UnauthorizedInternal(ApiError):
 
 
 class TelegramNotConfiguredError(ApiError):
-    """TELEGRAM_BOT_TOKEN is absent, so the widget payload cannot be
+    """TELEGRAM_BOT_TOKEN is absent — the widget payload cannot be
     validated (500 telegramNotConfigured)."""
 
     status = 500
@@ -219,18 +213,17 @@ class AlreadyCancelled(ApiError):
 
 
 class BookingNotFound(ApiError):
-    """Unknown or expired manage token (404) — the expiry case is
-    answered like an unknown one so the endpoint cannot test whether
-    a token exists."""
+    """Unknown or expired manage token (404) — expiry answers like
+    unknown, so the endpoint cannot probe token existence."""
 
     status = 404
     key = "bookingNotFound"
 
 
 class InvalidOptions(ApiError):
-    """The selected options do not satisfy the service's option rules
-    (400). The class message carries the English validation detail for
-    logs; the body gets the machine-readable code plus localized copy."""
+    """The selected options violate the service's option rules (400).
+    The class message carries the English detail for logs; the body
+    gets the code plus localized copy."""
 
     status = 400
     key = "invalidOptions"
@@ -285,16 +278,15 @@ class CapacityBelowBooked(ApiError):
 
 class SlotHasActiveBookings(ApiError):
     """The slot is referenced by booking rows (confirmed or cancelled)
-    — a booked slot cannot be deleted (no path removes the rows;
-    cancelled bookings are kept as guest history). (409)"""
+    — a booked slot cannot be deleted (409)."""
 
     status = 409
     key = "slotHasActiveBookings"
 
 
 class ServiceHasBookings(ApiError):
-    """A booking row (confirmed or cancelled) references one of the
-    service's slots — deleting would lose guest records. (409)"""
+    """A booking row references one of the service's slots — deleting
+    would lose guest records (409)."""
 
     status = 409
     key = "serviceHasBookings"
@@ -361,9 +353,8 @@ class PhotoPrefix(ApiError):
 
 
 class CannotCreateService(ApiError):
-    """Structurally unreachable empty INSERT … RETURNING (500) — kept
-    as a defensive backstop: pg_insert().returning() either errors or
-    returns the row, but a silent empty result must never 201."""
+    """Structurally unreachable empty INSERT … RETURNING (500) — a
+    defensive backstop: a silent empty result must never 201."""
 
     status = 500
     key = "cannotCreateService"

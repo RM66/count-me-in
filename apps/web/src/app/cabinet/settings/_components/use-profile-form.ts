@@ -1,54 +1,50 @@
-import type { OrganizerProfile, UpdateOrganizerProfileInput } from '@repo/contracts'
-import { AVATAR_MAX_BYTES, avatarContentType } from '@repo/contracts'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
+import type { OrganizerFormOutput, OrganizerFormValues, OrganizerProfile } from '@repo/contracts'
+import {
+  AVATAR_MAX_BYTES,
+  avatarContentType,
+  organizerFormSchema,
+  toOrganizerFormValues,
+  toOrganizerProfilePatch,
+} from '@repo/contracts'
 import { useTranslations } from 'next-intl'
-import { useReducer } from 'react'
+import type { Control } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import { useUpdateOrganizerProfile, useUploadAvatar } from '@/api-client'
 import { useImageUpload } from '@/hooks/use-image-upload'
 
-type ProfileFormState = {
-  name: string
-  bio: string
-  contact: string
-  timezone: string
-  location: string
-  slug: string
-}
+/**
+ * Field components take `control` rather than the whole form instance, so each
+ * subscribes only to the field it renders.
+ */
+export type ProfileFormControl = Control<OrganizerFormValues, unknown, OrganizerFormOutput>
 
-type ProfileFormAction =
-  | { type: 'UPDATE_FIELD'; field: keyof ProfileFormState; value: string }
-  | { type: 'RESET'; organizer: OrganizerProfile }
+/**
+ * Fields backed by a plain text input — slug, timezone and description have
+ * custom controls and are wired in the form itself.
+ */
+export type ProfileTextFieldName = 'name' | 'contact' | 'location'
 
-function profileFormReducer(state: ProfileFormState, action: ProfileFormAction): ProfileFormState {
-  switch (action.type) {
-    case 'UPDATE_FIELD':
-      return { ...state, [action.field]: action.value }
-    case 'RESET':
-      return toFormState(action.organizer)
-    default:
-      return state
-  }
-}
-
-/** Seed the reducer from the loaded profile. Also used by `reset`. */
-function toFormState(organizer: OrganizerProfile): ProfileFormState {
-  return {
-    name: organizer.name,
-    bio: organizer.description ?? '',
-    contact: organizer.contact ?? '',
-    timezone: organizer.timezone,
-    location: organizer.location ?? '',
-    slug: organizer.slug,
-  }
-}
-
+/**
+ * Wires the settings profile form to the API. Validation lives in
+ * `organizerFormSchema`; the merge-patch diff (absent = keep, null = clear —
+ * only touched keys may leave) lives in `toOrganizerProfilePatch`. The avatar
+ * upload is unchanged: it persists the URL itself, outside the form.
+ */
 export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () => void) {
   const updateProfile = useUpdateOrganizerProfile()
   const t = useTranslations('Cabinet.settings')
 
-  // Lazy initializer: `toFormState` runs on mount instead of every render.
-  const [state, dispatch] = useReducer(profileFormReducer, organizer, toFormState)
+  const form = useForm<OrganizerFormValues, unknown, OrganizerFormOutput>({
+    resolver: standardSchemaResolver(organizerFormSchema),
+    defaultValues: toOrganizerFormValues(organizer),
+  })
+
+  // Subscribing the proxy is what turns dirty tracking ON — `setValue` only
+  // computes dirtyFields/isDirty for formState props someone has read.
+  const { isDirty } = form.formState
 
   const avatar = useImageUpload({
     contentType: avatarContentType,
@@ -59,39 +55,17 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
     onUploaded: () => toast.success(t('photoUpdated')),
   })
 
-  const updateField = (field: keyof ProfileFormState) => (value: string) => {
-    dispatch({ type: 'UPDATE_FIELD', field, value })
-  }
-
-  const reset = () => {
-    dispatch({ type: 'RESET', organizer })
-  }
-
-  const getChanges = (): UpdateOrganizerProfileInput => {
-    const input: UpdateOrganizerProfileInput = {}
-
-    if (state.name !== organizer.name) input.name = state.name
-    if (state.slug !== organizer.slug) input.slug = state.slug
-    if (state.bio !== (organizer.description ?? '')) input.description = state.bio || null
-    if (state.contact !== (organizer.contact ?? '')) input.contact = state.contact || null
-    if (state.timezone !== organizer.timezone) input.timezone = state.timezone
-    if (state.location !== (organizer.location ?? '')) input.location = state.location || null
-
-    return input
-  }
-
-  const hasChanges = () => Object.keys(getChanges()).length > 0
-
-  const save = () => {
-    const changes = getChanges()
-
-    if (!hasChanges()) {
+  const save = form.handleSubmit((values) => {
+    const patch = toOrganizerProfilePatch(values, form.formState.dirtyFields)
+    if (Object.keys(patch).length === 0) {
       toast.info(t('noChanges'))
       return
     }
 
-    updateProfile.mutate(changes, {
+    updateProfile.mutate(patch, {
       onSuccess: () => {
+        // Re-baseline: what was just persisted is the new clean state.
+        form.reset(form.getValues())
         toast.success(t('updatedToast'))
         onSaveSuccess?.()
       },
@@ -99,15 +73,12 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
         toast.error(error.message || t('updateFailed'))
       },
     })
-  }
+  })
 
   return {
-    state,
-    updateField,
-    reset,
-    getChanges,
-    hasChanges,
+    form,
     save,
+    isDirty,
     isSaving: updateProfile.isPending,
     // Avatar upload — shared with the service cover picker.
     fileInputRef: avatar.inputRef,

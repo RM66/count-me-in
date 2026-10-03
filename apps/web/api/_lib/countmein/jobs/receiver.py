@@ -26,8 +26,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-# Clock tolerance on the exp/nbf claims: QStash mints exp at sign time
-# and the function clock may lag seconds behind.
+# Clock tolerance on exp/nbf: the function clock may lag seconds behind
+# the signer.
 _QSTASH_EXP_SKEW = 60
 
 
@@ -50,8 +50,8 @@ def verify_qstash_signature(
     """
     if signature == "":
         return False
-    # Never verify with an empty key: HMAC with "" is computable by
-    # anyone, so an empty next key must be skipped, not tried.
+    # Never verify with an empty key — HMAC with "" is computable by
+    # anyone.
     keys = [k for k in (current_signing_key, next_signing_key) if k]
     if not keys:
         return False
@@ -60,11 +60,9 @@ def verify_qstash_signature(
     from qstash.errors import SignatureError
     from qstash.receiver import verify_with_key
 
-    # Strict UTF-8: QStash only ever delivers JSON, so non-UTF-8 bytes
-    # are not a delivery we signed. The SDK re-encodes the body string
-    # with strict UTF-8 to compute the hash, so a lenient decode here
-    # (surrogateescape) would turn into UnicodeEncodeError inside the
-    # SDK — a 500 that burns QStash's retry budget on garbage.
+    # Strict UTF-8: QStash only delivers JSON. A lenient decode would
+    # turn into UnicodeEncodeError inside the SDK — a 500 that burns
+    # the retry budget on garbage.
     try:
         body_text = body.decode("utf-8")
     except UnicodeDecodeError:
@@ -80,22 +78,19 @@ def verify_qstash_signature(
             )
             return True
         except (SignatureError, KeyError, AttributeError, UnicodeError):
-            # KeyError: a validly-signed token without a body claim —
-            # the SDK indexes claims["body"] directly. AttributeError:
-            # the claim present but not a string (the SDK calls
-            # .rstrip on it). Both are malformed deliveries (QStash
-            # always sets a string body claim), so they must fail
-            # verification (401), not crash the route (500, which
-            # would burn QStash's retry budget on garbage).
+            # KeyError: signed token without a body claim (the SDK
+            # indexes claims["body"]). AttributeError: the claim is not
+            # a string (the SDK calls .rstrip on it). Both are malformed
+            # deliveries — fail verification (401), never a 500 that
+            # burns the retry budget.
             continue
     return False
 
 
 def trace_id_from_headers(headers: Mapping[str, str]) -> str:
-    """Read the trace-id header forwarded by QStash. The publisher sets
-    Upstash-Trace-Id on the publish request; QStash forwards Upstash-*
-    headers to the destination. Returns "" when absent (sweeper
-    re-publish, legacy)."""
+    """Read the trace-id header QStash forwarded (the publisher sets
+    Upstash-Trace-Id; Upstash-* headers reach the destination).
+    "" when absent (sweeper re-publish, legacy)."""
     for name, value in headers.items():
         if name.lower() == "upstash-trace-id":
             return value

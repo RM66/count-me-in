@@ -18,9 +18,8 @@ _LEVELS = {"info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR
 
 
 class _JsonFormatter(logging.Formatter):
-    # Uppercase level names (INFO/WARN/ERROR — never "WARNING"); the
-    # drain's level filters match the exact string, so the case is part
-    # of the wire format.
+    # WARN, never "WARNING" — the drain's level filters match the exact
+    # string, so case is part of the wire format.
     _LEVEL_NAMES: ClassVar[dict[str, str]] = {"WARNING": "WARN"}
 
     def format(self, record: logging.LogRecord) -> str:
@@ -74,12 +73,10 @@ _warn_every_last: dict[str, float] = {}
 
 
 def warn_every(interval: float, msg: str, fields: Mapping[str, Any] | None = None) -> None:
-    """Log msg at most once per interval.
-
-    Use for conditions that repeat on every request (missing secret,
-    broken token) — the first occurrence and a periodic heartbeat, not a
-    flood. A "once per process" rule would make a production
-    misconfiguration nearly invisible on a warmed instance.
+    """Log msg at most once per interval — for conditions that repeat on
+    every request (missing secret, broken token): first occurrence plus
+    a heartbeat, not a flood. A "once per process" rule would hide a
+    production misconfiguration on a warmed instance.
     """
     with _warn_every_lock:
         last = _warn_every_last.get(msg)
@@ -91,10 +88,8 @@ def warn_every(interval: float, msg: str, fields: Mapping[str, Any] | None = Non
 
 
 def new_trace_id() -> str:
-    """Short random hex id correlating a request across the async pipeline.
-
-    The id travels in the QStash job payload and is emitted in every log
-    line in both the API handler and the job handler, so debugging "I
-    booked but didn't get a message" becomes a grep for one id.
+    """Short random hex id correlating a request across the pipeline —
+    travels in the QStash job payload and every log line of both
+    handlers, so "booked but got no message" is a one-id grep.
     """
     return secrets.token_hex(8)

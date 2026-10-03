@@ -1,8 +1,7 @@
-"""Configuration the job handlers need, read per delivery. Checked when
-a job runs rather than at boot — the receiver endpoint is a serverless
-function, so "startup" is every request. A missing variable must fail
-that delivery loudly (500 → QStash retries) instead of silently
-skipping."""
+"""Configuration the job handlers need, read per delivery — the receiver
+is a serverless function, so "startup" is every request. A missing
+variable must fail the delivery loudly (500 → QStash retries), not
+silently skip."""
 
 from __future__ import annotations
 

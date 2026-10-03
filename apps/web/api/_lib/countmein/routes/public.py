@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
@@ -26,17 +25,16 @@ from ..services.slot_service import SLOT_HORIZON
 from ..web.deps import get_db_session, ip_rate_limit
 from ..web.response import json_response
 
-# Defensive bounds on the public envelopes: there is no pagination, so a
-# runaway organizer (hundreds of services x thousands of upcoming slots)
-# must not turn one page render into an unbounded query and a multi-MB
-# payload. The caps sit far above any realistic catalog; past them the
-# view truncates rather than fails.
+# Defensive bounds on the public envelopes: no pagination, so a runaway
+# organizer (hundreds of services x thousands of slots) must not turn one
+# page render into an unbounded query and a multi-MB payload. The caps
+# sit far above any realistic catalog — past them the view truncates,
+# not fails.
 _PUBLIC_SERVICES_LIMIT = 200
 _PUBLIC_SLOTS_LIMIT = 500
 
 
 async def get_public_organizer(
-    request: Request,
     slug: str,
     _limited: None = Depends(ip_rate_limit("rl:public-org:", 60, 60.0)),
     session: AsyncSession = Depends(get_db_session),
@@ -73,7 +71,6 @@ async def get_public_organizer(
 
 
 async def get_public_service(
-    request: Request,
     id: str,
     _limited: None = Depends(ip_rate_limit("rl:public-srv:", 60, 60.0)),
     session: AsyncSession = Depends(get_db_session),
@@ -103,7 +100,6 @@ async def get_public_service(
 
 
 async def get_public_sitemap(
-    request: Request,
     _limited: None = Depends(ip_rate_limit("rl:public-sitemap:", 10, 60.0)),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:

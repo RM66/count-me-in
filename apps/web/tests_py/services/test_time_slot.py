@@ -1,11 +1,10 @@
-"""Standalone slot service tests: direct slot queries, updates and the
-delete guard, against the live Postgres — the booking-write tests cover
-slots only as fixtures of the booking flow; this module pins the slot
-operations themselves (ownership scoping, the capacity precheck, the
-merge-patch update contract, the delete guard, the rolling horizon).
+"""Standalone slot service tests against live Postgres — the
+booking-write tests cover slots only as booking fixtures; this module
+pins the slot operations themselves (ownership scoping, the capacity
+precheck, the merge-patch update contract, the delete guard, the
+rolling horizon).
 
-Requires POSTGRES_URL — skipped locally without it, failed in CI (the
-shared rule in tests_py/_env.py).
+Requires POSTGRES_URL — skipped locally without it, failed in CI.
 """
 
 from __future__ import annotations
@@ -122,12 +121,11 @@ async def test_list_slots_upcoming_only_drops_past(fx):
 
 
 async def test_public_slots_bounded_by_horizon():
-    """The rolling public horizon: a slot further out than now + 90
-    days stays in the DB and stays on the cabinet's own list, but the
-    public upcoming-slots read must not return it — a schedule seeded
-    seasons ahead must not grow the public payload (ADR-023 Phase 2).
-    The cabinet list is deliberately unbounded: the organizer owns the
-    whole schedule."""
+    """The rolling public horizon: a slot further out than now + 90 days
+    stays in the DB and on the cabinet's list, but the public upcoming
+    read must not return it — a schedule seeded seasons ahead must not
+    grow the public payload (ADR-023 Phase 2). The cabinet list is
+    deliberately unbounded."""
     from countmein.repositories import slot_repo
     from countmein.services.slot_service import SLOT_HORIZON
 

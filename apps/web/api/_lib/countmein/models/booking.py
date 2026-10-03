@@ -22,8 +22,7 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     # default=new_id: Python-side uuidv7 (Drizzle's $defaultFn ran
-    # JS-side, so the column has no DB default). ORM-side only,
-    # invisible to Alembic DDL comparison.
+    # JS-side — no DB default). ORM-side only, invisible to Alembic.
     id: Mapped[str] = mapped_column(
         postgresql.UUID(as_uuid=False), primary_key=True, default=new_id
     )

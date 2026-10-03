@@ -3,8 +3,8 @@ middleware's double-start guard.
 
 The 405 envelope is part of the wire contract (unknown methods answer
 the localized JSON error, never FastAPI's {"detail": …}); the
-double-start guard is what keeps a mid-response crash from corrupting
-the stream with a second http.response.start.
+double-start guard keeps a mid-response crash from corrupting the
+stream with a second http.response.start.
 """
 
 from __future__ import annotations
@@ -64,9 +64,9 @@ async def test_path_param_on_a_real_path_does_not_steer_dispatch(client):
 
 
 async def test_path_param_outside_api_prefix_answers_404(client):
-    """On the rewrite destination a _path pointing outside /api/ is still
-    refused — the gate narrows where restoration applies, not what it
-    may restore to."""
+    """On the rewrite destination a _path outside /api/ is still refused —
+    the gate narrows where restoration applies, not what it may restore
+    to."""
     resp = await client.get("/api/index", params={"_path": "/cabinet"})
     assert resp.status_code == 404
     assert resp.headers["content-type"] == "application/json"
@@ -83,9 +83,8 @@ async def test_path_param_order_is_irrelevant(client):
 
 async def test_recovery_after_response_start_does_not_double_start():
     """An exception raised after http.response.start went out must not
-    send a second response head — the middleware logs and re-raises,
-    the client sees a truncated response instead of a corrupted
-    stream."""
+    send a second response head — the middleware logs and re-raises; the
+    client sees a truncated response."""
 
     started: list[bool] = []
 
@@ -115,8 +114,8 @@ async def test_recovery_after_response_start_does_not_double_start():
 
 
 async def test_recovery_before_response_start_answers_500():
-    """An exception before any response head went out answers the plain
-    500 with the default headers — the original recovery behavior."""
+    """An exception before any response head answers the plain 500 with
+    the default headers — the original recovery behavior."""
 
     async def app(scope, receive, send):
         raise RuntimeError("boom before start")

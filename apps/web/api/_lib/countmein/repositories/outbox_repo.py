@@ -96,9 +96,9 @@ async def backlog(session: AsyncSession) -> tuple[int, datetime | None]:
 
 
 async def sweep_pending(session: AsyncSession, cutoff: datetime, limit: int) -> list[OutboxMessage]:
-    """Claim pending rows past the grace period (SKIP LOCKED so two
-    concurrent sweepers never process the same batch). The claim spends
-    no retry budget — attempts move per processed row only."""
+    """Claim pending rows past the grace period (SKIP LOCKED — two
+    concurrent sweepers never share a batch). The claim spends no retry
+    budget — attempts move per processed row only."""
     stmt = (
         select(OutboxMessage)
         .where(

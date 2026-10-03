@@ -41,7 +41,11 @@ function readDictionary(dir: string, locale: string): Record<string, unknown> {
   return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
 }
 
-function flatStrings(dir: string, locale: string, node: Record<string, unknown>): Record<string, string> {
+function flatStrings(
+  dir: string,
+  locale: string,
+  node: Record<string, unknown>,
+): Record<string, string> {
   const map: Record<string, string> = {}
   for (const [key, val] of Object.entries(node)) {
     if (typeof val !== 'string') {
@@ -94,11 +98,7 @@ function generate(): void {
       if (typeof val === 'string') {
         topMap[section] = val
       } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-        sectionsMap[section] = flatStrings(
-          notificationsDir,
-          locale,
-          val as Record<string, unknown>,
-        )
+        sectionsMap[section] = flatStrings(notificationsDir, locale, val as Record<string, unknown>)
       } else {
         throw new Error(`notifications/${locale}.json: key "${section}" has an unsupported shape`)
       }

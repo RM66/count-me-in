@@ -66,8 +66,7 @@ def _body(resp) -> dict:
 )
 def test_error_response(err, want_status, want_code, want_seats, want_max):
     """ADR-024: every error body carries a machine-readable code — the
-    i18n key by default, the pinned token where the client contracts
-    one."""
+    i18n key by default, or the pinned token the client contracts."""
     for locale in LOCALES:
         resp = render_api_error(err, locale)
         assert resp.status == want_status
@@ -117,9 +116,9 @@ def test_rate_limited_headers():
 
 
 def test_wrapped_errors_are_not_flattened():
-    # A wrapped ApiError must NOT be answered as its cause's 4xx: only a
-    # real ApiError instance gets the mapped response, everything else
-    # keeps propagating to the 500 recovery.
+    # A wrapped ApiError must NOT answer as its cause's 4xx: only a real
+    # ApiError instance gets the mapped response; everything else keeps
+    # propagating to the 500 recovery.
     wrapped = RuntimeError("booking tx")
     wrapped.__cause__ = SoldOut(2)
     assert not isinstance(wrapped, ApiError)
@@ -127,8 +126,8 @@ def test_wrapped_errors_are_not_flattened():
 
 
 def test_booking_error_response_localized():
-    # The body is actually localized (ADR-011): at least one locale must
-    # render different copy from English for the same key.
+    # Actually localized (ADR-011): at least one locale must render
+    # different copy from English for the same key.
     err = SoldOut(0)
     en = _body(render_api_error(err, "en"))["error"]
     differs = any(
@@ -139,6 +138,5 @@ def test_booking_error_response_localized():
     assert differs, "localized copy must differ from English in at least one locale"
 
 
-# (The empty-500 shape and log redaction are pinned by test_log_redaction
-# and the middleware recovery tests; the dead `internal()` helper was
-# removed with the broad except-blocks it served.)
+# The empty-500 shape and log redaction are pinned by
+# test_log_redaction and the middleware recovery tests.

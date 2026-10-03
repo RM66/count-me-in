@@ -11,16 +11,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import secrets
 import time
 from dataclasses import dataclass
 
-from .. import logx
 from ..errors import walk_exception_chain
 
-# Postgres SQLSTATE codes — the codes the driver puts on the error when
-# a constraint rejects a write.
+# Postgres SQLSTATE codes the driver puts on a constraint rejection.
 UNIQUE_VIOLATION = "23505"
 FOREIGN_KEY_VIOLATION = "23503"
 
@@ -40,9 +37,9 @@ def unique_violation(err: BaseException) -> bool:
 
 
 def is_foreign_key_violation(err: BaseException) -> bool:
-    """Whether err (or anything it wraps) is a 23503 — a row still
-    references the deleted row. Used as a backstop on delete paths so a
-    constraint change cannot resurface as a 500."""
+    """Whether err (or anything it wraps) is a 23503 — used as a
+    backstop on delete paths so a constraint cannot resurface as a
+    500."""
     return _pg_error_code(err) == FOREIGN_KEY_VIOLATION
 
 
@@ -50,8 +47,8 @@ def new_id() -> str:
     """Generate a uuidv7 — the tables' ids have no DB default (Drizzle's
     $defaultFn ran JS-side), so ids are generated here.
 
-    RFC 9562 layout: unix_ts_ms (48 bits) | ver=7 (4) | rand_a (12) |
-    var=2 (2) | rand_b (62)."""
+    RFC 9562: unix_ts_ms (48) | ver=7 (4) | rand_a (12) | var=2 (2) |
+    rand_b (62)."""
     ts_ms = time.time_ns() // 1_000_000
     rand = secrets.token_bytes(10)
     b = bytearray(16)
@@ -74,22 +71,20 @@ _NANOID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567
 
 @dataclass(slots=True, frozen=True)
 class TouchedUpdate[StateT]:
-    """The merge-patch update contract shared by the three partial-update
-    *_tx functions: the merged state plus the touched-key set, so only
-    intended columns are written (absent key = keep, RFC 7386). Generic
-    over the generated input model — a typo in a touched key or a state
-    field is a type error here, not a silently unwritten column."""
+    """The merge-patch update contract shared by the *_tx functions:
+    merged state plus the touched-key set, so only intended columns are
+    written (absent key = keep, RFC 7386). Generic over the generated
+    input model — a typo in a touched key is a type error, not a
+    silently unwritten column."""
 
     state: StateT
     touched: dict[str, bool]
 
 
 def new_service_id() -> str:
-    """Mirror nanoid(): 21 chars from the URL-safe alphabet. Uses
-    rejection sampling to avoid modulo bias — 256 is not evenly
-    divisible by 64, so int(v)%len(alphabet) would slightly favour the
-    first 0..3 characters. Not security-critical (service IDs aren't
-    secrets), but a faithful nanoid port rejects out-of-range bytes."""
+    """Mirror nanoid(): 21 chars from the URL-safe alphabet, with
+    rejection sampling — 256 % 64 != 0, so a plain modulo would favour
+    the first bytes. Not security-critical, but a faithful port."""
     alphabet_len = 64
     limit = 256 - (256 % alphabet_len)  # largest multiple fitting in a byte
     out: list[str] = []
@@ -108,26 +103,7 @@ def new_manage_token() -> str:
 
 
 def hash_manage_token(token: str) -> str:
-    """SHA-256 hex of the manage token, the lookup key for cancel and the
-    guest management page. The raw token is stored only for the flows
-    that must re-issue the deep link; every credential check goes
-    through this hash."""
+    """SHA-256 hex of the manage token — the lookup key for cancel and
+    the management page. The raw token is stored only for re-issuing the
+    deep link; every credential check goes through this hash."""
     return hashlib.sha256(token.encode()).hexdigest()
-
-
-def parse_string_array(raw: str | list[str] | None) -> list[str] | None:
-    """Decode the options column: None → None; a JSON string (the
-    array_to_json projection) or a Python list (psycopg's text[]
-    adaptation) → the list of strings. A malformed value is logged, not
-    silently swallowed: "no options" and "corrupt options" must be
-    distinguishable in the logs."""
-    if raw is None or raw == "null":
-        return None
-    if isinstance(raw, list):
-        return [str(x) for x in raw]
-    try:
-        out = json.loads(raw)
-    except ValueError as err:
-        logx.error(err, {"scope": "parse-string-array", "raw": raw})
-        return None
-    return out  # type: ignore[no-any-return]

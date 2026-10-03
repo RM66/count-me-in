@@ -39,7 +39,7 @@ the demo seed existed twice, and Redis was wired twice.
    `POST /api/internal/auth/organizer-by-messenger`. Each top-level
    `/api/{public,cabinet,internal}` prefix needed a `vercel.json` rewrite.
 5. **Dual runtime.** Vercel serverless keeps `NullPool` + no prepared
-   statements; the container twin (`apps/web/Dockerfile`, root
+   statements; the container twin (`apps/web/Dockerfile.api`, root
    `docker-compose.yml` — Postgres + Redis + API + web) uses a queue pool and
    migrates on startup (`alembic upgrade head`).
 

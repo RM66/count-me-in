@@ -1,19 +1,17 @@
 """vercel.json rewrite coverage (port of the retired router's config test).
 
 The route set is pinned by the OpenAPI spec and the app restores the
-original path from `?_path` — what no other check can see is whether
-vercel.json actually rewrites every API path to the function entry. A
-missing rewrite is a 404 in production behind Next.js with a green
-build.
+original path from `?_path` — what no other check sees is whether
+vercel.json rewrites every API path to the function entry. A missing
+rewrite is a production 404 behind Next.js with a green build.
 
-The check is deliberately pattern-based, not an exact match: vercel.json
-uses /api/organizers/:path* rewrites for whole subtrees, so a new
-/api/organizers/... path needs no edit while a new top-level /api/...
-prefix does.
+Pattern-based, not exact match: vercel.json uses /api/organizers/:path*
+rewrites for whole subtrees, so a new /api/organizers/... path needs no
+edit while a new top-level /api/... prefix does.
 
-The entry destination is derived from the single `functions` key
-(api/index.py → /api/index): the destination must be the function's
-route path with the original path carried as ?_path.
+The entry destination derives from the single `functions` key
+(api/index.py → /api/index): it must be the function's route path with
+the original path carried as ?_path.
 """
 
 from __future__ import annotations
@@ -60,9 +58,8 @@ def vercel_rewrites() -> list[tuple[str, str]]:
 
 def rewrite_regex(source: str) -> re.Pattern[str]:
     """Convert a vercel.json source pattern into a regexp with Vercel's
-    semantics: ":path*" matches zero or more segments (so
-    /api/services/:path* also covers the bare /api/services), ":name"
-    matches exactly one."""
+    semantics: ":path*" matches zero or more segments (/api/services/:path*
+    covers bare /api/services), ":name" matches exactly one."""
     parts = ["^"]
     for seg in source.split("/"):
         if not seg:
@@ -90,20 +87,18 @@ def test_vercel_rewrites_cover_spec_paths():
 
 
 def test_healthz_rewrite():
-    """/api/healthz is mounted outside the spec (infrastructure, not part
-    of the OpenAPI surface), so the coverage test cannot see it — pin its
-    rewrite explicitly (without it the probe 404s in production behind
-    Next.js)."""
+    """/api/healthz is mounted outside the spec, so the coverage test
+    cannot see it — pin its rewrite explicitly (without it the probe
+    404s in production behind Next.js)."""
     assert any(source == "/api/healthz" for source, _ in vercel_rewrites()), (
         "vercel.json has no /api/healthz rewrite — the probe would 404 in production"
     )
 
 
 def test_bundle_excludes():
-    """The function bundle must exclude everything that is not the API:
-    tests, tooling, e2e, coverage artifacts, storybook. The list is
-    pinned so a new top-level directory does not silently ride into the
-    bundle (the 200MB budget)."""
+    """The function bundle must exclude everything that is not the API.
+    The list is pinned so a new top-level directory does not silently
+    ride into the bundle (the 200MB budget)."""
     cfg = json.loads((WEB / "vercel.json").read_text())
     fn = cfg["functions"]["api/index.py"]
     excluded = fn["excludeFiles"]
@@ -113,4 +108,5 @@ def test_bundle_excludes():
     assert excluded == want, f"excludeFiles must stay pinned to the full list (got {excluded!r})"
     # openapi*.yaml must not be pulled in either — the spec is a build
     # input, not runtime code.
+    assert fn["includeFiles"] == "_lib/**"
     assert fn["includeFiles"] == "_lib/**"

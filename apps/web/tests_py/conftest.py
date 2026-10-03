@@ -20,10 +20,10 @@ import pytest
 from _env import require_postgres, require_redis
 from dotenv import load_dotenv
 
-# Local runs do not load .env; without POSTGRES_URL the xdist isolation
-# below is a no-op and parity workers collide on one shared database.
-# Never override what the environment (CI) already sets.
-# Walk up from this file to the first .env (repo root locally; absent in CI).
+# Without POSTGRES_URL the xdist isolation below is a no-op and parity
+# workers collide on one shared database. Never override what the
+# environment (CI) already sets. Walk up to the first .env (repo root
+# locally; absent in CI).
 _env_file = next(
     (p / ".env" for p in Path(__file__).resolve().parents if (p / ".env").is_file()),
     None,
@@ -38,19 +38,16 @@ def _xdist_isolation():
 
     The suite shares one Postgres and one Redis, but the parity replay
     TRUNCATEs every table and FLUSHDBs — under xdist that collides with
-    other workers' DML (deadlocks) and wipes their Redis state. So each
-    xdist worker gets its own slice, created once per worker process:
+    other workers' DML (deadlocks) and wipes their Redis state. Each
+    worker gets its own slice, created once per worker process:
 
     - Postgres: a per-worker database, migrated with Alembic
-      (`alembic upgrade head` — the same revision CI applies to the
-      base). Not a TEMPLATE clone: the clone requires zero other
-      connections to the base, which a dev server (or another suite)
-      violates.
+      (`alembic upgrade head`). Not a TEMPLATE clone — the clone needs
+      zero other connections to the base, which a dev server violates.
     - Redis: a per-worker logical database (db index = worker id + 1;
       db 0 stays untouched for the dev topology).
 
-    Without xdist (a plain `uv run pytest`) nothing changes: the
-    fixture is a no-op and the base URL is used as-is.
+    Without xdist the fixture is a no-op and the base URL is used as-is.
     """
     worker = os.getenv("PYTEST_XDIST_WORKER", "")
     if worker == "":
@@ -63,11 +60,11 @@ def _xdist_isolation():
 
         dbname = f"countmein_test_{worker}"
         # Admin statements run from the neutral `postgres` maintenance
-        # database: DROP DATABASE cannot run on the database itself.
+        # database — DROP DATABASE cannot run on the database itself.
         admin_url = _replace_dbname(base_pg, "postgres")
         with psycopg.connect(admin_url, autocommit=True) as conn:
-            # Always recreate: a leftover database from a previous run
-            # may carry a schema older than the migrations.
+            # Always recreate: a leftover database may carry a schema
+            # older than the migrations.
             conn.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
             conn.execute(f'CREATE DATABASE "{dbname}"')
         _migrate(_replace_dbname(base_pg, dbname))
@@ -93,12 +90,10 @@ def _replace_dbname(url: str, dbname: str) -> str:
 
 
 def _migrate(url: str) -> None:
-    """Apply the Alembic migrations to a fresh per-worker database —
-    the same revision `bun run db:migrate:py` applies to the base —
-    then seed the demo organizer (`bun run db:seed:demo`'s job in the
-    base): several tests hang booking chains off DEMO_ORGANIZER_ID and
-    rely on the row existing. The database is dropped and recreated on
-    every run, so there is no state to track beyond the revision."""
+    """Migrate the fresh per-worker database with Alembic, then seed the
+    demo organizer — several tests hang booking chains off
+    DEMO_ORGANIZER_ID and rely on the row existing. The database is
+    recreated every run, so there is no state to track."""
     from datetime import UTC, datetime
 
     from alembic.config import Config as AlembicConfig
@@ -131,20 +126,19 @@ def redis_url() -> str:
     return require_redis()
 
 
-# NOTE: `_require_postgres` is autouse, so its name appears in every
-# test's fixturenames — it cannot be the signal. The signal is the
-# opt-in `usefixtures("_require_postgres")` marker plus the
-# live-service fixtures below.
+# `_require_postgres` is autouse, so its name is in every test's
+# fixturenames and cannot be the signal. The signal is the opt-in
+# `usefixtures("_require_postgres")` marker plus the live-service
+# fixtures below.
 _INTEGRATION_FIXTURES = {"pg_url", "redis_url", "db"}
 
 
 def pytest_collection_modifyitems(config, items):
     """Auto-mark integration tests: any test that pulls a live-service
-    fixture (the Postgres gate, pg_url/redis_url, the routes `db`
-    fixture) or calls the _env gates gets the `integration` marker, so
-    `uv run pytest -m 'not integration'` runs the pure unit suite with
-    no docker services. The signal is structural (fixture/marker use),
-    not a hand-maintained per-module list."""
+    fixture or calls the _env gates gets `integration`, so
+    `uv run pytest -m 'not integration'` runs the pure unit suite. The
+    signal is structural (fixture/marker use), not a hand-maintained
+    per-module list."""
     for item in items:
         fixturenames = set(getattr(item, "fixturenames", ()))
         uses_gate = any(
@@ -158,12 +152,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(autouse=True)
 def _require_postgres(request):
-    """The shared Postgres gate. Opt a whole module in with
+    """The shared Postgres gate. Opt a module in with
     `pytestmark = pytest.mark.usefixtures("_require_postgres")` — the
-    usefixtures mark is what triggers the check (the fixture is
-    autouse, so its name is in every test's fixturenames and cannot
-    itself be the signal). Unit-test modules never opt in, so they
-    pass through untouched and run without Postgres."""
+    usefixtures mark triggers the check (autouse means the fixture name
+    is in every test's fixturenames and cannot be the signal). Modules
+    that never opt in run without Postgres."""
     for marker in request.node.iter_markers("usefixtures"):
         if "_require_postgres" in marker.args:
             require_postgres()

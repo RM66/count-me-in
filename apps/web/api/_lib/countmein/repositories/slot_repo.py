@@ -21,8 +21,8 @@ async def list_by_organizer(
     until_time: datetime | None = None,
 ) -> list[TimeSlot]:
     """Slots across all of the organizer's services (cabinet list).
-    `until_time` bounds the upper end — the rolling horizon the caller
-    applies so a schedule years deep cannot stream unbounded rows."""
+    `until_time` bounds the upper end — a schedule years deep must not
+    stream unbounded rows."""
     stmt = (
         select(TimeSlot)
         .join(Service, TimeSlot.service_id == Service.id)
@@ -51,9 +51,9 @@ async def list_upcoming_by_services(
     until_time: datetime | None = None,
     limit: int | None = None,
 ) -> list[TimeSlot]:
-    """Upcoming slots across services in [from_time, until_time] —
-    the rolling-horizon window the public reads apply (ADR-023 Phase 2)
-    so a schedule years deep cannot grow the payload unboundedly."""
+    """Upcoming slots across services in [from_time, until_time] — the
+    rolling-horizon window public reads apply (ADR-023 Phase 2) so a
+    deep schedule cannot grow the payload unboundedly."""
     if not service_ids:
         return []
     stmt = (
@@ -87,8 +87,8 @@ async def get_slot_chain_for_booking(
     session: AsyncSession, slot_id: str, service_id: str
 ) -> tuple[TimeSlot, Service, Organizer] | None:
     """The chain create_guest_booking needs: slot + parents, future
-    only. The starts_at predicate lives in SQL so a past slot answers
-    exactly like a missing one (SlotGone → 404 slotGone)."""
+    only — the starts_at predicate lives in SQL so a past slot answers
+    like a missing one (SlotGone → 404)."""
     stmt = (
         select(TimeSlot, Service, Organizer)
         .join(Service, TimeSlot.service_id == Service.id)
@@ -112,8 +112,8 @@ async def get_owned_slot_for_update(
     session: AsyncSession, organizer_id: str, slot_id: str
 ) -> TimeSlot | None:
     """Owned slot row under FOR UPDATE — serializes the capacity
-    precheck (and the delete guard) against the booking flow's atomic
-    reserve, which a plain SELECT under READ COMMITTED cannot do."""
+    precheck and delete guard against the atomic reserve, which a plain
+    SELECT under READ COMMITTED cannot do."""
     stmt = (
         select(TimeSlot)
         .join(Service, TimeSlot.service_id == Service.id)
@@ -129,7 +129,7 @@ async def get_booked_count_for_update(
     session: AsyncSession, organizer_id: str, slot_id: str
 ) -> int | None:
     """Locked booked_count for the shrink-capacity precheck. None means
-    the slot is not owned (caller answers None like unknown)."""
+    not owned — answered like unknown."""
     owned = await get_owned_slot_for_update(session, organizer_id, slot_id)
     if owned is None:
         return None
@@ -183,9 +183,9 @@ async def insert_slots(session: AsyncSession, rows: list[dict[str, Any]]) -> Non
 async def update_slot_merge_patch(
     session: AsyncSession, organizer_id: str, slot_id: str, touched_values: dict[str, Any]
 ) -> TimeSlot | None:
-    """Partial update of touched columns only (Core update, no SET
-    string). Ownership is enforced by joining the parent service, so a
-    foreign slot id misses rather than leaks."""
+    """Partial update of touched columns only. Ownership is enforced by
+    joining the parent service — a foreign slot id misses rather than
+    leaks."""
     if not touched_values:
         return await get_owned_slot(session, organizer_id, slot_id)
     slot_ids = (
@@ -219,11 +219,9 @@ async def count_bookings_for_slot(session: AsyncSession, slot_id: str) -> int:
 
 
 async def delete_slot(session: AsyncSession, organizer_id: str, slot_id: str) -> str | None:
-    """Owned DELETE … no RETURNING body needed — the id is the answer.
-
-    A stray 23503 (FK RESTRICT) maps to the same 409 as the explicit
-    pre-count; the caller owns that mapping.
-    """
+    """Owned DELETE — no RETURNING needed, the id is the answer. A stray
+    23503 (FK RESTRICT) maps to the same 409 as the pre-count; the
+    caller owns that mapping."""
     slot_ids = (
         select(TimeSlot.id)
         .join(Service, TimeSlot.service_id == Service.id)

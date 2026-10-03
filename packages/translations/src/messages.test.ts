@@ -105,10 +105,9 @@ for (const [name, dict] of Object.entries(DICTIONARIES)) {
         // a typo'd `{nmae}` would render literally instead of failing here.
         for (const leaf of localized) {
           expect(leaf.value.trim(), `${locale} ${leaf.path}`).not.toBe('')
-          expect(
-            [...argNames(leaf.value)].sort(),
-            `${locale} ${leaf.path}`,
-          ).toEqual([...argNames(enByPath.get(leaf.path)!)].sort())
+          expect([...argNames(leaf.value)].sort(), `${locale} ${leaf.path}`).toEqual(
+            [...argNames(enByPath.get(leaf.path)!)].sort(),
+          )
         }
       })
     }

@@ -1,18 +1,14 @@
-"""The booking-write tests: the atomic seat reserve, delete guards and
-the booking write invariants, against a real Postgres:
-the atomic seat reserve, the idempotent cancel, the manageToken hash
-lookup, the demo refusal inside the transaction, and the transactional
-outbox rows. Mocks cannot test the conditional UPDATE (invariant 2): the
-whole point is that Postgres evaluates the predicate against the row it
-locks.
+"""The booking-write tests: the atomic seat reserve, idempotent cancel,
+manageToken hash lookup, demo refusal inside the transaction, and the
+transactional outbox — against real Postgres. Mocks cannot test the
+conditional UPDATE (invariant 2): the point is that Postgres evaluates
+the predicate against the row it locks.
 
 Service functions take the caller's AsyncSession — `svc()` wraps each
-call in a fresh one (the request-scoped session's stand-in) and each
-bare-named call commits its own unit.
+call in a fresh one (the request-scoped session's stand-in).
 
-Runs against the local docker Postgres when POSTGRES_URL is set and
-migrated (docker-compose.yml + Alembic migrations); skipped locally
-without it, failed in CI (the workflow provides the service).
+Runs against local docker Postgres when POSTGRES_URL is set and
+migrated; skipped locally without it, failed in CI.
 """
 
 from __future__ import annotations
@@ -48,11 +44,11 @@ from countmein.errors import (
     SlotHasActiveBookings,
     SoldOut,
 )
-from countmein.services import (
-    booking_service as bw,
+from countmein.repositories import (
+    media_repo as media,
 )
 from countmein.services import (
-    media_service as media,
+    booking_service as bw,
 )
 from countmein.services import (
     organizer_service as organizer_svc,
@@ -73,9 +69,8 @@ pytestmark = pytest.mark.integration
 
 
 def require_postgres() -> None:
-    # The shared rule: skip locally, fail in CI (a silent skip would
-    # leave the booking invariants unverified while the pipeline stays
-    # green).
+    # Skip locally, fail in CI — a silent skip would leave the booking
+    # invariants unverified on a green pipeline.
     from _env import require_postgres as _require
 
     _require()
@@ -83,9 +78,8 @@ def require_postgres() -> None:
 
 @pytest.fixture(autouse=True)
 async def fake_redis(monkeypatch):
-    # create_guest_booking redeems the raw guest ticket inside the
-    # transaction (ADR-024 B1) — the service tests therefore need a
-    # Redis stand-in to issue tickets into.
+    # create_guest_booking redeems the guest ticket inside the
+    # transaction (ADR-024 B1) — needs a Redis stand-in to issue into.
     import fakeredis.aioredis
     from countmein import redis as redis_mod
 
@@ -108,9 +102,9 @@ class SlotSpec:
 
 @dataclass
 class Fixture:
-    """One organizer + one service + one future slot, unique per test run
+    """One organizer + one service + one future slot, unique per run
     (uuid suffixes) so parallel runs never collide. Everything cascades
-    from the organizer row on cleanup once the bookings are gone."""
+    from the organizer row once the bookings are gone."""
 
     organizer_id: str
     service_id: str
@@ -257,7 +251,7 @@ def guest_payload(id_: str) -> AuthTicketPayload:
 
 async def guest_ticket(id_: str) -> str:
     """Mint a real guest ticket — the service consumes it inside the
-    booking transaction (ADR-024 B1), so a bare payload no longer works."""
+    booking transaction (ADR-024 B1); a bare payload does not work."""
     from countmein.auth.ticket import issue_ticket
 
     return await issue_ticket(guest_payload(id_))
@@ -308,8 +302,8 @@ async def test_create_guest_booking_success(cleanup):
     )
     assert await f.booked_count() == 2, "atomic reserve"
 
-    # Outbox: one row per recipient (organizer + guest), both pending,
-    # both carrying the booking id and the trace id (ADR-012).
+    # Outbox: one row per recipient, both pending, carrying the booking
+    # id and the trace id (ADR-012).
     assert len(outbox) == 2, "fan-out per recipient"
     recipients = set()
     for row in outbox:
@@ -320,8 +314,8 @@ async def test_create_guest_booking_success(cleanup):
         recipients.add(job["recipient"])
     assert recipients == {"organizer", "guest"}, "fan-out must cover organizer and guest"
 
-    # The rows are durable and pending in the DB (the caller publishes
-    # after commit and marks them sent).
+    # The rows are durable and pending — the caller publishes after
+    # commit and marks them sent.
     stored = await outbox_rows_for(created.id)
     assert len(stored) == 2
     for row in stored:
@@ -381,16 +375,16 @@ async def test_create_guest_booking_invalid_options(cleanup):
 async def test_create_guest_booking_duplicate(cleanup):
     f = await new_fixture()
     cleanup.append(f)
-    # Each attempt spends its own ticket — two tickets for the same
-    # messenger identity `it-g7` reproduce "the same guest books twice".
+    # Each attempt spends its own ticket — two tickets for `it-g7`
+    # reproduce "the same guest books twice".
     first, _ = await svc(
         bw.create_guest_booking, booking_data(f, 1, None, await guest_ticket("g7"))
     )
     f.track(first[0].id)
 
     # Same guest, same slot: the partial unique index rejects the second
-    # INSERT with a 23505 → DuplicateBooking, and the transaction
-    # rolls back — releasing the seat the second attempt had claimed.
+    # INSERT with 23505 → DuplicateBooking; the rollback releases the
+    # claimed seat.
     with pytest.raises(DuplicateBooking):
         await svc(bw.create_guest_booking, booking_data(f, 2, None, await guest_ticket("g7")))
     assert await f.booked_count() == 1, "rollback must release the claimed seats"
@@ -405,8 +399,8 @@ async def test_create_guest_booking_duplicate(cleanup):
 async def test_create_guest_booking_demo_refused(cleanup):
     require_postgres()
 
-    # The demo organizer row (seeded by seed_demo; insert defensively if
-    # the local DB was never seeded — the guard only needs the chain).
+    # The demo organizer row (insert defensively if the local DB was
+    # never seeded — the guard only needs the chain).
     async with engine().begin() as conn:
         await conn.execute(
             text(
@@ -486,8 +480,8 @@ async def test_cancel_guest_booking_by_token_success(cleanup):
     assert chain[0].status == "cancelled"
     assert await f.booked_count() == 0, "cancel must release the seats"
 
-    # One outbox row — the counterparty only (guest cancels → organizer
-    # is notified), carrying cancelledBy=guest (ADR-012).
+    # One outbox row — the counterparty only (guest cancels → organizer),
+    # carrying cancelledBy=guest (ADR-012).
     assert len(outbox) == 1
     assert outbox[0].queue == QUEUE_BOOKING_CANCELLED
     job = json.loads(outbox[0].payload)
@@ -516,7 +510,7 @@ async def test_cancel_guest_booking_unknown_token(cleanup):
     _, token = await f.insert_booking(1, None)
 
     # Unknown token → None: the caller answers 404 without confirming
-    # whether the token exists.
+    # the token exists.
     assert (
         await svc(
             bw.cancel_guest_booking_by_token, "no-such-token-aaaaaaaaaaaaaaaaaaaa", "it-trace"
@@ -524,14 +518,13 @@ async def test_cancel_guest_booking_unknown_token(cleanup):
         is None
     )
 
-    # Almost-right is still unknown: a single-char mutation of a real
-    # token matches no hash.
+    # Almost-right is still unknown: a single-char mutation matches no
+    # hash.
     assert await svc(bw.cancel_guest_booking_by_token, token + "x", "it-trace") is None
 
-    # The SHA-256 hex itself is not a valid credential either: the lookup
-    # key is hash_manage_token(input), so presenting the stored hash only
-    # matches if hash(hash) == hash, which SHA-256 never yields here —
-    # the raw token column is not a lookup key (ADR-020).
+    # The stored hash is not a credential either: the lookup key is
+    # hash_manage_token(input), so hash(hash) == hash would have to
+    # hold — the raw token column is not a lookup key (ADR-020).
     assert await svc(bw.cancel_guest_booking_by_token, hash_manage_token(token), "it-trace") is None
 
 

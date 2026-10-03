@@ -1,25 +1,20 @@
 """Parity replay.
 
 Replays every scenario in tests_py/parity/scenarios/ against the Python
-ASGI app and asserts the normalized transcript equals the golden one
-recorded when the API's behavior was frozen (tests_py/parity/golden/).
-The harness mirrors the retired recorder step for step — same pinned env, same state
-reset (TRUNCATE + demo reseed + Redis FLUSHDB), same placeholder
-minting, same normalization — so any difference the comparison reports
-is a behavioral difference from the frozen goldens,
-not harness drift.
+ASGI app and asserts the normalized transcript equals the frozen golden
+(tests_py/parity/golden/). The harness mirrors the retired recorder step
+for step — same pinned env, state reset (TRUNCATE + demo reseed + Redis
+FLUSHDB), placeholder minting, normalization — so any difference is a
+behavioral difference, not harness drift.
 
-Deliberate differences from the recorder, all forced by in-process
-replay:
+Deliberate differences, all forced by in-process replay:
 - requests go through httpx.ASGITransport instead of a TCP server, so
-  `date`/`server` headers never exist and publishes (background tasks)
-  complete before the response returns to the client;
+  `date`/`server` headers never exist and background-task publishes
+  complete before the response returns;
 - the outbound sink is the app's own transport seams (queue._post,
-  jobs.telegram._post) instead of the retired recorder's sink — the
-  recorded {path, body} shape is identical;
-- the demo seed is the Python port (db.seed.seed_demo) instead of
-  `bun run db:seed:demo` — a seed drift is exactly the kind of parity
-  break this test exists to catch.
+  jobs.telegram._post) — the recorded {path, body} shape is identical;
+- the demo seed is the Python port (db.seed.seed_demo) — a seed drift
+  is exactly the parity break this test exists to catch.
 
 Needs real Postgres and Redis (docker compose up); the module skips
 when either is unreachable.
@@ -54,8 +49,8 @@ from countmein.jobs import telegram as telegram_mod
 from httpx import ASGITransport
 from sqlalchemy import text
 
-# The replay TRUNCATEs tables and FLUSHDBs against the live services —
-# the whole module is integration.
+# The replay TRUNCATEs tables and FLUSHDBs — the whole module is
+# integration.
 pytestmark = pytest.mark.integration
 
 HERE = Path(__file__).resolve().parent
@@ -70,10 +65,10 @@ AUTH_SECRET = "parity-recorder-secret"
 TELEGRAM_BOT_TOKEN = "123456:parity-recorder-bot-token"
 QSTASH_CURRENT_KEY = "parity_current_signing_key_000000000000"
 QSTASH_NEXT_KEY = "parity_next_signing_key_00000000000000"
-# Read at call time, never at import: under pytest-xdist the session
-# fixture in tests_py/conftest.py rewrites POSTGRES_URL/REDIS_URL to
-# per-worker slices *after* collection — a module-level capture would
-# keep pointing every worker at the shared base database.
+# Read at call time, never at import: pytest-xdist's session fixture
+# rewrites POSTGRES_URL/REDIS_URL to per-worker slices *after*
+# collection — a module-level capture would point every worker at the
+# shared database.
 POSTGRES_URL = "postgresql://countmein:countmein@localhost:5432/countmein"
 REDIS_URL = "redis://localhost:6379"
 
@@ -90,8 +85,8 @@ SESSION_ORGANIZER_SLUG = "parity-org"
 
 
 def _env_overrides() -> dict:
-    """The pinned recorder env, resolved at call time (see the comment
-    on _postgres_url: xdist rewrites the URLs after collection)."""
+    """The pinned recorder env, resolved at call time (xdist rewrites
+    the URLs after collection)."""
     return {
         "APP_URL": BASE,
         "AUTH_SECRET": AUTH_SECRET,
@@ -103,7 +98,7 @@ def _env_overrides() -> dict:
         "QSTASH_CURRENT_SIGNING_KEY": QSTASH_CURRENT_KEY,
         "QSTASH_NEXT_SIGNING_KEY": QSTASH_NEXT_KEY,
         # Fake R2 creds: presigning must succeed deterministically (the
-        # signature itself is normalized out of the golden).
+        # signature is normalized out of the golden).
         "R2_ACCOUNT_ID": "parity-account",
         "R2_ACCESS_KEY_ID": "parity-access-key",
         "R2_SECRET_ACCESS_KEY": "parity-secret-access-key",
@@ -220,10 +215,9 @@ def mint_qstash_signature(body: bytes, sub: str, key: str = QSTASH_CURRENT_KEY) 
 
 
 async def reset_state(r: aioredis.Redis) -> None:
-    """Truncate EVERY table in the public schema (except Alembic's
-    version bookkeeping), reseed demo, flush Redis. Deriving the
-    table list from the schema means a new table cannot stay dirty
-    between scenarios."""
+    """Truncate EVERY table in the public schema (except alembic_version),
+    reseed demo, flush Redis. Deriving the list from the schema means a
+    new table cannot stay dirty between scenarios."""
     async with db_client.engine().begin() as conn:
         await conn.execute(
             text(
@@ -264,8 +258,8 @@ async def expire_manage_token(booking_id: str) -> None:
         )
 
 
-# Fixed ids for the demo-refusal scenario — mirrors record.py (never
-# use the drifting demo seed as scenario data).
+# Fixed ids for the demo-refusal scenario — never use the drifting demo
+# seed as scenario data.
 DEMO_PARITY_SERVICE_ID = "DemoParityService0001"
 DEMO_PARITY_SLOT_ID = "01930000-0000-7000-8000-00000000f001"
 DEMO_PARITY_BOOKING_ID = "01930000-0000-7000-8000-00000000f002"
@@ -324,10 +318,10 @@ async def seed_demo_booking(captures: dict) -> None:
 
 
 class Normalizer:
-    """Normalizes volatile values to stable placeholders, by first
+    """Normalizes volatile values to stable placeholders by first
     appearance. Timestamps get numbered placeholders (<ts:1>, …) and the
-    deltas between timestamps seen in the same JSON object are recorded
-    so relations (expiry − start = 24h) survive normalization."""
+    deltas between timestamps in the same JSON object are recorded so
+    relations (expiry − start = 24h) survive normalization."""
 
     def __init__(self) -> None:
         self.seen: dict[str, str] = {}
@@ -346,7 +340,7 @@ class Normalizer:
 
         s = UUID_RE.sub(uuid_sub, s)
         # Service ids appear in paths after /services/ — normalize only
-        # there, never in free text (a 21-char slug or name must not be
+        # there, never in free text (a 21-char slug must not be
         # mangled).
         s = re.sub(
             r"(/api/services/)([A-Za-z0-9_-]{21})",
@@ -354,10 +348,8 @@ class Normalizer:
             s,
         )
         s = ISO_TS_RE.sub(self.ts_sub, s)
-        # Media object keys carry a random per-call suffix
-        # (avatar-<hex>.png, photo-<hex>.png) — normalize the filename
-        # so the golden does not pin one particular roll (mirrors
-        # record.py).
+        # Media object keys carry a random suffix (avatar-<hex>.png) —
+        # normalize so the golden does not pin one roll.
         s = re.sub(r"(avatar|photo)-[0-9a-f]{8}(\.\w+)", r"\1-<media>\2", s)
         # Presigned R2 URLs carry a time-dependent SigV4 signature.
         if "X-Amz-Signature" in s or "X-Amz-Credential" in s:
@@ -386,8 +378,8 @@ class Normalizer:
                 return "<token>"
             if key == "hash":
                 return "<hash>"
-            # Service ids: normalize ONLY by key name, never by shape —
-            # a 21-char slug/name in free text must not be touched.
+            # Service ids: normalize ONLY by key name — a 21-char
+            # slug/name in free text must not be touched.
             if key in SID_KEYS and re.fullmatch(r"[A-Za-z0-9_-]{21}", obj):
                 return self.sid_for(obj)
             return self.text(obj)
@@ -398,10 +390,9 @@ class Normalizer:
         return obj
 
     def raw(self, text: str) -> str:
-        """Normalize a raw JSON byte string with the same value-level
-        substitutions the parsed form gets: tokens by key name, service
-        ids by key position. Targeted regexes, never shape-based — free
-        text must not be mangled."""
+        """Normalize a raw JSON byte string with the same substitutions:
+        tokens by key name, service ids by key position. Targeted
+        regexes — free text must not be mangled."""
         text = self.text(text)
         text = re.sub(
             r'("(?:ticket|manageToken|guestToken)"):("[^"]{20,}")',
@@ -421,10 +412,9 @@ class Normalizer:
 
 class Sink:
     """Records every outbound POST the app attempts (QStash publish,
-    Telegram send) as {path, body} — the same shape the retired
-    recorder's sink wrote. Any host is accepted: a call
-    the golden does not show shows up as an extra sink entry and fails
-    the comparison."""
+    Telegram send) as {path, body}. Any host is accepted — a call the
+    golden does not show becomes an extra entry and fails the
+    comparison."""
 
     def __init__(self) -> None:
         self.calls: list[dict[str, str]] = []
@@ -461,9 +451,9 @@ async def resolve_placeholders(
 ) -> object:
     if isinstance(value, str):
         if value == "<guestTicket>":
-            # A step with `mint: guestTicket` starts a fresh ticket; a
-            # step WITHOUT it reuses the last one — that is how the
-            # replay scenario replays the *same* (consumed) ticket.
+            # `mint: guestTicket` starts a fresh ticket; without it the
+            # last one is reused — how a scenario replays the *same*
+            # (consumed) ticket.
             if mint_guest or "lastGuestTicket" not in captures:
                 captures["lastGuestTicket"] = await mint_ticket(
                     r, "guest", "900100200", "Parity Guest"
@@ -477,8 +467,8 @@ async def resolve_placeholders(
             return mint_session(DEMO_ORGANIZER_ID, "demo")
         if value == "<widgetPayload>":
             return mint_widget_payload(TELEGRAM_BOT_TOKEN, 900100200, "Parity Guest")
-        # Captured ids also appear INSIDE larger strings — a request
-        # path like /api/slots/<slotId> (mirrors record.py).
+        # Captured ids also appear inside larger strings, e.g. a path
+        # like /api/slots/<slotId>.
         for key in ("slotId", "serviceId", "bookingId", "manageToken"):
             if f"<{key}>" in value:
                 return value.replace(f"<{key}>", str(captures[key]))
@@ -586,9 +576,9 @@ async def run_scenario(
                 req["method"], BASE + req["path"], content=body_bytes, headers=headers
             )
 
-            # The ASGI transport awaits background tasks, so post-commit
-            # publishes have landed by the time the response returns;
-            # expectSink still pins the exact count.
+            # ASGITransport awaits background tasks, so post-commit
+            # publishes have landed when the response returns;
+            # expectSink pins the exact count.
             expect_sink = step.get("expectSink")
             sink_calls = sink.calls[sink_before:]
             if expect_sink is not None and len(sink_calls) != int(expect_sink):
@@ -613,9 +603,8 @@ async def run_scenario(
                 if k.lower() == "retry-after":
                     # Part of the 429 contract: a positive integer within
                     # the rate-limit window. The exact value is a TTL
-                    # countdown (time-dependent) — record the class, not
-                    # the number, plus the window bound as a separate
-                    # checkable fact (0 < v ≤ window).
+                    # countdown — record the class, not the number, plus
+                    # the window bound (0 < v ≤ window).
                     resp_headers[k] = (
                         "<retry-after:seconds>" if re.fullmatch(r"\d{1,3}", v) else "<retry-after>"
                     )
@@ -626,17 +615,15 @@ async def run_scenario(
                     resp_headers[k] = norm.text(v)
 
             # Raw body with the same substitutions, so byte-level JSON
-            # rules (escaping, key order, trailing newline) are
-            # verifiable in the replay.
+            # rules (escaping, key order, trailing newline) stay
+            # verifiable.
             body_raw = norm.raw(raw_bytes.decode("utf-8", "replace"))
 
-            # Normalize the request and response bodies with the same
-            # placeholder substitutions.
             req_body_norm = norm.json(req.get("json") if "json" in req else req.get("body_raw"))
             body_norm = norm.json(resp_body)
 
-            # 204 responses carry no content-length header at all —
-            # an absent header with an empty body counts as a match.
+            # 204 carries no content-length — absent header + empty body
+            # counts as a match.
             cl_header = resp.headers.get("content-length")
             response_rec: dict[str, Any] = {
                 "status": resp.status_code,
@@ -668,10 +655,9 @@ async def run_scenario(
                             "body": norm.json(json.loads(c["body"]) if c["body"] else None),
                         }
                         # Sort the RAW entries by semantic identity
-                        # (recipient) BEFORE normalizing: outbox UUID
-                        # numbering is assigned in encounter order, and
-                        # arrival order of the two post-commit publishes
-                        # is not deterministic.
+                        # (recipient) BEFORE normalizing — outbox UUID
+                        # numbering follows encounter order, and arrival
+                        # order of the two publishes is nondeterministic.
                         for c in sorted(
                             sink_calls,
                             key=lambda c: (
@@ -705,9 +691,9 @@ def _reachable(url: str, default_port: int) -> bool:
 
 @pytest.fixture(scope="module")
 def parity_env():
-    """Pin the recorder env, build the app once, wire the sink into the
-    transport seams. Skips the module when Postgres/Redis are down —
-    but fails (not skips) under CI, where the services must be up."""
+    """Pin the recorder env, build the app once, wire the sink. Skips when
+    Postgres/Redis are down — fails (not skips) under CI, where the
+    services must be up."""
     if not _reachable(_postgres_url(), 5432) or not _reachable(_redis_url(), 6379):
         from _env import skip_or_fail_ci
 
@@ -720,8 +706,8 @@ def parity_env():
     for k in ENV_REMOVED:
         os.environ.pop(k, None)
 
-    # Singletons may hold state from earlier tests (or an init error
-    # cached under the ambient env) — rebuild under the pinned env.
+    # Singletons may hold state from earlier tests (or a cached init
+    # error) — rebuild under the pinned env.
     db_client.reset_for_test()
     redis_mod.reset_for_test()
 

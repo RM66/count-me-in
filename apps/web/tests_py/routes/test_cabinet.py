@@ -1,12 +1,11 @@
 """Cabinet summary route tests: the aggregated counts + 30-day
 analytics envelope against a live Postgres.
 
-Covers the analytics_trend GROUP BY regression: the per-day
-date_trunc bucket must be one shared expression in SELECT and
-GROUP BY (two identical func.date_trunc() calls compile to separate
-bind params and Postgres answers GroupingError → 500). The anonymous
-demo scope exercises the query with zero rows; the seeded scope with
-a real booking proves the trend bucket aggregates."""
+Covers the analytics_trend GROUP BY regression: the per-day date_trunc
+bucket must be one shared expression in SELECT and GROUP BY (two
+identical func.date_trunc() calls compile to separate bind params →
+GroupingError → 500). The anonymous demo scope exercises the query with
+zero rows; a real booking proves the trend bucket aggregates."""
 
 from __future__ import annotations
 
@@ -28,10 +27,10 @@ pytestmark = pytest.mark.usefixtures("_require_postgres")
 
 
 async def test_cabinet_summary_anonymous_demo_scope(client, fake_redis, db):
-    """Anonymous → demo scope (ADR-010): the grouped trend query must
-    run, not 500. The demo seed may or may not be present in this
-    database (per-worker xdist DBs are seeded, the shared dev DB may
-    not be), so assert the envelope shape — not emptiness."""
+    """Anonymous → demo scope (ADR-010): the grouped trend query must run,
+    not 500. The demo seed may or may not be present (per-worker xdist
+    DBs are seeded, the shared dev DB may not be) — assert the envelope
+    shape, not emptiness."""
     r = await client.get("/api/cabinet/summary")
     assert r.status_code == 200, r.text
     envelope = r.json()

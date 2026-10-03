@@ -1,12 +1,11 @@
-"""The notification-handler tests. One
-job per recipient (ADR-012), the counterparty-only rule for
-cancellations, the demo refusal (ADR-010), the one-time login link
-minted per send attempt, and the outbox sweeper.
+"""The notification-handler tests. One job per recipient (ADR-012), the
+counterparty-only rule for cancellations, the demo refusal (ADR-010),
+the one-time login link minted per send attempt, and the outbox
+sweeper.
 
-The handlers read the booking chain fresh from Postgres at send time,
-so these are integration tests: real Postgres (like the db tests) plus
-fakeredis for the login links and a fake Bot API transport for
-send_message."""
+The handlers read the booking chain fresh from Postgres at send time —
+integration tests: real Postgres plus fakeredis for the login links and
+a fake Bot API transport for send_message."""
 
 import os
 import uuid
@@ -230,8 +229,8 @@ async def test_handle_booking_demo_refused(fake_telegram, fake_redis):
     from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
     from sqlalchemy import text
 
-    # A booking chain hanging off the demo organizer (the row itself is
-    # seed-owned; the service/slot/booking below are ours to clean up).
+    # A booking chain hanging off the demo organizer (the row is
+    # seed-owned; the service/slot/booking are ours to clean up).
     suffix = uuid.uuid4().hex[-12:]
     service_id = "svc-demo-" + suffix
     slot_id = str(uuid.uuid4())
@@ -286,9 +285,9 @@ async def test_handle_booking_demo_refused(fake_telegram, fake_redis):
             await handle_booking_cancelled(ENV, cancelled, "trace-demo")
 
         assert fake_telegram.calls == [], "demo booking → no sends"
-        # Neither recipient path may mint its one-time login link —
-        # checked by key prefix, not a bare key count (a count could
-        # hide a mint plus an unrelated expiry).
+        # Neither path may mint its login link — checked by key prefix,
+        # not a bare count (a count could hide a mint plus an unrelated
+        # expiry).
         links_after = await fake_redis.keys("auth:login-link:*")
         assert links_after == links_before, "demo booking must mint no login links"
     finally:

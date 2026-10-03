@@ -22,9 +22,8 @@ def derived_internal_secret(auth_secret: str) -> str:
 def verify_internal_secret(given_secret: str | None) -> bool:
     """Verify in constant time against the derived internal secret.
 
-    Compared as bytes: a latin-1 header can carry code points >127,
-    where compare_digest on str raises TypeError — a 500 instead of a
-    clean 401."""
+    Compared as bytes: a latin-1 header can carry code points >127 where
+    compare_digest on str raises TypeError — a 500, not a clean 401."""
     if not given_secret:
         return False
     auth_secret = os.getenv("AUTH_SECRET", "")

@@ -10,9 +10,9 @@ from typing import Any
 
 from .errors import Errors, form_errors
 
-# JavaScript String.prototype.trim() whitespace set, which Zod's .trim()
-# calls: Unicode WhiteSpace plus line terminators plus U+FEFF, and *not*
-# U+0085. The vectors pin BOM-padded input, so the exact set matters.
+# JavaScript String.prototype.trim() whitespace set (Zod's .trim()):
+# Unicode WhiteSpace + line terminators + U+FEFF, *not* U+0085. The
+# vectors pin BOM-padded input, so the exact set matters.
 _JS_TRIM_CHARS = "".join(
     chr(c)
     for c in (
@@ -30,10 +30,8 @@ def js_trim(v: str) -> str:
 def kind_of(raw: str) -> str:
     """Name the JSON kind of a raw value for a Zod-style message.
 
-    str.strip() is enough here: the bytes between values in a JSON
-    document are only space/tab/CR/LF (RFC 8259), a subset of both
-    TrimSpace and jsTrim — unlike field values, which need the exact JS
-    trim set.
+    str.strip() suffices: bytes between JSON values are space/tab/CR/LF
+    (RFC 8259) — unlike field values, which need the exact JS trim set.
     """
     s = raw.strip()
     if not s:
@@ -53,9 +51,8 @@ def kind_of(raw: str) -> str:
 
 
 def raw_object(body: bytes) -> tuple[dict[str, Any] | None, Errors | None]:
-    """Decode the body into per-key raw values so each field can be
-    attributed by name. Null, non-object and malformed bodies become form
-    errors, like safeParse(null) in Zod."""
+    """Decode the body into per-key raw values. Null, non-object and
+    malformed bodies become form errors, like safeParse(null) in Zod."""
     if len(body) == 0:
         return None, form_errors("Invalid input: expected object, received null")
     try:

@@ -3,12 +3,11 @@ IS the request validator — raw dict → declared transforms (rules_gen.py)
 → ``jsonschema`` against ``spec_gen.json`` → declared refinements → DTO
 built with ``model_construct`` (safe: the dict is already schema-valid).
 
-The Pydantic-validation layer is gone, and with it the lax-coercion gaps,
-the pattern-on-UUID TypeError fallback and the ``X | None`` nullability
-patching — JSON Schema answers all of it natively. ``_issue_reason``
-translates jsonschema's small error vocabulary into the pinned wire
-messages (the parity goldens hold them byte-for-byte); the validation
-vectors pin the field keys.
+The Pydantic-validation layer is gone — JSON Schema answers the
+coercion/nullability questions natively. ``_issue_reason`` translates
+jsonschema's small error vocabulary into the pinned wire messages (the
+parity goldens hold them byte-for-byte); the validation vectors pin the
+field keys.
 """
 
 from __future__ import annotations
@@ -28,8 +27,8 @@ from ..transforms import raw_object
 
 
 def _kind_of_value(v: Any) -> str:
-    """The JSON kind name of a parsed value (bool before int — Python's
-    isinstance(True, int) trap)."""
+    """The JSON kind name of a parsed value — bool before int
+    (isinstance(True, int) trap)."""
     if v is None:
         return "null"
     if isinstance(v, bool):
@@ -44,11 +43,10 @@ def _kind_of_value(v: Any) -> str:
 
 
 def _issue_reason(err: Any) -> str:
-    """Translate a jsonschema error into the Reason the API answers with —
-    the same strings the Zod-era pipeline produced, pinned by the parity
-    goldens. A stable vocabulary: required/minLength/maxLength/enum/pattern/
-    numeric bounds carry pinned text; the rest falls back to a Zod-style
-    type message."""
+    """Translate a jsonschema error into the Reason the API answers — the
+    same strings the goldens pin. Stable vocabulary: required/min/max
+    Length, enum/pattern, numeric bounds carry pinned text; the rest
+    falls back to a Zod-style type message."""
     v = err.validator
     val = err.validator_value
     if v == "required":
@@ -91,10 +89,10 @@ _REQUIRED_MSG = re.compile(r"^'([^']+)' is a required property")
 
 def _emit(entries: list[tuple[str | None, str]], err: Any, *, key: str | None = None) -> None:
     """Collect one jsonschema error as a (field, message) pair: missing
-    properties land under their own name (required yields one error per
-    missing key), combiner failures (oneOf/anyOf) recurse into their
-    sub-errors at the same key, everything else takes its first path
-    segment — object-level issues become form errors (None key)."""
+    properties land under their own name, combiner failures (oneOf/anyOf)
+    recurse into sub-errors at the same key, everything else takes its
+    first path segment — object-level issues become form errors (None
+    key)."""
     if err.validator == "required":
         m = _REQUIRED_MSG.match(err.message or "")
         name = (
@@ -110,9 +108,8 @@ def _emit(entries: list[tuple[str | None, str]], err: Any, *, key: str | None = 
             key = first
     if err.validator in ("oneOf", "anyOf", "allOf") and err.context:
         subs = err.context
-        # A union of plain type alternatives (the `X | null` encoding):
-        # collapse to a single "expected t1 or t2" message instead of one
-        # entry per rejected branch — Zod reports the union once.
+        # A union of plain type alternatives (`X | null`): collapse to
+        # one "expected t1 or t2" message — Zod reports the union once.
         if all(s.validator == "type" for s in subs):
             expected: list[str] = []
             for s in subs:
@@ -133,11 +130,9 @@ def _emit(entries: list[tuple[str | None, str]], err: Any, *, key: str | None = 
 
 
 def _validate_spec(schema_name: str, m: dict[str, Any]) -> Errors | None:
-    """Validate the raw object against the bundled spec — unknown keys pass
-    (Zod strips them; the spec carries no additionalProperties), nullability
-    and types are the schema's own words. fieldErrors are emitted in the
-    spec's property-declaration order (the parity goldens pin the key
-    order byte-for-byte)."""
+    """Validate the raw object against the bundled spec — unknown keys
+    pass (Zod strips them). fieldErrors are emitted in the spec's
+    property-declaration order (the goldens pin the key order)."""
     from .. import spec
 
     entries: list[tuple[str | None, str]] = []
@@ -214,9 +209,9 @@ def _run_refinements(refinements: Any, out: Any, e: Errors) -> None:
 
 
 def _construct[T: BaseModel](model_cls: type[T], m: dict[str, Any]) -> T:
-    """The DTO: model_construct over the schema-valid dict (unknown keys
-    stripped like Zod, null-valued keys dropped — a patch null on a
-    non-nullable field must surface as missing, not as a coerced None)."""
+    """The DTO: model_construct over the schema-valid dict — unknown
+    keys stripped, null-valued keys dropped (a patch null on a
+    non-nullable field must surface as missing, not a coerced None)."""
     fields = model_cls.model_fields
     return model_cls.model_construct(
         **{k: v for k, v in m.items() if k in fields and v is not None}
@@ -224,10 +219,9 @@ def _construct[T: BaseModel](model_cls: type[T], m: dict[str, Any]) -> T:
 
 
 def _order_fields(e: Errors, schema_name: str) -> None:
-    """fieldErrors in the spec's property-declaration order — the same
-    order spec errors are emitted in, so rule / merged-required errors
-    join them canonically instead of by whichever check ran last (the
-    wire pins the key order byte-for-byte)."""
+    """fieldErrors in spec declaration order — the same order spec errors
+    are emitted in, so rule/merged-required errors join canonically (the
+    wire pins the key order)."""
     if len(e.fields) < 2:
         return
     from .. import spec
@@ -239,19 +233,18 @@ def _order_fields(e: Errors, schema_name: str) -> None:
 def _decode[T: BaseModel](
     model_cls: type[T], schema_name: str, m: dict[str, Any], *, merged_touched: set[str] | None
 ) -> T:
-    """raw object → declared transforms → jsonschema → declared rules → DTO.
-    ``merged_touched`` is the patch's key set for the merged-state decoders
-    (gates startsAtNotPast); None for wire decodes and merged states where
-    no rule needs it."""
+    """raw object → transforms → jsonschema → rules → DTO.
+    ``merged_touched`` is the patch's key set for merged-state decoders
+    (gates startsAtNotPast); None otherwise."""
     meta = RULES.get(schema_name, {})
     _apply_transforms(meta.get("transforms"), m)
     errs = _validate_spec(schema_name, m)
     e = errs or Errors()
     out = _construct(model_cls, m)
     # Rules see the value only when the schema passed — except schemas
-    # declaring refinements (the service options pair), which collect
-    # spec and refinement issues together (a bad options array still
-    # yields the optionsSelectMode consistency message).
+    # declaring refinements, which collect spec + refinement issues
+    # together (a bad options array still yields the optionsSelectMode
+    # consistency message).
     if errs is None or meta.get("refinements"):
         _run_field_rules(meta.get("fieldRules"), out, e, touched=merged_touched)
         _run_refinements(meta.get("refinements"), out, e)
@@ -267,8 +260,8 @@ def decode_input[T: BaseModel](model_cls: type[T], schema_name: str, body: bytes
 def decode_merged[T: BaseModel](
     model_cls: type[T], schema_name: str, merged: bytes, touched: set[str] | None = None
 ) -> T:
-    """Merged-state decode (RFC 7386): the update schema's rules plus the
-    declared mergedRequired — keys a patch-null would silently erase."""
+    """Merged-state decode (RFC 7386): the update schema's rules plus
+    mergedRequired — keys a patch-null would silently erase."""
     meta = RULES.get(schema_name, {})
     m = _raw(merged)
     _apply_transforms(meta.get("transforms"), m)

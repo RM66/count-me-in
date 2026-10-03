@@ -2,12 +2,11 @@
 
 demo.refresh reseeds the demo organizer on a QStash cron (ADR-010) —
 the handler is a thin wrapper around seed_demo, so the test pins the
-wiring (seed called with a UTC now) without touching the database.
+wiring without touching the database.
 
-The expiry invariant (AGENTS.md): an expired manage token must keep the
-booking listed with canCancel=false — the guest list never drops rows,
-the dead link is just not offered. Pinned at the row level, where the
-rule lives."""
+The expiry invariant: an expired manage token keeps the booking listed
+with canCancel=false — the guest list never drops rows, the dead link
+is just not offered. Pinned at the row level, where the rule lives."""
 
 from __future__ import annotations
 
@@ -35,7 +34,7 @@ async def test_demo_refresh_calls_seed_demo_with_now(monkeypatch):
     monkeypatch.setattr(refresh_mod, "seed_demo", fake_seed)
     await refresh_mod.handle_demo_refresh()
     assert len(calls) == 1
-    # The seed time is a timezone-aware UTC instant (the slot times are
+    # The seed time is a timezone-aware UTC instant (slot times are
     # stored relative to it).
     assert calls[0].tzinfo is not None
     assert abs((datetime.now(UTC) - calls[0]).total_seconds()) < 60

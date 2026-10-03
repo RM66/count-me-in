@@ -6,8 +6,7 @@ organizer (invariant 5), so every statement scopes through the parent
 service with an owned-services subquery in the WHERE clause.
 
 Named slot_service (the repository mirrors the `time_slots` table); the
-route layer keeps the REST plural (routes/slots.py) — documented intent,
-not drift.
+route layer keeps the REST plural (routes/slots.py).
 """
 
 from __future__ import annotations
@@ -26,11 +25,10 @@ from ..errors import CapacityBelowBooked, NothingToUpdate, SlotHasActiveBookings
 from ..repositories import service_repo, slot_repo
 
 # The rolling horizon for public upcoming-slot reads (ADR-023 Phase 2):
-# a schedule years deep must not grow one public payload unboundedly.
-# The public routes apply it alongside `starts_at >= now` and the row
-# limit — slots past the horizon stay in the database and simply are
-# not listed. The cabinet's own list is unbounded: the organizer must
-# see every slot they authored, however far out.
+# a years-deep schedule must not grow one public payload unboundedly.
+# Public routes apply it with `starts_at >= now` and the row limit;
+# slots past it stay in the DB, just unlisted. The cabinet's list is
+# unbounded — the organizer must see every authored slot.
 SLOT_HORIZON = timedelta(days=90)
 
 
@@ -44,9 +42,8 @@ async def list_slots(
     session: AsyncSession, organizer_id: str, upcoming_only: bool
 ) -> list[TimeSlotRow]:
     """Every slot across an organizer's services, earliest first —
-    unbounded by the horizon: the cabinet must show the whole authored
-    schedule (the horizon bounds only the public reads). upcoming_only
-    drops slots that have already started."""
+    unbounded by the horizon, which bounds only the public reads.
+    upcoming_only drops slots that already started."""
     async with session.begin():
         models = await slot_repo.list_by_organizer(session, organizer_id, upcoming_only)
     return [from_model_slot(m) for m in models]
@@ -56,8 +53,7 @@ async def get_owned_slot(
     session: AsyncSession, organizer_id: str, slot_id: str
 ) -> TimeSlotRow | None:
     """None when the id does not exist *or* hangs off another
-    organizer's service, so callers cannot leak a foreign slot by
-    guessing ids."""
+    organizer's service — no leaking a foreign slot by guessing ids."""
     async with session.begin():
         return await get_owned_slot_tx(session, organizer_id, slot_id)
 
@@ -74,13 +70,11 @@ async def get_owned_slot_tx(
 async def create_slot(
     session: AsyncSession, organizer_id: str, payload: gen.CreateTimeSlotInput
 ) -> TimeSlotRow | None:
-    """Under a service owned by organizer_id; None when the parent
-    service does not exist or belongs to someone else (the caller
-    answers 404 without ever confirming a foreign id). Ownership is
-    confirmed by a SELECT before the insert (the id is generated
-    app-side, an INSERT…SELECT would skip it; the gap that opens is
-    harmless — if the service disappears in between, the FK rejects the
-    row)."""
+    """Under a service owned by organizer_id; None when the parent is
+    missing or foreign (caller answers 404 without confirming a foreign
+    id). Ownership is a SELECT before the insert (the id is generated
+    app-side, so no INSERT…SELECT; the gap is harmless — a service
+    deleted in between is caught by the FK)."""
     refuse_demo_write(organizer_id)
     async with session.begin():
         owned = await service_repo.get_owned_service(session, organizer_id, str(payload.serviceId))
@@ -101,9 +95,8 @@ async def create_slot(
                 },
             )
         except Exception as err:
-            # The ownership check and the INSERT are not one snapshot: a
-            # service deleted in between surfaces as 23503, which must read
-            # as "not found", never a bare 500.
+            # Check and INSERT are not one snapshot: a service deleted
+            # in between surfaces as 23503 — "not found", never a 500.
             if is_foreign_key_violation(err):
                 return None
             raise
@@ -116,18 +109,15 @@ async def update_owned_slot_tx(
     slot_id: str,
     update: TouchedUpdate[gen.UpdateTimeSlotInput],
 ) -> TimeSlotRow | None:
-    """booked_count is deliberately not updatable: seats move only
-    through the atomic reserve in the booking flow (invariant 2).
-    Shrinking capacity below the seats already sold answers a 409. Runs
-    on a caller-supplied transaction: the merge-patch route opens the
-    tx, reads the current state, merges, and calls this on the same tx —
-    the capacity precheck's FOR UPDATE lock then also serializes
-    against concurrent merge-patch reads of the same row."""
+    """booked_count is deliberately not updatable — seats move only
+    through the atomic reserve (invariant 2). Shrinking capacity below
+    sold seats answers 409. Runs on the caller's tx (the merge-patch
+    skeleton), so the capacity precheck's FOR UPDATE also serializes
+    against concurrent merge-patch reads of the row."""
     refuse_demo_write(organizer_id)
     state = update.state
     touched = update.touched
-    # Column-keyed touched values: Core update() instead of f-string SET
-    # concatenation.
+    # Column-keyed touched values: Core update(), not f-string SET.
     values: dict[str, Any] = {}
     if touched.get("startsAt") and state.startsAt is not None:
         values["starts_at"] = _slot_starts_at_time(state.startsAt)
@@ -141,9 +131,9 @@ async def update_owned_slot_tx(
         raise NothingToUpdate()
 
     # Capacity precheck under a row lock: a plain SELECT takes no lock
-    # under READ COMMITTED, so the check could race the booking flow's
-    # atomic reserve. FOR UPDATE serializes against it (the TS backstop
-    # was the booked_count CHECK constraint surfacing as an opaque 23514).
+    # under READ COMMITTED and could race the atomic reserve; FOR UPDATE
+    # serializes against it (the old backstop was the booked_count CHECK
+    # surfacing as an opaque 23514).
     if touched.get("capacity") and state.capacity is not None:
         booked = await slot_repo.get_booked_count_for_update(session, organizer_id, slot_id)
         if booked is None:
@@ -158,20 +148,18 @@ async def update_owned_slot_tx(
 async def delete_owned_slot(
     session: AsyncSession, organizer_id: str, slot_id: str
 ) -> TimeSlotRow | None:
-    """Refuse to delete a slot that is referenced by any booking row,
-    confirmed or cancelled (the time_slots FK is ON DELETE RESTRICT, so
-    the database would reject the delete anyway; failing here turns the
-    opaque FK error into a 409 the organizer can act on). The guard must
-    be at least as wide as the constraint: counting only confirmed
-    bookings would let a cancelled-only slot fall through to a raw 23503
-    and a bare 500. Returns None when nothing matched. The deleted row's
-    snapshot comes back so the caller can derive cache tags without a
-    second read."""
+    """Refuse to delete a slot referenced by any booking row, confirmed
+    or cancelled — the FK is ON DELETE RESTRICT, so failing here turns
+    an opaque FK error into a 409. The guard must be at least as wide as
+    the constraint: counting only confirmed bookings would drop a
+    cancelled-only slot to a raw 23503 → bare 500. None when nothing
+    matched; the deleted row's snapshot comes back so the caller derives
+    cache tags without a second read."""
     refuse_demo_write(organizer_id)
     async with session.begin():
-        # Lock the slot row so the check and delete are atomic against
-        # the booking flow's reserve (a plain SELECT takes no lock under
-        # READ COMMITTED).
+        # Lock the slot row so check + delete are atomic against the
+        # booking reserve (a plain SELECT takes no lock under READ
+        # COMMITTED).
         locked = await slot_repo.get_owned_slot_for_update(session, organizer_id, slot_id)
         if locked is None:
             return None
@@ -183,9 +171,8 @@ async def delete_owned_slot(
         try:
             deleted = await slot_repo.delete_slot(session, organizer_id, deleted_row.id)
         except Exception as err:
-            # Backstop: if the constraint ever changes to allow the delete
-            # path this guard models, a stray FK violation must surface as
-            # the same 409, never a bare 500.
+            # Backstop: a stray FK violation surfaces as the same 409,
+            # never a bare 500.
             if is_foreign_key_violation(err):
                 raise SlotHasActiveBookings() from err
             raise

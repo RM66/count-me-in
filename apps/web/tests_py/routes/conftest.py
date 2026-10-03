@@ -3,8 +3,7 @@
 The handlers' preamble is a set of FastAPI dependencies, so the app is
 the only faithful way to invoke them. Redis-backed state (rate buckets,
 tickets) runs against fakeredis; DB-backed happy paths run against the
-docker Postgres (skipped without POSTGRES_URL, failed in CI — the
-conftest rule).
+docker Postgres (skipped without POSTGRES_URL, failed in CI).
 """
 
 from __future__ import annotations
@@ -57,9 +56,8 @@ async def client(app):
 
 @pytest.fixture()
 async def db(monkeypatch):
-    """A live Postgres for the happy paths — the shared skip/fail rule
-    (tests_py/_env.py): without POSTGRES_URL the test skips locally and
-    fails in CI, instead of erroring on a hardcoded localhost."""
+    """A live Postgres for the happy paths — the shared skip/fail rule:
+    without POSTGRES_URL the test skips locally and fails in CI."""
     from _env import require_postgres
 
     url = require_postgres()

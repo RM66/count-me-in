@@ -1,28 +1,25 @@
 """Job dispatch — the one place a QStash delivery becomes a handler
 call. Owns the policies every job shares:
 
-- Payload validation: a malformed body gets a 400-class outcome
-  (non-retryable — QStash would burn its budget re-sending the same bad
-  bytes), so parsing happens here, before any handler runs.
+- Payload validation: a malformed body is a 400-class outcome
+  (non-retryable — resending the same bad bytes burns the budget), so
+  parsing happens here, before any handler runs.
 - Consumer idempotency: the payload's outboxId is SET-NX'd in Redis
-  before dispatch, so a duplicate delivery — a sweeper re-publish
-  outside QStash's dedup window, a redelivery after a lost response —
-  cannot double-notify the same recipient. A *failed* dispatch
-  releases the claim (run_claimed), so QStash's retry after a Telegram
-  timeout is processed again instead of being answered as a duplicate:
-  the guarantee is at-least-once with duplicate suppression on success,
-  never a silent loss. Fails open on a Redis outage (the delivery
-  proceeds), same stance as the rate limiter.
+  before dispatch, so a duplicate delivery (sweeper re-publish outside
+  the dedup window, redelivery after a lost response) cannot
+  double-notify. A *failed* dispatch releases the claim (run_claimed),
+  so QStash's retry is processed instead of answered as a duplicate:
+  at-least-once with duplicate suppression on success, never a silent
+  loss. Fails open on a Redis outage, same stance as the rate limiter.
 - Retry classification: a handler error is returned for the route to
-  answer 500 with, which is what makes QStash retry — except
-  TelegramUnreachableError, which is absorbed with a log: a recipient
-  who never pressed Start on the bot cannot be messaged now or in five
-  minutes, so the delivery is completed rather than retried."""
+  answer 500 — what makes QStash retry — except
+  TelegramUnreachableError, absorbed with a log: a recipient who never
+  pressed Start cannot be messaged now or in five minutes, so the
+  delivery completes rather than retries."""
 
 from __future__ import annotations
 
 import json
-import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import timedelta
@@ -61,34 +58,41 @@ class InvalidJobPayloadError(Exception):
         self.queue = queue
 
 
-@dataclass
-class ParsedJob:
-    """The outcome of validating one delivery: the typed payload for the
-    booking queues, None for the schedule-driven queues (demo.refresh,
-    outbox.sweep send no payload). Parsing happens exactly once — the
-    dispatch switch consumes this value directly."""
+@dataclass(frozen=True)
+class _PayloadQueue:
+    """A queue carrying a typed payload: spec schema name (the
+    validation authority), generated DTO class, and handler — called as
+    ``handle(env, payload, trace_id)`` inside the idempotency claim.
+    Adding a payload queue is one row here; parse_job and run_job read
+    this table instead of switching on the queue name."""
 
-    booking_created: gen.BookingCreatedJob | None = None
-    booking_cancelled: gen.BookingCancelledJob | None = None
-
-
-def _valid_recipient(v: str) -> bool:
-    return v in ("organizer", "guest")
+    schema: str
+    model: type[gen.BookingCreatedJob | gen.BookingCancelledJob]
+    handle: Callable[..., Awaitable[None]]
 
 
-def _valid_booking_id(v: str) -> bool:
-    try:
-        uuid.UUID(v)
-        return True
-    except (ValueError, AttributeError, TypeError):
-        return False
+# The dispatch table — one source for "which queues exist, their
+# payload shape, their handler". Schedule queues take any body,
+# including an empty one.
+_PAYLOAD_QUEUES: dict[str, _PayloadQueue] = {
+    QUEUE_BOOKING_CREATED: _PayloadQueue(
+        "BookingCreatedJob", gen.BookingCreatedJob, handle_booking_created
+    ),
+    QUEUE_BOOKING_CANCELLED: _PayloadQueue(
+        "BookingCancelledJob", gen.BookingCancelledJob, handle_booking_cancelled
+    ),
+}
+_SCHEDULE_QUEUES: dict[str, Callable[[], Awaitable[None]]] = {
+    QUEUE_DEMO_REFRESH: handle_demo_refresh,
+    QUEUE_OUTBOX_SWEEP: handle_outbox_sweep,
+}
 
 
 def _parse_payload(queue: str, body: bytes | None) -> dict:  # type: ignore[type-arg]
-    """Mirror the Zod safeParse: absent body fails the object schemas
-    (both booking queues require their fields), and a present body must
-    be a JSON object of the right shape. The queue name rides along so
-    the error names what failed."""
+    """Absent body fails the object schemas (both booking queues require
+    fields); a present body must be a JSON object — the spec validator
+    does the rest. The queue name rides along so the error names what
+    failed."""
     if not body:
         raise InvalidJobPayloadError(queue)
     try:
@@ -100,56 +104,54 @@ def _parse_payload(queue: str, body: bytes | None) -> dict:  # type: ignore[type
     return parsed
 
 
-def parse_job(queue: str, body: bytes | None) -> ParsedJob:
-    """Validate one QStash delivery body without touching the network
-    or the database: UnknownJobQueueError for a foreign queue name,
-    InvalidJobPayloadError for a malformed payload, no error when the
-    delivery may proceed. The schedule-driven queues (demo.refresh,
-    outbox.sweep) send no payload, so any body — including an empty one
-    — is valid for them. Extracted so tests pin the 400/404 boundary
-    without invoking handlers (which would reseed the demo DB or sweep
-    the outbox as a side effect)."""
-    if queue == QUEUE_BOOKING_CREATED:
-        m = _parse_payload(queue, body)
-        # Malformed ids must be a 400, not a 500 — otherwise QStash
-        # burns all retries on bytes that can never succeed.
-        # model_construct (not model_validate): the generated UUIDModel
-        # carries a pattern constraint pydantic cannot apply to the
-        # coerced UUID — the same quirk decode.py works around.
-        if (
-            not _valid_booking_id(m.get("bookingId", ""))
-            # A missing outboxId defaults to the zero uuid and parses
-            # fine — the acceptance is pinned by the parity goldens.
-            or not _valid_booking_id(m.get("outboxId", "00000000-0000-0000-0000-000000000000"))
-            or not _valid_recipient(str(m.get("recipient", "")))
-        ):
-            raise InvalidJobPayloadError(queue)
-        job = gen.BookingCreatedJob.model_construct(**m)
-        return ParsedJob(booking_created=job)
-    if queue == QUEUE_BOOKING_CANCELLED:
-        m = _parse_payload(queue, body)
-        if (
-            not _valid_booking_id(m.get("bookingId", ""))
-            or not _valid_booking_id(m.get("outboxId", "00000000-0000-0000-0000-000000000000"))
-            or str(m.get("cancelledBy", "")) not in ("guest", "organizer")
-        ):
-            raise InvalidJobPayloadError(queue)
-        job_cancelled = gen.BookingCancelledJob.model_construct(**m)
-        return ParsedJob(booking_cancelled=job_cancelled)
-    if queue in (QUEUE_DEMO_REFRESH, QUEUE_OUTBOX_SWEEP):
-        return ParsedJob()
-    raise UnknownJobQueueError(queue)
+def _spec_check(schema_name: str, queue: str, m: dict) -> None:  # type: ignore[type-arg]
+    """Validate the payload against the bundled spec — the same
+    authority the request decoders use (ADR-024 C1), so shapes and enum
+    vocabularies cannot drift from wire.ts. Any violation is a terminal
+    400: QStash must not retry bytes that can never dispatch. The route
+    answers with empty bodies, so a bare any-errors check suffices — no
+    message translation."""
+    from ..validation import spec
+
+    if any(spec.validator(schema_name).iter_errors(m)):
+        raise InvalidJobPayloadError(queue)
 
 
-# Longer than QStash's retry horizon (5 retries with exponential
-# backoff tops out well under a day), so a redelivery of the same
-# outbox row inside the window is always recognized.
+def _construct(
+    model_cls: type[gen.BookingCreatedJob | gen.BookingCancelledJob],
+    m: dict,  # type: ignore[type-arg]
+) -> gen.BookingCreatedJob | gen.BookingCancelledJob:
+    """model_construct over the schema-valid dict, unknown keys stripped
+    like Zod (the spec carries no additionalProperties)."""
+    return model_cls.model_construct(**{k: v for k, v in m.items() if k in model_cls.model_fields})
+
+
+def parse_job(
+    queue: str, body: bytes | None
+) -> gen.BookingCreatedJob | gen.BookingCancelledJob | None:
+    """Validate one QStash delivery body without touching the network or
+    DB: UnknownJobQueueError for a foreign queue, InvalidJobPayloadError
+    for a malformed payload, the DTO when the delivery may proceed, None
+    for schedule queues (any body is valid for them). Extracted so tests
+    pin the 400/404 boundary without invoking handlers (which would
+    reseed the demo DB or sweep the outbox)."""
+    if queue in _SCHEDULE_QUEUES:
+        return None
+    q = _PAYLOAD_QUEUES.get(queue)
+    if q is None:
+        raise UnknownJobQueueError(queue)
+    m = _parse_payload(queue, body)
+    _spec_check(q.schema, queue, m)
+    return _construct(q.model, m)
+
+
+# Longer than QStash's retry horizon (5 retries with backoff top out
+# well under a day), so a redelivery inside the window is recognized.
 _IDEMPOTENCY_TTL = timedelta(hours=24)
-# The claim is a lease, not a permanent marker: it only needs to cover
-# the send window (maxDuration 10s) plus margin. If the instance dies
-# mid-send, the lease expires and QStash's next retry — or the
-# sweeper's re-publish — is processed instead of suppressed, which is
-# what keeps the crash window from breaking at-least-once.
+# The claim is a lease, not a permanent marker — it covers the send
+# window (maxDuration 10s) plus margin. An instance killed mid-send lets
+# the lease expire, so the retry/re-publish is processed instead of
+# suppressed — the crash window cannot break at-least-once.
 _CLAIM_LEASE = timedelta(seconds=60)
 
 
@@ -160,13 +162,11 @@ def _processed_key(outbox_id: str) -> str:
 
 async def claim_delivery(outbox_id: str) -> bool:
     """SET-NX the outbox id with the short claim lease: True means this
-    delivery is the first for that row and the handler may send. A lost
-    race (or a Redis error) fails open — the delivery proceeds —
-    matching the ADR-019 stance: an idempotency outage must not block
-    notifications, and the worst case is a rare duplicate message,
-    never a lost one. The lease (not the full TTL) is the claim window:
-    an instance killed mid-send leaves the key to expire, so the retry
-    is processed instead of suppressed."""
+    is the row's first delivery and the handler may send. A lost race or
+    Redis error fails open — the delivery proceeds (ADR-019): an outage
+    must not block notifications; the worst case is a rare duplicate,
+    never a lost one. The lease is the claim window: an instance killed
+    mid-send leaves it to expire, so the retry is processed."""
     if not config.redis_configured():
         return True
     try:
@@ -184,10 +184,8 @@ async def claim_delivery(outbox_id: str) -> bool:
 
 
 async def finalize_delivery(outbox_id: str) -> None:
-    """Extend a successful delivery's claim to the full idempotency TTL,
-    so duplicates of the same delivery are suppressed for the retention
-    window. Best-effort: a failure here only risks a rare duplicate on
-    a replay, never a lost notification."""
+    """Extend a successful delivery's claim to the full idempotency TTL.
+    Best-effort: a failure only risks a rare duplicate on a replay."""
     if not config.redis_configured():
         return
     try:
@@ -205,19 +203,15 @@ async def finalize_delivery(outbox_id: str) -> None:
 async def release_delivery(outbox_id: str) -> None:
     """Drop the claim of a delivery whose send failed retryably, so
     QStash's retry (or the sweeper's re-publish) reaches the handler
-    again instead of being suppressed as a duplicate. The outbox row was
-    already marked `sent` by its publisher, so this Redis key is the
-    only place the retry is tracked.
+    instead of being suppressed. The outbox row is already `sent`, so
+    this Redis key is the only place the retry is tracked.
 
-    The trade-off is deliberate: a transport failure is ambiguous
-    (Telegram might have processed the request before the response was
-    lost), so a released retry can duplicate a message. At-least-once is
-    the product rule — a rare duplicate beats a silently lost
-    notification, which is what claiming without releasing produces.
+    Deliberate trade-off: a transport failure is ambiguous (Telegram may
+    have processed the request before the response was lost), so a
+    released retry can duplicate a message — at-least-once is the rule.
 
     Best-effort: if the DEL fails the retry is skipped as a duplicate
-    (at-most-once for that row) rather than risking a double send, and
-    the logged failure is the incident signal."""
+    (at-most-once) rather than risking a double send."""
     if not config.redis_configured():
         return
     try:
@@ -233,13 +227,12 @@ async def release_delivery(outbox_id: str) -> None:
 async def run_claimed(
     queue: str, trace_id: str, outbox_id: str, run: Callable[[], Awaitable[None]]
 ) -> None:
-    """Wrap one booking-queue dispatch in the consumer idempotency
-    guard: claim (short lease) → send → release on a retryable
-    failure → finalize (full TTL) on success. Terminal outcomes that
-    _with_retry_policy absorbs (unreachable chat, rejected content)
-    keep the claim — those deliveries are complete and must never be
-    re-sent. An instance killed mid-send leaves the lease to expire,
-    so the retry is processed — the crash window cannot lose the
+    """Wrap one booking-queue dispatch in the idempotency guard: claim
+    (short lease) → send → release on a retryable failure → finalize
+    (full TTL) on success. Terminal outcomes _with_retry_policy absorbs
+    (unreachable chat, rejected content) keep the claim — complete,
+    never re-sent. An instance killed mid-send lets the lease expire, so
+    the retry is processed — the crash window cannot lose the
     notification."""
     if not await claim_delivery(outbox_id):
         logx.info(
@@ -256,11 +249,10 @@ async def run_claimed(
 
 
 async def _with_retry_policy(queue: str, trace_id: str, run: Callable[[], Awaitable[None]]) -> None:
-    """Absorb the failures that must never be retried: letting them
-    reach QStash would spend the retry budget and end in a dropped
-    message that reads like an outage. The guest's on-screen success
-    page, which already carries the management link, is the designed
-    fallback."""
+    """Absorb the failures that must never be retried — reaching QStash
+    they would spend the retry budget and end in a dropped message that
+    reads like an outage. The guest's success page already carries the
+    management link — the designed fallback."""
     try:
         await run()
     except TelegramUnreachableError as err:
@@ -276,56 +268,34 @@ async def _with_retry_policy(queue: str, trace_id: str, run: Callable[[], Awaita
 
 
 async def run_job(queue: str, body: bytes | None, trace_id: str) -> None:
-    """Validate and run one QStash delivery. body is the raw bytes of
-    the request, or None for an empty body (the demo-refresh schedule
-    sends no payload). Raises UnknownJobQueueError for a foreign queue
-    name and InvalidJobPayloadError for a malformed payload; any other
-    error is a handler failure the route answers 500 with, which is
-    what makes QStash retry."""
-    job = parse_job(queue, body)
-    if queue == QUEUE_BOOKING_CREATED:
-        created = job.booking_created
-        if created is None:
-            # Unreachable by parse_job's contract (the queue name
-            # decides which field is set); a real None is a bug, and
-            # python -O must not strip the check.
-            raise RuntimeError("booking_created is None after parse_job")
+    """Validate and run one QStash delivery. body is the raw request
+    bytes, or None for an empty body (demo-refresh sends none). Raises
+    UnknownJobQueueError for a foreign queue, InvalidJobPayloadError for
+    a malformed payload; any other error is a handler failure the route
+    answers 500 — what makes QStash retry."""
+    q = _PAYLOAD_QUEUES.get(queue)
+    if q is not None:
+        payload = parse_job(queue, body)
+        if payload is None:
+            # Unreachable: parse_job returns the DTO for every payload
+            # queue; a raise so python -O cannot strip the check.
+            raise RuntimeError("payload is None for a payload queue")
         env = read_env()
-        outbox_id = str(created.outboxId)
+        outbox_id = str(payload.outboxId)
 
         async def _run() -> None:
-            await handle_booking_created(env, created, trace_id)
+            await q.handle(env, payload, trace_id)
 
         await run_claimed(queue, trace_id, outbox_id, _run)
         return
-    if queue == QUEUE_BOOKING_CANCELLED:
-        cancelled = job.booking_cancelled
-        if cancelled is None:
-            raise RuntimeError("booking_cancelled is None after parse_job")
-        env = read_env()
-        outbox_id = str(cancelled.outboxId)
-
-        async def _run() -> None:
-            await handle_booking_cancelled(env, cancelled, trace_id)
-
-        await run_claimed(queue, trace_id, outbox_id, _run)
-        return
-    if queue == QUEUE_DEMO_REFRESH:
-        # A failure escapes as a 500 so QStash retries.
-        try:
-            await handle_demo_refresh()
-        except Exception as err:
-            logx.error(err, {"queue": queue})
-            raise
-        return
-    if queue == QUEUE_OUTBOX_SWEEP:
-        # Outbox sweeper: re-publishes pending notification rows that
-        # the inline publish missed. A failure escapes as a 500 so
-        # QStash retries the sweep.
-        try:
-            await handle_outbox_sweep()
-        except Exception as err:
-            logx.error(err, {"queue": queue})
-            raise
-        return
-    raise UnknownJobQueueError(queue)
+    handle = _SCHEDULE_QUEUES.get(queue)
+    if handle is None:
+        raise UnknownJobQueueError(queue)
+    parse_job(queue, body)  # pins the schedule-queue boundary (accepts anything)
+    # Schedule handlers: a failure escapes as 500 so QStash retries
+    # (demo seed refresh; sweeper re-publishing rows inline missed).
+    try:
+        await handle()
+    except Exception as err:
+        logx.error(err, {"queue": queue})
+        raise

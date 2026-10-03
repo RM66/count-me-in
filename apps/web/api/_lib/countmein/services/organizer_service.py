@@ -34,10 +34,10 @@ async def get_organizer_profile(session: AsyncSession, organizer_id: str) -> Org
 
 
 async def get_organizer_profile_tx(session: AsyncSession, organizer_id: str) -> OrganizerRow | None:
-    """The profile for the organizer this request may view; None when the
-    id does not exist (e.g. demo not yet seeded). The merge-patch route
-    reads the current state and writes the merged state on one
-    transaction so concurrent PATCHes cannot lose columns."""
+    """The profile for the organizer this request may view; None when
+    the id does not exist (e.g. demo not yet seeded). Merge-patch reads
+    and writes on one transaction so concurrent PATCHes cannot lose
+    columns."""
     model = await organizer_repo.get_by_id(session, organizer_id)
     return from_model_organizer(model) if model is not None else None
 
@@ -59,10 +59,8 @@ async def insert_organizer(
     peeked ticket (validated server-side), never from the body. A 23505
     surfaces as the raw driver error for the route to map to
     slugTaken / accountExists by constraint name."""
-    # The wire schema makes language required, but a None here must
-    # never crash the function — fall back to the default locale.
-    # (--use-type-alias renders scalar schemas as plain Annotated
-    # types, so no RootModel unwrapping is needed before SQL.)
+    # language is required by the wire schema, but a None must not crash
+    # — fall back to the default locale.
     language = domain.deref_or(payload.language, domain.DEFAULT_LOCALE)
     async with session.begin():
         model = await organizer_repo.insert_organizer(
@@ -85,27 +83,21 @@ async def update_organizer_profile_tx(
     organizer_id: str,
     update: TouchedUpdate[gen.UpdateOrganizerProfileInput],
 ) -> OrganizerRow | None:
-    """Editable fields only; messenger identity, id and createdAt are set
-    at registration and never editable. Absent keys are left untouched,
-    explicit nulls clear the column (merge-patch semantics, ADR-016).
-    Runs on the caller's transaction — the merge-patch skeleton reads
-    and writes on one tx.
+    """Editable fields only; messenger identity, id and createdAt are
+    set at registration. Absent keys untouched, explicit nulls clear the
+    column (merge-patch, ADR-016). Runs on the caller's transaction.
 
-    Defense in depth: routes already refuse the demo account via
-    require_writable_organizer, but a direct service call must not be
-    able to write the read-only demo organizer either. The
-    media-ownership invariant lives here too — a touched photoUrl must
-    stay under this organizer's media prefix, checked inside the
-    transaction before any column is written."""
+    Defense in depth: routes already refuse the demo account, but a
+    direct service call must not write it either. The media-ownership
+    invariant lives here too — a touched photoUrl must stay under this
+    organizer's media prefix, checked in the tx before any write."""
     refuse_demo_write(organizer_id)
     state = update.state
     touched = update.touched
     if touched.get("photoUrl") and state.photoUrl is not None:
         if not storage.is_own_media_url(organizer_id, str(state.photoUrl)):
             raise PhotoPrefix()
-    # Column-keyed touched values: absent keys are left untouched,
-    # explicit nulls clear the column (merge-patch semantics, ADR-016).
-    # Core update() instead of f-string SET concatenation.
+    # Column-keyed touched values: Core update(), not f-string SET.
     values: dict[str, Any] = {}
     if touched.get("name") and state.name is not None:
         values["name"] = str(state.name)
@@ -132,8 +124,8 @@ async def update_organizer_language(
     session: AsyncSession, organizer_id: str, language: str
 ) -> None:
     """Set the organizer's notification language (ADR-011). An unknown
-    id (0 rows affected) is an OrganizerNotFound so a stale session
-    answers 404 instead of a silent success."""
+    id is OrganizerNotFound, so a stale session answers 404 instead of
+    a silent success."""
     refuse_demo_write(organizer_id)
     async with session.begin():
         if not await organizer_repo.update_language(session, organizer_id, language):

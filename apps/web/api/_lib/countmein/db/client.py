@@ -13,9 +13,9 @@ Dual-runtime pooling (backend-refactoring-plan Phase 6):
   enabled (direct Postgres, no transaction-mode pooler in front).
 
 A failed initialization is cached and re-raised on every call, so a
-bad URL does not leave the engine None for the lifetime of the
-instance — every subsequent request gets a clear "POSTGRES_URL is not
-set" instead of a None-deref 500.
+bad URL does not leave the engine None for the instance's lifetime —
+every request gets "POSTGRES_URL is not set" instead of a None-deref
+500.
 """
 
 from __future__ import annotations
@@ -40,15 +40,14 @@ _sessionmaker_engine: AsyncEngine | None = None
 
 
 def is_serverless() -> bool:
-    """True on Vercel serverless (`VERCEL=1`), False in a long-running
-    container. The check reads the env on every call so tests can flip
-    the mode with monkeypatch without a cache reset."""
+    """True on Vercel serverless (`VERCEL=1`), False in a container.
+    Reads env per call so tests can flip the mode via monkeypatch."""
     return os.getenv("VERCEL", "0") == "1"
 
 
-# libpq-known query options are the allowlist: anything else in the URL
-# (Supabase pooler strings carry vendor params like `supa=...`) makes
-# psycopg fail the connection with "invalid connection option".
+# Allowlist of libpq-known query options: anything else in the URL
+# (Supabase pooler strings carry `supa=...` etc.) makes psycopg fail
+# with "invalid connection option".
 _LIBPQ_OPTIONS = frozenset(
     {
         "application_name",
@@ -76,9 +75,8 @@ def _sanitize_query(url: str) -> str:
 
 
 # Server-side cap on any single statement (ADR-024): a runaway query
-# must not hold a connection — and, on serverless, the function's
-# maxDuration — hostage. psycopg passes `options` through to libpq,
-# so the timeout rides on every connection of both pool policies.
+# must not hold a connection — on serverless, the maxDuration —
+# hostage. `options` rides on every connection of both pool policies.
 STATEMENT_TIMEOUT_MS = 8000
 
 _SERVERLESS_CONNECT_ARGS: dict[str, Any] = {
@@ -93,17 +91,16 @@ _CONTAINER_CONNECT_ARGS: dict[str, Any] = {
 
 def _connect_args(base: dict[str, Any], url: str) -> dict[str, Any]:
     """base args + `options=-c statement_timeout=…`. A libpq `options`
-    already in the URL is preserved: psycopg connect kwargs win over URL
-    params on a duplicate key, so an unmerged options= would silently
-    drop it."""
+    already in the URL is preserved — connect kwargs win over URL params
+    on a duplicate key, so an unmerged options= would drop it."""
     url_options = dict(parse_qsl(urlsplit(url).query)).get("options", "")
     merged = f"{url_options} -c statement_timeout={STATEMENT_TIMEOUT_MS}".strip()
     return {**base, "options": merged}
 
 
 def engine() -> AsyncEngine:
-    """Lazily open the shared engine. No lock: the body has no await, so
-    it is atomic with respect to the event loop."""
+    """Lazily open the shared engine. No lock: no await in the body, so
+    it is atomic w.r.t. the event loop."""
     global _engine, _init_err
     if _engine is None and _init_err is None:
         url = os.getenv("POSTGRES_URL", "")
@@ -116,19 +113,17 @@ def engine() -> AsyncEngine:
                 url = "postgresql+psycopg://" + url[len("postgresql://") :]
             url = _sanitize_query(url)
             if is_serverless():
-                # NullPool explicitly: create_async_engine defaults to
-                # AsyncAdaptedQueuePool, which would hold connections
-                # open across frozen serverless instances.
+                # NullPool explicitly: the default QueuePool would hold
+                # connections open across frozen serverless instances.
                 _engine = create_async_engine(
                     url,
                     poolclass=NullPool,
                     connect_args=_connect_args(_SERVERLESS_CONNECT_ARGS, url),
                 )
             else:
-                # Long-running container: pooled connections across
-                # requests; prepared statements stay at the psycopg
-                # default threshold (direct Postgres, no
-                # transaction-mode pooler in front).
+                # Long-running container: pooled connections; prepared
+                # statements at the psycopg threshold (direct Postgres,
+                # no transaction-mode pooler in front).
                 _engine = create_async_engine(
                     url,
                     poolclass=AsyncAdaptedQueuePool,
@@ -140,8 +135,8 @@ def engine() -> AsyncEngine:
     if _init_err is not None:
         raise _init_err
     if _engine is None:
-        # Unreachable by the decode/guard contract; a real None
-        # here is a bug, and python -O must not strip the check.
+        # Unreachable by contract; a real None is a bug — a raise, not
+        # an assert, so python -O cannot strip the check.
         raise RuntimeError("_engine is None after its error guard")
     return _engine
 
@@ -162,14 +157,12 @@ def sessionmaker_for(eng: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 def sessionmaker() -> async_sessionmaker[AsyncSession]:
     """ORM session factory bound to the shared engine.
 
-    Repositories speak ORM entities (select(Model),
-    update(Model).returning(Model)) — only AsyncSession.execute loads
-    model instances; AsyncConnection.execute would return raw column
-    tuples. expire_on_commit=False: repositories return detached models
-    that row mappers read after commit without triggering lazy IO.
-    Worker entry points (jobs, seed, media cleanup — outside the
-    request lifecycle) own sessions via this factory; request handlers
-    go through web.deps.get_db_session instead."""
+    Repositories speak ORM entities (select(Model), returning(Model)) —
+    only AsyncSession.execute loads model instances; a raw connection
+    returns column tuples. expire_on_commit=False: repositories return
+    detached models that row mappers read without lazy IO. Worker entry
+    points (jobs, seed, media cleanup) own sessions via this factory;
+    request handlers use web.deps.get_db_session."""
     global _sessionmaker, _sessionmaker_engine
     eng = engine()
     if _sessionmaker is None or _sessionmaker_engine is not eng:
@@ -179,11 +172,10 @@ def sessionmaker() -> async_sessionmaker[AsyncSession]:
 
 
 async def dispose() -> None:
-    """Dispose the shared engine if one was opened, then drop the
-    cached state so the next engine() call re-reads POSTGRES_URL. The
-    lifespan shutdown is the only production caller; a disposal
-    failure is the caller's to absorb (it must not mask the response
-    already sent)."""
+    """Dispose the shared engine if opened, then drop cached state so
+    the next engine() re-reads POSTGRES_URL. The lifespan shutdown is
+    the only production caller; a disposal failure is the caller's to
+    absorb (it must not mask a sent response)."""
     global _engine, _init_err
     if _engine is not None:
         await _engine.dispose()
@@ -192,11 +184,10 @@ async def dispose() -> None:
 
 
 def reset_for_test() -> None:
-    """Drop the cached engine and init state, so the next engine() call
-    re-reads POSTGRES_URL (and VERCEL for the pool policy). Test-only.
-    Disposal is dispose()'s job; a cached NullPool engine holds no
-    connections to close here (a container-mode pool does, but tests
-    never open pooled connections — they assert pool policy only)."""
+    """Drop the cached engine so the next engine() re-reads POSTGRES_URL
+    (and VERCEL for the pool policy). Test-only; disposal is dispose()'s
+    job — a cached NullPool engine holds no connections (tests never
+    open pooled ones — they assert pool policy only)."""
     global _engine, _init_err, _sessionmaker, _sessionmaker_engine
     _engine = None
     _init_err = None

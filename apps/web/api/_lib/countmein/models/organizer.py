@@ -22,9 +22,7 @@ class Organizer(Base):
     __tablename__ = "organizers"
 
     # default=new_id: Python-side uuidv7 (Drizzle's $defaultFn ran
-    # JS-side, so the column has no DB default) — lets repositories
-    # build Organizer(...) without passing an explicit id. Pure
-    # ORM-side, invisible to Alembic DDL comparison.
+    # JS-side — no DB default). ORM-side only, invisible to Alembic.
     id: Mapped[str] = mapped_column(
         postgresql.UUID(as_uuid=False), primary_key=True, default=new_id
     )
@@ -51,10 +49,9 @@ class Organizer(Base):
         sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")
     )
 
-    # passive_deletes: the DB owns the cascade (ON DELETE CASCADE) —
-    # the ORM must not SELECT-then-nullify children on session.delete()
-    # (with lazy="raise" that load would raise InvalidRequestError, and
-    # organizer_id is NOT NULL so the nullify would fail anyway).
+    # passive_deletes: the DB owns the cascade — the ORM must not
+    # SELECT-then-nullify children on delete() (lazy="raise" would raise
+    # on the load; organizer_id NOT NULL would fail the nullify anyway).
     services: Mapped[list[Service]] = relationship(
         "Service", back_populates="organizer", lazy="raise", passive_deletes=True
     )

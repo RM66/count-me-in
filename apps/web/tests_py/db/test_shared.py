@@ -9,18 +9,9 @@ from countmein.db.shared import (
     new_id,
     new_manage_token,
     new_service_id,
-    parse_string_array,
 )
 
 NANOID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
-
-
-def test_parse_string_array():
-    assert parse_string_array(None) is None
-    assert parse_string_array("null") is None
-    got = parse_string_array('["a","b c","d"]')
-    assert got == ["a", "b c", "d"]
-    assert parse_string_array("[]") == []
 
 
 def test_new_service_id_shape():

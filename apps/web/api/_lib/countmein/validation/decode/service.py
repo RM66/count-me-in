@@ -1,7 +1,6 @@
-"""Service input decoders — the patch decoder validates the merge-patch
-document itself (a patch touching only one side of the options/mode pair
-is rejected, parity with the Zod superRefine); the merged-state decoder
-the PATCH handler runs over current+patch additionally enforces
+"""Service input decoders — the patch decoder validates the patch itself
+(a patch touching only one side of the options/mode pair is rejected,
+Zod parity); the merged-state decoder additionally enforces
 mergedRequired (ADR-024 C2)."""
 
 from __future__ import annotations

@@ -60,11 +60,10 @@ class RateLimitConfig:
 
 
 # The structured degradation signal (ADR-019): allow() fails open on a
-# Redis outage so traffic keeps flowing, but the outage itself is an
-# incident — `_report_fail_open` emits a dedicated `ratelimit.fail_open`
-# event a log drain can alert on, per bucket and throttled to once per
-# interval. The generic warn_every heartbeat inside allow() stays as
-# the catch-all for logs without a drain.
+# Redis outage so traffic keeps flowing, but the outage is an incident —
+# `_report_fail_open` emits a `ratelimit.fail_open` event a log drain
+# can alert on, per bucket, throttled to once per interval. The generic
+# warn_every inside allow() stays as the no-drain catch-all.
 _FAIL_OPEN_INTERVAL = 60.0
 _fail_open_last: dict[str, float] = {}
 _fail_open_lock = threading.Lock()
@@ -72,10 +71,9 @@ _fail_open_lock = threading.Lock()
 
 def _report_fail_open(bucket: str, err: BaseException) -> None:
     """Emit the alertable fail-open event for `bucket`, at most once per
-    _FAIL_OPEN_INTERVAL — a sustained outage must not flood the log,
-    but it also must not be silent. ERROR level in production (it is a
-    real incident there), WARN elsewhere (a dev machine without Redis
-    is normal)."""
+    _FAIL_OPEN_INTERVAL — a sustained outage must neither flood the log
+    nor stay silent. ERROR in production (a real incident), WARN
+    elsewhere (a dev machine without Redis is normal)."""
     now = time.monotonic()
     with _fail_open_lock:
         last = _fail_open_last.get(bucket)
@@ -98,11 +96,10 @@ def _reset_for_test() -> None:
 
 async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
     """Check the sliding-window limit for key. Returns (allowed,
-    retry_after_seconds). On Redis failure it fails open — a limiter
+    retry_after_seconds). Fails open on a Redis failure — a limiter
     outage must never block traffic, and without REDIS_URL there is
-    nothing to count against. The fail-open choice is recorded in
-    ADR-019; the outage itself is logged (rate-limited to once per
-    interval) so a silent Redis loss does not go unnoticed."""
+    nothing to count against (ADR-019). The outage is logged
+    (rate-limited) so a silent Redis loss does not go unnoticed."""
     if os.getenv("REDIS_URL", "") == "":
         return True, 0.0
     from .. import redis as redis_mod
@@ -111,10 +108,9 @@ async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
     member = f"{now}-{random.getrandbits(63)}"
     try:
         r = redis_mod.client()
-        # register_script: EVALSHA with automatic NOSCRIPT fallback to
-        # EVAL — the Lua body stops traveling on every request.
-        # The Script object is local: it is cheap to build and stays
-        # correct when tests swap the underlying client.
+        # register_script: EVALSHA with NOSCRIPT fallback to EVAL — the
+        # Lua body stops traveling per request. The Script object is
+        # local: cheap, and correct when tests swap the client.
         script = r.register_script(SLIDING_WINDOW_LUA)
         res = await script(keys=[key], args=[now, int(cfg.window * 1e9), cfg.limit, member])
     except Exception as err:
@@ -145,13 +141,12 @@ def trust_proxy_headers() -> bool:
 
 def client_ip(request: Request) -> str:
     """The caller's IP. Vercel sets x-vercel-forwarded-for (and
-    x-forwarded-for); the first value is the original client, the rest
-    are the proxy chain. Falls back to the socket address in dev.
+    x-forwarded-for); the first value is the original client. Falls
+    back to the socket address in dev.
 
-    Trust assumption: on Vercel the edge overwrites these headers, so
-    they are trustworthy. Without the opt-in the forwarded headers are
-    ignored outside Vercel, so a spoofed X-Forwarded-For cannot rotate
-    rate-limit keys."""
+    Trust: on Vercel the edge overwrites these headers; outside Vercel
+    without the opt-in they are ignored, so a spoofed X-Forwarded-For
+    cannot rotate rate-limit keys."""
     if trust_proxy_headers():
         for header in ("x-vercel-forwarded-for", "x-forwarded-for"):
             fwd = request.headers.get(header, "")

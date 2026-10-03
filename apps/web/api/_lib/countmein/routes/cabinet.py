@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
@@ -16,7 +15,6 @@ from ..web.response import json_response
 
 
 async def cabinet_summary(
-    request: Request,
     scope: tuple[str, bool] = Depends(cabinet_organizer),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:

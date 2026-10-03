@@ -16,13 +16,13 @@ def is_demo_organizer(organizer_id: str) -> bool:
 
 
 def is_read_only(organizer_id: str) -> bool:
-    """True for anonymous ("") and for the demo account itself. Call on
-    every write path, including guest-facing ones."""
+    """True for anonymous ("") and the demo account. Call on every write
+    path, including guest-facing ones."""
     return organizer_id == "" or is_demo_organizer(organizer_id)
 
 
 def refuse_demo_write(organizer_id: str) -> None:
-    """Raise DemoReadOnly when the id is the demo account's or
-    absent (anonymous — i.e. a demo cabinet visitor)."""
+    """Raise DemoReadOnly when the id is the demo account's or absent
+    (anonymous — a demo cabinet visitor)."""
     if is_read_only(organizer_id):
         raise DemoReadOnly()

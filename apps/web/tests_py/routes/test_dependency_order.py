@@ -1,9 +1,8 @@
 """The dependency-order meta-test.
 
-FastAPI resolves a handler's Depends parameters in declaration order,
-which pins the order of side effects — but that order was only pinned
-indirectly (by the behavior tests). This test inspects every write
-handler's signature directly and asserts the load-bearing sequence:
+FastAPI resolves a handler's Depends parameters in declaration order —
+the order of side effects. This test inspects every write handler's
+signature and asserts the load-bearing sequence:
 
 1. rate limit (before any body is read — a limited caller must not
    burn the body budget),
@@ -12,11 +11,10 @@ handler's signature directly and asserts the load-bearing sequence:
 4. the ticket stage — extraction on booking_create (consumption is
    deferred to the service, ADR-024 B1), redemption on the lookups.
 
-The dependencies are tagged with their pipeline stage at creation
-(web/deps.py, `__countmein_stage__`), so the test reads the tags
-instead of guessing from names. Session guards (require_writable_
-organizer) are deliberately untagged: their position is not pinned —
-they consume nothing single-use and may legitimately run first.
+Dependencies are tagged with their pipeline stage at creation
+(web/deps.py, `__countmein_stage__`), so the test reads tags instead of
+guessing from names. Session guards are deliberately untagged: they
+consume nothing single-use and may legitimately run first.
 """
 
 from __future__ import annotations
@@ -101,9 +99,8 @@ def test_route_dependencies_order(handler):
 
 def test_delete_handlers_have_no_pipeline_stages():
     """The delete routes take no body and no ticket — only the session
-    guard and the uuid path param — so they must carry no pipeline
-    stages at all (a stage appearing there would mean a stray
-    dependency crept in)."""
+    guard and the path param — so they must carry no pipeline stages (a
+    stage there would mean a stray dependency crept in)."""
 
     assert _stages(service_delete) == []
     assert _stages(slot_delete) == []
@@ -111,11 +108,10 @@ def test_delete_handlers_have_no_pipeline_stages():
 
 def test_guest_ticket_sits_after_decode():
     """The single most load-bearing order: a validation failure must not
-    reach the guest ticket at all. Every handler that declares the
-    ticket stage must also declare the decode dependency before it.
-    On booking_create the stage extracts the raw ticket only — the
-    service redeems it after the domain refusals (ADR-024 B1), so this
-    ordering test pins the extraction point, not the spend."""
+    reach the guest ticket at all. On booking_create the stage extracts
+    the raw ticket only — the service redeems it after the domain
+    refusals (ADR-024 B1) — so this pins the extraction point, not the
+    spend."""
     for handler in (booking_create, booking_lookup):
         stages = _stages(handler)
         assert "decode" in stages and "ticket" in stages, (

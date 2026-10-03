@@ -4,13 +4,13 @@ High-level system design for CountMeIn. Product domain in [domain.md](domain.md)
 
 ## Product surfaces
 
-| Surface           | App            | Audience   | Responsibility                                                                                                                             |
-| ----------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Landing           | `apps/web`     | Prospects  | Marketing, organizer sign-up                                                                                                               |
-| Public booking    | `apps/web`     | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book                                                                                |
-| Organizer cabinet | `apps/web`     | Organizers | Services, slots, bookings, profile — opened from messenger links                                                                           |
+| Surface           | App            | Audience   | Responsibility                                                                                                                                                                             |
+| ----------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Landing           | `apps/web`     | Prospects  | Marketing, organizer sign-up                                                                                                                                                               |
+| Public booking    | `apps/web`     | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book                                                                                                                                |
+| Organizer cabinet | `apps/web`     | Organizers | Services, slots, bookings, profile — opened from messenger links                                                                                                                           |
 | API               | `apps/web/api` | Clients    | HTTP API (a single Python ASGI Vercel Function); two TS handlers stay in Next.js — Auth.js `[...nextauth]` and `/api/internal/revalidate` ([ADR-021](decisions/021-api-python-rewrite.md)) |
-| Jobs              | `apps/web/api` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                          |
+| Jobs              | `apps/web/api` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                                                                          |
 
 **MVP entry for organizers:** register via Telegram Login Widget → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
 
@@ -89,12 +89,12 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 ### Queues
 
-| Queue               | Payload                      | Jobs per event                          |
-| ------------------- | ---------------------------- | --------------------------------------- |
-| `booking.created`   | `{ bookingId, recipient }`   | **Two** — one per recipient             |
-| `booking.cancelled` | `{ bookingId, cancelledBy }` | One — counterparty only                 |
-| `demo.refresh`                | —                            | Scheduled daily (`seed_demo()`, ADR-010)          |
-| `notification.outbox.sweep`   | —                            | Scheduled sweeper — re-publishes `pending` outbox rows past grace, retires `failed`, prunes `sent` |
+| Queue                       | Payload                      | Jobs per event                                                                                     |
+| --------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `booking.created`           | `{ bookingId, recipient }`   | **Two** — one per recipient                                                                        |
+| `booking.cancelled`         | `{ bookingId, cancelledBy }` | One — counterparty only                                                                            |
+| `demo.refresh`              | —                            | Scheduled daily (`seed_demo()`, ADR-010)                                                           |
+| `notification.outbox.sweep` | —                            | Scheduled sweeper — re-publishes `pending` outbox rows past grace, retires `failed`, prunes `sent` |
 
 **One job per recipient** — a retry re-sends only to whoever failed. **Payloads carry ids only** — the handler refetches at send time, so `manageToken` and login tokens never leave the database boundary. Contracts in `packages/contracts/src/jobs.ts`.
 
@@ -130,10 +130,10 @@ Delivery state lives in the QStash console (message log, retries, events) — ch
 
 Two tools, one job each — Sentry for errors and performance, PostHog for product analytics and behaviour.
 
-| Tool        | Scope                                                                      | Where it runs                                                                     |
-| ----------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Tool        | Scope                                                                      | Where it runs                                                                       |
+| ----------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | **Sentry**  | Unhandled exceptions, crash reports, performance traces, source-map upload | `apps/web` (client + server via `instrumentation.ts` + `instrumentation-client.ts`) |
-| **PostHog** | Page views, funnels, feature flags, session replay                         | `apps/web` (browser via `lib/posthog.ts`)                                         |
+| **PostHog** | Page views, funnels, feature flags, session replay                         | `apps/web` (browser via `lib/posthog.ts`)                                           |
 
 ### Sentry
 

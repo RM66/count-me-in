@@ -22,10 +22,9 @@ from .web.middleware import DefaultHeadersAndRecovery, RestorePathMiddleware
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """The single owner of resource disposal. Clients stay lazy
-    (built on first use, never at startup — the cold-start rule); the
-    shutdown side closes whatever was actually opened, best-effort —
-    a disposal failure must not mask the response already sent."""
+    """Single owner of resource disposal. Clients stay lazy (built on
+    first use — the cold-start rule); shutdown closes whatever opened,
+    best-effort — a disposal failure must not mask a sent response."""
     yield
     from . import logx
     from . import redis as redis_mod
@@ -43,17 +42,23 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             logx.error(err, {"scope": "api", "op": "lifespan-close", "resource": name})
 
 
+def _locale(request: Request) -> str:
+    """The request's locale — the same cookie + Accept-Language rule the
+    route deps use. Lazy import like every optional module here."""
+    from .i18n.locale import detect_locale
+
+    return detect_locale(request.cookies, request.headers.get("accept-language", ""))
+
+
 def create_app() -> FastAPI:
-    # Env validation fails the cold start loudly on a production
-    # misconfiguration; raising here surfaces as a 500 on every
-    # request, which is the intended loud failure.
+    # Env validation fails the cold start loudly: the raise surfaces as
+    # a 500 on every request — the intended loud failure.
     config.validate()
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None, lifespan=_lifespan)
 
     # add_middleware inserts at the head of the stack, so listing
     # RestorePathMiddleware first leaves DefaultHeadersAndRecovery
-    # outermost — the same nesting the old app.middleware("http") +
-    # add_middleware pair produced.
+    # outermost.
     app.add_middleware(RestorePathMiddleware)
     app.add_middleware(DefaultHeadersAndRecovery)
 
@@ -61,12 +66,11 @@ def create_app() -> FastAPI:
     async def http_exception_handler(
         request: Request, exc: StarletteHTTPException
     ) -> StarletteResponse:
-        # Unknown routes and methods answer the JSON error envelope
-        # (localized), never FastAPI's {"detail": …}.
-        from .i18n.locale import detect_locale
+        # Unknown routes/methods answer the localized JSON envelope,
+        # never FastAPI's {"detail": …}.
         from .web.response import method_not_allowed, not_found
 
-        locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
+        locale = _locale(request)
         if exc.status_code == 404:
             return not_found(locale).to_starlette()
         if exc.status_code == 405:
@@ -80,26 +84,22 @@ def create_app() -> FastAPI:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> StarletteResponse:
-        # Route handlers validate through the shared validation layer;
-        # FastAPI's own body validation should never fire for spec routes,
-        # but if it does the response must not be {"detail": …}.
-        from .i18n.locale import detect_locale
+        # Handlers validate through the shared layer; FastAPI's own body
+        # validation should never fire, but the response must not be
+        # {"detail": …}.
         from .web.response import error
 
-        locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
+        locale = _locale(request)
         return error(400, locale, "invalidInput").to_starlette()
 
     from .errors import ApiError, ValidationFailed
-    from .i18n.locale import detect_locale
     from .web import invalid_body
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError) -> StarletteResponse:
-        # Domain errors render through the single conversion point in the
-        # transport (web/response.render_api_error); anything else keeps
-        # propagating to the 500 recovery middleware. Locale comes from the
-        # same cookies + Accept-Language the handlers use.
-        locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
+        # Domain errors render through web/response.render_api_error;
+        # anything else propagates to the 500 recovery middleware.
+        locale = _locale(request)
         from .web.response import render_api_error
 
         return render_api_error(exc, locale).to_starlette()
@@ -108,10 +108,9 @@ def create_app() -> FastAPI:
     async def validation_failed_handler(
         request: Request, exc: ValidationFailed
     ) -> StarletteResponse:
-        # Body-shape 400s: every route answers with the same
-        # {error, details} envelope, so handlers never catch
-        # ValidationFailed locally.
-        locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
+        # Body-shape 400s share the {error, details} envelope, so
+        # handlers never catch ValidationFailed locally.
+        locale = _locale(request)
         return invalid_body(locale, exc.errors).to_starlette()
 
     from .routes import register_routes

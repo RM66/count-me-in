@@ -31,9 +31,8 @@ async def handle_booking_created(env: Env, job: gen.BookingCreatedJob, trace_id:
     # Worker context, not a request — the handler owns its session.
     async with sessionmaker()() as session:
         chain = await get_booking_chain(session, str(job.bookingId))
-    # Deliberately a fresh read at send time: a job that waited out a
-    # retry backoff must render the booking as it is now, not as it was
-    # when the transaction committed.
+    # A fresh read at send time: a job that waited out a retry backoff
+    # renders the booking as it is now, not at commit time.
     if chain is None:
         fields = {"queue": QUEUE_BOOKING_CREATED, "bookingId": str(job.bookingId)}
         if trace_id != "":
@@ -52,9 +51,9 @@ async def handle_booking_created(env: Env, job: gen.BookingCreatedJob, trace_id:
         return
 
     if str(job.recipient) == "organizer":
-        # Minted per send attempt: a retry mints a fresh token and the
-        # abandoned one simply expires, so a delivered message never
-        # carries a button already spent by an earlier attempt.
+        # Minted per send attempt — a retry mints a fresh token and the
+        # abandoned one expires, so a delivered message never carries a
+        # button spent by an earlier attempt.
         token = await issue_login_link(organizer.id, cabinet_slot_path(slot.id))
         locale = notification_locale("organizer", view)
         message = booking_created_for_organizer(view, login_link_url(env.app_url, token), locale)

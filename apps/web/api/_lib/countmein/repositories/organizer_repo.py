@@ -1,11 +1,9 @@
 """Organizer repository: typed SQLAlchemy 2.0 queries over Organizer.
 
-Takes an AsyncSession (the caller's transaction stays the owner — the
-same session.begin() boundaries the old raw-SQL layer used), returns
-ORM instances. Only AsyncSession.execute loads ORM entities;
-AsyncConnection.execute would return raw column tuples. Mapping to wire
-Row dataclasses lives in db/rows.py (from_model_*), never here. No
-text(), no string concatenation, no row[i] unpacking.
+Takes an AsyncSession (the caller's transaction stays the owner),
+returns ORM instances — AsyncConnection.execute would return raw column
+tuples. Mapping to Row dataclasses lives in db/rows.py (from_model_*),
+never here. No text(), no string concatenation, no row[i] unpacking.
 """
 
 from __future__ import annotations
@@ -97,10 +95,8 @@ async def insert_organizer(
 async def update_profile(
     session: AsyncSession, organizer_id: str, values: dict[str, object]
 ) -> Organizer | None:
-    """Merge-patch write: values are already column-keyed (touched only).
-
-    Replaces the f-string SET concatenation with update().values().
-    """
+    """Merge-patch write: values are already column-keyed (touched
+    only)."""
     if not values:
         return await get_by_id(session, organizer_id)
     stmt = (

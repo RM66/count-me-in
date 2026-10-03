@@ -1,11 +1,10 @@
 """Isolated unit tests for the demo guard (ADR-010).
 
-The guard is the security seam every write path leans on, but until now
-it was only covered indirectly — via parity scenarios and the HTTP route
-integration tests. These tests pin the semantics with no database and
-no app: UUID normalization (a raw UUID object slipping past the row
-mappers must not silently disable the read-only guard) and empty-id
-handling (the anonymous demo-cabinet visitor).
+The guard is the security seam every write path leans on. These tests
+pin the semantics with no database and no app: UUID normalization (a
+raw UUID object slipping past the row mappers must not silently disable
+the read-only guard) and empty-id handling (the anonymous demo-cabinet
+visitor).
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ def test_is_demo_organizer_string_id():
 def test_is_demo_organizer_raw_uuid_object():
     # str() normalizes a UUID object that slipped past the row mappers —
     # a raw UUID == str comparison is always False and would silently
-    # disable the read-only guard (ADR-010).
+    # disable the guard (ADR-010).
     assert is_demo_organizer(UUID(DEMO_ORGANIZER_ID))
 
 

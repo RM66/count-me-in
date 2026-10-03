@@ -87,9 +87,8 @@ class BookingRow:
     guest_messenger_id: str
     guest_locale: str
     manage_token: str
-    # SHA-256 hex of manage_token — the lookup key for credential checks.
-    # The raw token stays on the row only for the flows that re-issue the
-    # deep link.
+    # SHA-256 hex of manage_token — the lookup key for credential
+    # checks; the raw token stays only for re-issuing the deep link.
     manage_token_hash: str
     created_at: datetime | None = None
     guest_messenger_login: str | None = None
@@ -110,39 +109,49 @@ class OutboxRow:
     created_at: datetime | None = None
     sent_at: datetime | None = None
     # Defaulted: enqueue_outbox_tx builds the payload from the row id
-    # and assigns it right after construction.
+    # right after construction.
     payload: str = ""
 
 
 # The booking's full ownership chain as detached Rows — booking, slot,
-# service, organizer. Reads that need the wire answer serialize it via
-# db/serializers; notification jobs need exactly this (chat id, manage
-# token, timezone — none of which a wire DTO carries).
+# service, organizer. Wire reads serialize it via db/serializers;
+# notification jobs need exactly this (chat id, manage token, timezone —
+# none carried by a wire DTO).
 BookingChain = tuple[BookingRow, TimeSlotRow, ServiceRow, OrganizerRow]
+
+
+def chain_from_models(
+    models: tuple[Booking, TimeSlot, Service, Organizer],
+) -> BookingChain:
+    """Convert a repo chain-select's 4-model tuple to detached Rows."""
+    b, slot, service, organizer = models
+    return (
+        from_model_booking(b),
+        from_model_slot(slot),
+        from_model_service(service),
+        from_model_organizer(organizer),
+    )
 
 
 def _str(value: Any) -> str:
     """Canonical string for an id column: psycopg hands back UUID
-    objects, seed templates hand strings — both must land as the same
-    plain str on the row, or every downstream comparison against a
-    string constant (the demo guard's DEMO_ORGANIZER_ID check, fixture
-    ids in tests) silently misses."""
+    objects, seed templates strings — both must land as plain str, or
+    every downstream == against a string constant (demo guard, test
+    fixture ids) silently misses."""
     return str(value)
 
 
 def _enum_str(value: Any) -> str:
-    """Render a NOT NULL ORM enum attribute as its lowercase Postgres
-    value. psycopg hands back the raw 'telegram' string; the ORM hands
-    back the StrEnum member (also 'telegram' via str(), but explicit is
-    better than relying on StrEnum.__str__ staying value-shaped)."""
+    """Render an ORM enum attribute as its lowercase Postgres value.
+    psycopg hands back the raw 'telegram' string, the ORM the StrEnum
+    member — normalize explicitly rather than rely on StrEnum.__str__."""
     if isinstance(value, enum.Enum):
         return str(value.value)
     return str(value)
 
 
 def _enum_text(value: Any) -> str | None:
-    """Nullable-column variant: None passes through (options_select_mode
-    is unset on old rows)."""
+    """Nullable-column variant: None passes through."""
     if value is None:
         return None
     return _enum_str(value)

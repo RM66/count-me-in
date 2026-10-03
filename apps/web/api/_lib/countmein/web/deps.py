@@ -45,9 +45,9 @@ if TYPE_CHECKING:
 def get_db_engine(request: Request) -> AsyncEngine:
     """The request's Postgres engine. `app.state.db_engine` (set by a
     test or an embedding) wins over the process-wide lazy singleton
-    (ADR-021) — the override is how unit tests isolate themselves
-    under parallel runs; `app.dependency_overrides[get_db_engine]`
-    works too, this is the same seam one level down."""
+    (ADR-021) — how unit tests isolate under parallel runs;
+    `app.dependency_overrides[get_db_engine]` works too, same seam one
+    level down."""
     override: AsyncEngine | None = getattr(request.app.state, "db_engine", None)
     if override is not None:
         return override
@@ -61,11 +61,10 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
     (get_db_engine's override seam) so dependency_overrides and
     app-state engines both reach it.
 
-    Every handler declares `Depends(get_db_session)` and passes the
-    session into the services layer; a handler NEVER opens its own
-    sessionmaker. FastAPI closes the session after the response; a
-    transaction left open by an exception is rolled back here so the
-    connection returns to the pool clean."""
+    Handlers declare `Depends(get_db_session)` and pass the session to
+    services; a handler NEVER opens its own sessionmaker. FastAPI closes
+    it after the response; a tx left open by an exception is rolled back
+    here so the connection returns to the pool clean."""
     from ..db.client import sessionmaker_for
 
     async with sessionmaker_for(get_db_engine(request))() as session:
@@ -147,15 +146,12 @@ def organizer_rate_limit(prefix: str, limit: int, window: float) -> Callable[...
     return dep
 
 
-# The dedicated bucket for trusted server-side calls. The Next.js BFF's
-# SSR fetches share Vercel's egress IPs: a crawler burst would drain the
-# caller-sized public bucket and 429 every SSR fetch site-wide
-# (ADR-023). A request carrying a valid x-internal-secret is not a
-# browser — it counts against this high-capacity bucket instead. The
-# bucket is still real (a runaway server-side loop trips a 429 rather
-# than falling through to Postgres unbounded), and a forged or absent
-# secret gets the normal IP bucket: the check is cryptographic, not
-# header-presence.
+# Dedicated bucket for trusted server-side calls. The Next.js BFF's
+# SSR fetches share Vercel's egress IPs: a crawler burst would drain
+# the public bucket and 429 every SSR fetch site-wide (ADR-023). A
+# valid x-internal-secret counts here instead — still a real bucket (a
+# runaway loop trips 429, not unbounded Postgres), and a forged/absent
+# secret gets the normal IP bucket: the check is cryptographic.
 _INTERNAL_SSR_KEY = "rl:internal-ssr:"
 _INTERNAL_SSR_CFG = RateLimitConfig(limit=10_000, window=60.0, label=_INTERNAL_SSR_KEY)
 
@@ -163,9 +159,9 @@ _INTERNAL_SSR_CFG = RateLimitConfig(limit=10_000, window=60.0, label=_INTERNAL_S
 def ip_rate_limit(prefix: str, limit: int, window: float) -> Callable[..., Any]:
     """Dependency factory: a bucket keyed by the caller's IP — except
     trusted server-side calls (valid x-internal-secret), which count
-    against the dedicated internal bucket above. Raises RateLimited
-    (429 with Retry-After) when exhausted; fails open on a Redis
-    outage (ADR-019)."""
+    against the internal bucket above. Raises RateLimited (429 +
+    Retry-After) when exhausted; fails open on a Redis outage
+    (ADR-019)."""
 
     async def dep(request: Request) -> None:
         from ..auth.internal import INTERNAL_SECRET_HEADER, verify_internal_secret
@@ -198,10 +194,10 @@ def guest_identity(
     ticket_of: Callable[[Any], str],
 ) -> Callable[..., Any]:
     """Dependency factory: consume the guest ticket from the *already
-    decoded* body (the decode dependency runs first — a validation
-    failure must not burn the ticket) and redeem it for the messenger
-    identity. For the lookups, where consuming the ticket IS the
-    operation. Single-use: a replayed request finds nothing (401)."""
+    decoded* body (decode runs first — a validation failure must not
+    burn the ticket) and redeem it for the messenger identity. For the
+    lookups, where consuming the ticket IS the operation. Single-use:
+    a replay finds nothing (401)."""
 
     async def dep(body: ValidatedBody[Any] = Depends(decoded_dep)) -> AuthTicketPayload:
         return await require_guest_identity(ticket_of(body.model))
@@ -214,12 +210,11 @@ def guest_ticket(
     decoded_dep: Callable[..., Any],
     ticket_of: Callable[[Any], str],
 ) -> Callable[..., Any]:
-    """Dependency factory: hand the *raw* ticket string from the decoded
-    body to the handler — no redemption. For booking_create, where the
-    service consumes the ticket only after the domain refusals have
-    passed (ADR-024 B1): a SoldOut/InvalidOptions/PartyTooLarge answer
-    must leave the ticket reusable. Same pipeline position as
-    guest_identity — decode first, ticket read second."""
+    """Dependency factory: hand the *raw* ticket from the decoded body
+    to the handler — no redemption. For booking_create, where the
+    service consumes the ticket only after the domain refusals
+    (ADR-024 B1): a SoldOut/InvalidOptions/PartyTooLarge answer must
+    leave it reusable. Same pipeline position as guest_identity."""
 
     async def dep(body: ValidatedBody[Any] = Depends(decoded_dep)) -> str:
         return ticket_of(body.model)
@@ -228,9 +223,9 @@ def guest_ticket(
     return dep
 
 
-# The canonical 8-4-4-4-12 hex form — the only shape the ids are ever
-# minted in. uuid.UUID() would also accept urn:uuid:… and {braced} forms,
-# which Postgres rejects with a 500 instead of a clean 400.
+# The canonical 8-4-4-4-12 hex form — the only shape ids are minted in.
+# uuid.UUID() would also accept urn:uuid:… and {braced} forms, which
+# Postgres rejects with a 500 instead of a clean 400.
 _UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
@@ -269,9 +264,8 @@ def session_organizer(request: Request) -> str:
 
 def session_slug(request: Request) -> str:
     """The signed-in organizer's slug claim, "" when anonymous — the
-    public-cache tag half a mutation invalidates (ADR-023). Guards that
-    require an organizer still declare require_writable_organizer; this
-    dependency only reads the claim."""
+    public-cache tag a mutation invalidates (ADR-023). Read-only; guards
+    still declare require_writable_organizer separately."""
     from ..auth.session import session_from_request
 
     session = session_from_request(request)

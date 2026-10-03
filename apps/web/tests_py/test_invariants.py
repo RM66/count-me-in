@@ -1,15 +1,11 @@
-"""The invariant index: one named test per AGENTS.md
-"Conventions" rule.
+"""The invariant index: one named test per AGENTS.md "Conventions" rule.
 
-This file is the auditable checklist, not the coverage. Most entries
-delegate to the module tests that own the behavior (the delegation is
-asserted — a renamed or deleted delegate fails here, so the index
-cannot rot); a few invariants that have no single owning test are
-pinned directly.
+The auditable checklist, not the coverage. Most entries delegate to the
+module tests that own the behavior — the delegation is asserted, so a
+renamed or deleted delegate fails here and the index cannot rot; a few
+invariants with no single owning test are pinned directly.
 
-Run with `uv run pytest tests_py/test_invariants.py -v` for the audit
-view; the delegated tests run in their own modules during the full
-suite.
+`uv run pytest tests_py/test_invariants.py -v` for the audit view.
 """
 
 from __future__ import annotations
@@ -22,7 +18,7 @@ TESTS = Path(__file__).resolve().parent
 
 def _assert_test_exists(module_rel: str, test_name: str) -> None:
     """The delegated test must exist by name in the named module — the
-    index references stay verifiable instead of rotting into comments."""
+    index references stay verifiable, not rotted into comments."""
     import importlib
 
     module = importlib.import_module(module_rel)
@@ -42,31 +38,30 @@ def test_seat_reserve_is_single_conditional_update():
     repository, and the contention test that proves no overbooking
     under a race."""
     src = (TESTS.parent / "api/_lib/countmein/repositories/booking_repo.py").read_text("utf-8")
-    # update(TimeSlot).where(id == ..., booked_count + seats <=
-    # capacity).values(booked_count=booked_count + seats).returning():
-    # the claim and the guard are one statement, and the updated row
-    # comes back from the same round-trip (no re-read to race with).
+    # update(TimeSlot).where(id, booked_count + seats <= capacity)
+    # .values(booked_count=booked_count + seats).returning(): claim and
+    # guard are one statement; the updated row comes back in the same
+    # round-trip (no re-read to race with).
     assert "TimeSlot.booked_count + seats <= TimeSlot.capacity" in src
     assert "booked_count=TimeSlot.booked_count+seats" in src.replace(" ", "")
     assert ".returning(TimeSlot)" in src
-    # The predicate and the update must live in the same function —
-    # a comment mentioning the shape must not satisfy the pin.
+    # Predicate and update must live in the same function — a comment
+    # mentioning the shape must not satisfy the pin.
     reserve_fn = src.split("async def atomic_reserve_seats", 1)[1].split("\nasync def ", 1)[0]
     assert "TimeSlot.booked_count + seats <= TimeSlot.capacity" in reserve_fn
     assert ".returning(TimeSlot)" in reserve_fn
-    # The read-check-write shape must not appear in the write path: a
-    # SELECT of booked_count feeding a plain UPDATE is the bug this
-    # invariant forbids. The shrink-capacity precheck in services/slot_service.py
-    # reads booked_count under FOR UPDATE but never writes it — allow
-    # that file, forbid the pattern in the booking write path.
+    # Read-check-write must not appear in the write path: a SELECT of
+    # booked_count feeding a plain UPDATE is the forbidden bug. The
+    # shrink-capacity precheck reads booked_count under FOR UPDATE but
+    # never writes it — allow that, forbid the pattern here.
     writes = (TESTS.parent / "api/_lib/countmein/services/booking_service.py").read_text("utf-8")
     assert "time_slots SET booked_count" not in writes
     assert "SET booked_count = :seats" not in writes.replace(
         "booked_count = booked_count + :seats", ""
     )
     assert "atomic_reserve_seats" in writes
-    # Cancel releases through the status-guarded mark + release pair —
-    # a double cancel must hit AlreadyCancelled, never double-decrement.
+    # Cancel releases via the status-guarded mark + release pair — a
+    # double cancel hits AlreadyCancelled, never double-decrements.
     assert "cancel_booking_mark" in writes
     assert "Booking.status == BookingStatus.CONFIRMED" in src
     _assert_test_exists(
@@ -88,9 +83,8 @@ def test_cancel_releases_seats_and_is_idempotent():
 def test_demo_organizer_rejected_on_every_write():
     """Invariant: every write path rejects the demo organizer id —
     guest booking, cancel, cabinet CRUD, direct service calls — and
-    notifications are never sent for it. The guard's own semantics
-    (UUID normalization, empty id, exact slug match) are pinned in
-    isolation by tests_py.demo.test_guard."""
+    notifications are never sent for it. The guard's own semantics are
+    pinned by tests_py.demo.test_guard."""
     _assert_test_exists(
         "tests_py.services.test_booking_writes", "test_create_guest_booking_demo_refused"
     )
@@ -152,10 +146,10 @@ def test_notification_failure_never_fails_booking():
 
 
 def test_duplicate_outbox_delivery_not_resent():
-    """Invariant: the job payload's outboxId is the consumer
-    idempotency key — a duplicate delivery completes without sending,
-    and a retryable failure releases the claim so the retry is
-    processed (at-least-once, duplicates suppressed on success)."""
+    """Invariant: the job payload's outboxId is the consumer idempotency
+    key — a duplicate completes without sending; a retryable failure
+    releases the claim so the retry is processed (at-least-once,
+    duplicates suppressed on success)."""
     _assert_test_exists(
         "tests_py.jobs.test_run", "test_run_claimed_suppresses_duplicate_after_success"
     )
@@ -186,10 +180,9 @@ def test_jobs_receiver_verifies_signature_before_anything():
 
 
 def test_qstash_empty_key_forgery_rejected():
-    """Invariant: an empty signing key is never tried — HMAC-SHA256
-    with "" is computable by anyone, so a token forged with the empty
-    next key must not verify (and a token without exp must not replay
-    forever)."""
+    """Invariant: an empty signing key is never tried — HMAC-SHA256 with
+    "" is computable by anyone, so a forged token must not verify (and a
+    token without exp must not replay forever)."""
     _assert_test_exists("tests_py.jobs.test_receiver", "test_empty_next_key_is_not_a_valid_key")
     _assert_test_exists("tests_py.jobs.test_receiver", "test_token_without_exp_rejected")
     _assert_test_exists("tests_py.jobs.test_receiver", "test_both_keys_empty_rejected")
@@ -293,9 +286,8 @@ def test_merge_patch_pair_rule_both_directions():
 
 
 def test_body_bound_is_1mb():
-    """Invariant: request bodies are bounded at 1MB → 413 (a truncated
-    body must not surface as a confusing 400), refused incrementally —
-    a huge body is never buffered whole first."""
+    """Invariant: request bodies are bounded at 1MB → 413, refused
+    incrementally — a huge body is never buffered whole first."""
     _assert_test_exists("tests_py.web.test_guards", "test_read_body_or_413")
     _assert_test_exists("tests_py.web.test_guards", "test_body_over_1mb_rejected_without_full_read")
 
@@ -396,15 +388,14 @@ def test_login_link_demo_id_refused():
 
 
 def test_login_link_consumed_on_post_only():
-    """Invariant: organizer deep links are consumed on POST, never GET
-    — previewers fetch URLs before a human clicks. TS-owned: the
-    consumption endpoint is Next.js (`src/server/auth/login-link.ts`,
-    consumed via the telegram provider on POST), not the Python API —
-    the Python side only mints. Pinned by the TS integration test
+    """Invariant: organizer deep links are consumed on POST, never GET —
+    previewers fetch URLs before a human clicks. TS-owned: consumption
+    lives in Next.js (`src/server/auth/login-link.ts`), the Python side
+    only mints — pinned by the TS test
     `peek does not consume — consume is single-use`
-    (src/server/auth/tickets.integration.test.ts); referenced here so
-    the index keeps the convention visible without claiming a Python
-    test that does not exist."""
+    (src/server/auth/tickets.integration.test.ts), referenced here so the
+    index keeps the convention visible without claiming a Python test
+    that does not exist."""
     ts_test = TESTS.parent / "src/server/auth/tickets.integration.test.ts"
     src = ts_test.read_text("utf-8")
     assert "peek does not consume — consume is single-use" in src, (
@@ -416,8 +407,8 @@ def test_login_link_consumed_on_post_only():
 # ── index self-check ──────────────────────────────────────────────────────────
 
 # The explicit list of AGENTS.md "Conventions" bullets this index must
-# cover. When a convention is added or the index gains an entry, both
-# sides of this set comparison change together — that is the point.
+# cover. When a convention or an index entry is added, both sides of
+# this comparison change together — that is the point.
 EXPECTED_ENTRIES = {
     "test_seat_reserve_is_single_conditional_update",
     "test_cancel_releases_seats_and_is_idempotent",
@@ -454,11 +445,10 @@ EXPECTED_ENTRIES = {
 
 
 def test_index_covers_the_conventions_list():
-    """The index is a flat, greppable checklist. This comparison only
-    catches drift between the entries and EXPECTED_ENTRIES within this
-    file — it does not diff against AGENTS.md itself; the audit that a
-    new convention gained an entry is human review. No orphan entries,
-    no missing bullets relative to the explicit list."""
+    """The index is a flat, greppable checklist. This comparison catches
+    drift between the entries and EXPECTED_ENTRIES — it does not diff
+    against AGENTS.md; the audit that a new convention gained an entry
+    is human review."""
     actual = {
         name
         for name, fn in globals().items()

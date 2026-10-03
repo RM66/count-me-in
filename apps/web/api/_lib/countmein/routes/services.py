@@ -1,11 +1,9 @@
 """Service routes: the cabinet's service CRUD.
 
-The handlers lean on the exception hierarchy: guards and
-decoders raise, the services layer raises ApiError subclasses, and the
-app-level handler renders them. The shared preamble is a set
-of FastAPI dependencies (web/deps.py) declared in the handler
-signature. The merge-patch PATCH runs through the shared transactional
-skeleton (routes/mergepatch.apply_merge_patch) on the request's injected
+The handlers lean on the exception hierarchy: guards/decoders raise,
+the services layer raises ApiError subclasses, the app-level handler
+renders them. The shared preamble is FastAPI dependencies (web/deps.py).
+The merge-patch PATCH runs through apply_merge_patch on the request's
 session; the media-ownership invariant is enforced inside the service
 write (services/service_service.py).
 """
@@ -17,7 +15,6 @@ from typing import Any
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask, BackgroundTasks
-from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
@@ -86,13 +83,11 @@ async def _update_owned(
 
 
 async def services_list(
-    request: Request,
     scope: tuple[str, bool] = Depends(cabinet_organizer),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """GET /api/services: lists the services of the organizer this
-    request may view (the signed-in organizer, or the demo organizer for
-    anonymous visitors, ADR-010)."""
+    """GET /api/services: the services of the organizer this request may
+    view (signed-in, or demo for anonymous visitors, ADR-010)."""
     organizer_id, _ = scope
 
     rows = await service_service.list_services(session, organizer_id)
@@ -104,26 +99,23 @@ _create_service_dep = decoded(decode_create_service_input)
 
 
 async def services_create(
-    request: Request,
     organizer_id: str = Depends(require_writable_organizer),
     slug: str = Depends(session_slug),
     body: ValidatedBody[gen.CreateServiceInput] = Depends(_create_service_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/services: creates a service owned by the signed-in
-    organizer — organizerId always comes from the session, never from
-    the body. The cover-URL ownership check runs inside the service
-    write (services/service_service.create_service)."""
+    organizer — organizerId comes from the session, never the body. The
+    cover-URL ownership check runs inside the service write."""
     row = await service_service.create_service(session, organizer_id, body.model)
     if row is None:
-        # Structurally unreachable (INSERT … RETURNING either errors or
-        # returns the row) — kept as a defensive backstop: a silent
-        # empty result must never 201.
+        # Structurally unreachable backstop: a silent empty
+        # INSERT … RETURNING must never 201.
         raise CannotCreateService()
 
     star = json_response(201, gen.ServiceEnvelope(service=to_service_record(row))).to_starlette()
-    # New service appears on the organizer's public page, its own
-    # service page and the sitemap — invalidate all three (ADR-023).
+    # A new service appears on the organizer's page, its own page and
+    # the sitemap — invalidate all three (ADR-023).
     star.background = BackgroundTask(
         trigger_revalidation,
         public_tags(organizer_slug=slug, service_id=row.id, sitemap=True),
@@ -132,14 +124,13 @@ async def services_create(
 
 
 async def service_get(
-    request: Request,
     id: str,
     scope: tuple[str, bool] = Depends(cabinet_organizer),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """GET /api/services/{id}, scoped to the organizer this request may
-    view: an id belonging to someone else answers 404, not 403, so the
-    endpoint never confirms that a foreign id exists."""
+    view: a foreign id answers 404, not 403 — the endpoint never confirms
+    that a foreign id exists."""
     organizer_id, _ = scope
 
     row = await service_service.get_owned_service(session, organizer_id, id)
@@ -152,7 +143,6 @@ _update_service_dep = decoded(decode_update_service_input)
 
 
 async def service_patch(
-    request: Request,
     id: str,
     organizer_id: str = Depends(require_writable_organizer),
     slug: str = Depends(session_slug),
@@ -160,11 +150,10 @@ async def service_patch(
     body: ValidatedBody[gen.UpdateServiceInput] = Depends(_update_service_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """PATCH /api/services/{id}. Takes a JSON Merge Patch body (absent key
-    = keep, explicit null = clear, RFC 7386/ADR-016): the patch is
-    validated first (a null on a non-nullable key is rejected before any
-    read), then merged into the current state and the result
-    re-validated."""
+    """PATCH /api/services/{id}. JSON Merge Patch body (absent = keep,
+    null = clear, RFC 7386/ADR-016): the patch is validated first (a null
+    on a non-nullable key is rejected before any read), then merged and
+    the result re-validated."""
     row, current, touched = await apply_merge_patch(
         session,
         body.raw,
@@ -179,15 +168,14 @@ async def service_patch(
     star = json_response(200, gen.ServiceEnvelope(service=to_service_record(row))).to_starlette()
 
     tasks = [
-        # The service's fields are embedded in its public page and in
-        # the organizer's page slot payloads — invalidate both.
+        # Service fields are embedded in its page and the organizer's
+        # slot payloads — invalidate both.
         BackgroundTask(trigger_revalidation, public_tags(organizer_slug=slug, service_id=row.id))
     ]
 
-    # The replaced cover object is removed best-effort after the commit
-    # (see cleanup_replaced_media) — a storage failure must not fail an
-    # already-committed update. The ownership check ran inside the
-    # transaction (services/service_service.update_owned_service_tx).
+    # Replaced cover removed best-effort post-commit (see
+    # cleanup_replaced_media) — a storage failure must not fail the
+    # committed update. Ownership was checked inside the transaction.
     if touched.get("photoUrl"):
         old = current.photo_url or ""
         new = row.photo_url or ""
@@ -197,7 +185,6 @@ async def service_patch(
 
 
 async def service_delete(
-    request: Request,
     id: str,
     organizer_id: str = Depends(require_writable_organizer),
     slug: str = Depends(session_slug),
@@ -205,12 +192,10 @@ async def service_delete(
 ) -> StarletteResponse:
     """DELETE /api/services/{id}. Slots cascade on the services FK, but
     bookings hold their slots with ON DELETE RESTRICT, so a service whose
-    slots were ever booked answers 409 — terminal for MVP, the booking
-    rows are guest history and nothing removes them. The cover object is
-    removed from R2 best-effort after the delete (see
-    cleanup_replaced_media) — the photo_url rides along in the DELETE …
-    RETURNING so a concurrent PATCH cannot slip a new cover in between a
-    read and the delete."""
+    slots were ever booked answers 409 — terminal for MVP, booking rows
+    are guest history. The cover is removed from R2 best-effort after the
+    delete; photo_url rides along in DELETE … RETURNING so a concurrent
+    PATCH cannot slip a new cover in between read and delete."""
     deleted = await service_service.delete_owned_service(session, organizer_id, id)
     if deleted is None or deleted[0] == "":
         raise ServiceNotFound()
@@ -219,8 +204,8 @@ async def service_delete(
     star = json_response(200, gen.DeletedServiceEnvelope(id=deleted_id)).to_starlette()
     star.background = BackgroundTasks(
         [
-            # The service disappears from the public page, its own page
-            # and the sitemap.
+            # The service disappears from the organizer's page, its own
+            # page and the sitemap.
             BackgroundTask(
                 trigger_revalidation,
                 public_tags(organizer_slug=slug, service_id=deleted_id, sitemap=True),

@@ -46,9 +46,9 @@ Reachable without session: signed-in → own data; anonymous → read-only demo 
 | Service editor      | `/cabinet/services/{serviceId}` (+ `/new`) | Edit title, description, photo, defaults, options                                                             |
 | Time slots          | `/cabinet/slots` (+ `?service=`)           | Schedule: list and create / edit / duplicate / delete slots                                                   |
 | Bookings            | `/cabinet/bookings`                        | All bookings (transitively); filter; view detail; cancel                                                      |
-| Week calendar       | `/cabinet/calendar`                        | The same schedule as `/cabinet/slots`, laid out on a week time grid                                            |
-| Profile / settings  | `/cabinet/settings`                        | Name, slug, description, avatar (R2), timezone, messenger, language                                            |
-| Occupancy analytics | `/cabinet/analytics`                       | Booking/seat stats, trend and per-service charts                                                               |
+| Week calendar       | `/cabinet/calendar`                        | The same schedule as `/cabinet/slots`, laid out on a week time grid                                           |
+| Profile / settings  | `/cabinet/settings`                        | Name, slug, description, avatar (R2), timezone, messenger, language                                           |
+| Occupancy analytics | `/cabinet/analytics`                       | Booking/seat stats, trend and per-service charts                                                              |
 
 ## 4. Shared / system
 

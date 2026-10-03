@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.requests import Request
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
@@ -23,7 +22,6 @@ _lookup_dep = decoded(decode_internal_organizer_lookup_input)
 
 
 async def organizer_by_messenger(
-    request: Request,
     _authorized: None = Depends(require_internal_secret),
     body: ValidatedBody[gen.InternalOrganizerLookupInput] = Depends(_lookup_dep),
     session: AsyncSession = Depends(get_db_session),
@@ -44,9 +42,9 @@ async def organizer_by_messenger(
     if organizer is None:
         raise OrganizerNotFound()
 
-    # model_construct, like the db/serializers mappers: the generated UUID
-    # field carries a pattern constraint Pydantic cannot apply to a
-    # coerced UUID, so the validating constructor raises TypeError.
+    # model_construct, like the db/serializers mappers: the generated
+    # UUID field's pattern constraint makes the validating constructor
+    # raise TypeError on a coerced UUID.
     record = gen.InternalOrganizerRecord.model_construct(
         id=str(organizer.id),
         name=str(organizer.name),

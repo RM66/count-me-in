@@ -20,10 +20,10 @@ import httpx
 from . import config, logx
 from .web.async_client import client as async_client
 
-# ErrPublishSkipped — dev without QSTASH_TOKEN: the publish is never
-# attempted (localhost is not routable from Upstash); callers mark the
-# row `skipped` (terminal, honest in metrics), not `sent`. A sentinel
-# exception, not None, to tell "skipped" from "delivered".
+# Dev without QSTASH_TOKEN: the publish is never attempted (localhost
+# is not routable from Upstash); callers mark the row `skipped`, not
+# `sent`. A sentinel exception, not None, tells "skipped" from
+# "delivered".
 PUBLISH_SKIPPED = "qstash publish skipped (dev without QSTASH_TOKEN)"
 
 
@@ -31,17 +31,15 @@ class PublishSkipped(Exception):
     """The sentinel for a deliberately skipped dev publish."""
 
 
-# How hard QStash tries before dropping a message: 5 delivery attempts
-# with exponential backoff. Permanent failures (recipient never pressed
-# Start) are completed by the receiver with a 200, so they never spend
-# this budget.
+# Delivery attempts before QStash drops a message. Permanent failures
+# (recipient never pressed Start) are completed with a 200, so they
+# never spend this budget.
 JOB_RETRIES = 5
 
 DEFAULT_QSTASH_URL = "https://qstash.upstash.io"
 
-# 1s, well under the caller's 1.5s after-commit publish budget: a hung
-# QStash must fail fast into the sweeper path instead of being killed
-# mid-request (the sweeper re-publishes the pending row).
+# Well under the caller's 1.5s publish budget: a hung QStash fails fast
+# into the sweeper path instead of being killed mid-request.
 _HTTP_TIMEOUT = 1.0
 
 
@@ -51,18 +49,13 @@ async def publish_outbox(
     dedup_id: str,
     trace_id: str,
 ) -> None:
-    """Publish one outbox row's payload to its queue. dedup_id (the
-    outbox row id) is sent as Upstash-Deduplication-Id — QStash
-    suppresses a redelivery of the same id, which makes the sweeper's
-    at-least-once re-publish safe against the inline path and against
-    its own retries. trace_id travels as Upstash-Trace-Id so the job
-    handler can correlate the pipeline.
+    """Publish one outbox row's payload to its queue. dedup_id (the row
+    id) goes as Upstash-Deduplication-Id — QStash suppresses a
+    redelivery, making the sweeper's at-least-once re-publish safe.
+    trace_id travels as Upstash-Trace-Id for the job handler.
 
-    In dev without QSTASH_TOKEN the publish is skipped by raising
-    PublishSkipped — local deliveries would be unreachable anyway
-    (QStash POSTs to APP_URL; localhost is not routable from Upstash),
-    and the caller marks the row `skipped` so the sweeper does not churn
-    on it and the metrics stay honest."""
+    Dev without QSTASH_TOKEN raises PublishSkipped — local deliveries
+    are unreachable anyway — and the caller marks the row `skipped`."""
     token = os.getenv("QSTASH_TOKEN", "")
     if token == "":
         if config.is_production():
@@ -89,24 +82,23 @@ async def _publish_body(
     dedup_id: str,
     trace_id: str,
 ) -> None:
-    """The shared HTTP POST to QStash's publish endpoint. dedup_id
-    (outbox row id) and trace_id are forwarded as QStash headers —
-    QStash forwards Upstash-* headers to the destination, so the job
-    handler reads the trace id from the incoming request headers."""
+    """Shared HTTP POST to QStash's publish endpoint. dedup_id and
+    trace_id go as QStash headers — Upstash-* headers are forwarded to
+    the destination, so the job handler reads the trace id from the
+    incoming request."""
     headers: dict[str, str] = {
         "Authorization": "Bearer " + token,
         "Content-Type": "application/json",
         "Upstash-Retries": str(JOB_RETRIES),
     }
     if dedup_id != "":
-        # Suppresses duplicate deliveries of the same outbox row — the
-        # sweeper re-publish and QStash retries become no-ops instead of
-        # duplicate Telegram messages.
+        # Suppresses duplicate deliveries of the same row — sweeper
+        # re-publish and retries become no-ops, not duplicate messages.
         headers["Upstash-Deduplication-Id"] = dedup_id
     if trace_id != "":
         headers["Upstash-Trace-Id"] = trace_id
-    # A transport error propagates as httpx.HTTPError — callers catch
-    # Exception and leave the row pending for the sweeper.
+    # A transport error propagates as httpx.HTTPError — callers leave
+    # the row pending for the sweeper.
     res = await _post(
         base + "/v2/publish/" + destination,
         content=body,
@@ -118,8 +110,7 @@ async def _publish_body(
 
 
 def _destination(queue_name: str) -> str:
-    """The QStash destination for a queue: this deployment's receiver
-    route ({APP_URL}/api/jobs/{queue})."""
+    """The QStash destination for a queue: {APP_URL}/api/jobs/{queue}."""
     app_url = os.getenv("APP_URL", "").rstrip("/")
     if app_url == "":
         raise RuntimeError("APP_URL is not set")
@@ -130,8 +121,8 @@ async def _default_post(url: str, **kwargs: Any) -> httpx.Response:
     return await async_client().post(url, **kwargs)
 
 
-# Test seam: the transport (async — the publish runs on the event loop,
-# so the caller's asyncio.timeout can actually cancel it).
+# Test seam: the transport — async so the caller's asyncio.timeout can
+# actually cancel it.
 _post = _default_post
 
 

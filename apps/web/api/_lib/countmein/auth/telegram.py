@@ -38,8 +38,7 @@ class TelegramIdentity:
     messenger_login: str | None = None
 
     def to_ticket_payload(self, purpose: str) -> AuthTicketPayload:
-        """`purpose` binds the ticket to one flow — the caller decides
-        which flow, the payload carries it, and the consuming guard
+        """`purpose` binds the ticket to one flow — the consuming guard
         rejects a ticket minted for the other flow."""
         return AuthTicketPayload(
             messenger=self.messenger,
@@ -57,14 +56,12 @@ TICKET_PURPOSE_GUEST = "guest"
 TICKET_PURPOSE_ORGANIZER = "organizer"
 
 # Mirrors @telegram-auth/server's inValidateDataAfter default: a widget
-# payload older than 24 hours is expired — otherwise a captured widget
-# body could be replayed forever to mint fresh tickets for that identity.
+# payload older than 24h is expired — a captured body must not mint
+# fresh tickets forever.
 WIDGET_DATA_VALID_AFTER = 86400
 
-# How far in the future auth_date may lie. The past window is a generous
-# 24h, but the future direction gets only clock skew: Telegram signs
-# the current time, so a future auth_date is a forged claim, not a
-# slow clock.
+# How far in the future auth_date may lie: only clock skew. Telegram
+# signs the current time, so a future auth_date is a forged claim.
 WIDGET_FUTURE_SKEW = 300
 
 
@@ -86,10 +83,10 @@ def _nil_if_empty(s: str | None) -> str | None:
 
 def validate_telegram_widget(body: bytes) -> TelegramIdentity:
     """Shape-check and HMAC-verify a widget body. Raises
-    TelegramNotConfiguredError (500 at the route), TelegramInvalidError
-    (400 telegramInvalid) for malformed payloads, or
+    TelegramNotConfiguredError (500), TelegramInvalidError (400
+    telegramInvalid) for malformed payloads, or
     TelegramValidationFailedError (400 telegramValidationFailed) for a
-    signature mismatch or an expired auth_date."""
+    signature mismatch or expired auth_date."""
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     if bot_token == "":
         raise TelegramNotConfiguredError()
@@ -100,21 +97,17 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
         raise TelegramInvalidError() from None
 
     # The data-check-string covers every field the widget sent, including
-    # any the schema does not model — it is computed from the raw body,
-    # never from the parsed struct. parse_float/parse_int keep numeric
-    # literals as their on-the-wire scalars.
+    # ones the schema doesn't model — computed from the raw body, never
+    # the parsed struct. parse_int=int keeps a JSON integer's literal
+    # (str(int)); floats stay literals.
     try:
-        # parse_int=int: a JSON integer's literal is str(int) exactly
-        # (JSON forbids leading zeros), so the data-check-string keeps
-        # its on-the-wire shape. Floats stay literals.
         raw = json.loads(body, parse_float=lambda x: x, parse_int=int)
     except ValueError:
         raise TelegramInvalidError() from None
     if not isinstance(raw, dict):
         raise TelegramInvalidError()
-    # The retired implementation's decode rejects a string for an integer
-    # field; Pydantic's lax mode would coerce it. Enforce the wire types
-    # here so "string id"/"string date" stay TelegramInvalidError.
+    # Enforce wire types the old decoder required — Pydantic's lax mode
+    # would coerce a "string id"/"string date" that must stay invalid.
     if not isinstance(raw.get("id"), int) or isinstance(raw.get("id"), bool):
         raise TelegramInvalidError()
     if not isinstance(raw.get("auth_date"), int) or isinstance(raw.get("auth_date"), bool):
@@ -136,10 +129,8 @@ def validate_telegram_widget(body: bytes) -> TelegramIdentity:
         raise TelegramValidationFailedError()
 
     # Freshness (hasDataExpired in the TS validator): the HMAC proves
-    # the payload came from Telegram, not that it was sent recently.
-    # Asymmetric: stale payloads are rejected past 24h, future ones past
-    # clock skew — a future auth_date is a forged claim, not a slow
-    # guest.
+    # origin, not recency. Asymmetric — stale past 24h, future past
+    # clock skew.
     age = int(time.time()) - int(payload.auth_date)
     if age > WIDGET_DATA_VALID_AFTER or age < -WIDGET_FUTURE_SKEW:
         raise TelegramValidationFailedError()

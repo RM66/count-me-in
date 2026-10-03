@@ -23,8 +23,7 @@ class TimeSlot(Base):
     __tablename__ = "time_slots"
 
     # default=new_id: Python-side uuidv7 (Drizzle's $defaultFn ran
-    # JS-side, so the column has no DB default). ORM-side only,
-    # invisible to Alembic DDL comparison.
+    # JS-side — no DB default). ORM-side only, invisible to Alembic.
     id: Mapped[str] = mapped_column(
         postgresql.UUID(as_uuid=False), primary_key=True, default=new_id
     )
@@ -50,10 +49,10 @@ class TimeSlot(Base):
 
     service: Mapped[Service] = relationship("Service", back_populates="time_slots", lazy="raise")
     # passive_deletes: the FK is ON DELETE RESTRICT — the DB refuses a
-    # delete while booking rows exist, so the ORM must not try to
-    # nullify time_slot_id first (NOT NULL would fail; lazy="raise"
-    # would raise on the child load). Lets the RESTRICT surface as a
-    # 23503 the delete guards map to 409.
+    # delete while booking rows exist, so the ORM must not nullify
+    # time_slot_id first (lazy="raise" would raise on the load; NOT NULL
+    # would fail anyway). Lets RESTRICT surface as a 23503 the delete
+    # guards map to 409.
     bookings: Mapped[list[Booking]] = relationship(
         "Booking", back_populates="time_slot", lazy="raise", passive_deletes=True
     )

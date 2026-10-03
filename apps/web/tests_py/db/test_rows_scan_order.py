@@ -1,9 +1,6 @@
-"""The ORM → Row mappers are the live mapping path: every field the
-retired positional scans carried must arrive identically through
-attribute addressing — no column-order coupling. The raw-SQL scan_*
-shims and their *_COLUMNS / *_CHAIN_SELECT projections were removed
-with the repository migration; this module now pins the mapper
-contract only."""
+"""The ORM → Row mappers are the live mapping path: every field must
+arrive identically through attribute addressing — no column-order
+coupling. This module pins the mapper contract."""
 
 from __future__ import annotations
 

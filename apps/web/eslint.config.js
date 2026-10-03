@@ -38,11 +38,15 @@ export default [
     },
   },
   {
-    // Architectural guard (backend refactoring, plan 022): src/ has ZERO
-    // direct Postgres access — every server read goes through
+    // Architectural guard (backend refactoring, plan 022): app code has
+    // ZERO direct Postgres access — every server read goes through
     // src/server/api-client.ts over HTTP to the Python API. Forbid DB
-    // driver imports so the seam cannot silently re-open.
-    files: ['src/**/*.{ts,tsx}'],
+    // driver imports so the seam cannot silently re-open. The single
+    // exception is e2e/, whose fixtures own the test precondition
+    // (seed rows, Redis tickets) — they are test infrastructure, not app
+    // code, and cannot be expressed through the wire API.
+    files: ['**/*.{ts,tsx}'],
+    ignores: ['e2e/**'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -51,24 +55,24 @@ export default [
             {
               name: 'pg',
               message:
-                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
             },
             {
               name: 'postgres',
               message:
-                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
             },
             {
               name: 'drizzle-orm',
               message:
-                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
             },
           ],
           patterns: [
             {
               group: ['drizzle-orm/*', '@repo/db', '@repo/db/*', '**/server/db/**'],
               message:
-                'No direct Postgres access in src/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
             },
           ],
         },

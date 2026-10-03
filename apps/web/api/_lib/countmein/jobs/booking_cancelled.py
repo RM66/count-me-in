@@ -24,7 +24,7 @@ from .templates import (
 
 
 async def handle_booking_cancelled(env: Env, job: gen.BookingCancelledJob, trace_id: str) -> None:
-    # Worker context, not a request — the handler owns its session.
+    # Worker context — the handler owns its session.
     async with sessionmaker()() as session:
         chain = await get_booking_chain(session, str(job.bookingId))
     if chain is None:

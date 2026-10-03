@@ -45,63 +45,78 @@ function makeProfile(overrides: Partial<OrganizerProfile> = {}): OrganizerProfil
   } as unknown as OrganizerProfile
 }
 
+function changeField(
+  result: { current: ReturnType<typeof useProfileForm> },
+  field: 'name' | 'slug' | 'description' | 'contact' | 'timezone' | 'location',
+  value: string,
+) {
+  act(() => {
+    result.current.form.setValue(field, value, { shouldDirty: true })
+  })
+}
+
+async function save(result: { current: ReturnType<typeof useProfileForm> }) {
+  await act(async () => {
+    await result.current.save()
+  })
+}
+
 afterEach(() => {
   vi.clearAllMocks()
 })
 
 describe('useProfileForm', () => {
-  it('starts clean: no changes, empty diff', () => {
+  it('starts clean: nothing dirty', () => {
     const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
-    expect(result.current.hasChanges()).toBe(false)
-    expect(result.current.getChanges()).toEqual({})
+    expect(result.current.form.formState.isDirty).toBe(false)
   })
 
-  it('sends only changed fields', () => {
+  it('sends only changed fields', async () => {
     const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
-    act(() => {
-      result.current.updateField('name')('New Name')
-    })
-    expect(result.current.hasChanges()).toBe(true)
-    expect(result.current.getChanges()).toEqual({ name: 'New Name' })
+    changeField(result, 'name', 'New Name')
+    expect(result.current.form.formState.isDirty).toBe(true)
+    await save(result)
+    expect(updateMutate).toHaveBeenCalledTimes(1)
+    expect(updateMutate.mock.calls[0]![0]).toEqual({ name: 'New Name' })
   })
 
-  it('cleared text arrives as null (clear the column), not empty string', () => {
+  it('cleared text arrives as null (clear the column), not empty string', async () => {
     const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
-    act(() => {
-      result.current.updateField('contact')('')
-    })
-    expect(result.current.getChanges()).toEqual({ contact: null })
+    changeField(result, 'contact', '')
+    await save(result)
+    expect(updateMutate.mock.calls[0]![0]).toEqual({ contact: null })
   })
 
-  it('reverting a field drops it from the diff', () => {
+  it('reverting a field drops it from the diff', async () => {
     const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
-    act(() => {
-      result.current.updateField('name')('Changed')
-    })
-    act(() => {
-      result.current.updateField('name')('My Studio')
-    })
-    expect(result.current.hasChanges()).toBe(false)
-  })
-
-  it('save with no changes toasts info and never mutates', () => {
-    const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
-    act(() => {
-      result.current.save()
-    })
+    changeField(result, 'name', 'Changed')
+    changeField(result, 'name', 'My Studio')
+    expect(result.current.form.formState.isDirty).toBe(false)
+    await save(result)
     expect(mockToastInfo).toHaveBeenCalledTimes(1)
     expect(updateMutate).not.toHaveBeenCalled()
   })
 
-  it('save mutates the diff; success toasts and calls onSaveSuccess', () => {
+  it('save with no changes toasts info and never mutates', async () => {
+    const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
+    await save(result)
+    expect(mockToastInfo).toHaveBeenCalledTimes(1)
+    expect(updateMutate).not.toHaveBeenCalled()
+  })
+
+  it('invalid values fail client-side validation — nothing leaves', async () => {
+    const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
+    changeField(result, 'slug', 'ab')
+    await save(result)
+    expect(updateMutate).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('save mutates the diff; success toasts, re-baselines and calls onSaveSuccess', async () => {
     const onSaveSuccess = vi.fn()
     const { result } = renderHook(() => useProfileForm(makeProfile(), onSaveSuccess), { wrapper })
-    act(() => {
-      result.current.updateField('timezone')('America/New_York')
-    })
-    act(() => {
-      result.current.save()
-    })
+    changeField(result, 'timezone', 'America/New_York')
+    await save(result)
     expect(updateMutate).toHaveBeenCalledTimes(1)
     expect(updateMutate.mock.calls[0]![0]).toEqual({ timezone: 'America/New_York' })
 
@@ -111,16 +126,14 @@ describe('useProfileForm', () => {
     })
     expect(mockToastSuccess).toHaveBeenCalledTimes(1)
     expect(onSaveSuccess).toHaveBeenCalledTimes(1)
+    // The persisted values are the new clean baseline.
+    expect(result.current.form.formState.isDirty).toBe(false)
   })
 
-  it('failed save toasts the error', () => {
+  it('failed save toasts the error', async () => {
     const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
-    act(() => {
-      result.current.updateField('name')('X')
-    })
-    act(() => {
-      result.current.save()
-    })
+    changeField(result, 'name', 'X')
+    await save(result)
     const options = updateMutate.mock.calls[0]![1] as {
       onError: (e: Error) => void
     }
@@ -132,14 +145,12 @@ describe('useProfileForm', () => {
 
   it('reset restores the loaded profile', () => {
     const { result } = renderHook(() => useProfileForm(makeProfile()), { wrapper })
+    changeField(result, 'name', 'Changed')
+    expect(result.current.form.formState.isDirty).toBe(true)
     act(() => {
-      result.current.updateField('name')('Changed')
+      result.current.form.reset()
     })
-    expect(result.current.hasChanges()).toBe(true)
-    act(() => {
-      result.current.reset()
-    })
-    expect(result.current.hasChanges()).toBe(false)
-    expect(result.current.state.name).toBe('My Studio')
+    expect(result.current.form.formState.isDirty).toBe(false)
+    expect(result.current.form.getValues().name).toBe('My Studio')
   })
 })

@@ -4,13 +4,13 @@ steps:
   - request:
       method: POST
       path: /api/jobs/booking.created
-      body_raw: '{"bookingId":"00000000-0000-0000-0000-000000000001","recipient":"organizer","outboxId":"00000000-0000-0000-0000-000000000002"}'
+      body_raw: '{"bookingId":"01930000-0000-7000-8000-000000000001","recipient":"organizer","outboxId":"01930000-0000-7000-8000-000000000002"}'
     note: missing upstash-signature → 401
   - request:
       method: POST
       path: /api/jobs/booking.created
       headers: { upstash-signature: garbage }
-      body_raw: '{"bookingId":"00000000-0000-0000-0000-000000000001","recipient":"organizer","outboxId":"00000000-0000-0000-0000-000000000002"}'
+      body_raw: '{"bookingId":"01930000-0000-7000-8000-000000000001","recipient":"organizer","outboxId":"01930000-0000-7000-8000-000000000002"}'
     note: malformed signature → 401
   - mint: qstashSignature
     request:
@@ -22,19 +22,19 @@ steps:
     request:
       method: POST
       path: /api/jobs/booking.created
-      body_raw: '{"bookingId":"not-a-uuid","recipient":"organizer","outboxId":"00000000-0000-0000-0000-000000000002"}'
+      body_raw: '{"bookingId":"not-a-uuid","recipient":"organizer","outboxId":"01930000-0000-7000-8000-000000000002"}'
     note: invalid payload → 400 (retrying would resend the same bytes)
   - mint: qstashSignature
     request:
       method: POST
       path: /api/jobs/booking.created
-      body_raw: '{"bookingId":"00000000-0000-0000-0000-000000000001","recipient":"organizer","outboxId":"00000000-0000-0000-0000-000000000002"}'
+      body_raw: '{"bookingId":"01930000-0000-7000-8000-000000000001","recipient":"organizer","outboxId":"01930000-0000-7000-8000-000000000002"}'
     note: valid signed delivery, unknown booking → 200 silent skip (no resend)
   - mint: qstashSignature
     request:
       method: POST
       path: /api/jobs/booking.created
-      body_raw: '{"bookingId":"00000000-0000-0000-0000-000000000001","recipient":"organizer","outboxId":"00000000-0000-0000-0000-000000000002"}'
+      body_raw: '{"bookingId":"01930000-0000-7000-8000-000000000001","recipient":"organizer","outboxId":"01930000-0000-7000-8000-000000000002"}'
     note: duplicate outboxId delivery → 200, no second send (idempotency claim)
   - mint: qstashSignature
     request:

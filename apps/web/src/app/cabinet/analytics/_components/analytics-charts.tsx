@@ -10,7 +10,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
-import type { AnalyticsServicePoint, AnalyticsTrendPoint } from '@/server/api-client'
+import type { AnalyticsServicePoint, AnalyticsTrendPoint } from '@/helpers/analytics'
 
 export function AnalyticsCharts({
   trend,

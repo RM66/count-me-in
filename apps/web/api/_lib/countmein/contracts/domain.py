@@ -148,9 +148,9 @@ def match_locale(accept_language: str) -> str | None:
 def _parse_q_param(q_param: str) -> float | None:
     if not q_param.startswith("q="):
         return None
-    # Mirror JS Number.parseFloat prefix semantics used by matchLocale in
-    # packages/contracts/src/i18n.ts: "0.9abc" parses as 0.9, while a
-    # non-numeric suffix like "oops" means absent (caller keeps q=1).
+    # Mirror JS Number.parseFloat prefix semantics (matchLocale in
+    # contracts/src/i18n.ts): "0.9abc" parses as 0.9; a non-numeric
+    # suffix means absent (caller keeps q=1).
     raw = q_param[2:].strip()
     end = 0
     while end < len(raw):
@@ -196,13 +196,12 @@ def slot_end(starts_at: datetime, duration_minutes: int) -> datetime:
 def parse_flex_time(value: str | int | float) -> datetime:
     """Accept an RFC3339 string or a Unix epoch number (seconds or
     milliseconds). A deliberate tightening over Zod's z.coerce.date(),
-    which accepts anything new Date() parses ("2026-09-13" etc.).
-    Confirmed safe for the wire: the only writer of startsAt is the
-    cabinet slot form, which folds date+time through wall_clock_to_instant
-    into a Date — JSON.stringify serializes it as a full ISO string.
+    which accepts anything new Date() parses. Safe for the wire: the
+    only writer of startsAt is the cabinet slot form, which folds
+    date+time through wall_clock_to_instant into a full ISO string.
     Formats new Date() parses as *local* time (date-only, no-zone
-    datetime) are rejected rather than guessed: reproducing server-local
-    semantics would be worse than a 400."""
+    datetime) are rejected rather than guessed — server-local semantics
+    would be worse than a 400."""
     if isinstance(value, datetime):
         if value.tzinfo is None:
             raise ValueError("date string")
@@ -220,7 +219,7 @@ def parse_flex_time(value: str | int | float) -> datetime:
     if isinstance(value, bool):
         raise ValueError("date string")
     if isinstance(value, (int, float)):
-        # Heuristic: > 1e12 means milliseconds, else seconds.
+        # > 1e12 means milliseconds, else seconds.
         ms = float(value)
         if value <= 1e12:
             ms = value * 1000
@@ -229,11 +228,10 @@ def parse_flex_time(value: str | int | float) -> datetime:
 
 
 def iso_date(t: datetime | None) -> str:
-    """Render t like JS Date.toISOString(): always UTC, always millisecond
-    precision ("2026-09-13T10:15:35.250Z"). None is accepted so the row
-    mappers' optional created_at columns type-check without ignores —
-    the columns are NOT NULL in the schema, so a real None is a bug and
-    raises (python -O must not strip the check)."""
+    """Render t like JS Date.toISOString(): always UTC, always
+    millisecond precision. None is accepted for the mappers' optional
+    columns — the schema columns are NOT NULL, so a real None is a bug
+    and raises (python -O must not strip the check)."""
     if t is None:
         raise RuntimeError("iso_date: None datetime")
     return (

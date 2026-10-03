@@ -22,15 +22,13 @@ from .rows import BookingChain, BookingRow, OrganizerRow, ServiceRow, TimeSlotRo
 
 def _uuid(value: Any) -> str:
     """Render a uuid column as its canonical string — the wire form of
-    an id. The mappers build records with model_construct (no
-    validation), so this is also where the canonical form is fixed."""
+    an id (mappers use model_construct, so this fixes the form here)."""
     return str(value)
 
 
-# model_construct (not model_validate) in every mapper below: the
-# generated UUID fields carry a pattern constraint pydantic-core cannot
-# apply to a UUID schema (TypeError on every construct), and the rows
-# come straight from the database — already canonical.
+# model_construct (not model_validate) in every mapper: the generated
+# UUID fields carry a pattern constraint pydantic-core cannot apply
+# (TypeError on every construct), and DB rows are already canonical.
 
 
 def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
@@ -80,8 +78,8 @@ def to_public_organizer(o: OrganizerRow) -> gen.PublicOrganizer:
 
 
 def to_organizer_profile(o: OrganizerRow, is_demo: bool) -> gen.OrganizerProfile:
-    # Language clamped to the supported set (a stale column value must
-    # not break rendering).
+    # Language clamped to the supported set — a stale column value must
+    # not break rendering.
     language = o.language if domain.is_app_locale(o.language) else domain.DEFAULT_LOCALE
     return gen.OrganizerProfile.model_construct(
         id=_uuid(o.id),
@@ -116,11 +114,11 @@ def to_booking_record(b: BookingRow) -> gen.BookingRecord:
 
 
 def can_cancel_booking(b: BookingRow, now: datetime | None = None) -> bool:
-    """The guest may still act on this booking: it is confirmed and its
-    manageToken has not expired. None expiry means a legacy row created
-    before the column existed (ADR-020) and stays cancellable, matching
-    the cancel write's check. The guest DTO carries this as canCancel so
-    the management link is only offered while it works."""
+    """The guest may still act on this booking: confirmed and
+    manageToken unexpired. None expiry = legacy row (ADR-020), stays
+    cancellable, matching the cancel write's check. The guest DTO
+    carries this as canCancel so the link is offered only while it
+    works."""
     if b.status != "confirmed":
         return False
     if b.manage_token_expires_at is None:
@@ -149,7 +147,6 @@ def to_guest_booking(
 
 
 def to_guest_booking_chain(chain: BookingChain) -> gen.GuestBooking:
-    """The 4-part chain projected to the guest DTO in one call — the
-    common route-side shape for booking answers."""
+    """The 4-part chain projected to the guest DTO in one call."""
     booking, slot, service, organizer = chain
     return to_guest_booking(booking, slot, service, organizer)

@@ -1,8 +1,7 @@
-"""The healthz tests — the probe's own
-recovery: a panicking (or env-missing) dependency answers a JSON 503
-naming the missing variables, a healthy one answers 200. The probes are
-module-level seams so the recovery path is pinned without initializing
-the process-wide pools."""
+"""The healthz tests — the probe's own recovery: a panicking (or
+env-missing) dependency answers a JSON 503 naming the missing
+variables, a healthy one answers 200. The probes are module-level seams
+so the recovery path is pinned without initializing the pools."""
 
 from __future__ import annotations
 
@@ -12,24 +11,6 @@ import logging
 import pytest
 from countmein import redis as redis_mod
 from countmein.routes import healthz
-
-
-def make_request():
-    from starlette.requests import Request
-
-    scope = {
-        "type": "http",
-        "method": "GET",
-        "path": "/api/healthz",
-        "raw_path": b"/api/healthz",
-        "headers": [],
-        "query_string": b"",
-        "client": ("127.0.0.1", 12345),
-        "scheme": "http",
-        "server": ("testserver", 80),
-        "http_version": "1.1",
-    }
-    return Request(scope)
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +27,7 @@ async def _call(monkeypatch, probe_pg, probe_redis=None):
     monkeypatch.setattr(healthz, "_probe_postgres", probe_pg or fake_pg)
     if probe_redis is not None:
         monkeypatch.setattr(healthz, "_probe_redis", probe_redis)
-    return await healthz.handle_healthz(make_request())
+    return await healthz.handle_healthz()
 
 
 async def test_healthz_probe_panic_answers_503_with_missing_env(monkeypatch):

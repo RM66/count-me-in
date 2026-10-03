@@ -26,10 +26,9 @@ from ..errors import InvalidInput, NothingToUpdate
 
 
 def patch_keys(body: bytes) -> dict[str, bool] | None:
-    """The top-level keys present in a merge-patch body — the columns
-    the client meant to change. None for a non-object or empty patch:
-    an empty patch is the "nothing to update" 400, exactly like the old
-    Optional[T] flow answered it."""
+    """The top-level keys in a merge-patch body — the columns the client
+    meant to change. None for a non-object or empty patch (the
+    "nothing to update" 400)."""
     try:
         patch = json.loads(body)
     except ValueError:
@@ -40,26 +39,21 @@ def patch_keys(body: bytes) -> dict[str, bool] | None:
 
 
 def merge_patch(current_state: dict[str, Any], patch_body: bytes) -> bytes:
-    """Apply RFC 7386 to the current wire state. current_state is a map
-    of the entity's writable fields (values may be None — nulls merge
-    the same way absent keys do for nullable columns)."""
-    current_json = json.dumps(current_state)
+    """Apply RFC 7386 to the current wire state — a map of the entity's
+    writable fields (None values merge like absent keys for nullable
+    columns)."""
     try:
         patch = json.loads(patch_body)
     except ValueError as err:
         raise ValueError("invalid merge patch") from err
-    merged = _merge(current_json, patch)
+    merged = _merge(current_state, patch)
     return json.dumps(merged).encode()
 
 
-def _merge(current_json: str, patch: Any) -> Any:
-    """The RFC 7386 merge algorithm (the jsonpatch.MergePatch port)."""
-    import json as _json
-
-    try:
-        current = _json.loads(current_json)
-    except ValueError:
-        current = None
+def _merge(current: Any, patch: Any) -> Any:
+    """The RFC 7386 merge algorithm (the jsonpatch.MergePatch port),
+    applied to parsed values: a non-dict patch replaces the target
+    wholesale, a null patch member deletes the key."""
     if not isinstance(patch, dict):
         return patch
     if not isinstance(current, dict):
@@ -69,7 +63,7 @@ def _merge(current_json: str, patch: Any) -> Any:
         if value is None:
             result.pop(key, None)
         else:
-            result[key] = _merge(_json.dumps(result.get(key)), value)
+            result[key] = _merge(result.get(key), value)
     return result
 
 
@@ -83,15 +77,13 @@ async def apply_merge_patch[RowT, StateT](
     update_tx: Callable[[AsyncSession, StateT, dict[str, bool]], Awaitable[RowT]],
 ) -> tuple[RowT, RowT, dict[str, bool]]:
     """The shared merge-patch transaction: read → merge → write on one
-    ORM transaction over the caller's request-scoped session (two
-    concurrent PATCHes must not merge against different snapshots and
-    silently lose columns — the tx lives here, not in the caller, so
-    the read and the write provably share it). fetch and update_tx
-    raise the entity's not-found error themselves; decode_merged
-    receives the touched-key set alongside the merged bytes (the slot
-    decoder checks startsAt only when the patch touched it). Returns
-    (row, current, touched) so the caller can build the response and
-    the replaced-media cleanup."""
+    ORM transaction over the caller's session — two concurrent PATCHes
+    must not merge against different snapshots and silently lose
+    columns, so the tx lives here, not in the caller. fetch and
+    update_tx raise the entity's not-found themselves; decode_merged
+    receives the touched-key set (the slot decoder checks startsAt only
+    when the patch touched it). Returns (row, current, touched) for the
+    response and the replaced-media cleanup."""
     touched = patch_keys(raw)
     if touched is None:
         raise NothingToUpdate()
@@ -107,6 +99,6 @@ async def apply_merge_patch[RowT, StateT](
 
 
 def touched_update[StateT](state: StateT, touched: dict[str, bool]) -> TouchedUpdate[StateT]:
-    """Build the db layer's update contract — a thin alias so route
-    call sites read as one expression."""
+    """Build the db layer's update contract — a thin alias for route
+    call sites."""
     return TouchedUpdate(state=state, touched=touched)

@@ -49,32 +49,45 @@ function checkContract<S extends z.ZodType>(url: string, schema: S, data: unknow
   return data as z.input<S>
 }
 
-/** Generic POST helper with error handling. */
-export async function post<S extends z.ZodType>(
+type RequestOptions = {
+  method: string
+  /** Bodies are always JSON; omitted for bodiless methods (GET/DELETE). */
+  body?: unknown
+  contentType?: 'application/json' | 'application/merge-patch+json'
+  /** Per-method English fallback — see the constants above. */
+  fallback: string
+}
+
+async function request<S extends z.ZodType>(
   url: string,
-  body: unknown,
   schema: S,
+  { method, body, contentType, fallback }: RequestOptions,
 ): Promise<z.input<S>> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  const init: RequestInit = { method }
+  if (body !== undefined) {
+    init.headers = { 'Content-Type': contentType ?? 'application/json' }
+    init.body = JSON.stringify(body)
+  }
+  const res = await fetch(url, init)
   if (!res.ok) {
-    throwApiError(await readJson(res), res.status, POST_ERROR_FALLBACK)
+    throwApiError(await readJson(res), res.status, fallback)
   }
   const data: unknown = await readJson(res)
   return checkContract(url, schema, data)
 }
 
+/** Generic POST helper with error handling. */
+export function post<S extends z.ZodType>(
+  url: string,
+  body: unknown,
+  schema: S,
+): Promise<z.input<S>> {
+  return request(url, schema, { method: 'POST', body, fallback: POST_ERROR_FALLBACK })
+}
+
 /** Generic GET helper with error handling. */
-export async function get<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
-  const res = await fetch(url)
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, GET_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
+export function get<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
+  return request(url, schema, { method: 'GET', fallback: GET_ERROR_FALLBACK })
 }
 
 /**
@@ -83,30 +96,21 @@ export async function get<S extends z.ZodType>(url: string, schema: S): Promise<
  * = keep, explicit null = clear — so they pass the merge-patch media
  * type; everything else keeps application/json.
  */
-export async function patch<S extends z.ZodType>(
+export function patch<S extends z.ZodType>(
   url: string,
   body: unknown,
   schema: S,
   contentType: 'application/json' | 'application/merge-patch+json' = 'application/json',
 ): Promise<z.input<S>> {
-  const res = await fetch(url, {
+  return request(url, schema, {
     method: 'PATCH',
-    headers: { 'Content-Type': contentType },
-    body: JSON.stringify(body),
+    body,
+    contentType,
+    fallback: PATCH_ERROR_FALLBACK,
   })
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, PATCH_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
 }
 
 /** Generic DELETE helper with error handling. */
-export async function del<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
-  const res = await fetch(url, { method: 'DELETE' })
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, DELETE_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
+export function del<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
+  return request(url, schema, { method: 'DELETE', fallback: DELETE_ERROR_FALLBACK })
 }

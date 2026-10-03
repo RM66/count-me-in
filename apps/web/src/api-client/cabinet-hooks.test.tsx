@@ -256,7 +256,7 @@ describe('useCurrentOrganizer', () => {
     const { result } = renderHook(() => useCurrentOrganizer(), { wrapper: Wrapper })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(fetch).toHaveBeenCalledWith('/api/organizers/me')
+    expect(fetch).toHaveBeenCalledWith('/api/organizers/me', { method: 'GET' })
     expect(result.current.data).toEqual(organizerProfileFixture)
     // The cache entry lives under the shared key factory — the mutation
     // that invalidates it must agree (keys.ts is the single source).

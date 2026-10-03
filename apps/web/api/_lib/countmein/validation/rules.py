@@ -29,16 +29,14 @@ RESERVED_SLUGS = {
 
 def is_reserved_slug(v: str) -> bool:
     """Path segments the public booking page can never be served from
-    (including "demo" — the demo organizer's own slug)."""
+    (including "demo")."""
     return v.lower() in RESERVED_SLUGS
 
 
 def _is_valid_timezone(v: str) -> bool:
-    """Mirror Intl.DateTimeFormat's lookup, which matches IANA ids
-    case-insensitively: try the exact id, then a re-cased form
-    ("europe/belgrade" → "Europe/Belgrade"). "Local" is not an IANA
-    id and is deliberately rejected so the two sides accept the
-    same set."""
+    """Mirror Intl.DateTimeFormat's case-insensitive lookup: exact id,
+    then a re-cased form ("europe/belgrade" → "Europe/Belgrade").
+    "Local" is rejected so both sides accept the same set."""
     if v == "" or v.lower() == "local":
         return False
     try:
@@ -54,8 +52,8 @@ def _is_valid_timezone(v: str) -> bool:
 
 
 def _canonicalize_timezone(v: str) -> str:
-    """Restore the conventional casing of an IANA id by upper-casing the
-    first letter of every slash- and underscore-separated segment."""
+    """Restore conventional IANA casing: upper-case the first letter of
+    every slash- and underscore-separated segment."""
     segments = []
     for segment in v.split("/"):
         parts = []
@@ -79,9 +77,8 @@ def valid_url(v: str) -> bool:
         parts = urlsplit(v)
     except ValueError:
         return False
-    # http/https only: the value is rendered as a link, and other
-    # schemes (javascript:, data:, mailto:) are either dangerous or
-    # not a web link at all.
+    # http/https only: the value renders as a link — other schemes
+    # (javascript:, data:, mailto:) are dangerous or not web links.
     if parts.scheme not in ("http", "https"):
         return False
     return parts.netloc != ""

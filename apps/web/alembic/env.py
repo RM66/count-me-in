@@ -28,9 +28,8 @@ config = context.config
 
 # disable_existing_loggers=False: env.py also runs in-process via
 # alembic_command.upgrade() (tests_py/conftest.py _migrate). The stdlib
-# default (True) would disable every pre-existing logger — including
-# the countmein singleton in logx.py — killing all app logs after a
-# programmatic migration.
+# default would disable the countmein logger in logx.py — killing all
+# app logs after a programmatic migration.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
@@ -68,12 +67,11 @@ def _load_dot_env(path: str) -> None:
             os.environ[key] = value
 
 
-# Local runs: alembic may start from any cwd, so resolve .env from this
-# file's location, not from cwd: first apps/web/.env, then the monorepo
-# root .env (Turborepo layouts often keep vars only at the root; today
-# apps/web/.env is a symlink to it, so the second load is a no-op —
-# kept for when the symlink goes away). _load_dot_env only fills unset
-# vars, so the closer file wins.
+# Local runs: resolve .env from this file's location, not cwd — first
+# apps/web/.env, then the monorepo root (apps/web/.env is a symlink to
+# it today, so the second load is a no-op — kept for when the symlink
+# goes away). _load_dot_env fills only unset vars, so the closer file
+# wins.
 _base_dir = os.path.dirname(os.path.abspath(__file__))
 _load_dot_env(os.path.join(_base_dir, "..", ".env"))
 _load_dot_env(os.path.join(_base_dir, "..", "..", "..", ".env"))
@@ -98,12 +96,11 @@ _LIBPQ_OPTIONS = frozenset(
 def _resolve_url() -> str:
     """POSTGRES_URL as a SQLAlchemy URL the psycopg dialect accepts.
 
-    Precedence: an explicitly configured URL (CLI `-x url=...`,
-    conftest's set_main_option, or the ini file) wins over the
-    environment — otherwise a programmatic caller pointing at a
-    per-worker database would silently migrate whatever .env points
-    at. Only when nothing is configured does POSTGRES_URL (or the ini
-    placeholder, which lets `alembic revision` run without a DB) apply."""
+    Precedence: an explicitly configured URL wins over the environment —
+    otherwise a programmatic caller pointing at a per-worker database
+    would silently migrate whatever .env points at. Only when nothing is
+    configured does POSTGRES_URL (or the ini placeholder, which lets
+    `alembic revision` run without a DB) apply."""
     url = config.get_main_option("sqlalchemy.url", "")
     if url == "" or url.startswith("driver://"):
         url = os.getenv("POSTGRES_URL", "")
@@ -139,7 +136,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Single async engine on NullPool: the migrator must not hold
-    connections open across runs (same reason as the app's client.py)."""
+    connections open across runs (as in client.py)."""
     config.set_main_option("sqlalchemy.url", _resolve_url())
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -153,11 +150,10 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Refuse a placeholder URL with a named error: the ini default
-    (`driver://...`) exists so offline `alembic revision` runs without a
-    DB, but an online command (upgrade/check/current) reaching this point
-    with it would die deep inside SQLAlchemy's dialect loader.
-    `NoSuchModuleError: sqlalchemy.dialects:driver` names nothing useful."""
+    """Refuse a placeholder URL with a named error: the ini `driver://`
+    default exists so offline `alembic revision` runs without a DB, but
+    an online command would die inside the dialect loader with a useless
+    `NoSuchModuleError: sqlalchemy.dialects:driver`."""
     if _resolve_url().startswith("driver://"):
         raise RuntimeError(
             "No database URL: set POSTGRES_URL (env or apps/web/.env). "

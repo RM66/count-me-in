@@ -1,6 +1,5 @@
-"""Run the shared domain
-vectors in packages/contracts/vectors/domain (the same corpus vitest
-runs on the TS side)."""
+"""Run the shared domain vectors in packages/contracts/vectors/domain
+(the same corpus vitest runs on the TS side)."""
 
 import json
 import re
@@ -16,7 +15,7 @@ from countmein.db.shared import hash_manage_token
 VECTORS_DIR = Path(__file__).resolve().parents[4] / "packages" / "contracts" / "vectors" / "domain"
 
 # `$now±N{unit}` markers keep time-dependent vectors evergreen; the TS
-# side expands the same markers in test-helpers.ts (expandNowMarkers).
+# side expands the same markers in test-helpers.ts.
 _NOW_MARK = re.compile(r"^\$now([+-]\d+)(s|m|h|d)$")
 _UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
@@ -60,8 +59,8 @@ def test_domain_vectors(fn, c):
     elif fn == "validateSelectedOptions":
         service_options = c.get("serviceOptions") or []
         # A null/absent mode must stay empty: the TS side passes null
-        # through and skips the single-mode check, so defaulting to
-        # "single" here would mask a regression in that branch.
+        # through and skips the single-mode check — defaulting to
+        # "single" would mask a regression in that branch.
         mode = c.get("selectMode") or ""
         selected = c.get("selected") or []
         want_valid = bool(c.get("valid"))
@@ -103,9 +102,8 @@ def test_domain_vectors(fn, c):
 
 def test_hash_manage_token_parity():
     """The lookup key is the same SHA-256 hex as the TS helper
-    (@repo/contracts/manage-token). Dedicated named test so the
-    invariant index (test_invariants.py) points at a real pin; the
-    parametrized runner above also covers these cases."""
+    (@repo/contracts/manage-token). A named test so the invariant index
+    (test_invariants.py) points at a real pin."""
     data = json.loads((VECTORS_DIR / "hashManageToken.json").read_text())
     for c in data["cases"]:
         assert hash_manage_token(c["token"]) == c["expected"], f"hash mismatch: {c.get('name')}"
@@ -128,9 +126,8 @@ def test_slot_end():
     assert domain.slot_end(start, 90) == datetime(2026, 9, 13, 9, 45, tzinfo=UTC)
 
 
-# (The cancel rule lives in db/rows.py can_cancel_booking — the
-# manage-token-expiry semantics — and is pinned there; the dead
-# slot-start-only variant was removed.)
+# The cancel rule lives in db/rows.py can_cancel_booking and is pinned
+# there.
 def test_parse_flex_time():
     from datetime import UTC, datetime
 

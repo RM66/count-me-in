@@ -29,10 +29,9 @@ class MessageButton:
 
 
 class TelegramUnreachableError(Exception):
-    """Not worth retrying. Covers both "never started the bot" (403) and
-    "chat not found" (400): from the receiver's point of view they are
-    the same event — the recipient cannot be messaged, and the job is
-    done as well as it ever will be."""
+    """Not worth retrying. Covers "never started the bot" (403) and
+    "chat not found" (400) — the same event: the recipient cannot be
+    messaged, and the job is done as well as it ever will be."""
 
     def __init__(self, chat_id: str, description: str):
         super().__init__(f"Telegram cannot reach chat {chat_id}: {description}")
@@ -97,11 +96,9 @@ async def send_message(
     button: MessageButton | None = None,
 ) -> None:
     """Send one message. link_preview_options.is_disabled keeps Telegram
-    from unfurling the cabinet or booking URL: the preview would be a
-    screenshot-sized card for a page that requires the recipient's own
-    credentials, and — for the one-time login link — a preview fetch is
-    exactly the robot request the POST-to-consume design exists to
-    defeat."""
+    from unfurling the URL — a preview card for a page needing the
+    recipient's credentials, and for the one-time login link a preview
+    fetch is the robot request POST-to-consume exists to defeat."""
     body: dict[str, Any] = {
         "chat_id": chat_id,
         "text": text,

@@ -188,12 +188,11 @@ DEMO_SLOT_TEMPLATES = [
 
 @dataclass
 class BookingTemplate:
-    """Illustrative bookings for the cabinet's bookings table and
-    analytics. Manage tokens are generated fresh on every seed run
-    (never committed constants): the demo account rejects every write
-    path (ADR-010), but committed tokens still end up in backups and
-    logs — random per run is strictly better and costs nothing, since
-    slots+bookings are replaced wholesale on each refresh."""
+    """Illustrative bookings for the cabinet's table and analytics.
+    Manage tokens are generated fresh per run, never committed: demo
+    rejects every write (ADR-010), but committed tokens still end up in
+    backups — random per run costs nothing since slots+bookings are
+    replaced wholesale on each refresh."""
 
     id: str
     time_slot_id: str
@@ -590,11 +589,10 @@ DEMO_BOOKING_TEMPLATES = [
 
 
 def build_demo_slots(now: datetime) -> list[TimeSlotRow]:
-    """Resolve the templates against now. booked_count is seeded as a
-    plain number rather than derived from the booking rows: the demo
-    intentionally shows realistic fill levels without needing a booking
-    row per seat, and because the account is read-only these counters
-    never drift."""
+    """Resolve the templates against now. booked_count is a plain
+    number, not derived from booking rows: the demo shows realistic
+    fill levels without a booking per seat, and the read-only account
+    means the counters never drift."""
     out: list[TimeSlotRow] = []
     for t in DEMO_SLOT_TEMPLATES:
         starts_at = datetime(
@@ -615,11 +613,11 @@ def build_demo_slots(now: datetime) -> list[TimeSlotRow]:
 
 
 def build_demo_bookings(now: datetime, slots: list[TimeSlotRow]) -> list[BookingRow]:
-    """Resolve the templates against now and the freshly built slots.
-    Tokens are random per run and every row carries
-    manage_token_expires_at = slot start + 24h (the production rule):
-    bookings on past slots are born expired, upcoming ones usable — no
-    row recreates the legacy NULL-expiry state migration 0014 removed."""
+    """Resolve the templates against now and the built slots. Tokens
+    are random per run; every row carries manage_token_expires_at =
+    slot start + 24h (the production rule): past-slot bookings are born
+    expired, upcoming usable — no row recreates the NULL-expiry state
+    migration 0014 removed."""
     starts_at = {s.id: s.starts_at for s in slots}
     out: list[BookingRow] = []
     for t in DEMO_BOOKING_TEMPLATES:
@@ -650,27 +648,22 @@ def build_demo_bookings(now: datetime, slots: list[TimeSlotRow]) -> list[Booking
 
 
 async def seed_demo(now: datetime) -> None:
-    """Seed / refresh the read-only demo organizer. Idempotent: safe to
-    run repeatedly, intended to run on the QStash schedule so demo slot
-    times stay in the future. Re-running upserts the organizer and
-    services by their deterministic ids, then replaces slots and
-    bookings wholesale."""
+    """Seed / refresh the read-only demo organizer. Idempotent — runs on
+    the QStash schedule so demo slots stay in the future. Upserts
+    organizer and services by deterministic ids, then replaces slots
+    and bookings wholesale."""
     slots = build_demo_slots(now)
     slot_bookings = build_demo_bookings(now, slots)
     demo_service_ids = [s.id for s in DEMO_SERVICES]
 
-    # Local import: repositories pull sqlalchemy + models; seed.py is
-    # also imported by tests_py/jobs/test_demo_refresh.py, which must
-    # stay on the fast import path with the repositories imported lazily
-    # here instead of at module top.
+    # Local import: repositories pull sqlalchemy + models; tests import
+    # seed.py on the fast path, so they stay lazy here.
     from ..repositories import booking_repo, organizer_repo, service_repo, slot_repo
 
     async with sessionmaker()() as session, session.begin():
-        # The seed is the one legitimately slow batch — it outruns the
-        # request-oriented statement_timeout carried on every connection
-        # (ADR-024), so the transaction widens it for itself (SET LOCAL
-        # ends with the transaction; the connection's default is intact
-        # when it returns to the pool).
+        # The seed outruns the request-oriented statement_timeout on
+        # every connection (ADR-024), so the tx widens it for itself —
+        # SET LOCAL ends with the transaction.
         from sqlalchemy import text as _text
 
         await session.execute(_text("SET LOCAL statement_timeout = '60s'"))

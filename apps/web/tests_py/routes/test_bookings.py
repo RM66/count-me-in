@@ -1,7 +1,6 @@
-"""Booking route tests — through the FastAPI app (the handlers'
-preamble is a set of dependencies, so the app is the only faithful way
-to invoke them; direct calls would bypass the rate limiter and the
-ticket consumption order).
+"""Booking route tests — through the FastAPI app (the handlers' preamble
+is a set of dependencies, so the app is the only faithful way to invoke
+them; direct calls would bypass the rate limiter and ticket order).
 
 Redis-backed state (rate buckets, tickets) runs against fakeredis.
 """
@@ -48,9 +47,8 @@ async def fake_redis(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _trust_proxy(monkeypatch):
-    # The booking tests key rate buckets by distinct X-Forwarded-For
-    # IPs; outside Vercel that header is only honored with the
-    # explicit opt-in.
+    # Rate buckets key on distinct X-Forwarded-For IPs; outside Vercel
+    # that header is only honored with the explicit opt-in.
     monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
     monkeypatch.setenv("AUTH_SECRET", TEST_SECRET)
 
@@ -111,8 +109,8 @@ def decode_body_error(response: httpx.Response) -> dict:
 
 
 async def test_booking_create_rate_limit(client):
-    # 5/min per IP. The first five requests burn the bucket (each fails
-    # body validation — 400, but AFTER the limiter), the sixth is a 429.
+    # 5/min per IP: five requests burn the bucket (each fails body
+    # validation — 400, but AFTER the limiter), the sixth is a 429.
     for i in range(5):
         r = await client.post(
             "/api/bookings", content=b"", headers={"x-forwarded-for": "198.51.100.1"}
@@ -133,9 +131,9 @@ async def test_booking_create_invalid_body(client):
 
 
 async def test_booking_create_unknown_ticket(client):
-    # Schema-valid body, unknown ticket pointing at a nonexistent slot:
-    # the domain refusal runs before redemption (ADR-024 B1), so the
-    # answer is the slot's 404 — the ticket is not even consulted.
+    # Unknown ticket, nonexistent slot: the domain refusal runs before
+    # redemption (ADR-024 B1) — the answer is the slot's 404, the ticket
+    # is not consulted.
     body = (VALID_BOOKING_BODY % "unknown-ticket-aaaaaaaaaaaaaaaaaaaaaaaaa").encode()
     r = await client.post(
         "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.3"}
@@ -145,9 +143,8 @@ async def test_booking_create_unknown_ticket(client):
 
 async def test_booking_create_raw_messenger_id_ignored(client):
     # Invariant 8: identity comes only from the ticket. A body claiming
-    # a messengerId must not authenticate the request — nothing in it
-    # is trusted; the domain refusal answers before the ticket would
-    # even be looked at.
+    # a messengerId must not authenticate — the domain refusal answers
+    # before the ticket is even looked at.
     body = (VALID_BOOKING_BODY % "unknown-ticket-bbbbbbbbbbbbbbbbbbbbbbbbb").encode()
     body = body[:-1] + b',"messengerId":"999999"}'
     r = await client.post(
@@ -157,10 +154,10 @@ async def test_booking_create_raw_messenger_id_ignored(client):
 
 
 async def test_validation_error_does_not_consume_guest_ticket(client, fake_redis):
-    """Order pin: the decode dependency runs BEFORE the ticket stage —
-    a body that fails validation must leave the ticket redeemable.
-    With ADR-024 B1 the same holds one stage further: a domain refusal
-    (here, a slot that does not exist) leaves it intact too."""
+    """Order pin: decode runs BEFORE the ticket stage — a body failing
+    validation must leave the ticket redeemable. With ADR-024 B1 the same
+    holds one stage further: a domain refusal (a nonexistent slot)
+    leaves it intact too."""
     ticket = await issue_ticket(
         AuthTicketPayload(
             messenger="telegram",
@@ -177,9 +174,8 @@ async def test_validation_error_does_not_consume_guest_ticket(client, fake_redis
     assert await fake_redis.exists(f"auth:ticket:{ticket}") == 1, (
         "a validation error must not consume the guest ticket"
     )
-    # Valid body with the same ticket, pointing at a slot that does not
-    # exist: the domain refusal (404 SlotGone) runs before redemption,
-    # so the ticket survives intact.
+    # Valid body, same ticket, nonexistent slot: the domain refusal
+    # (404 SlotGone) runs before redemption — the ticket survives.
     body = (VALID_BOOKING_BODY % ticket).encode()
     r = await client.post(
         "/api/bookings", content=body, headers={"x-forwarded-for": "198.51.100.9"}
@@ -213,8 +209,8 @@ async def test_booking_lookup_unknown_ticket(client):
 
 
 async def test_booking_cancel_rate_limit(client):
-    # 10/min per IP — the manageToken is a brute-forceable credential,
-    # so cancel is throttled like booking creation.
+    # 10/min per IP — manageToken is brute-forceable, so cancel is
+    # throttled like booking creation.
     for i in range(10):
         r = await client.post(
             "/api/bookings/cancel", content=b"", headers={"x-forwarded-for": "198.51.100.7"}
@@ -267,8 +263,8 @@ async def test_booking_cancel_by_organizer_demo_session(client):
 
 
 async def test_booking_cancel_by_organizer_invalid_body(client):
-    # A signed-in organizer passes the guard, then fails body validation
-    # — proving the guard and the decode are separate doors.
+    # A signed-in organizer passes the guard then fails body validation
+    # — the guard and the decode are separate doors.
     r = await client.post(
         "/api/bookings/cancel-by-organizer",
         content=b'{"bookingId":',
@@ -282,8 +278,8 @@ async def test_booking_cancel_by_organizer_invalid_body(client):
 
 async def test_publish_outbox_rows_absorbs_publish_errors(monkeypatch):
     """The publisher absorbs its own errors (ADR-012): the booking is
-    already committed, so a failing publish must not fail anything — the
-    row stays `pending` and the sweeper retries it."""
+    already committed — the row stays `pending` and the sweeper retries
+    it."""
     from countmein.routes import bookings as bookings_route
 
     monkeypatch.setenv("QSTASH_TOKEN", "test-token")
@@ -382,8 +378,8 @@ async def new_route_fixture(capacity: int, booked: int) -> RouteFixture:
 
 
 async def _cleanup_route_fixture(fixture: RouteFixture) -> None:
-    """Cleanup: booking rows first, then the organizer (its delete
-    cascades services + slots)."""
+    """Booking rows first, then the organizer (its delete cascades
+    services + slots)."""
     from countmein.db.client import engine
     from sqlalchemy import text
 
@@ -450,8 +446,8 @@ async def _happy_path(fixture, monkeypatch, client):
             )
         ).scalar_one()
     assert booked == 2
-    # …and the fan-out rows are durable + pending (publish failed into
-    # the void, so the sweeper must still see them).
+    # …and the fan-out rows are durable + pending (publish failed, so
+    # the sweeper must still see them).
     async with engine().connect() as conn:
         pending = (
             await conn.execute(
@@ -492,17 +488,17 @@ async def _sold_out(fixture, monkeypatch, client):
     )
 
     assert r.status_code == 409, r.text
-    # The dialog renders "how many are left" from the extras, not just
-    # the localized copy — the wiring must carry seatsLeft through.
+    # The dialog renders "how many are left" from the extras — the
+    # wiring must carry seatsLeft through.
     b = json.loads(r.content)
     assert b.get("seatsLeft") == 0
     assert b.get("error"), "409 must carry localized error copy"
 
 
 async def test_booking_create_sold_out_leaves_ticket(client, fake_redis, monkeypatch):
-    """ADR-024 B1: a domain refusal must not burn the guest ticket —
-    after a 409 the same ticket stays redeemable (the guest retries
-    with different seats without re-running the widget)."""
+    """ADR-024 B1: a domain refusal must not burn the ticket — after a
+    409 it stays redeemable (the guest retries without re-running the
+    widget)."""
     fixture = await new_route_fixture(2, 2)  # full slot
     try:
         monkeypatch.setenv("QSTASH_TOKEN", "test-token")
@@ -530,9 +526,8 @@ async def test_booking_create_sold_out_leaves_ticket(client, fake_redis, monkeyp
 
 
 async def test_booking_create_bad_ticket_on_real_slot(client, fake_redis, monkeypatch):
-    """A forged/expired ticket on a bookable slot: the seat is claimed
-    and released by the rollback — the refusal is 401 and booked_count
-    is unchanged."""
+    """A forged ticket on a bookable slot: the seat is claimed and
+    released by the rollback — 401, booked_count unchanged."""
     fixture = await new_route_fixture(10, 0)
     try:
         monkeypatch.setenv("QSTASH_TOKEN", "test-token")

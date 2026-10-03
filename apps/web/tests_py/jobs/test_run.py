@@ -1,10 +1,9 @@
-"""Job dispatch semantics. The route's
-status codes are QStash's retry budget (ADR-012): a malformed payload
-must be a 400-class InvalidJobPayloadError (no retry: QStash would
-re-send the same bad bytes), an unknown queue a 404-class
-UnknownJobQueueError, and TelegramUnreachableError must be absorbed (a
-recipient who never pressed Start can never be messaged — retrying
-burns the budget).
+"""Job dispatch semantics. The route's status codes are QStash's retry
+budget (ADR-012): a malformed payload is a 400-class
+InvalidJobPayloadError (no retry — QStash would re-send the same bad
+bytes), an unknown queue a 404-class UnknownJobQueueError, and
+TelegramUnreachableError is absorbed (a recipient who never pressed
+Start can never be messaged — retrying burns the budget).
 
 The idempotency tests run against fakeredis."""
 
@@ -83,13 +82,15 @@ async def test_run_job_valid_payload_reaches_env_check(monkeypatch):
     with pytest.raises(RuntimeError, match="jobs env is not configured"):
         await run.run_job(
             QUEUE_BOOKING_CREATED,
-            f'{{"bookingId":"{TEST_BOOKING_ID}","recipient":"organizer"}}'.encode(),
+            f'{{"bookingId":"{TEST_BOOKING_ID}","recipient":"organizer",'
+            f'"outboxId":"01930000-0000-7000-8000-0000000000cc"}}'.encode(),
             "",
         )
     with pytest.raises(RuntimeError, match="jobs env is not configured"):
         await run.run_job(
             QUEUE_BOOKING_CANCELLED,
-            f'{{"bookingId":"{TEST_BOOKING_ID}","cancelledBy":"guest"}}'.encode(),
+            f'{{"bookingId":"{TEST_BOOKING_ID}","cancelledBy":"guest",'
+            f'"outboxId":"01930000-0000-7000-8000-0000000000cc"}}'.encode(),
             "",
         )
 
@@ -230,14 +231,33 @@ async def test_claim_is_a_short_lease_finalized_to_full_ttl(fakeredis):
 # ── payload shape helpers ─────────────────────────────────────────────────────
 
 
-def test_valid_booking_id():
-    assert run._valid_booking_id(TEST_BOOKING_ID)
-    for bad in ("", "not-a-uuid", TEST_BOOKING_ID + "x"):
-        assert not run._valid_booking_id(bad)
+def test_parse_job_booking_created_missing_outbox_id():
+    """outboxId is the consumer idempotency key — a payload without it
+    is malformed (400), not accepted-then-crashing. Pinned by the spec:
+    BookingCreatedJob marks it required."""
+    body = f'{{"bookingId":"{TEST_BOOKING_ID}","recipient":"organizer"}}'.encode()
+    with pytest.raises(run.InvalidJobPayloadError):
+        run.parse_job(QUEUE_BOOKING_CREATED, body)
 
 
-def test_valid_recipient():
-    for good in ("organizer", "guest"):
-        assert run._valid_recipient(good)
-    for bad in ("", "nobody", "ORGANIZER"):
-        assert not run._valid_recipient(bad)
+def test_parse_job_rejects_non_canonical_uuid():
+    """The spec UUID pattern is stricter than uuid.UUID(): urn: and
+    braced forms must fail validation as a 400, not reach Postgres
+    and surface as a retried 500."""
+    body = (
+        b'{"bookingId":"urn:uuid:' + TEST_BOOKING_ID.encode() + b'",'
+        b'"recipient":"organizer","outboxId":"' + TEST_BOOKING_ID.encode() + b'"}'
+    )
+    with pytest.raises(run.InvalidJobPayloadError):
+        run.parse_job(QUEUE_BOOKING_CREATED, body)
+
+
+def test_parse_job_valid_payload_constructs_model():
+    body = (
+        f'{{"bookingId":"{TEST_BOOKING_ID}","recipient":"organizer",'
+        f'"outboxId":"01930000-0000-7000-8000-0000000000cc"}}'
+    ).encode()
+    created = run.parse_job(QUEUE_BOOKING_CREATED, body)
+    assert created is not None
+    assert str(created.bookingId) == TEST_BOOKING_ID
+    assert created.recipient == "organizer"

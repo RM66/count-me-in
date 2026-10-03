@@ -4,11 +4,10 @@ schema gets which rule is generated metadata (rules_gen.py); these are
 the portable primitives each name maps to. Pinned by
 packages/contracts/vectors/validation/*.
 
-Note on message counts: the refinements read parsed values, while the
-Zod refinements read raw input — so an invalid optionsSelectMode value
-with options set yields two messages on optionsSelectMode here (rule +
-consistency) and one in Zod (rule only). Keys always agree; only vectors
-pin them, never message text or per-field counts.
+Note on message counts: refinements here read parsed values while Zod
+read raw input, so an invalid optionsSelectMode yields two messages here
+and one in Zod. Keys always agree — vectors pin keys, never message text
+or counts.
 """
 
 from __future__ import annotations
@@ -26,13 +25,11 @@ def refine_service_options(
     options: Any,
     mode: Any,
 ) -> None:
-    """Check a concrete options/mode pair: non-empty, unique, and mode
-    present exactly when options are. Shared by the create input (where
-    the pair is the whole payload) and the merged update state.
+    """Check a concrete options/mode pair: non-empty, unique, mode present
+    exactly when options are. Shared by create input and merged state.
 
-    Runs even when spec validation failed (the service schemas declare
-    the refinement) — so `options` may be raw unvalidated JSON; every
-    read is guarded by isinstance (a non-list `options` is the spec
+    Runs even when spec validation failed, so `options` may be raw JSON —
+    every read is isinstance-guarded (a non-list `options` is the spec
     error's to report, not a TypeError's)."""
     if isinstance(options, list):
         if len(options) == 0:

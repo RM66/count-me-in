@@ -2,16 +2,13 @@
 
 Builds the spec from the FastAPI routes with openapi_url enabled in a
 test-only factory (the production app never serves its own spec — the
-public document is the Zod-rendered openapi.yaml). The handlers
-deliberately bypass FastAPI's validation layer (the shared validation/
-package owns request decoding), so the generated operations carry no
-body/response metadata; each registered route is therefore dressed with
-its canonical operation object (openapi_extra) before FastAPI renders
-the document. The (method, path) set comes from the live registrations
-— pinned independently against openapi.yaml by
-tests_py/test_route_set.py — and the components section (the
-Zod-rendered schemas shared by both stacks) is copied at document level,
-where route-level extra cannot reach.
+public document is the Zod-rendered openapi.yaml). Handlers bypass
+FastAPI's validation layer (validation/ owns request decoding), so the
+generated operations are skeletal — each registered route is dressed
+with its canonical operation object instead. The (method, path) set
+comes from the live registrations (pinned against openapi.yaml by
+tests_py/test_route_set.py); the components section is copied at
+document level, where route-level extra cannot reach.
 
 The output feeds the bidirectional `oasdiff breaking` check.
 
@@ -58,13 +55,10 @@ def export() -> str:
 
     operations, components = _canonical_operations()
 
-    # The route set comes from the live registrations (pinned against
-    # openapi.yaml by tests_py/test_route_set.py); the operation
-    # content is the canonical Zod-rendered one, because the handlers
-    # deliberately bypass FastAPI's validation layer (the shared
-    # validation/ package owns request decoding) and FastAPI's
-    # generated operations would otherwise be skeletal — plus its own
-    # 422/HTTPValidationError plumbing, which this app does not use.
+    # Route set from the live registrations; operation content is the
+    # canonical Zod-rendered one — handlers bypass FastAPI's validation
+    # layer, so its generated operations would be skeletal (plus 422
+    # plumbing this app does not use).
     doc = app.openapi()
     paths: dict = doc.get("paths", {})
     for route in app.routes:
@@ -82,8 +76,7 @@ def export() -> str:
                 paths[route.path][key] = op
             else:
                 # Not a spec operation (none today — healthz is
-                # include_in_schema=False): drop FastAPI's skeletal
-                # rendering entirely.
+                # include_in_schema=False): drop the skeletal rendering.
                 paths[route.path].pop(key, None)
         if not paths[route.path]:
             paths.pop(route.path, None)

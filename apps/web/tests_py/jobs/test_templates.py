@@ -1,13 +1,13 @@
 """The rendering side of every notification template. Telegram parses
 these strings as HTML — an unescaped & or < in a guest name is a 400
 "can't parse entities" and the message is never delivered. Locale
-selection (ADR-011) and the organizer-timezone rule are contracts, not
-preferences: the guest's confirmation must show the same wall clock as
-the public page they booked from.
+selection (ADR-011) and the organizer-timezone rule are contracts: the
+guest's confirmation must show the same wall clock as the public page
+they booked from.
 
 The golden files (tests_py/jobs/testdata/notifications/*.golden) were
-recorded from the retired original implementation — the port must render
-them byte for byte."""
+recorded from the retired implementation — the port must render them
+byte for byte."""
 
 import sys
 from datetime import datetime
@@ -182,6 +182,19 @@ def test_format_instant_always_in_organizer_timezone():
     got = format_instant(instant, "Europe/Belgrade", "xx")
     assert "07:00" in got, (
         f"unknown locale must fall back to {domain.DEFAULT_LOCALE!r}, got {got!r}"
+    )
+
+
+def test_calendars_cover_every_supported_locale():
+    """_CALENDARS is a hand table; LOCALES is generated from the
+    contracts. A new locale added to packages/contracts without a
+    calendar entry must fail here loudly — not degrade to English in
+    notifications."""
+    from countmein.contracts.constants_gen import LOCALES
+
+    assert set(templates._CALENDARS) == set(LOCALES), (
+        f"_CALENDARS keys {sorted(templates._CALENDARS)} != LOCALES "
+        f"{sorted(LOCALES)} — add a calendar entry for every new locale"
     )
 
 

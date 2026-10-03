@@ -1,10 +1,8 @@
-"""demo.refresh — recurring refresh of the demo seed (ADR-010), the
-only producer of which is a QStash schedule (cron) created by
-apps/web/scripts/ensure-qstash.ts. Demo slot times are stored relative
-to seed time, so a demo left alone drifts into the past and the landing
-page's "See a live example" link starts showing an organizer with
-nothing bookable. seed_demo is idempotent and replaces slots and
-bookings in place."""
+"""demo.refresh — recurring refresh of the demo seed (ADR-010), produced
+by a QStash schedule created by apps/web/scripts/ensure-qstash.ts. Demo
+slot times are relative to seed time, so a demo left alone drifts into
+the past. seed_demo is idempotent and replaces slots and bookings in
+place."""
 
 from __future__ import annotations
 

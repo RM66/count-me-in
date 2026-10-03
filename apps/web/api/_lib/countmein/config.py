@@ -9,8 +9,7 @@ import os
 from urllib.parse import urlsplit
 
 # Required in production (or under STRICT_ENV=1). QSTASH_NEXT_SIGNING_KEY
-# is deliberately NOT required: it is only consulted during key rotation
-# and may legitimately be empty.
+# is deliberately NOT required — consulted only during key rotation.
 _REQUIRED = [
     "AUTH_SECRET",
     "POSTGRES_URL",
@@ -19,9 +18,9 @@ _REQUIRED = [
     "QSTASH_TOKEN",
     "QSTASH_CURRENT_SIGNING_KEY",
     "TELEGRAM_BOT_TOKEN",
-    # Media uploads presign against R2 (ADR-007/024): absent vars used to
-    # surface only when the first upload was attempted — a deploy missing
-    # them passed health checks while every media flow was broken.
+    # Media uploads presign against R2 (ADR-007/024): absent vars used
+    # to surface only on the first upload — a deploy missing them passed
+    # health checks while every media flow was broken.
     "R2_ACCOUNT_ID",
     "R2_ACCESS_KEY_ID",
     "R2_SECRET_ACCESS_KEY",
@@ -48,11 +47,10 @@ def validate() -> None:
     """Check the environment the API needs; called at app construction.
     Raises ConfigError on failure.
 
-    Production-only: in development (no VERCEL_ENV/NODE_ENV=production)
-    the API runs against local docker-compose services where secrets are
-    routinely absent, so validation is skipped — the lazy per-module
-    errors still surface them at first use. STRICT_ENV=1 opts a
-    non-production environment into the same validation.
+    Production-only: development runs against local services where
+    secrets are routinely absent, so validation is skipped — the lazy
+    per-module errors still surface them at first use. STRICT_ENV=1
+    opts a non-production environment into the same validation.
     """
     if not is_production() and os.getenv("STRICT_ENV") != "1":
         return
@@ -60,10 +58,9 @@ def validate() -> None:
     if missing:
         raise ConfigError("missing required environment variables: " + ", ".join(missing))
 
-    # APP_URL shape: publish destinations concatenate it into the QStash
-    # URL, so a malformed value must fail the cold start, not publish
-    # notifications to nowhere. Scheme + host only: a trailing path,
-    # query or fragment would silently misroute every publish.
+    # APP_URL is concatenated into the QStash publish URL, so a malformed
+    # value must fail the cold start. Scheme + host only — a trailing
+    # path, query or fragment would silently misroute every publish.
     raw = os.getenv("APP_URL", "")
     value = raw.strip()
     try:

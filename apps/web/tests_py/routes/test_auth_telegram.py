@@ -1,9 +1,8 @@
 """Route-level tests for the two Telegram Login Widget endpoints
-(POST /api/auth/telegram-guest and /api/auth/telegram-signup) — the
-only routes whose happy paths the parity goldens do not exercise.
-The widget HMAC is minted the same way the parity harness mints it;
-Redis is faked (the ticket store), and the signup's organizer-exists
-lookup is patched so no Postgres is needed."""
+(POST /api/auth/telegram-guest and /api/auth/telegram-signup) — the only
+routes whose happy paths the parity goldens do not exercise. The widget
+HMAC is minted like the parity harness mints it; Redis is faked, and
+the signup's organizer-exists lookup is patched — no Postgres needed."""
 
 from __future__ import annotations
 

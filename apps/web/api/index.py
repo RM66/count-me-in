@@ -13,15 +13,13 @@ import sys
 
 def _load_dot_env(path: str) -> None:
     """Fill unset variables from a .env file. The real environment always
-    wins — a variable exported by the shell (or passed by Playwright's
-    webServer env) is never overwritten, so a local .env cannot leak into
-    an explicitly configured run.
+    wins — an exported variable is never overwritten, so a local .env
+    cannot leak into an explicitly configured run.
 
-    Deliberately minimal, not dotenv-compatible: no `export ` prefixes,
-    no multi-line or escaped values, no variable interpolation — only
-    `KEY=value` lines with optional surrounding quotes. The repo's .env
-    files are hand-written in exactly that shape; anything richer belongs
-    in the real environment, not in a parser grown around it."""
+    Deliberately minimal, not dotenv-compatible: only `KEY=value` lines
+    with optional surrounding quotes. The repo's .env files are
+    hand-written in exactly that shape; anything richer belongs in the
+    real environment, not in a parser grown around it."""
     try:
         with open(path, encoding="utf-8") as fh:
             data = fh.read()
@@ -39,21 +37,19 @@ def _load_dot_env(path: str) -> None:
 
 
 if os.environ.get("VERCEL", "") == "":
-    # Resolve from the module location, not cwd: uvicorn may be started
-    # from any directory; apps/web (the parent of api/) is the project
-    # root that owns .env. The monorepo root .env is a fallback — today
-    # apps/web/.env is a symlink to it, but the symlink is gitignored and
-    # absent on a fresh clone.
+    # Resolve from the module location, not cwd: apps/web (the parent of
+    # api/) owns .env. The monorepo root .env is a fallback — apps/web/.env
+    # is a symlink to it, but the symlink is gitignored and absent on a
+    # fresh clone.
     _dir = os.path.dirname(__file__)
     _load_dot_env(os.path.join(_dir, "..", ".env"))
     _load_dot_env(os.path.join(_dir, "..", "..", "..", ".env"))
 
 # Vercel's runtime imports this entrypoint by absolute path and does NOT
-# put its directory on sys.path (unlike `uvicorn --app-dir api` locally),
-# so nothing next to this file is importable without this. Both `api/`
-# (this module) and `api/_lib` (the package root, so imports resolve as
-# the PEP 8-clean `countmein.*` — the underscore stays a disk-level
-# Vercel convention only) go on the path.
+# put its directory on sys.path (unlike `uvicorn --app-dir api` locally).
+# Both `api/` (this module) and `api/_lib` (the package root, so imports
+# resolve as `countmein.*` — the underscore stays a disk-level Vercel
+# convention) go on the path.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)

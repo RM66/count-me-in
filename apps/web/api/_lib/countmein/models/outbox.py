@@ -17,10 +17,10 @@ class OutboxMessage(Base):
 
     __tablename__ = "notification_outbox"
 
-    # default=new_id: Python-side uuidv7 like every other table (the
-    # column has no DB default — enqueue_outbox generates the id before
-    # insert so the payload can embed it as the consumer idempotency
-    # key). ORM-side only, invisible to Alembic DDL comparison.
+    # default=new_id: Python-side uuidv7 like every table (no DB
+    # default — enqueue_outbox generates the id pre-insert so the
+    # payload can embed it as the consumer idempotency key). ORM-side
+    # only, invisible to Alembic.
     id: Mapped[str] = mapped_column(
         postgresql.UUID(as_uuid=False), primary_key=True, default=new_id
     )

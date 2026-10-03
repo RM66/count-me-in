@@ -1,7 +1,7 @@
-"""The after-commit publisher
-(ADR-012). The booking is already committed when this runs, so failures
-are signalled — never thrown — and the dedup id (the outbox row id) is
-what makes the sweeper's re-publish safe."""
+"""The after-commit publisher (ADR-012). The booking is already
+committed when this runs, so failures are signalled — never thrown —
+and the dedup id (the outbox row id) makes the sweeper's re-publish
+safe."""
 
 import asyncio
 

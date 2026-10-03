@@ -24,9 +24,8 @@ from .. import logx
 from ..auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
 from .async_client import client as async_client
 
-# The Next.js-internal route — not rewritten to the Python API: proxy.ts
-# excludes it from the middleware matcher and the filesystem route wins
-# over vercel.json's /api/internal/:path* rewrite.
+# The Next.js-internal route — not rewritten to the Python API: the
+# filesystem route wins over vercel.json's /api/internal/:path* rewrite.
 REVALIDATE_PATH = "/api/internal/revalidate"
 
 # Short budget: the task runs after the response is sent; a hung
@@ -42,11 +41,10 @@ def public_tags(
 ) -> list[str]:
     """The Data Cache tags a mutation invalidates.
 
-    `organizer_slug` covers the organizer's public page and every
-    per-service page embedded in its slot payloads; `service_id` covers
-    the standalone service page; `sitemap` covers the slug/path catalog
-    (organizer create and slug change). Empty inputs produce no tag —
-    `public-organizer:` with no slug would be a useless no-op.
+    `organizer_slug` covers the public page and every per-service page
+    embedded in its slot payloads; `service_id` the standalone service
+    page; `sitemap` the slug/path catalog. Empty inputs produce no tag —
+    `public-organizer:` with no slug is a useless no-op.
     """
     tags: list[str] = []
     if service_id:
@@ -96,8 +94,8 @@ async def _default_post(url: str, **kwargs: Any) -> Any:
     return await async_client().post(url, **kwargs)
 
 
-# Test seam — mirrors queue.py's _post so tests can observe/absorb
-# transport without a live Next.js.
+# Test seam — mirrors queue.py's _post so tests can patch the transport
+# without a live Next.js.
 _post = _default_post
 
 

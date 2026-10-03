@@ -1,8 +1,8 @@
-"""Public catalog route tests: the Phase 4 read surface against a live
-Postgres — organizer/service/sitemap envelopes and the one-join service
-lookup behind get_public_service (service + parent organizer in a single
-query; the FK makes a dangling organizer impossible, so an unknown id is
-the only miss and both miss shapes answer 404)."""
+"""Public catalog route tests: the read surface against a live Postgres —
+organizer/service/sitemap envelopes and the one-join service lookup
+behind get_public_service (service + organizer in a single query; the
+FK makes a dangling organizer impossible, so an unknown id is the only
+miss and both miss shapes answer 404)."""
 
 from __future__ import annotations
 

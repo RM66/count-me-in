@@ -40,7 +40,7 @@ services:
       # Repo root (shared with web): the API Dockerfile COPYs
       # apps/web-relative paths from the root context.
       context: .
-      dockerfile: ./apps/web/Dockerfile
+      dockerfile: ./apps/web/Dockerfile.api
     container_name: countmein_api
     depends_on:
       postgres:

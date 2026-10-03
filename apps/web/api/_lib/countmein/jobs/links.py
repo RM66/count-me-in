@@ -8,9 +8,9 @@ from urllib.parse import quote
 
 
 def cabinet_slot_path(time_slot_id: str) -> str:
-    """Cabinet bookings, filtered to one slot. Relative on purpose: this
-    is the `next` stored inside a login-link payload, and the redirect
-    happens after the session is established."""
+    """Cabinet bookings filtered to one slot. Relative on purpose — this
+    is the `next` in a login-link payload; the redirect happens after
+    the session is established."""
     return "/cabinet/bookings?slot=" + quote(time_slot_id, safe="")
 
 
@@ -27,6 +27,6 @@ def manage_booking_url(app_url: str, manage_token: str) -> str:
 
 
 def organizer_page_url(app_url: str, slug: str) -> str:
-    """The organizer's public page, offered to a cancelled guest as a
-    way to rebook."""
+    """The organizer's public page, offered to a cancelled guest to
+    rebook."""
     return app_url + "/" + quote(slug, safe="")

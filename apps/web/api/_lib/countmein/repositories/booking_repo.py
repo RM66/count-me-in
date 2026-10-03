@@ -66,9 +66,9 @@ async def release_seats_returning(
 
 
 async def release_seats(session: AsyncSession, slot_id: str, seats: int) -> None:
-    """Cancel-side release: decrement floor-clamped at zero (booking
-    rows are guest history — the counter must never go negative even if
-    a second cancel races the first)."""
+    """Cancel-side release: decrement floor-clamped at zero — the
+    counter must never go negative even if a second cancel races the
+    first."""
     stmt = (
         update(TimeSlot)
         .where(TimeSlot.id == slot_id)
@@ -153,9 +153,9 @@ async def get_owned_booking_chain(
     session: AsyncSession, organizer_id: str, booking_id: str
 ) -> BookingChain | None:
     """The full chain scoped through the owned-services join — a foreign
-    id misses rather than leaks, answered like an unknown one. The whole
-    chain comes back because the caller (organizer cancel) needs the
-    slot/service/organizer rows for the post-commit work as well."""
+    id misses rather than leaks. The whole chain comes back because the
+    caller (organizer cancel) needs the slot/service/organizer rows for
+    post-commit work too."""
     result = await session.execute(
         _chain_select()
         .where(Booking.id == booking_id, Service.organizer_id == organizer_id)
@@ -302,10 +302,9 @@ async def analytics_trend(
     trend window — one grouped query, zero-filled by the caller."""
     confirmed_status = Booking.status == BookingStatus.CONFIRMED
     # Same expression object in SELECT and GROUP BY: two identical
-    # func.date_trunc() calls compile to separate bound params
-    # ($1 vs $2), and Postgres refuses to match the SELECT label to
-    # the GROUP BY expression (GroupingError). One shared object
-    # renders one param used in both places.
+    # func.date_trunc() calls compile to separate bound params ($1 vs
+    # $2) and Postgres refuses to match them (GroupingError) — one
+    # shared object renders one param used in both places.
     day_bucket = func.date_trunc("day", Booking.created_at).label("day")
     result = await session.execute(
         select(

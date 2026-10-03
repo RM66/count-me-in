@@ -1,8 +1,7 @@
-"""The receiver tests — the signature is produced with the same
-primitives the Upstash side uses (HS256 JWT, signing key as raw secret,
-body claim = base64url SHA-256), hand-built here so the test anchors
-the wire contract instead of the implementation. Verification itself is
-delegated to the official `qstash` Receiver primitives."""
+"""The receiver tests — the signature is built with the same primitives
+Upstash uses (HS256 JWT, signing key as raw secret, body claim =
+base64url SHA-256), hand-built here so the test anchors the wire
+contract, not the implementation."""
 
 import base64
 import hashlib
@@ -143,18 +142,17 @@ def test_token_without_exp_rejected():
 
 
 def test_non_utf8_body_rejected():
-    # QStash only delivers JSON, so non-UTF-8 bytes are not a body we
-    # signed. The SDK re-encodes the body string with strict UTF-8, so
-    # a lenient decode would crash inside it (UnicodeEncodeError → 500,
-    # burning QStash's retry budget). Must fail verification (401).
+    # The SDK re-encodes the body with strict UTF-8 — a lenient decode
+    # would crash inside it (UnicodeEncodeError → 500, burning QStash's
+    # retry budget). Must fail verification (401).
     sig = sign_qstash(CURRENT_KEY, "body")
     assert not receiver.verify_qstash_signature(b"bo\xffdy", sig, CURRENT_KEY, NEXT_KEY, TEST_SUB)
 
 
 def test_non_string_body_claim_rejected():
     # A validly-signed token whose body claim is not a string: the SDK
-    # calls .rstrip on it and raises AttributeError — same rule as the
-    # missing claim, fail verification (401), not crash the route (500).
+    # calls .rstrip on it — same rule as the missing claim, 401, never a
+    # 500 crash.
     sig = sign_with_claims(
         {
             "iss": "Upstash",
@@ -175,8 +173,8 @@ def test_both_keys_empty_rejected():
 
 def test_token_without_body_claim_rejected():
     # A validly-signed token missing the body claim: the SDK raises
-    # KeyError on claims["body"] — that must fail verification (401),
-    # not crash the route (500, which would burn QStash's retry budget).
+    # KeyError on claims["body"] — must fail verification (401), not
+    # crash the route (500, burning QStash's retry budget).
     sig = sign_with_claims(
         {
             "iss": "Upstash",

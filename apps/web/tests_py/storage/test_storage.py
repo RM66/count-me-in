@@ -1,6 +1,6 @@
-"""The storage tests — the ownership
-boundary, key mapping, cleanup skip decisions, and the signed-upload
-seam (the presign is computed locally, no network)."""
+"""The storage tests — the ownership boundary, key mapping, cleanup
+skip decisions, and the signed-upload seam (the presign is computed
+locally, no network)."""
 
 from __future__ import annotations
 
@@ -136,8 +136,8 @@ def test_media_key_round_trips_public_url(monkeypatch):
 def test_delete_replaced_media(r2_env, monkeypatch):
     """The skip decisions: nothing to delete, the same URL, the same
     object behind a different spelling, or foreign media. The delete
-    seam records the calls, so a regression that reaches R2 (or deletes
-    the wrong key) fails here instead of in production."""
+    seam records the calls, so a regression that reaches R2 fails here
+    instead of in production."""
     deleted: list[str] = []
 
     def fake_delete(key):

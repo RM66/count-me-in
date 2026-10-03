@@ -1,8 +1,7 @@
-"""The QStash receiver's status semantics are the queue's retry
-budget (ADR-012): 400 for a malformed
-payload (no retry), 404 for a foreign queue, 401 for a bad signature,
-500 for a handler failure (retry). The signature helper mirrorshand-built so the test anchors the wire
-contract."""
+"""The QStash receiver's status semantics are the queue's retry budget
+(ADR-012): 400 for a malformed payload (no retry), 404 for a foreign
+queue, 401 for a bad signature, 500 for a handler failure (retry). The
+signature helper is hand-built so the test anchors the wire contract."""
 
 import base64
 import hashlib
@@ -134,7 +133,10 @@ async def test_jobs_receiver_handler_failure_is_500(monkeypatch):
     # makes QStash retry (the opposite of the 400 above).
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
     monkeypatch.setenv("APP_URL", "")
-    body = '{"bookingId":"01930000-0000-7000-8000-0000000000bb","recipient":"organizer"}'
+    body = (
+        '{"bookingId":"01930000-0000-7000-8000-0000000000bb","recipient":"organizer",'
+        '"outboxId":"01930000-0000-7000-8000-0000000000cc"}'
+    )
     sig = sign_qstash(ROUTES_CURRENT_KEY, body, expected_sub(QUEUE_CREATED))
     response = await post_jobs(QUEUE_CREATED, body, sig)
     assert response.status_code == 500

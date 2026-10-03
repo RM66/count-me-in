@@ -5,7 +5,8 @@ import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
-import { getCabinetSummary, listSlots, toChartTrend } from '@/server/api-client'
+import { toChartTrend } from '@/helpers/analytics'
+import { getCabinetSummary, listSlots } from '@/server/api-client'
 
 // recharts is a heavy client bundle; defer it so the page shell and stat cards
 // paint before the chart chunk loads. The charts are the only consumer. The

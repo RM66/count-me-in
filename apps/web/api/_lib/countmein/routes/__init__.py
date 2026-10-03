@@ -7,7 +7,18 @@ serialization are bypassed so the wire bytes stay exactly what the frozen golden
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 from fastapi import FastAPI
+
+
+def _route(app: FastAPI, path: str, method: str, handler: Callable[..., Awaitable[Any]]) -> None:
+    """One spec route. response_model=None is baked in — handlers return
+    fully built Starlette Responses and bypass FastAPI's validation, so
+    FastAPI must not infer a model from a TYPE_CHECKING-only return
+    annotation it cannot resolve at openapi() time."""
+    app.add_api_route(path, handler, methods=[method], response_model=None)
 
 
 def register_routes(app: FastAPI) -> None:
@@ -46,102 +57,54 @@ def register_routes(app: FastAPI) -> None:
     )
     from .slots import slot_delete, slot_get, slot_patch, slots_create, slots_list
 
-    # /api/healthz is infrastructure, not a contract endpoint, so it
-    # lives here instead of the spec.
+    # /api/healthz is infrastructure, not a contract endpoint — lives
+    # here, not in the spec.
     register_healthz(app)
 
-    # response_model=None on every route: the handlers return a fully
-    # built Starlette Response and deliberately bypass FastAPI's
-    # validation layer, so FastAPI must not infer a response model from
-    # the return annotation (a TYPE_CHECKING-only import that cannot be
-    # resolved at openapi() time).
-
     # Auth (ADR-002, ADR-008)
-    app.add_api_route(
-        "/api/auth/telegram-guest", telegram_guest, methods=["POST"], response_model=None
-    )
-    app.add_api_route(
-        "/api/auth/telegram-signup", telegram_signup, methods=["POST"], response_model=None
-    )
+    _route(app, "/api/auth/telegram-guest", "POST", telegram_guest)
+    _route(app, "/api/auth/telegram-signup", "POST", telegram_signup)
 
     # Public
-    app.add_api_route(
-        "/api/public/organizers/{slug}",
-        get_public_organizer,
-        methods=["GET"],
-        response_model=None,
-    )
-    app.add_api_route(
-        "/api/public/services/{id}",
-        get_public_service,
-        methods=["GET"],
-        response_model=None,
-    )
-    app.add_api_route(
-        "/api/public/sitemap",
-        get_public_sitemap,
-        methods=["GET"],
-        response_model=None,
-    )
+    _route(app, "/api/public/organizers/{slug}", "GET", get_public_organizer)
+    _route(app, "/api/public/services/{id}", "GET", get_public_service)
+    _route(app, "/api/public/sitemap", "GET", get_public_sitemap)
 
     # Organizers
-    app.add_api_route("/api/organizers", organizer_register, methods=["POST"], response_model=None)
-    app.add_api_route("/api/organizers/me", organizer_me_get, methods=["GET"], response_model=None)
-    app.add_api_route(
-        "/api/organizers/me", organizer_me_patch, methods=["PATCH"], response_model=None
-    )
-    app.add_api_route(
-        "/api/organizers/me/language", organizer_me_language, methods=["PATCH"], response_model=None
-    )
-    app.add_api_route(
-        "/api/organizers/me/avatar", organizer_avatar, methods=["POST"], response_model=None
-    )
-    app.add_api_route(
-        "/api/organizers/me/service-photo",
-        organizer_service_photo,
-        methods=["POST"],
-        response_model=None,
-    )
+    _route(app, "/api/organizers", "POST", organizer_register)
+    _route(app, "/api/organizers/me", "GET", organizer_me_get)
+    _route(app, "/api/organizers/me", "PATCH", organizer_me_patch)
+    _route(app, "/api/organizers/me/language", "PATCH", organizer_me_language)
+    _route(app, "/api/organizers/me/avatar", "POST", organizer_avatar)
+    _route(app, "/api/organizers/me/service-photo", "POST", organizer_service_photo)
 
     # Cabinet
-    app.add_api_route("/api/cabinet/summary", cabinet_summary, methods=["GET"], response_model=None)
+    _route(app, "/api/cabinet/summary", "GET", cabinet_summary)
 
     # Services
-    app.add_api_route("/api/services", services_list, methods=["GET"], response_model=None)
-    app.add_api_route("/api/services", services_create, methods=["POST"], response_model=None)
-    app.add_api_route("/api/services/{id}", service_get, methods=["GET"], response_model=None)
-    app.add_api_route("/api/services/{id}", service_patch, methods=["PATCH"], response_model=None)
-    app.add_api_route("/api/services/{id}", service_delete, methods=["DELETE"], response_model=None)
+    _route(app, "/api/services", "GET", services_list)
+    _route(app, "/api/services", "POST", services_create)
+    _route(app, "/api/services/{id}", "GET", service_get)
+    _route(app, "/api/services/{id}", "PATCH", service_patch)
+    _route(app, "/api/services/{id}", "DELETE", service_delete)
 
     # Time slots
-    app.add_api_route("/api/slots", slots_list, methods=["GET"], response_model=None)
-    app.add_api_route("/api/slots", slots_create, methods=["POST"], response_model=None)
-    app.add_api_route("/api/slots/{id}", slot_get, methods=["GET"], response_model=None)
-    app.add_api_route("/api/slots/{id}", slot_patch, methods=["PATCH"], response_model=None)
-    app.add_api_route("/api/slots/{id}", slot_delete, methods=["DELETE"], response_model=None)
+    _route(app, "/api/slots", "GET", slots_list)
+    _route(app, "/api/slots", "POST", slots_create)
+    _route(app, "/api/slots/{id}", "GET", slot_get)
+    _route(app, "/api/slots/{id}", "PATCH", slot_patch)
+    _route(app, "/api/slots/{id}", "DELETE", slot_delete)
 
     # Bookings (ADR-002)
-    app.add_api_route("/api/bookings", bookings_list, methods=["GET"], response_model=None)
-    app.add_api_route("/api/bookings", booking_create, methods=["POST"], response_model=None)
-    app.add_api_route("/api/bookings/lookup", booking_lookup, methods=["POST"], response_model=None)
-    app.add_api_route("/api/bookings/cancel", booking_cancel, methods=["POST"], response_model=None)
-    app.add_api_route(
-        "/api/bookings/manage-lookup", booking_manage_lookup, methods=["POST"], response_model=None
-    )
-    app.add_api_route(
-        "/api/bookings/cancel-by-organizer",
-        booking_cancel_by_organizer,
-        methods=["POST"],
-        response_model=None,
-    )
+    _route(app, "/api/bookings", "GET", bookings_list)
+    _route(app, "/api/bookings", "POST", booking_create)
+    _route(app, "/api/bookings/lookup", "POST", booking_lookup)
+    _route(app, "/api/bookings/cancel", "POST", booking_cancel)
+    _route(app, "/api/bookings/manage-lookup", "POST", booking_manage_lookup)
+    _route(app, "/api/bookings/cancel-by-organizer", "POST", booking_cancel_by_organizer)
 
     # QStash receiver (ADR-012)
-    app.add_api_route("/api/jobs/{queue}", jobs_receiver, methods=["POST"], response_model=None)
+    _route(app, "/api/jobs/{queue}", "POST", jobs_receiver)
 
     # Internal (Auth.js BFF)
-    app.add_api_route(
-        "/api/internal/auth/organizer-by-messenger",
-        organizer_by_messenger,
-        methods=["POST"],
-        response_model=None,
-    )
+    _route(app, "/api/internal/auth/organizer-by-messenger", "POST", organizer_by_messenger)

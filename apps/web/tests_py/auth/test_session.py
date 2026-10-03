@@ -1,5 +1,5 @@
-"""The HKDF golden vector (the
-cross-language anchor with organizer-token.ts) and HS256 verification."""
+"""The HKDF golden vector (the cross-language anchor with
+organizer-token.ts) and HS256 verification."""
 
 from __future__ import annotations
 
@@ -21,9 +21,8 @@ TEST_SECRET = "test-golden-secret"
 
 
 def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
-    """Mint an HS256 organizer token with the same derivation as the
-    production verifier (the derivation itself is pinned by the golden
-    test below)."""
+    """Mint an HS256 organizer token with the production derivation
+    (itself pinned by the golden test below)."""
     header = (
         base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
         .rstrip(b"=")
@@ -53,20 +52,18 @@ def mint_test_token(secret: str, sub: str, slug: str, exp: int) -> str:
 def test_derived_signing_key_golden():
     """Pin the HKDF derivation to Node's crypto.hkdfSync('sha256',
     secret, 'countmein', 'CountMeIn Organizer API Token Key v1', 32) —
-    the cross-language anchor. If this test fails after touching either
-    side's derivation parameters, the TS and Python keys have drifted
-    and every signed-in organizer silently becomes anonymous."""
+    the cross-language anchor. A drift means every signed-in organizer
+    silently becomes anonymous."""
     want = bytes.fromhex("6d1ed228ced7fcfff1fc563e2f14f95c2e542a579d0eb2896e27ee93d0dd4318")
     assert derived_signing_key(TEST_SECRET) == want
 
 
 def test_derived_internal_secret_golden():
     """Pin the internal-service derivation to the TS twin
-    (src/server/internal-api.ts): HMAC-SHA256 under salt 'countmein',
-    info 'CountMeIn Internal Service Key v1'. If this drifts, the
-    Python API stops accepting x-internal-secret from Next.js — SSR
-    reads fall back to the public rate bucket and the revalidation
-    endpoint answers 401."""
+    (src/server/internal-api.ts): HMAC-SHA256, salt 'countmein', info
+    'CountMeIn Internal Service Key v1'. A drift means Next.js's
+    x-internal-secret is refused — SSR reads fall back to the public
+    rate bucket and revalidation answers 401."""
     from countmein.auth.internal import derived_internal_secret
 
     assert (
@@ -111,8 +108,8 @@ def test_verify_garbage():
 def test_verify_non_ascii_signature_is_not_a_500():
     """A non-ASCII byte in the signature segment must fail verification
     cleanly (None), not raise: hmac.compare_digest on str raises
-    TypeError on non-ASCII, which would surface as a 500 on every
-    request carrying a crafted X-Organizer-Auth header."""
+    TypeError on non-ASCII — a crafted X-Organizer-Auth header would
+    otherwise surface as a 500."""
     token = mint_test_token(
         TEST_SECRET, "01930000-0000-7000-8000-000000000001", "studio", int(time.time()) + 60
     )
@@ -155,9 +152,8 @@ def test_verify_wrong_alg():
 
 
 def test_non_numeric_exp_is_anonymous():
-    """A non-int exp claim is a malformed/forged token — it must be
-    treated as an invalid session (anonymous), never a TypeError → 500
-    (plan 0.6)."""
+    """A non-int exp claim is a malformed/forged token — must be treated
+    as an invalid session (anonymous), never a TypeError → 500."""
     token = mint_test_token(TEST_SECRET, "org-1", "slug", int(time.time()) + 60)
     # Re-sign with a string exp.
     header, payload, _ = token.split(".")
@@ -179,7 +175,7 @@ def test_verify_empty_sub():
 
 def test_verify_requires_iss_aud():
     """ADR-024: a token without the matching iss/aud pair is not an
-    organizer-auth credential — replaying a token minted for a different
+    organizer-auth credential — replaying a token minted for another
     purpose under the same AUTH_SECRET must fail."""
     token = mint_test_token(TEST_SECRET, "sub", "slug", int(time.time()) + 60)
     header, payload, _sig = token.split(".")

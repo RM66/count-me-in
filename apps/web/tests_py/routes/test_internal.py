@@ -4,9 +4,8 @@ lookup behind POST /api/internal/auth/organizer-by-messenger.
 The route answers over generated envelopes — the InternalOrganizerRecord
 UUID field carries a pattern constraint Pydantic cannot apply to a
 coerced UUID, so the handler must build it via model_construct. A plain
-constructor call turns every "organizer found" answer into a 500 and
-breaks Auth.js login for every existing organizer — this file pins the
-happy path so the regression cannot return silently."""
+constructor turns every "organizer found" answer into a 500 and breaks
+Auth.js login — this file pins the happy path."""
 
 from __future__ import annotations
 

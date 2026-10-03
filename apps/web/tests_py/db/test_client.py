@@ -56,8 +56,8 @@ def test_statement_timeout_on_both_pool_policies():
 
 def test_statement_timeout_merges_with_url_options():
     """A libpq `options` already in POSTGRES_URL is preserved — psycopg
-    connect kwargs win over URL params on a duplicate key, so without
-    the merge the caller's options= would be silently dropped."""
+    kwargs win over URL params on a duplicate key, so without the merge
+    the caller's options= would be silently dropped."""
     url = "postgresql://u:p@localhost:5432/db?options=-c%20search_path%3Dapp"
     args = client._connect_args(client._SERVERLESS_CONNECT_ARGS, url)
     assert "search_path=app" in args["options"]

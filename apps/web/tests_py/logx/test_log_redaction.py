@@ -2,18 +2,16 @@
 
 Two doors, both enforced here:
 
-1. Dynamic — the real app is driven with a request that carries every
-   secret class the API ever sees (the organizer session header
-   `X-Organizer-Auth`, cookies, a guest ticket and a manageToken in the
-   body), the formatted log lines are captured at the logger level,
-   and none of the secret values may appear in them.
-2. Static — no logx call site in the package passes a request body,
-   headers or cookies into the log fields. The dynamic door only
-   covers the paths a test drives; the static one forbids the pattern
-   outright, so a future call site cannot reintroduce it. The scan is
-   AST-based (a call spanning several lines is one node). It is honest
-   about its limit: a secret smuggled through an intermediate variable
-   is not caught here — the dynamic door is the net for that.
+1. Dynamic — the real app is driven with a request carrying every
+   secret class the API sees (the `X-Organizer-Auth` session header,
+   cookies, a guest ticket and a manageToken in the body); the
+   formatted log lines are captured and none of the secret values may
+   appear in them.
+2. Static — no logx call site may pass a request body, headers or
+   cookies into the log fields. The dynamic door only covers the paths
+   a test drives; the static AST scan forbids the pattern outright. Its
+   limit: a secret smuggled through an intermediate variable is not
+   caught — the dynamic door is the net for that.
 """
 
 from __future__ import annotations
@@ -29,10 +27,9 @@ from httpx import ASGITransport
 
 PACKAGE = Path(__file__).resolve().parents[2] / "api" / "_lib" / "countmein"
 
-# Attribute/name fragments that must never appear inside a logx call's
-# arguments: request payloads, headers, cookies, or a credential by
-# name. Matched against the AST of every call, so multi-line calls are
-# covered.
+# Fragments that must never appear inside a logx call's arguments:
+# request payloads, headers, cookies, or a credential by name. Matched
+# against the AST of every call, so multi-line calls are covered.
 _FORBIDDEN_SOURCE_TOKENS = (
     "request.body",
     "request.headers",
@@ -47,8 +44,8 @@ _LOGX_FUNCS = {"info", "warn", "error", "warn_every"}
 
 
 def _logx_call_sources() -> list[tuple[Path, int, str]]:
-    """Every logx call in the package, as (file, line, source snippet).
-    Parsed with ast, so a call whose arguments span lines is one node."""
+    """Every logx call in the package as (file, line, source snippet) —
+    AST-parsed, so a multi-line call is one node."""
     sites: list[tuple[Path, int, str]] = []
     for path in sorted(PACKAGE.rglob("*.py")):
         if path.name.endswith("_gen.py"):
@@ -92,8 +89,8 @@ class _Capture(logging.Handler):
 
 @pytest.fixture()
 def capture():
-    """Capture the formatted lines the countmein logger emits while the
-    request is served — the same bytes the stdout handler writes."""
+    """Capture the formatted lines the countmein logger emits — the same
+    bytes the stdout handler writes."""
     from countmein import logx
 
     handler = _Capture()
@@ -133,8 +130,7 @@ async def _drive_app_with_secrets(capture) -> None:
                 ORGANIZER_AUTH_HEADER: MARKERS["organizer_auth"],
                 "Cookie": f"next-auth.session-token={MARKERS['cookie']}",
                 # x-vercel-id IS logged (as request_id) — a marker here
-                # proves the allowlist copies that one header verbatim,
-                # and only that one.
+                # proves the allowlist copies that one header verbatim.
                 "x-vercel-id": MARKERS["x_vercel_id"],
                 "content-type": "application/json",
             },
@@ -151,10 +147,10 @@ async def _drive_app_with_secrets(capture) -> None:
 
 
 async def test_request_logs_never_contain_secrets(capture):
-    """Dynamic door: the middleware's request line and every handler
-    log line emitted while serving a secret-bearing request must not
-    contain any of the secret values. The booking fails (unknown
-    ticket) — that is fine: the point is what the failure path logs."""
+    """Dynamic door: the request line and every handler log line emitted
+    while serving a secret-bearing request must not contain any secret
+    value. The booking fails (unknown ticket) — fine: the point is what
+    the failure path logs."""
     await _drive_app_with_secrets(capture)
     assert capture.lines, "the request must produce at least one log line"
     joined = "\n".join(capture.lines)
@@ -187,8 +183,8 @@ async def test_request_log_line_shape(capture):
         "x-vercel-id is the platform correlation id — it is the one "
         "header the request line copies, verbatim"
     )
-    # The request line is a fixed field set — no request payload rides
-    # along under an extra key.
+    # Fixed field set — no request payload rides along under an extra
+    # key.
     assert set(rec) == {
         "time",
         "level",

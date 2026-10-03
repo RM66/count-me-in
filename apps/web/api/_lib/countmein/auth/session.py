@@ -8,11 +8,10 @@ internal JWE wire format, which a minor Auth.js upgrade could change
 silently.
 
 The token: HS256, compact JWT, claims { sub, slug, iat, exp }, 60s
-TTL. **No separate secret**: the signing key is derived from the
-existing AUTH_SECRET via HKDF-SHA256 (RFC 5869) with a purpose-bound
-info string — the same key-separation pattern Auth.js itself uses.
-Deriving (rather than reusing the raw secret) keeps the two protocols
-independent; rotating AUTH_SECRET rotates both at once. The derivation
+TTL. **No separate secret**: the signing key is derived from
+AUTH_SECRET via HKDF-SHA256 (RFC 5869) with a purpose-bound info
+string — the same key-separation pattern Auth.js uses. Deriving keeps
+the two protocols independent; rotating AUTH_SECRET rotates both. The
 parameters must match src/server/auth/organizer-token.ts exactly;
 parity is pinned by the golden vector in the session tests.
 
@@ -42,9 +41,8 @@ HKDF_SALT = "countmein"
 HKDF_INFO = "CountMeIn Organizer API Token Key v1"
 HKDF_LEN = 32
 
-# No warn-once here: on a warmed serverless instance a once-per-process
-# log line makes a persistent misconfiguration nearly invisible.
-# warn_every keeps a heartbeat in the logs instead.
+# warn_every, not warn-once: on a warmed instance a once-per-process
+# line makes a persistent misconfiguration nearly invisible.
 _WARN_INTERVAL = 300  # seconds
 
 _B64 = base64.urlsafe_b64encode
@@ -86,8 +84,8 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
     sig = hmac.new(
         derived_signing_key(secret), f"{parts[0]}.{parts[1]}".encode(), hashlib.sha256
     ).digest()
-    # Compare bytes: the header value may carry non-ASCII characters,
-    # and compare_digest on str raises TypeError on them (→ 500).
+    # Compare bytes: a non-ASCII header value would raise TypeError in
+    # compare_digest on str (→ 500).
     expected_sig = _B64(sig).rstrip(b"=")
     if not hmac.compare_digest(expected_sig, parts[2].encode()):
         return None
@@ -102,18 +100,16 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
     if not isinstance(claims, dict) or not claims.get("sub"):
         return None
 
-    # Audience binding (ADR-024): a token without the matching iss/aud
-    # pair is not an organizer-auth token — a credential minted for
-    # another purpose under the same AUTH_SECRET must not replay here.
+    # Audience binding (ADR-024): a credential minted for another
+    # purpose under the same AUTH_SECRET must not replay here.
     from ..contracts.constants_gen import ORGANIZER_AUTH_AUD, ORGANIZER_AUTH_ISS
 
     if claims.get("iss") != ORGANIZER_AUTH_ISS or claims.get("aud") != ORGANIZER_AUTH_AUD:
         return None
 
-    # Expiry (15s clock tolerance, matching the old decoder). exp is
-    # required — the mint always sets it, so an absent or non-numeric
-    # exp means a forged/malformed token: invalid (anonymous), never
-    # a TypeError → 500.
+    # Expiry (15s clock tolerance). exp is required — the mint always
+    # sets it, so an absent/non-numeric exp is forged: invalid
+    # (anonymous), never a TypeError → 500.
     exp = claims.get("exp", 0)
     if not isinstance(exp, int) or isinstance(exp, bool):
         return None
@@ -123,9 +119,8 @@ def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
 
 
 def session_from_request(request: Request) -> Session | None:
-    """Read the organizer-auth header and verify the JWT. Returns None
-    when there is no session (anonymous → demo cabinet visitor, ADR-010)
-    or when the token cannot be verified."""
+    """Read the organizer-auth header and verify the JWT. None when
+    anonymous (→ demo cabinet visitor, ADR-010) or unverifiable."""
     secret = os.getenv("AUTH_SECRET", "")
     if secret == "":
         logx.warn_every(_WARN_INTERVAL, "AUTH_SECRET is not set — every request is anonymous", None)

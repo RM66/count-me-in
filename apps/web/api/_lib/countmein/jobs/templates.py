@@ -1,20 +1,18 @@
 """The rendering side of every notification, as Telegram HTML.
 
 Language (ADR-011): every message renders in one of the app locales —
-the organizer reads their own organizers.language, the guest the
-guestLocale captured at booking time, both clamped to the supported set
-(free-text columns must not break rendering).
+the organizer reads their organizers.language, the guest the guestLocale
+captured at booking time, both clamped to the supported set (free-text
+columns must not break rendering).
 
-Times always render in the organizer's timezone, for the guest too: a
-slot is authored as a wall-clock reading in that zone and it is the one
-printed on the public page the guest booked from; re-rendering in
+Times always render in the organizer's timezone, for the guest too — a
+slot is authored and displayed as a wall-clock reading in that zone;
 another zone would make the confirmation disagree with the page. Only
-the labels follow the locale, never the zone.
+labels follow the locale, never the zone.
 
-HTML tags live here in code, not in the ICU messages: use-intl reads
-<tag> pairs as rich-text placeholders, the wrong tool for Telegram HTML.
-Only user-supplied values are escaped — tags composed here are trusted
-markup."""
+HTML tags live in code, not in the ICU messages — use-intl reads <tag>
+pairs as rich-text placeholders, the wrong tool for Telegram HTML. Only
+user-supplied values are escaped; tags composed here are trusted."""
 
 from __future__ import annotations
 
@@ -48,11 +46,10 @@ class BookingView:
 
 
 def escape_html(value: str) -> str:
-    """Escape the five characters that would otherwise be read as
-    markup. Every interpolated value goes through this: guest names,
-    titles and option labels are user input, and an unescaped < turns
-    the whole message into a 400 can't parse entities — a delivery
-    failure caused by a guest called "Anne & Co"."""
+    """Escape the five markup characters. Every interpolated value goes
+    through this — guest names, titles and labels are user input, and an
+    unescaped < turns the whole message into a 400 can't parse entities
+    — a delivery failure caused by a guest called "Anne & Co"."""
     return (
         value.replace("&", "&" + "amp;")
         .replace("<", "&" + "lt;")
@@ -73,10 +70,9 @@ def notification_locale(recipient: str, view: BookingView) -> str:
     return domain.DEFAULT_LOCALE
 
 
-# Per-locale short weekday and month names for format_instant —
-# these cover the app's eight
-# locales (approximate ICU shapes; message text only, not a wire
-# contract). Ported verbatim so the golden files match byte for byte.
+# Per-locale short weekday and month names for format_instant (approximate
+# ICU shapes; message text, not a wire contract). Ported verbatim so the
+# golden files match byte for byte.
 _CALENDARS: dict[str, tuple[tuple[str, ...], tuple[str, ...], str]] = {
     "en": (
         ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"),
@@ -227,9 +223,8 @@ def format_instant(t: datetime, timezone: str, locale: str) -> str:
 
 
 def booking_lines(view: BookingView, locale: str) -> list[str]:
-    """What, when, how many: the lines both audiences need, shared so a
-    change to how a booking is described cannot land in the guest's
-    message and be forgotten in the organizer's."""
+    """What, when, how many — shared by both audiences so a description
+    change cannot land in one message and be forgotten in the other."""
     lines = [
         "📌 <b>" + escape_html(view.service.title) + "</b>",
         "🗓 " + escape_html(format_instant(view.slot.starts_at, view.organizer.timezone, locale)),
@@ -296,7 +291,7 @@ def booking_created_for_organizer(view: BookingView, cabinet_url: str, locale: s
 
 
 def booking_created_for_guest(view: BookingView, manage_url: str, locale: str) -> Message:
-    """Your booking is confirmed, and here is how to manage it."""
+    """Your booking is confirmed — and how to manage it."""
 
     def t(key: str, params: dict | None = None) -> str:  # type: ignore[type-arg]
         return notif(locale, "createdGuest", key, params)
@@ -330,10 +325,9 @@ def booking_cancelled_for_organizer(view: BookingView, cabinet_url: str, locale:
 
 
 def booking_cancelled_for_guest(view: BookingView, organizer_url: str, locale: str) -> Message:
-    """The organizer cancelled your booking. Carries the organizer's
-    contact and a link back to their page: the guest did not choose
-    this, so the message's job is to explain and offer the next step. No
-    management link — the booking is cancelled."""
+    """The organizer cancelled your booking. Carries the contact and a
+    link back to their page — the guest did not choose this, so the
+    message explains and offers the next step. No management link."""
 
     def t(key: str, params: dict | None = None) -> str:  # type: ignore[type-arg]
         return notif(locale, "cancelledGuest", key, params)

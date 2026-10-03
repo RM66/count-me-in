@@ -23,9 +23,7 @@ class Service(Base):
     __tablename__ = "services"
 
     # default=new_service_id: Python-side nanoid (Drizzle's $defaultFn
-    # ran JS-side, so the column has no DB default) — repositories can
-    # build Service(...) without an explicit id. ORM-side only,
-    # invisible to Alembic DDL comparison.
+    # ran JS-side — no DB default). ORM-side only, invisible to Alembic.
     id: Mapped[str] = mapped_column(sa.Text, primary_key=True, default=new_service_id)
     organizer_id: Mapped[str] = mapped_column(
         postgresql.UUID(as_uuid=False),
@@ -65,8 +63,8 @@ class Service(Base):
     organizer: Mapped[Organizer] = relationship(
         "Organizer", back_populates="services", lazy="raise"
     )
-    # passive_deletes: the DB owns the cascade (ON DELETE CASCADE) —
-    # same rationale as Organizer.services above.
+    # passive_deletes: DB-owned cascade — same rationale as
+    # Organizer.services.
     time_slots: Mapped[list[TimeSlot]] = relationship(
         "TimeSlot", back_populates="service", lazy="raise", passive_deletes=True
     )

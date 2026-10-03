@@ -1,7 +1,8 @@
-"""The Python app's route set must equal openapi.yaml's: every (method, path) pair in the Zod-rendered spec has a
-registered handler, and every registered route is in the spec.
-/api/healthz is infrastructure outside the spec (mounted in the app
-factory mounts it outside the spec-driven router)."""
+"""The app's route set must equal openapi.yaml's: every (method, path)
+pair in the spec has a registered handler, and every registered route
+is in the spec. /api/healthz is infrastructure outside the spec
+(mounted by the app factory).
+"""
 
 from __future__ import annotations
 

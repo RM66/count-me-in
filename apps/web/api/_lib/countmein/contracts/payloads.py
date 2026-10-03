@@ -22,10 +22,9 @@ class AuthTicketPayload:
     display_name: str
     photo_url: str | None = None
     messenger_login: str | None = None
-    # Purpose binds the ticket to one flow:
-    # "guest" tickets redeem only in booking endpoints, "organizer"
-    # tickets only in registration. Parity: `purpose` in
-    # packages/contracts/src/auth.ts.
+    # Purpose binds the ticket to one flow: "guest" tickets redeem only
+    # in booking endpoints, "organizer" only in registration.
+    # Parity: `purpose` in packages/contracts/src/auth.ts.
     purpose: str = "guest"
 
     def to_json(self) -> dict[str, Any]:

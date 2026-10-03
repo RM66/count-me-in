@@ -64,5 +64,6 @@ and Pydantic.
 ## Out of scope (accepted)
 
 ICU stays a subset (`{param}` + `plural`); observability stays structured logs
-+ trace ids; no `/api/v1` for a single private consumer; `manage_token`
-plaintext column stays for the re-issue flows (ADR-020).
+
+- trace ids; no `/api/v1` for a single private consumer; `manage_token`
+  plaintext column stays for the re-issue flows (ADR-020).

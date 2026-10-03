@@ -119,7 +119,7 @@ async def test_require_writable_organizer_demo_session(fake_redis):
 
 async def test_require_writable_organizer_signed_in(fake_redis):
     # Unique id per test: the rate bucket is keyed by organizer id and
-    # lives in the shared fakeredis for the whole module run.
+    # lives in the shared fakeredis for the whole run.
     own_id = "01930000-0000-7000-8000-0000000000a1"
     token = mint_test_token(TEST_SECRET, own_id, "studio", int(time.time()) + 60)
     organizer_id = await require_writable_organizer(guard_request({ORGANIZER_AUTH_HEADER: token}))
@@ -163,8 +163,8 @@ async def test_require_guest_identity_consume_once(fake_redis):
     assert payload.messenger_id == "123456789"
     assert payload.purpose == TICKET_PURPOSE_GUEST
 
-    # Replay: the ticket was consumed (GETDEL), so the second attempt is
-    # answered like an expired one — 401, never a second identity.
+    # Replay: the ticket was consumed (GETDEL) — the second attempt is
+    # answered like an expired one, 401.
     with pytest.raises(TicketExpired) as exc_info:
         await require_guest_identity(ticket)
     assert exc_info.value.status == 401, "replayed ticket must be a 401"
@@ -177,20 +177,20 @@ async def test_require_guest_identity_unknown_ticket(fake_redis):
 
 
 async def test_require_guest_identity_signup_purpose_refused(fake_redis):
-    # ADR-008: a ticket minted for organizer registration must not be
-    # redeemable in the booking flow — answered like an expired one so
-    # the caller cannot distinguish "wrong flow" from "unknown ticket".
+    # ADR-008: a signup-purpose ticket must not redeem in the booking
+    # flow — answered like an expired one so "wrong flow" and "unknown
+    # ticket" are indistinguishable.
     ticket = await issue_ticket(guest_payload(TICKET_PURPOSE_ORGANIZER))
     with pytest.raises(TicketExpired) as exc_info:
         await require_guest_identity(ticket)
     assert exc_info.value.status == 401, "signup ticket in the booking flow must be a 401"
-    # And the refusal must have consumed it — it cannot be retried as guest either.
+    # The refusal must have consumed it — no retry as guest either.
     with pytest.raises(TicketExpired):
         await require_guest_identity(ticket)
 
 
 async def test_require_guest_identity_broken_payload(fake_redis):
-    # Corrupt JSON behind the key is "no payload usable" → 401, not a 500.
+    # Corrupt JSON behind the key → 401, not a 500.
     await fake_redis.set("auth:ticket:broken", "not-json{")
     with pytest.raises(TicketExpired) as exc_info:
         await require_guest_identity("broken")
@@ -199,8 +199,7 @@ async def test_require_guest_identity_broken_payload(fake_redis):
 
 async def test_require_guest_identity_redis_down(monkeypatch):
     """Identity is NOT fail-open (ADR-019): only the rate limiter fails
-    open; a Redis outage must refuse the write with a 500 rather than
-    let an unverifiable identity through."""
+    open — a Redis outage must refuse the write with a 500."""
 
     class Dead:
         async def getdel(self, *a, **kw):
@@ -252,8 +251,8 @@ async def test_read_body_or_413():
 
 
 def streamed_request(chunks: list[bytes], content_length: str | None = None):
-    """A request whose body arrives as a stream (no _body shortcut), so
-    the guard's incremental read is what actually runs."""
+    """A request whose body arrives as a stream (no _body shortcut) —
+    the guard's incremental read is what runs."""
     from starlette.requests import Request
 
     headers = [(b"content-type", b"application/json")]
@@ -289,7 +288,7 @@ def streamed_request(chunks: list[bytes], content_length: str | None = None):
 
 async def test_body_over_1mb_rejected_without_full_read():
     """A 2MB streamed body must be refused after ~1MB of chunks, not
-    buffered whole first (plan 0.6)."""
+    buffered whole first."""
     chunk = b"x" * 65536
     read = 0
 

@@ -1,11 +1,10 @@
 """Initial schema (Drizzle baseline).
 
 Consolidates packages/db/drizzle/*.sql (0000-0015) into one revision:
-enums, five tables, checks, indexes and FKs. Neutralized history:
-RLS enable/disable (0004/0008) and the pg-boss drop (0005) change no
-final state, so they leave no trace here. The stray `organizers.locale`
-column on the dev database is not part of the Drizzle schema and is
-deliberately absent — fresh databases never had it.
+enums, five tables, checks, indexes and FKs. Neutralized history (RLS
+enable/disable, the pg-boss drop) leaves no trace. The stray
+`organizers.locale` column on the dev database is not in the Drizzle
+schema and is deliberately absent — fresh databases never had it.
 
 Cutover note: databases created via Drizzle (`bun run db:migrate`)
 already have this schema — do NOT upgrade them, stamp instead:

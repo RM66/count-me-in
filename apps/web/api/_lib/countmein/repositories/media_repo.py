@@ -11,7 +11,7 @@ from ..models.service import Service
 
 async def photo_url_referenced(session: AsyncSession, organizer_id: str, url: str) -> bool:
     """Whether any organizer/service row still serves url — guards the
-    post-commit R2 delete (one object can legally back two rows)."""
+    post-commit R2 delete (one object can back two rows)."""
     avatar_used = select(Organizer.id).where(
         Organizer.id == organizer_id, Organizer.photo_url == url
     )

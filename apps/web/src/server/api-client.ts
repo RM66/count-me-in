@@ -13,7 +13,6 @@ import {
   publicServiceViewEnvelope,
   type PublicSitemapEnvelope,
   publicSitemapEnvelope,
-  type ServiceCountsRecord,
   serviceEnvelope,
   type ServiceRecord,
   servicesEnvelope,
@@ -45,6 +44,25 @@ import 'server-only'
  *   separate so it never imports `apiFetch`/`auth()` — review fix 1.1).
  */
 
+/** The shared tail of every envelope fetch: 404 → null, other
+ * non-2xx → throw, body → Zod-checked payload. */
+async function parseEnvelopeResponse<S extends z.ZodType>(
+  res: Response,
+  path: string,
+  schema: S,
+): Promise<z.infer<S> | null> {
+  if (res.status === 404) return null
+  if (!res.ok) {
+    throw new Error(`API request failed: ${path} answered ${res.status}`)
+  }
+  const data: unknown = await res.json().catch(() => ({}))
+  const parsed = schema.safeParse(data)
+  if (!parsed.success) {
+    throw new Error(`API contract violation: ${path} returned an unexpected shape`)
+  }
+  return parsed.data
+}
+
 async function fetchEnvelope<S extends z.ZodType>(
   path: string,
   schema: S,
@@ -56,16 +74,7 @@ async function fetchEnvelope<S extends z.ZodType>(
   // rows to B). `cache: 'no-store'` keeps the per-request fetch while
   // still allowing React dedup within the render.
   const res = await apiFetch(path, { ...init, cache: 'no-store' })
-  if (res.status === 404) return null
-  if (!res.ok) {
-    throw new Error(`API request failed: ${path} answered ${res.status}`)
-  }
-  const data: unknown = await res.json().catch(() => ({}))
-  const parsed = schema.safeParse(data)
-  if (!parsed.success) {
-    throw new Error(`API contract violation: ${path} returned an unexpected shape`)
-  }
-  return parsed.data
+  return parseEnvelopeResponse(res, path, schema)
 }
 
 async function fetchPublicEnvelope<S extends z.ZodType>(
@@ -92,16 +101,7 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
     headers,
     next: { tags, revalidate: revalidateSeconds },
   })
-  if (res.status === 404) return null
-  if (!res.ok) {
-    throw new Error(`API request failed: ${path} answered ${res.status}`)
-  }
-  const data: unknown = await res.json().catch(() => ({}))
-  const parsed = schema.safeParse(data)
-  if (!parsed.success) {
-    throw new Error(`API contract violation: ${path} returned an unexpected shape`)
-  }
-  return parsed.data
+  return parseEnvelopeResponse(res, path, schema)
 }
 
 /**
@@ -158,16 +158,14 @@ export async function getGuestBooking(manageToken: string): Promise<GuestBooking
     body: JSON.stringify({ manageToken }),
     cache: 'no-store',
   })
-  if (res.status === 404 || res.status === 400) return null
-  if (!res.ok) {
-    throw new Error(`API request failed: /api/bookings/manage-lookup answered ${res.status}`)
-  }
-  const data: unknown = await res.json().catch(() => ({}))
-  const parsed = guestBookingEnvelope.safeParse(data)
-  if (!parsed.success) {
-    throw new Error('API contract violation: /api/bookings/manage-lookup shape mismatch')
-  }
-  return parsed.data.booking
+  // 400 = malformed/expired token: a lookup refusal, not an outage.
+  if (res.status === 400) return null
+  const envelope = await parseEnvelopeResponse(
+    res,
+    '/api/bookings/manage-lookup',
+    guestBookingEnvelope,
+  )
+  return envelope?.booking ?? null
 }
 
 /** Organizer profile this request may view (demo for anonymous, null when unseeded). */
@@ -224,57 +222,3 @@ export async function getCabinetSummary(): Promise<CabinetSummaryEnvelope> {
   }
   return envelope
 }
-
-/** One point on the per-day trend chart. */
-export interface AnalyticsTrendPoint {
-  /** Weekday label, e.g. "Mon". */
-  day: string
-  /** Confirmed bookings created that day. */
-  bookings: number
-  /** Seats from confirmed bookings created that day. */
-  seats: number
-}
-
-/** One bar on the per-service breakdown chart. */
-export interface AnalyticsServicePoint {
-  /** Service title. */
-  service: string
-  /** Confirmed bookings in the window. */
-  bookings: number
-}
-
-/**
- * Zero-fill a 14-day API trend (YYYY-MM-DD keys) into the 7-day chart
- * buckets the analytics page plots, with weekday labels.
- */
-export function toChartTrend(
-  trend: Array<{ day: string; bookings: number; seats: number }>,
-  nowMs: number = Date.now(),
-): AnalyticsTrendPoint[] {
-  const byDay = new Map(trend.map((row) => [row.day, row]))
-  const DAY_MS = 24 * 60 * 60 * 1000
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(nowMs - (6 - i) * DAY_MS)
-    const key = date.toISOString().slice(0, 10)
-    const row = byDay.get(key)
-    return {
-      day: date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
-      bookings: row?.bookings ?? 0,
-      seats: row?.seats ?? 0,
-    }
-  })
-}
-
-/** Per-service counts keyed by service id, for the services list. */
-export function serviceCountsById(
-  serviceCounts: ServiceCountsRecord[],
-): Record<string, { upcomingSlots: number; confirmedBookings: number }> {
-  return Object.fromEntries(
-    serviceCounts.map((row) => [
-      row.serviceId,
-      { upcomingSlots: row.upcomingSlotsCount, confirmedBookings: row.confirmedBookingsCount },
-    ]),
-  )
-}
-
-export type { ServiceCountsRecord }

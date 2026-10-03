@@ -8,9 +8,8 @@ it.
 
 The document is parsed once, lazily, and cached for the process
 lifetime. The artifact is generated, committed, and bundled with the
-function (``vercel.json`` includeFiles covers ``api/_lib/**``), so a
-missing or unreadable spec is a deployment bug — the loader fails
-closed and loud rather than letting requests through unvalidated.
+function (vercel.json includeFiles), so a missing or unreadable spec is
+a deployment bug — the loader fails closed and loud.
 """
 
 from __future__ import annotations
@@ -42,9 +41,8 @@ def _schema(name: str) -> dict[str, Any]:
 
 
 def property_order(schema_name: str) -> list[str]:
-    """The declared property order — used to emit fieldErrors in the same
-    order the old Pydantic pipeline produced (the parity goldens pin the
-    key order byte-for-byte)."""
+    """The declared property order — fieldErrors are emitted in it (the
+    parity goldens pin the key order byte-for-byte)."""
     return list(_schema(schema_name).get("properties", {}).keys())
 
 
@@ -68,9 +66,8 @@ def _registry() -> Any:
 @functools.cache
 def _format_checker() -> Any:
     """Only date-time is asserted: uuid is pinned by its spec pattern and
-    uri by the declared httpUrl field rule — enabling the other registered
-    formats would double-report (pattern + format) where the goldens pin
-    one message."""
+    uri by the httpUrl field rule — the other formats would double-report
+    (pattern + format) where the goldens pin one message."""
     from datetime import datetime as _dt
 
     from jsonschema import FormatChecker

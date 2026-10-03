@@ -41,7 +41,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **Auth:** Auth.js — messenger login only (Telegram Login Widget)
 - **Validation:** Zod (`packages/contracts`) → OpenAPI → Pydantic v2 models via datamodel-code-generator; requests validated against the spec ([ADR-016](docs/decisions/016-standard-openapi-codegen.md), [ADR-021](docs/decisions/021-api-python-rewrite.md))
 - **i18n:** next-intl, ICU messages per locale ([ADR-011](docs/decisions/011-i18n.md))
-- **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis — `NullPool` on Vercel serverless, queue pool in the container (`apps/web/Dockerfile` + `docker-compose.yml`)
+- **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis — `NullPool` on Vercel serverless, queue pool in the container (`apps/web/Dockerfile.api` + `docker-compose.yml`)
 - **Media:** Cloudflare R2
 - **Jobs:** Upstash QStash ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links
@@ -64,7 +64,7 @@ reaches the API at `API_URL` (explicit `API_URL` wins over same-origin
 even with `NODE_ENV=production`). Vercel serverless stays the
 production web path; containers are the local/AWS twin.
 
-Package manager: **Bun** (see `.vscode/settings.json`); Python toolchain managed by **uv** — `bun run setup` runs `uv sync` in `apps/web` for you (the local API dev server is uvicorn via `bun run dev:api:py`). Env vars live in the repo-root `.env`; `apps/web/.env` is a symlink to it (Next.js only reads env files from its own directory) — `setup` creates both if missing.
+Package manager: **Bun** (see `.vscode/settings.json`); Python toolchain managed by **uv** — `bun run setup` runs `uv sync` in `apps/web` for you (the local API dev server is uvicorn via `bun run dev:api:py`). Add Python deps with `uv add` in `apps/web`, then re-export `requirements.txt` (Vercel's install input) — CI fails on drift. Env vars live in the repo-root `.env`; `apps/web/.env` is a symlink to it (Next.js only reads env files from its own directory) — `setup` creates both if missing.
 
 ### Database
 
@@ -93,7 +93,7 @@ bun run test:py       # the Python API suite (pytest) — a separate, mandatory 
 bun run test:watch    # watch mode (vitest)
 ```
 
-In `apps/web`: `bun run test:web` (Vitest), `bun run test:py` (pytest), `bun run test:e2e` (Playwright — three smoke specs in `e2e/` covering the guest booking round-trip, the cabinet create flow, and demo read-only; boots both dev servers itself, needs docker Postgres + Redis and a migrated schema). `bun run lint:py` runs ruff + mypy on the API.
+In `apps/web`: `bun run test:web` (Vitest), `bun run test:py` (pytest), `bun run test:e2e` (Playwright — three smoke specs in `e2e/` covering the guest booking round-trip, the cabinet create flow, and demo read-only; boots both dev servers itself, needs docker Postgres + Redis and a migrated schema). `bun run lint:py` runs ruff (lint + format) + strict mypy on the API; `bun run test:py:unit` runs pytest without the `integration`-marked tests (no docker needed).
 
 Coverage spans Zod schemas and slot/timezone logic (`packages/contracts`), helpers, API client, React hooks and components, and the Python API (`apps/web/api/_lib` + `tests_py`).
 

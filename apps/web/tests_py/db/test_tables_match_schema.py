@@ -1,9 +1,7 @@
 """The ORM models mirror the migrated schema: every column the live
 tables carry must exist on the SQLAlchemy metadata (and vice versa),
-plus the enum value sets. The retired raw-SQL column lists and
-chain-SELECT projections are gone — the query layer is typed
-SQLAlchemy, and model↔migration drift is pinned by
-test_models_match_schema (alembic check). This module pins the same
+plus the enum value sets. Model↔migration drift is pinned by
+test_models_match_schema (alembic check); this module pins the same
 drift from the live-schema side. Requires POSTGRES_URL — skipped
 locally without it, failed in CI.
 """

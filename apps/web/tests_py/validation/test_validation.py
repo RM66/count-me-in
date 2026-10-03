@@ -1,6 +1,6 @@
-"""Run the shared validation
-vectors in packages/contracts/vectors/validation (the same corpus vitest
-runs on the TS side). Keys are pinned, never message text."""
+"""Run the shared validation vectors in
+packages/contracts/vectors/validation (the same corpus vitest runs on
+the TS side). Keys are pinned, never message text."""
 
 import json
 import re

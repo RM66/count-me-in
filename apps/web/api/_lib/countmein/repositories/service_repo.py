@@ -39,8 +39,8 @@ async def get_service_with_organizer(
     session: AsyncSession, service_id: str
 ) -> tuple[Service, Organizer] | None:
     """Service and its parent organizer in one join. The FK makes a
-    dangling organizer impossible, so the only miss is an unknown
-    service id — callers answer it as one 404."""
+    dangling organizer impossible — the only miss is an unknown id,
+    answered as one 404."""
     result = await session.execute(
         select(Service, Organizer)
         .join(Organizer, Service.organizer_id == Organizer.id)
@@ -86,12 +86,9 @@ async def update_service_merge_patch(
     service_id: str,
     touched_values: dict[str, Any],
 ) -> Service | None:
-    """Partial update of touched columns only.
-
-    The caller maps wire fields (defaultPrice) to columns
-    (default_price) and explicit-null clears to None; an empty dict
-    cannot produce `UPDATE … SET` with no assignments.
-    """
+    """Partial update of touched columns only — the caller maps wire
+    fields to columns and explicit-null clears to None; an empty dict
+    cannot produce `UPDATE … SET` with no assignments."""
     if not touched_values:
         return await get_owned_service(session, organizer_id, service_id)
     stmt = (
@@ -140,8 +137,8 @@ async def count_bookings_for_service(session: AsyncSession, service_id: str) -> 
 async def get_owned_service_for_update(
     session: AsyncSession, organizer_id: str, service_id: str
 ) -> Service | None:
-    """Owned service row under FOR UPDATE — serializes the delete guard
-    against a concurrent service delete."""
+    """Owned service row under FOR UPDATE — serializes against a
+    concurrent service delete."""
     stmt = (
         select(Service)
         .where(Service.id == service_id, Service.organizer_id == organizer_id)

@@ -1,8 +1,7 @@
-"""Request-body decoders, split per entity: core holds the
-shared validation skeleton; booking/service/slot/organizer hold the
-per-entity decode_* functions. This package is the import surface —
-`from ..validation.decode import X` keeps working unchanged — and
-DECODERS dispatches the parity vectors by wire id.
+"""Request-body decoders, split per entity: core holds the shared
+validation skeleton; booking/service/slot/organizer hold the decode_*
+functions. This package is the import surface — DECODERS dispatches the
+parity vectors by wire id.
 """
 
 from __future__ import annotations

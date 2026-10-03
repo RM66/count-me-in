@@ -1,6 +1,5 @@
-"""Organizer input decoders — the patch decoder and the merged-state
-decoder share the generic rules-driven path; the merged variant adds the
-declared mergedRequired checks (ADR-024 C2)."""
+"""Organizer input decoders — wire and merged-state variants share the
+rules-driven path; the merged variant adds mergedRequired (ADR-024 C2)."""
 
 from __future__ import annotations
 

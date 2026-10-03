@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
+import { organizerFormSchema } from './organizer-form'
 import { API_ROUTES } from './routes'
 import { serviceFormSchema } from './service-form'
 import { expandNowMarkers } from './test-helpers'
@@ -16,6 +17,10 @@ const TS_ONLY: ReadonlyArray<{ schema: z.ZodType; reason: string }> = [
   {
     schema: serviceFormSchema as unknown as z.ZodType,
     reason: 'form schema, not wire; timeSlotFormSchema is a factory and is not exported',
+  },
+  {
+    schema: organizerFormSchema as unknown as z.ZodType,
+    reason: 'form schema, not wire',
   },
 ]
 
@@ -38,9 +43,9 @@ describe('wire registry completeness', () => {
     }
   })
 
-  it('TS_ONLY holds exactly serviceFormSchema', () => {
-    expect(TS_ONLY).toHaveLength(1)
-    expect(TS_ONLY[0]?.reason).toBeTruthy()
+  it('TS_ONLY holds exactly the exported form schemas', () => {
+    expect(TS_ONLY).toHaveLength(2)
+    for (const { reason } of TS_ONLY) expect(reason).toBeTruthy()
   })
 
   it('metaOfSchema round-trips every registered id', () => {
@@ -137,8 +142,10 @@ describe('validation metadata ↔ schema parity', () => {
             const parsed = asString.success ? asString : asList
             expect(parsed.success, `${id}.${field}: trim declared but probe rejects`).toBe(true)
             if (asString.success) {
-              expect(asString.data, `${id}.${field}: trim declared but value kept its padding`)
-                .toBe(TRIM_PROBE.trim())
+              expect(
+                asString.data,
+                `${id}.${field}: trim declared but value kept its padding`,
+              ).toBe(TRIM_PROBE.trim())
             } else {
               expect(asList.data).toEqual([TRIM_PROBE.trim()])
             }

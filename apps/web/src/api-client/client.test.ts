@@ -112,7 +112,7 @@ describe('get', () => {
     const result = await get('/api/test', nameSchema)
 
     expect(result).toEqual({ name: 'test' })
-    expect(fetch).toHaveBeenCalledWith('/api/test')
+    expect(fetch).toHaveBeenCalledWith('/api/test', { method: 'GET' })
   })
 
   it('throws ApiError with server error message on failure', async () => {

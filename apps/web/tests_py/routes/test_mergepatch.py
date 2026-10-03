@@ -1,5 +1,5 @@
-"""The RFC 7386 merge and the
-touched-key set the DB layer writes columns from."""
+"""The RFC 7386 merge and the touched-key set the DB layer writes
+columns from."""
 
 import json
 
@@ -87,6 +87,29 @@ def test_merge_patch_keeps_absent_keys():
     assert state["defaultPrice"] == "20"
     assert state["options"] == ["A", "B"]
     assert state["optionsSelectMode"] == "single"
+
+
+def test_merge_patch_nested_objects():
+    """A nested dict merges recursively: patch keys merge into the
+    current object, nulls remove a member, untouched keys survive."""
+    state = {"a": {"x": 1, "y": 2}, "b": 1}
+    merged = mp.merge_patch(state, b'{"a":{"y":3,"z":4},"b":null}')
+    out = json.loads(merged)
+    assert out == {"a": {"x": 1, "y": 3, "z": 4}}
+
+
+def test_merge_patch_dict_replaced_by_scalar():
+    """RFC 7386: a non-dict patch value replaces the target wholesale,
+    even when the target is a dict."""
+    merged = mp.merge_patch({"a": {"x": 1}}, b'{"a":"flat"}')
+    assert json.loads(merged) == {"a": "flat"}
+
+
+def test_merge_patch_scalar_replaced_by_dict():
+    """The mirror: a dict patch over a scalar key yields the dict —
+    the target contributes nothing."""
+    merged = mp.merge_patch({"a": 1}, b'{"a":{"x":1}}')
+    assert json.loads(merged) == {"a": {"x": 1}}
 
 
 def test_patch_keys():

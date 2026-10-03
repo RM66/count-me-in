@@ -14,7 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { getCabinetSummary, listServices, serviceCountsById } from '@/server/api-client'
+import { serviceCountsById } from '@/helpers/analytics'
+import { getCabinetSummary, listServices } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function ServicesPage() {
@@ -28,12 +29,6 @@ export default async function ServicesPage() {
 
   const [services, summary] = await Promise.all([listServices(), getCabinetSummary()])
   const countsById = serviceCountsById(summary.serviceCounts)
-  const slotCounts: Record<string, number> = Object.fromEntries(
-    Object.entries(countsById).map(([id, counts]) => [id, counts.upcomingSlots]),
-  )
-  const bookingCounts: Record<string, number> = Object.fromEntries(
-    Object.entries(countsById).map(([id, counts]) => [id, counts.confirmedBookings]),
-  )
 
   return (
     <>
@@ -81,8 +76,8 @@ export default async function ServicesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {services.map((svc) => {
-              const slotCount = slotCounts[svc.id] ?? 0
-              const bookingCount = bookingCounts[svc.id] ?? 0
+              const slotCount = countsById[svc.id]?.upcomingSlots ?? 0
+              const bookingCount = countsById[svc.id]?.confirmedBookings ?? 0
               return (
                 <Card key={svc.id} className="overflow-hidden pt-0">
                   <div className="relative aspect-video w-full">

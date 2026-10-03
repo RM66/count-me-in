@@ -1,6 +1,5 @@
-"""Fail-open without Redis, and
-client-IP trust rules. The sliding-window behavior itself is covered
-against fakeredis (the routes tests rely on the same Lua script)."""
+"""Fail-open without Redis, and client-IP trust rules. The
+sliding-window behavior is covered against fakeredis."""
 
 from __future__ import annotations
 
@@ -56,8 +55,8 @@ def _request(headers: dict[str, str] | None = None, client_ip: str = "127.0.0.1"
 def test_client_ip_untrusted_forwarded_for(clean_env):
     """The first value of the forwarded-for chain is the original client,
     but only when proxy headers are trusted (Vercel or
-    TRUST_PROXY_HEADERS=1); otherwise the socket address is the answer,
-    so a spoofed header cannot rotate rate-limit keys."""
+    TRUST_PROXY_HEADERS=1); otherwise the socket address wins, so a
+    spoofed header cannot rotate rate-limit keys."""
     r = _request({"x-forwarded-for": "203.0.113.7, 10.0.0.1"})
     assert client_ip(r) != "203.0.113.7", "untrusted forwarded-for must be ignored"
 
@@ -80,11 +79,11 @@ def test_client_ip_remote_addr_fallback(clean_env):
 
 
 async def test_internal_secret_uses_dedicated_bucket(monkeypatch):
-    """ADR-023: a request carrying a valid x-internal-secret is trusted
-    server-side traffic — it counts against the high-capacity internal
-    bucket, not the caller's public IP bucket. The pin: the public
-    bucket is already exhausted, yet the internal request passes; a
-    forged secret gets the normal IP bucket and is refused."""
+    """ADR-023: a valid x-internal-secret is trusted server-side traffic —
+    it counts against the high-capacity internal bucket, not the
+    caller's public IP bucket. The pin: the public bucket is exhausted
+    yet the internal request passes; a forged secret stays on the IP
+    bucket and is refused."""
     import countmein.redis as redis_mod
     import fakeredis.aioredis
     from countmein.auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
