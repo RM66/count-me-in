@@ -76,6 +76,18 @@ describe('post', () => {
     })
   })
 
+  it('throws ApiError with default message when the server error field is empty', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: '', code: 'test_code' }, false, 500),
+    )
+
+    await expect(post('/api/test', {}, idSchema)).rejects.toMatchObject({
+      message: 'Something went wrong — try again',
+      status: 500,
+      code: 'test_code',
+    })
+  })
+
   it('throws ApiError with default message when JSON parse fails', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,

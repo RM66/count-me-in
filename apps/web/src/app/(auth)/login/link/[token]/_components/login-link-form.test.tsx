@@ -1,6 +1,7 @@
 import { DEFAULT_LOCALE } from '@repo/contracts'
 import { WEB_MESSAGES } from '@repo/translations'
 import { render, screen, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { IntlTestProvider } from '@/i18n/test-provider'
@@ -23,6 +24,22 @@ describe('LoginLinkForm', () => {
 
     // The mount effect calls form.requestSubmit(); React runs the form's
     // action — this invocation is the POST that spends the token.
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+  })
+
+  it('submits once even when StrictMode replays the mount effect', async () => {
+    // Dev StrictMode mounts the effect twice; the token is single-use, so a
+    // duplicate POST would race the winner and land the browser on /login.
+    const action = vi.fn(async () => {})
+
+    render(
+      <StrictMode>
+        <IntlTestProvider>
+          <LoginLinkForm action={action} />
+        </IntlTestProvider>
+      </StrictMode>,
+    )
+
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
   })
 

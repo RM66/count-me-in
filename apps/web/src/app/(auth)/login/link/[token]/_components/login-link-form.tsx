@@ -22,7 +22,11 @@ export function LoginLinkForm({ action }: { action: () => Promise<void> }) {
   const t = useTranslations('Auth.loginLink')
 
   useEffect(() => {
-    formRef.current?.requestSubmit()
+    // Deferred and cancelled on cleanup, so an unmount before the submit
+    // sends nothing. StrictMode's dev mount → cleanup → mount replay thus
+    // yields exactly one POST — a duplicate would race the single-use token.
+    const id = setTimeout(() => formRef.current?.requestSubmit())
+    return () => clearTimeout(id)
   }, [])
 
   return (
