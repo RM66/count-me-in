@@ -35,11 +35,11 @@ export const QUEUE_BOOKING_CANCELLED = 'booking.cancelled'
 export const QUEUE_DEMO_REFRESH = 'demo.refresh'
 
 /**
- * Queue: outbox sweep (architecture review fix #3). A QStash **schedule**
- * (cron) that reads `pending` rows from `notification_outbox` past a grace
- * period and re-publishes them, closing the loss window between a booking
- * commit and the inline QStash publish. Not published by any request
- * handler — a schedule is its only producer.
+ * Queue: outbox sweep. A QStash **schedule** (cron) that reads `pending`
+ * rows from `notification_outbox` past a grace period and re-publishes
+ * them, closing the loss window between a booking commit and the inline
+ * QStash publish. Not published by any request handler — a schedule is
+ * its only producer.
  */
 export const QUEUE_OUTBOX_SWEEP = 'notification.outbox.sweep'
 
@@ -93,7 +93,16 @@ export const bookingCancelledJob = z.object({
 })
 export type BookingCancelledJob = z.infer<typeof bookingCancelledJob>
 
-/** The party to notify about a cancellation: whoever did not perform it. */
-export function cancelNotificationRecipient(cancelledBy: CancelActor): NotificationRecipient {
-  return cancelledBy === 'guest' ? 'organizer' : 'guest'
-}
+/**
+ * The queue manifest: every `{queue}` the receiver accepts, mapped to the
+ * payload schema it decodes (`null` = a schedule that posts an empty body).
+ * One table drives the path-param enum in `routes.ts`, the requestBody
+ * `oneOf` in `openapi.ts`, and the generated constants — a queue added here
+ * appears in all of them.
+ */
+export const JOB_QUEUES = {
+  [QUEUE_BOOKING_CREATED]: bookingCreatedJob,
+  [QUEUE_BOOKING_CANCELLED]: bookingCancelledJob,
+  [QUEUE_DEMO_REFRESH]: null,
+  [QUEUE_OUTBOX_SWEEP]: null,
+} as const satisfies Record<string, z.ZodType | null>

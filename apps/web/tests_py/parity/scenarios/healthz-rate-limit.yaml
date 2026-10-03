@@ -1,0 +1,12 @@
+name: healthz-rate-limit
+steps:
+  - reset: true
+    request: { method: GET, path: /api/healthz }
+    note: warm the bucket (1/30)
+  - request: { method: GET, path: /api/healthz, headers: { X-Forwarded-For: 203.0.113.9 } }
+    note: TRUST_PROXY_HEADERS is off in the recorder env, so XFF is ignored and this hits the same bucket (2/30)
+  - request: { method: GET, path: /api/healthz }
+    repeat: 29
+    note: exhaust the 30/min bucket
+  - request: { method: GET, path: /api/healthz }
+    note: 31st call within the window → 429 with Retry-After

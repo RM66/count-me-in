@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Unit tests for `goApiFetch` — the server-action half of the write wire.
+ * Unit tests for `apiFetch` — the server-action half of the write wire.
  * The Auth.js session and the JWT mint are mocked: what matters here is the
- * contract with the Go API (origin resolution, header forwarding, anonymous
+ * contract with the Python API (origin resolution, header forwarding, anonymous
  * pass-through).
  */
 
@@ -22,7 +22,7 @@ vi.mock('@/server/auth/organizer-token', () => ({
   mintOrganizerAuth: vi.fn(async () => 'minted.jwt.token'),
 }))
 
-describe('goApiFetch', () => {
+describe('apiFetch', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockReset()
@@ -36,10 +36,10 @@ describe('goApiFetch', () => {
     vi.restoreAllMocks()
   })
 
-  it('targets GO_API_URL in dev', async () => {
-    vi.stubEnv('GO_API_URL', 'http://127.0.0.1:9999/')
-    const { goApiFetch } = await import('@/server/api')
-    await goApiFetch('/api/services')
+  it('targets API_URL in dev', async () => {
+    vi.stubEnv('API_URL', 'http://127.0.0.1:9999/')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
     expect(fetchMock).toHaveBeenCalledWith(
       'http://127.0.0.1:9999/api/services',
       expect.objectContaining({ headers: expect.any(Headers) }),
@@ -48,15 +48,25 @@ describe('goApiFetch', () => {
 
   it('derives the origin from the Host header in production', async () => {
     vi.stubEnv('NODE_ENV', 'production')
-    const { goApiFetch } = await import('@/server/api')
-    await goApiFetch('/api/services')
+    vi.stubEnv('API_URL', '')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
     const [url] = fetchMock.mock.calls[0]!
     expect(String(url)).toBe('https://countmein.group/api/services')
   })
 
+  it('prefers an explicit API_URL in production (container twin)', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_URL', 'http://api:3001/')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
+    const [url] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('http://api:3001/api/services')
+  })
+
   it('forwards the minted organizer-auth header for a signed-in session', async () => {
-    const { goApiFetch } = await import('@/server/api')
-    await goApiFetch('/api/services')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
     const init = fetchMock.mock.calls[0]![1] as RequestInit
     expect((init.headers as Headers).get('x-organizer-auth')).toBe('minted.jwt.token')
   })
@@ -64,15 +74,15 @@ describe('goApiFetch', () => {
   it('sends no organizer-auth header for an anonymous session', async () => {
     const { auth } = await import('@/server/auth')
     vi.mocked(auth).mockResolvedValueOnce(null as never)
-    const { goApiFetch } = await import('@/server/api')
-    await goApiFetch('/api/services')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
     const init = fetchMock.mock.calls[0]![1] as RequestInit
     expect((init.headers as Headers).get('x-organizer-auth')).toBeNull()
   })
 
   it('preserves caller headers and method/body', async () => {
-    const { goApiFetch } = await import('@/server/api')
-    await goApiFetch('/api/services', {
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services', {
       method: 'POST',
       body: '{"title":"x"}',
       headers: { 'content-type': 'application/json' },

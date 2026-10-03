@@ -391,6 +391,21 @@
       "fieldErrors": [
         "photoUrl"
       ]
+    },
+    {
+      "name": "options not an array (refinement must not crash on it)",
+      "body": {
+        "title": "Yoga",
+        "defaultPrice": "10",
+        "defaultCapacity": 5,
+        "defaultDurationMinutes": 60,
+        "maxSeatsPerBooking": 1,
+        "options": 5
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options"
+      ]
     }
   ],
   "schema": "CreateServiceInput"

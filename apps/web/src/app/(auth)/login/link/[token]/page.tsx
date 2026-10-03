@@ -67,6 +67,10 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
         throw error
       }
 
+      // A racing duplicate submission loses the single-use token but may
+      // already carry the session the winner minted — the link has still
+      // done its job, so land where it pointed instead of /login.
+      if ((await auth())?.user) redirect(next)
       redirect('/login')
     }
   }

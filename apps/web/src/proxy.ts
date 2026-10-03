@@ -26,13 +26,21 @@ import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organize
  *
  * 2. **API routes** (`/api/*`, except the Auth.js routes that stay on
  *    Next.js): mint a short-lived HS256 JWT into the `X-Organizer-Auth`
- *    header so the Go API can identify the signed-in organizer **without
+ *    header so the Python API can identify the signed-in organizer **without
  *    decrypting the Auth.js session cookie** (architecture review fix #1).
- *    The Go API used to hand-roll `@auth/core`'s internal JWE format — a
+ *    The Python API used to hand-roll `@auth/core`'s internal JWE format — a
  *    coupling that a minor Auth.js upgrade could break silently. This
  *    middleware already runs on every matched request and already reads
  *    Auth.js sessions, so it is the natural place to translate the
  *    session into a stable, self-controlled token.
+ *
+ *    In the container twin (Phase 6: standalone `next start` behind
+ *    `docker compose`, `API_URL` set, no Vercel Edge Router) the API does
+ *    not live at this origin — the request is rewritten to `API_URL`
+ *    (browser TanStack Query calls hit `:3000/api/*` and would 404
+ *    otherwise, since Next.js owns no such routes). On Vercel
+ *    (`VERCEL=1`, no `API_URL`) the Edge Router serves the API from the
+ *    same origin per `vercel.json`, so the request passes through.
  *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
@@ -52,9 +60,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
     return NextResponse.next()
   }
 
-  // API routes: mint the organizer-auth header for the Go API.
-  // The token must travel in the *request* headers — the Go handler
-  // reads r.Header.Get(ORGANIZER_AUTH_HEADER). Setting it on the
+  // API routes: mint the organizer-auth header for the Python API.
+  // The token must travel in the *request* headers — the API handler
+  // reads the ORGANIZER_AUTH_HEADER request header. Setting it on the
   // response (as this code once did) never reaches the handler, and
   // every browser-side organizer write arrived anonymous (403
   // DEMO_READ_ONLY).
@@ -63,7 +71,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
     // The organizer-auth header is a middleware-minted credential and
     // nothing else: strip any client-supplied value before minting, so
     // an anonymous request can never carry a forged header through to
-    // the Go API. The trust boundary is the topology (this edge always
+    // the Python API. The trust boundary is the topology (this edge always
     // overwrites the header), not only the signing secret.
     requestHeaders.delete(ORGANIZER_AUTH_HEADER)
     const session = await auth()
@@ -73,6 +81,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
         requestHeaders.set(ORGANIZER_AUTH_HEADER, token)
       }
     }
+    // Container twin (Phase 6): no Vercel Edge Router serves the API at
+    // this origin, so rewrite browser /api/* calls to the separate API
+    // origin. The minted header travels with the rewritten request.
+    const apiOrigin = process.env.API_URL?.replace(/\/$/, '')
+    if (apiOrigin && process.env.VERCEL !== '1') {
+      const target = new URL(`${apiOrigin}${pathname}${request.nextUrl.search}`)
+      return NextResponse.rewrite(target, { request: { headers: requestHeaders } })
+    }
     return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
@@ -80,10 +96,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
 }
 
 /**
- * Match the auth pages (redirect) and the Go-owned API routes (header
- * minting). The Auth.js routes (`/api/auth/*`) stay on Next.js and need no
- * organizer-auth header — they are excluded so the middleware does not
- * run on them.
+ * Match the auth pages (redirect) and the API-owned routes (header
+ * minting). Two /api subtrees stay on Next.js and are excluded:
+ *
+ * - `/api/auth/*` — the Auth.js routes need no organizer-auth header.
+ * - `/api/internal/revalidate` — the Python→Next.js cache-invalidation
+ *   route (ADR-023 Phase 3). The middleware would rewrite it to API_URL
+ *   in the container twin (a Python 404 loop) and mint an organizer
+ *   header it must not carry; it authenticates by x-internal-secret.
  *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
@@ -92,5 +112,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
  * `resolveCabinetOrganizerId()`, and writes are guarded in the API layer.
  */
 export const config = {
-  matcher: ['/login', '/signup', '/api/((?!auth/).*)'],
+  matcher: ['/login', '/signup', '/api/((?!auth/|internal/revalidate).*)'],
 }

@@ -128,6 +128,75 @@ describe('resizeAvatar', () => {
   })
 })
 
+// ── render internals ──────────────────────────────────────────────────────────
+
+describe('render fallbacks', () => {
+  it('uses a DOM canvas and its toBlob callback when OffscreenCanvas is missing', async () => {
+    stubDecode(300, 300)
+    vi.stubGlobal('OffscreenCanvas', undefined)
+    const fakeDomCanvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({
+        imageSmoothingEnabled: false,
+        imageSmoothingQuality: '',
+        drawImage() {},
+      }),
+      toBlob(cb: (blob: Blob | null) => void, type: string, quality: number) {
+        lastBlobArgs = { type, quality }
+        cb(new Blob(['x'], { type }))
+      },
+    }
+    vi.spyOn(document, 'createElement').mockReturnValue(fakeDomCanvas as unknown as HTMLElement)
+
+    const blob = await resizeAvatar(new Blob(['img']))
+
+    expect(blob.type).toBe('image/webp')
+    expect(lastBlobArgs?.type).toBe('image/webp')
+  })
+
+  it('rejects when the canvas has no 2d context', async () => {
+    stubDecode(300, 300)
+    class ContextlessCanvas {
+      constructor(
+        public width: number,
+        public height: number,
+      ) {}
+      getContext() {
+        return null
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', ContextlessCanvas)
+
+    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(/could not process the image/i)
+    expect(closedBitmaps).toBe(1)
+  })
+
+  it('rejects when the encoder hands back an empty blob', async () => {
+    stubDecode(300, 300)
+    class EmptyBlobCanvas extends FakeOffscreenCanvas {
+      convertToBlob() {
+        return Promise.resolve(new Blob([]))
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', EmptyBlobCanvas)
+
+    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(/could not process the image/i)
+  })
+
+  it('rejects when the encoder fails outright', async () => {
+    stubDecode(300, 300)
+    class FailingBlobCanvas extends FakeOffscreenCanvas {
+      convertToBlob() {
+        return Promise.reject(new Error('encode failed'))
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', FailingBlobCanvas)
+
+    await expect(resizeAvatar(new Blob(['img']))).rejects.toThrow(/could not process the image/i)
+  })
+})
+
 // ── resizeServicePhoto ────────────────────────────────────────────────────────
 
 describe('resizeServicePhoto', () => {

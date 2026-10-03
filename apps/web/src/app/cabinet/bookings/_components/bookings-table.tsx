@@ -44,8 +44,8 @@ type BookingsTableProps = {
   isReadOnly: boolean
   /** Current page (1-based) for the pagination controls. */
   page: number
-  /** Rows per page — the server already sliced `bookings` to this window. */
-  pageSize: number
+  /** The API reports whether a next page exists (it fetched one row past). */
+  hasMore: boolean
 }
 
 /**
@@ -66,7 +66,7 @@ export function BookingsTable({
   activeSlotLabel,
   isReadOnly,
   page,
-  pageSize,
+  hasMore,
 }: BookingsTableProps) {
   const [selected, setSelected] = useState<BookingRecord | null>(null)
   const t = useTranslations('Cabinet.bookings')
@@ -269,16 +269,16 @@ export function BookingsTable({
       />
 
       {/* Pagination (Phase 2.2): the page number lives in the URL so back/forward
-          and deep links keep working. "Next" is shown when this page is full —
-          a full page may still be the last one, so the next click just lands on
-          an empty page, which the table renders as "no bookings found". */}
+          and deep links keep working. "Next" is enabled by the server's hasMore —
+          it fetched one row past the page, so a full last page no longer links
+          to an empty one. */}
       {bookings.length > 0 && (
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" asChild disabled={page <= 1}>
             <Link href={pageHref(page - 1, activeServiceId, activeSlotId)}>{t('prevPage')}</Link>
           </Button>
           <span className="text-sm text-muted-foreground">{t('pageLabel', { page })}</span>
-          <Button variant="outline" size="sm" asChild disabled={bookings.length < pageSize}>
+          <Button variant="outline" size="sm" asChild disabled={!hasMore}>
             <Link href={pageHref(page + 1, activeServiceId, activeSlotId)}>{t('nextPage')}</Link>
           </Button>
         </div>

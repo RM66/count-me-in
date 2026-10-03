@@ -17,7 +17,7 @@ import { ApiError } from './error'
  */
 const POST_ERROR_FALLBACK = 'Something went wrong — try again'
 const GET_ERROR_FALLBACK = 'Failed to fetch data'
-const PUT_ERROR_FALLBACK = 'Update failed — try again'
+const PATCH_ERROR_FALLBACK = 'Update failed — try again'
 const DELETE_ERROR_FALLBACK = 'Delete failed — try again'
 
 function throwApiError(data: unknown, status: number, fallback: string): never {
@@ -49,64 +49,68 @@ function checkContract<S extends z.ZodType>(url: string, schema: S, data: unknow
   return data as z.input<S>
 }
 
+type RequestOptions = {
+  method: string
+  /** Bodies are always JSON; omitted for bodiless methods (GET/DELETE). */
+  body?: unknown
+  contentType?: 'application/json' | 'application/merge-patch+json'
+  /** Per-method English fallback — see the constants above. */
+  fallback: string
+}
+
+async function request<S extends z.ZodType>(
+  url: string,
+  schema: S,
+  { method, body, contentType, fallback }: RequestOptions,
+): Promise<z.input<S>> {
+  const init: RequestInit = { method }
+  if (body !== undefined) {
+    init.headers = { 'Content-Type': contentType ?? 'application/json' }
+    init.body = JSON.stringify(body)
+  }
+  const res = await fetch(url, init)
+  if (!res.ok) {
+    throwApiError(await readJson(res), res.status, fallback)
+  }
+  const data: unknown = await readJson(res)
+  return checkContract(url, schema, data)
+}
+
 /** Generic POST helper with error handling. */
-export async function post<S extends z.ZodType>(
+export function post<S extends z.ZodType>(
   url: string,
   body: unknown,
   schema: S,
 ): Promise<z.input<S>> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, POST_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
+  return request(url, schema, { method: 'POST', body, fallback: POST_ERROR_FALLBACK })
 }
 
 /** Generic GET helper with error handling. */
-export async function get<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
-  const res = await fetch(url)
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, GET_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
+export function get<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
+  return request(url, schema, { method: 'GET', fallback: GET_ERROR_FALLBACK })
 }
 
 /**
- * Generic PUT helper with error handling. The three partial-update
+ * Generic PATCH helper with error handling. The three partial-update
  * endpoints take JSON Merge Patch bodies (RFC 7386, ADR-016) — absent key
  * = keep, explicit null = clear — so they pass the merge-patch media
  * type; everything else keeps application/json.
  */
-export async function put<S extends z.ZodType>(
+export function patch<S extends z.ZodType>(
   url: string,
   body: unknown,
   schema: S,
   contentType: 'application/json' | 'application/merge-patch+json' = 'application/json',
 ): Promise<z.input<S>> {
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body: JSON.stringify(body),
+  return request(url, schema, {
+    method: 'PATCH',
+    body,
+    contentType,
+    fallback: PATCH_ERROR_FALLBACK,
   })
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, PUT_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
 }
 
 /** Generic DELETE helper with error handling. */
-export async function del<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
-  const res = await fetch(url, { method: 'DELETE' })
-  if (!res.ok) {
-    throwApiError(await readJson(res), res.status, DELETE_ERROR_FALLBACK)
-  }
-  const data: unknown = await readJson(res)
-  return checkContract(url, schema, data)
+export function del<S extends z.ZodType>(url: string, schema: S): Promise<z.input<S>> {
+  return request(url, schema, { method: 'DELETE', fallback: DELETE_ERROR_FALLBACK })
 }

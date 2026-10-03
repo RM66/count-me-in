@@ -1,0 +1,12 @@
+{
+  "code": "invalidInput",
+  "details": {
+    "fieldErrors": {
+      "title": [
+        "Required"
+      ]
+    },
+    "formErrors": []
+  },
+  "error": "Invalid input"
+}

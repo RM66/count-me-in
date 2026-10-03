@@ -1,4 +1,5 @@
 import type { OrganizerProfile, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { AVATAR_UPLOAD_MAX_BYTES, SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -7,8 +8,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRegisterOrganizer, useSignInWithTicket } from './auth'
 import { ApiError } from './error'
 import { queryKeys } from './keys'
-import { useCurrentOrganizer, useIsDemo, useUpdateOrganizerProfile } from './organizer'
-import { useCreateService, useDeleteService, useUpdateService } from './service'
+import {
+  useCurrentOrganizer,
+  useIsDemo,
+  useUpdateOrganizerProfile,
+  useUploadAvatar,
+} from './organizer'
+import {
+  useCreateService,
+  useDeleteService,
+  useUpdateService,
+  useUploadServicePhoto,
+} from './service'
 import { useCreateSlot, useDeleteSlot, useUpdateSlot } from './time-slot'
 
 // the cabinet mutations — method/path/body from packages/contracts
@@ -20,6 +31,16 @@ import { useCreateSlot, useDeleteSlot, useUpdateSlot } from './time-slot'
 const mockSignIn = vi.fn()
 vi.mock('next-auth/react', () => ({
   signIn: (...args: unknown[]) => mockSignIn(...args),
+}))
+
+// The browser-side downscale is pinned by image.test.ts; here it is a stub
+// that hands back a blob of a controlled size, so the upload flow's own
+// branches (size cap, signed PUT, profile write) are what get exercised.
+const mockResizeAvatar = vi.fn()
+const mockResizeServicePhoto = vi.fn()
+vi.mock('./image', () => ({
+  resizeAvatar: (...args: unknown[]) => mockResizeAvatar(...args),
+  resizeServicePhoto: (...args: unknown[]) => mockResizeServicePhoto(...args),
 }))
 
 function mockResponse(body: unknown, ok: boolean, status: number) {
@@ -128,7 +149,7 @@ describe('useCreateService', () => {
 })
 
 describe('useUpdateService', () => {
-  it('PUTs a merge-patch body to /api/services/{id} (ADR-016)', async () => {
+  it('PATCHes a merge-patch body to /api/services/{id} (ADR-016)', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ service: serviceFixture }, true, 200))
 
     const { Wrapper } = createWrapper()
@@ -142,7 +163,7 @@ describe('useUpdateService', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/services/svc-abc123xyz',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify(input),
       }),
@@ -194,7 +215,7 @@ describe('useCreateSlot', () => {
 })
 
 describe('useUpdateSlot', () => {
-  it('PUTs a merge-patch body to /api/slots/{id}', async () => {
+  it('PATCHes a merge-patch body to /api/slots/{id}', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ slot: slotFixture }, true, 200))
 
     const { Wrapper } = createWrapper()
@@ -209,7 +230,7 @@ describe('useUpdateSlot', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/slots/01930000-0000-7000-8000-0000000000a1',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify(input),
       }),
@@ -256,7 +277,7 @@ describe('useCurrentOrganizer', () => {
     const { result } = renderHook(() => useCurrentOrganizer(), { wrapper: Wrapper })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(fetch).toHaveBeenCalledWith('/api/organizers/me')
+    expect(fetch).toHaveBeenCalledWith('/api/organizers/me', { method: 'GET' })
     expect(result.current.data).toEqual(organizerProfileFixture)
     // The cache entry lives under the shared key factory — the mutation
     // that invalidates it must agree (keys.ts is the single source).
@@ -281,7 +302,7 @@ describe('useIsDemo', () => {
 })
 
 describe('useUpdateOrganizerProfile', () => {
-  it('PUTs a merge-patch body and writes the response into the cache', async () => {
+  it('PATCHes a merge-patch body and writes the response into the cache', async () => {
     const updated = { ...organizerProfileFixture, name: 'Renamed Studio' }
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ organizer: updated }, true, 200))
 
@@ -294,7 +315,7 @@ describe('useUpdateOrganizerProfile', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/organizers/me',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify({ name: 'Renamed Studio' }),
       }),
@@ -302,6 +323,183 @@ describe('useUpdateOrganizerProfile', () => {
     // The endpoint returns the updated profile — a refetch would be
     // redundant, so the mutation writes it straight into the cache.
     expect(queryClient.getQueryData(queryKeys.organizer.me)).toEqual({ organizer: updated })
+  })
+})
+
+// ── upload hooks ─────────────────────────────────────────────────────────────
+// resize → POST signed target → PUT to R2 → (avatar only) PATCH the profile.
+
+const uploadTarget = {
+  uploadUrl: 'https://upload.example.com/signed-put',
+  publicUrl: 'https://media.example.com/org-1/photo.webp',
+  expiresAt: '2026-01-01T01:00:00.000Z',
+}
+
+const file = new File(['raw-bytes'], 'photo.jpg', { type: 'image/jpeg' })
+
+describe('useUploadAvatar', () => {
+  it('PUTs the resized image to the signed URL, then PATCHes the profile with the public URL', async () => {
+    const image = new Blob(['img'], { type: 'image/webp' })
+    mockResizeAvatar.mockResolvedValue(image)
+    const updated = { ...organizerProfileFixture, photoUrl: uploadTarget.publicUrl }
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse(uploadTarget, true, 200))
+      .mockResolvedValueOnce(mockResponse({}, true, 200))
+      .mockResolvedValueOnce(mockResponse({ organizer: updated }, true, 200))
+
+    const { Wrapper, queryClient } = createWrapper()
+    const { result } = renderHook(() => useUploadAvatar(), { wrapper: Wrapper })
+    await act(async () => {
+      await result.current.mutateAsync(file)
+    })
+
+    expect(mockResizeAvatar).toHaveBeenCalledWith(file)
+    // The signed URL request commits to the resized bytes' exact type and size.
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      '/api/organizers/me/avatar',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ contentType: 'image/webp', size: image.size }),
+      }),
+    )
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      uploadTarget.uploadUrl,
+      expect.objectContaining({
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/webp' },
+        body: image,
+      }),
+    )
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/organizers/me',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/merge-patch+json' },
+        body: JSON.stringify({ photoUrl: uploadTarget.publicUrl }),
+      }),
+    )
+    expect(queryClient.getQueryData(queryKeys.organizer.me)).toEqual({ organizer: updated })
+  })
+
+  it('refuses an image still over the upload cap after resize — before any fetch', async () => {
+    mockResizeAvatar.mockResolvedValue(
+      new Blob([new Uint8Array(AVATAR_UPLOAD_MAX_BYTES + 1)], { type: 'image/webp' }),
+    )
+
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useUploadAvatar(), { wrapper: Wrapper })
+    let caught: unknown
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(file)
+      } catch (e) {
+        caught = e
+      }
+    })
+
+    expect(caught).toBeInstanceOf(ApiError)
+    expect(caught).toMatchObject({ status: 413 })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a failed R2 PUT as ApiError with its status', async () => {
+    mockResizeAvatar.mockResolvedValue(new Blob(['img'], { type: 'image/webp' }))
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse(uploadTarget, true, 200))
+      .mockResolvedValueOnce(mockResponse({}, false, 503))
+
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useUploadAvatar(), { wrapper: Wrapper })
+    let caught: unknown
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(file)
+      } catch (e) {
+        caught = e
+      }
+    })
+
+    expect(caught).toBeInstanceOf(ApiError)
+    expect(caught).toMatchObject({ status: 503 })
+  })
+})
+
+describe('useUploadServicePhoto', () => {
+  it('PUTs the resized cover to the signed URL and resolves to the public URL — no write', async () => {
+    const image = new Blob(['img'], { type: 'image/webp' })
+    mockResizeServicePhoto.mockResolvedValue(image)
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse(uploadTarget, true, 200))
+      .mockResolvedValueOnce(mockResponse({}, true, 200))
+
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useUploadServicePhoto(), { wrapper: Wrapper })
+    let url: string | undefined
+    await act(async () => {
+      url = await result.current.mutateAsync(file)
+    })
+
+    expect(url).toBe(uploadTarget.publicUrl)
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      '/api/organizers/me/service-photo',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ contentType: 'image/webp', size: image.size }),
+      }),
+    )
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      uploadTarget.uploadUrl,
+      expect.objectContaining({ method: 'PUT', body: image }),
+    )
+    // Two calls total: the form has no row yet, so nothing is persisted here.
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('refuses a cover still over the upload cap after resize', async () => {
+    mockResizeServicePhoto.mockResolvedValue(
+      new Blob([new Uint8Array(SERVICE_PHOTO_UPLOAD_MAX_BYTES + 1)], { type: 'image/webp' }),
+    )
+
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useUploadServicePhoto(), { wrapper: Wrapper })
+    let caught: unknown
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(file)
+      } catch (e) {
+        caught = e
+      }
+    })
+
+    expect(caught).toBeInstanceOf(ApiError)
+    expect(caught).toMatchObject({ status: 413 })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a failed R2 PUT as ApiError with its status', async () => {
+    mockResizeServicePhoto.mockResolvedValue(new Blob(['img'], { type: 'image/webp' }))
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse(uploadTarget, true, 200))
+      .mockResolvedValueOnce(mockResponse({}, false, 503))
+
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useUploadServicePhoto(), { wrapper: Wrapper })
+    let caught: unknown
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(file)
+      } catch (e) {
+        caught = e
+      }
+    })
+
+    expect(caught).toBeInstanceOf(ApiError)
+    expect(caught).toMatchObject({ status: 503 })
   })
 })
 

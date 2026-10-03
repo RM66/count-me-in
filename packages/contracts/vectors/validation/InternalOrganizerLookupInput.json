@@ -1,0 +1,56 @@
+{
+  "cases": [
+    {
+      "body": {
+        "messenger": "telegram",
+        "messengerId": "123456789"
+      },
+      "name": "valid by messenger",
+      "valid": true
+    },
+    {
+      "body": {
+        "organizerId": "01930000-0000-7000-8000-0000000a0001"
+      },
+      "name": "valid by organizerId",
+      "valid": true
+    },
+    {
+      "body": [],
+      "formErrors": 1,
+      "name": "body is array",
+      "valid": false
+    },
+    {
+      "body": {
+        "organizerId": "not-a-uuid"
+      },
+      "fieldErrors": [
+        "organizerId"
+      ],
+      "name": "organizerId wrong format",
+      "valid": false
+    },
+    {
+      "body": {
+        "messenger": "whatsapp"
+      },
+      "fieldErrors": [
+        "messenger"
+      ],
+      "name": "messenger wrong enum",
+      "valid": false
+    },
+    {
+      "body": {
+        "messengerId": 123
+      },
+      "fieldErrors": [
+        "messengerId"
+      ],
+      "name": "messengerId wrong type",
+      "valid": false
+    }
+  ],
+  "schema": "InternalOrganizerLookupInput"
+}

@@ -1,0 +1,5 @@
+name: healthz
+steps:
+  - reset: true
+    request: { method: GET, path: /api/healthz }
+    note: healthy probe answers 200 with postgres/redis status

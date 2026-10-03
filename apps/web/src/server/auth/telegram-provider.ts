@@ -1,9 +1,8 @@
 import { isDemoOrganizerId } from '@repo/contracts'
-import { db, organizers } from '@repo/db'
 import { AuthDataValidator, objectToAuthDataMap } from '@telegram-auth/server'
-import { and, eq } from 'drizzle-orm'
 import Credentials from 'next-auth/providers/credentials'
 
+import { getInternalOrganizer } from '@/server/internal-api'
 import { consumeLoginLink } from './login-link'
 import { consumeTicket, issueTicket, TICKET_BASE64URL_LENGTH } from './ticket'
 
@@ -44,9 +43,7 @@ export function createTelegramProvider() {
           return null
         }
 
-        const organizer = await db.query.organizers.findFirst({
-          where: eq(organizers.id, payload.organizerId),
-        })
+        const organizer = await getInternalOrganizer({ organizerId: payload.organizerId })
         if (!organizer) {
           return null
         }
@@ -69,11 +66,9 @@ export function createTelegramProvider() {
           // organizer session — tickets are bound to one flow by `purpose`.
           return null
         }
-        const organizer = await db.query.organizers.findFirst({
-          where: and(
-            eq(organizers.messenger, payload.messenger),
-            eq(organizers.messengerId, payload.messengerId),
-          ),
+        const organizer = await getInternalOrganizer({
+          messenger: payload.messenger,
+          messengerId: payload.messengerId,
         })
         if (!organizer) {
           return null
@@ -100,8 +95,9 @@ export function createTelegramProvider() {
 
         const messengerId = telegramUser.id.toString()
 
-        const organizer = await db.query.organizers.findFirst({
-          where: and(eq(organizers.messenger, 'telegram'), eq(organizers.messengerId, messengerId)),
+        const organizer = await getInternalOrganizer({
+          messenger: 'telegram',
+          messengerId,
         })
 
         if (!organizer) {

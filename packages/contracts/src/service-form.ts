@@ -2,19 +2,20 @@ import { z } from 'zod'
 
 import { optionsSelectModeEnum } from './enums'
 import { numericText, optionalText } from './form-fields'
-import { OPTIONS_MAX } from './options'
+import { uniqueOptionLabels } from './options'
 import {
   capacity,
   contact,
   displayName,
   durationMinutes,
+  httpUrl,
   location,
   maxSeatsPerBooking,
-  optionLabel,
   priceText,
   serviceDescription,
 } from './primitives'
-import type { CreateServiceInput, ServiceRecord } from './service'
+import type { CreateServiceInput, ServiceRecord, UpdateServiceInput } from './service'
+import { SERVICE_DEFAULTS } from './service'
 
 /**
  * The cabinet service form, as the *inputs* hold it — deliberately distinct
@@ -41,18 +42,13 @@ const serviceFormFields = {
   defaultDurationMinutes: numericText(durationMinutes, 'Duration'),
   maxSeatsPerBooking: numericText(maxSeatsPerBooking, 'Max seats per booking'),
   /**
-   * Uniqueness is enforced here rather than by reusing `optionsList`: that
-   * schema also requires `.min(1)`, while an empty form list is legal and
+   * The wire's `optionsList` requires `.min(1)`; the form shares its base
+   * {@link uniqueOptionLabels} instead — an empty list is legal input and
    * simply means "this service has no options".
    */
-  options: z
-    .array(optionLabel)
-    .max(OPTIONS_MAX)
-    .refine((values) => new Set(values).size === values.length, {
-      message: 'options must be unique',
-    }),
+  options: uniqueOptionLabels(),
   optionsSelectMode: optionsSelectModeEnum,
-  photoUrl: z.url().nullable(),
+  photoUrl: httpUrl.nullable(),
 }
 
 /**
@@ -73,20 +69,11 @@ export type ServiceFormValues = z.input<typeof serviceFormSchema>
 
 /**
  * What a valid submit produces: parsed, trimmed, `''` collapsed to `null`.
- * This is already a valid `UpdateServiceInput` — that contract is `.partial()`
- * and nullable, so `null` clears a column and re-sending an unchanged value is
- * a no-op write. No update-side conversion is needed.
+ * Not sent to the update endpoint as-is — `toUpdateServiceInput` diffs it
+ * against the stored record first (merge-patch counts every arriving key
+ * as a changed column).
  */
 export type ServiceFormOutput = z.output<typeof serviceFormSchema>
-
-/** Defaults for a brand-new service. */
-const NEW_SERVICE_DEFAULTS = {
-  capacity: '10',
-  durationMinutes: '60',
-  // Solo-only by default, matching the DB column default — an organizer opts
-  // into group bookings by raising this.
-  maxSeatsPerBooking: '1',
-} as const
 
 /**
  * Seed the form from an existing service, or from defaults when creating.
@@ -100,13 +87,11 @@ export function toServiceFormValues(service?: ServiceRecord): ServiceFormValues 
     location: service?.location ?? '',
     contact: service?.contact ?? '',
     defaultPrice: service?.defaultPrice ?? '',
-    defaultCapacity: String(service?.defaultCapacity ?? NEW_SERVICE_DEFAULTS.capacity),
+    defaultCapacity: String(service?.defaultCapacity ?? SERVICE_DEFAULTS.capacity),
     defaultDurationMinutes: String(
-      service?.defaultDurationMinutes ?? NEW_SERVICE_DEFAULTS.durationMinutes,
+      service?.defaultDurationMinutes ?? SERVICE_DEFAULTS.durationMinutes,
     ),
-    maxSeatsPerBooking: String(
-      service?.maxSeatsPerBooking ?? NEW_SERVICE_DEFAULTS.maxSeatsPerBooking,
-    ),
+    maxSeatsPerBooking: String(service?.maxSeatsPerBooking ?? SERVICE_DEFAULTS.maxSeatsPerBooking),
     options: service?.options ?? [],
     optionsSelectMode: service?.optionsSelectMode ?? 'single',
     photoUrl: service?.photoUrl ?? null,
@@ -133,4 +118,54 @@ export function toCreateServiceInput(values: ServiceFormOutput): CreateServiceIn
       optionsSelectMode: values.optionsSelectMode ?? undefined,
     }),
   }
+}
+
+/** `null` and `[]` both mean "no options" — normalize before comparing. */
+function sameOptionList(a: readonly string[] | null, b: readonly string[] | null): boolean {
+  const left = a && a.length > 0 ? a : null
+  const right = b && b.length > 0 ? b : null
+  if (left === null || right === null) return left === right
+  return left.length === right.length && left.every((value, i) => value === right[i])
+}
+
+/**
+ * Narrow the form output to the update contract — a **value diff** against
+ * the stored service, not the whole record. Merge-patch counts every arriving
+ * key as a changed column: re-sending an unchanged `photoUrl` would trigger
+ * the replaced-media cleanup on every save, and a resend of `options` would
+ * still have to drag `optionsSelectMode` along — the wire validates the pair
+ * on the patch, not the merged row, so the pair is emitted together when
+ * either half changed.
+ *
+ * An empty result means "nothing changed" — the caller must not send it:
+ * an empty patch is a 400.
+ */
+export function toUpdateServiceInput(
+  values: ServiceFormOutput,
+  service: ServiceRecord,
+): UpdateServiceInput {
+  const patch: UpdateServiceInput = {}
+  if (values.title !== service.title) patch.title = values.title
+  if (values.description !== service.description) patch.description = values.description
+  if (values.location !== service.location) patch.location = values.location
+  if (values.contact !== service.contact) patch.contact = values.contact
+  if (values.defaultPrice !== service.defaultPrice) patch.defaultPrice = values.defaultPrice
+  if (values.defaultCapacity !== service.defaultCapacity) {
+    patch.defaultCapacity = values.defaultCapacity
+  }
+  if (values.defaultDurationMinutes !== service.defaultDurationMinutes) {
+    patch.defaultDurationMinutes = values.defaultDurationMinutes
+  }
+  if (values.maxSeatsPerBooking !== service.maxSeatsPerBooking) {
+    patch.maxSeatsPerBooking = values.maxSeatsPerBooking
+  }
+  if (values.photoUrl !== service.photoUrl) patch.photoUrl = values.photoUrl
+  if (
+    !sameOptionList(values.options, service.options) ||
+    values.optionsSelectMode !== service.optionsSelectMode
+  ) {
+    patch.options = values.options
+    patch.optionsSelectMode = values.optionsSelectMode
+  }
+  return patch
 }

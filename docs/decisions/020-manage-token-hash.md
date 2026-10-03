@@ -27,8 +27,8 @@ Dropping the raw column (contract phase) requires re-issuing tokens through the 
 
 ### Parity
 
-- Go: `HashManageToken` in [`pkg/db/shared.go`](../../apps/web/pkg/db/shared.go)
-- TS: `hashManageToken` in [`packages/contracts/src/manage-token.ts`](../../packages/contracts/src/manage-token.ts)
+- Python: `hash_manage_token` in `apps/web/api/_lib/countmein/db/shared.py` (Go `HashManageToken` in `pkg/db/shared.go`, removed in ADR-021)
+- Vectors: `apps/web/tests_py/vectors/domain/hashManageToken.json` pin the algorithm (SHA-256 hex). A TS mirror (`@repo/contracts/manage-token`) existed for two-sided parity but was removed — it had no production callsite; the enforcing side stays pinned by the vectors.
 - DB backfill: migration `0013_manage_token_hash` (built-in `sha256()`, no pgcrypto)
 
 ## Consequences

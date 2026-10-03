@@ -1,0 +1,67 @@
+name: bookings-cancel
+steps:
+  - reset: true
+    mint: session
+    request:
+      method: POST
+      path: /api/services
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          title: Cancel Host,
+          defaultPrice: '20.00',
+          defaultCapacity: 5,
+          defaultDurationMinutes: 60,
+          maxSeatsPerBooking: 4,
+        }
+    note: seed service; capture <serviceId>
+  - request:
+      method: POST
+      path: /api/slots
+      headers: { X-Organizer-Auth: <session> }
+      json:
+        {
+          serviceId: <serviceId>,
+          startsAt: '2031-10-01T10:00:00Z',
+          durationMinutes: 60,
+          capacity: 5,
+        }
+    note: seed slot; capture <slotId>
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: Cancel Guest,
+        }
+    note: create booking; capture <manageToken>
+    expectSink: 2
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: { manageToken: <manageToken> }
+    note: happy path → 200 cancelled
+    expectSink: 1
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: { manageToken: <manageToken> }
+    note: already cancelled → 409
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: { manageToken: unknown-token }
+    note: unknown token → 404 (same answer as unknown booking)
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: {}
+    note: invalid body → 400
+    expectSink: 0

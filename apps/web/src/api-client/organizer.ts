@@ -5,7 +5,7 @@ import { imageUploadTarget, organizerEnvelope } from '@repo/contracts'
 import { AVATAR_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { get, post, put } from './client'
+import { get, patch, post } from './client'
 import { ApiError } from './error'
 import { resizeAvatar } from './image'
 import { queryKeys } from './keys'
@@ -56,7 +56,7 @@ export function useUpdateOrganizerProfile() {
 
   return useMutation({
     mutationFn: (input: UpdateOrganizerProfileInput) =>
-      put('/api/organizers/me', input, organizerEnvelope, 'application/merge-patch+json'),
+      patch('/api/organizers/me', input, organizerEnvelope, 'application/merge-patch+json'),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.organizer.me, data)
     },
@@ -98,7 +98,7 @@ export function useUploadAvatar() {
         throw new ApiError(UPLOAD_ERROR_FALLBACK, r2Response.status)
       }
 
-      return put(
+      return patch(
         '/api/organizers/me',
         {
           photoUrl: target.publicUrl,

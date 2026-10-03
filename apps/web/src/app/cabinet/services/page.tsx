@@ -14,25 +14,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { countConfirmedBookings } from '@/server/db/booking'
-import { countUpcomingSlots, listServices } from '@/server/db/service'
+import { serviceCountsById } from '@/helpers/analytics'
+import { getCabinetSummary, listServices } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function ServicesPage() {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  const { isDemo: isReadOnly } = await resolveCabinetOrganizerId()
 
   const t = await getTranslations('Cabinet.services')
   const tc = await getTranslations('Cabinet.common')
   const tcrumbs = await getTranslations('Cabinet.crumbs')
   const tslots = await getTranslations('Cabinet.slots')
 
-  const services = await listServices(organizerId)
-  const serviceIds = services.map((service) => service.id)
-  const [slotCounts, bookingCounts] = await Promise.all([
-    countUpcomingSlots(serviceIds),
-    countConfirmedBookings(serviceIds),
-  ])
+  const [services, summary] = await Promise.all([listServices(), getCabinetSummary()])
+  const countsById = serviceCountsById(summary.serviceCounts)
 
   return (
     <>
@@ -80,8 +76,8 @@ export default async function ServicesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {services.map((svc) => {
-              const slotCount = slotCounts[svc.id] ?? 0
-              const bookingCount = bookingCounts[svc.id] ?? 0
+              const slotCount = countsById[svc.id]?.upcomingSlots ?? 0
+              const bookingCount = countsById[svc.id]?.confirmedBookings ?? 0
               return (
                 <Card key={svc.id} className="overflow-hidden pt-0">
                   <div className="relative aspect-video w-full">

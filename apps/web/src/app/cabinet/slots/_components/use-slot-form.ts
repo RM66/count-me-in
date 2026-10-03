@@ -119,7 +119,18 @@ export function useSlotForm({
       return
     }
 
-    updateSlot.mutate(toUpdateTimeSlotInput(values), {
+    if (!slot) return
+
+    // Value-diff, not the whole record: an empty patch is a 400 server-side,
+    // and an unchanged startsAt would re-trigger the not-in-the-past rule
+    // for a past slot. A reverted edit yields an empty diff — a save that
+    // changes nothing is a successful no-op.
+    const patch = toUpdateTimeSlotInput(values, slot)
+    if (Object.keys(patch).length === 0) {
+      finish(t('updatedToast'))
+      return
+    }
+    updateSlot.mutate(patch, {
       onSuccess: () => finish(t('updatedToast')),
       onError: (error) => toast.error(error.message || t('updateFailed')),
     })

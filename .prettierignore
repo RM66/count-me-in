@@ -3,9 +3,12 @@ reviews/
 
 # Generated artifacts.
 apps/web/openapi.yaml
-apps/web/pkg/contracts/testdata/golden/
+apps/web/tests_py/contracts/golden/
 packages/contracts/vectors/
-packages/db/drizzle/meta/
+
+# Tooling caches — never project source, only local noise.
+apps/web/.venv/
+apps/web/.pytest_cache/
 
 # Vendored skill files.
 .agents/

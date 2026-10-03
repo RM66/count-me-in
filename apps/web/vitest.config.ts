@@ -9,8 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  * Resolves `@/*` and `@repo/*` aliases, and neutralizes `server-only`.
  */
 export default defineConfig({
-  esbuild: {
-    jsx: 'automatic',
+  oxc: {
+    // The shared tsconfig sets `jsx: preserve` for Next.js; rolldown-vite
+    // honors it, so the runtime transform has to be requested explicitly.
+    jsx: { runtime: 'automatic' },
   },
   test: {
     environment: 'happy-dom',
@@ -29,7 +31,7 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/i18n/global.d.ts',
         // Auth.js wiring (thin singletons): config glue whose behavior is
-        // pinned by the Go-side session tests and the E2E smoke.
+        // pinned by the API-side session tests and the E2E smoke.
         'src/server/auth/index.ts',
         'src/server/auth/telegram-provider.ts',
       ],
@@ -63,8 +65,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
       'server-only': path.resolve(__dirname, 'vitest.server-only-stub.ts'),
       '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
-      '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
-      '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
     },
   },
 })

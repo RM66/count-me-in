@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ServiceRecord } from './service'
-import { serviceFormSchema, toCreateServiceInput, toServiceFormValues } from './service-form'
+import {
+  serviceFormSchema,
+  toCreateServiceInput,
+  toServiceFormValues,
+  toUpdateServiceInput,
+} from './service-form'
 
 // the form schema is the seam between controlled string inputs and
 // the wire contract. The load-bearing rules: `''` collapses to `null`
@@ -147,5 +152,81 @@ describe('toCreateServiceInput', () => {
     expect(input.location).toBe('Park')
     expect(input.options).toEqual(['Mat'])
     expect(input.optionsSelectMode).toBe('multi')
+  })
+})
+
+describe('toUpdateServiceInput', () => {
+  const service = {
+    title: 'Morning Yoga',
+    description: null,
+    location: null,
+    contact: null,
+    defaultPrice: '15 EUR',
+    defaultCapacity: 10,
+    defaultDurationMinutes: 60,
+    maxSeatsPerBooking: 4,
+    options: null,
+    optionsSelectMode: null,
+    photoUrl: 'https://media.example.com/cover.webp',
+  } as unknown as ServiceRecord
+
+  it('is empty when nothing changed — an unchanged photoUrl is not a media replacement', () => {
+    const parsed = serviceFormSchema.parse({
+      ...validValues,
+      photoUrl: 'https://media.example.com/cover.webp',
+    })
+    expect(toUpdateServiceInput(parsed, service)).toEqual({})
+  })
+
+  it('emits only the changed fields', () => {
+    const parsed = serviceFormSchema.parse({
+      ...validValues,
+      title: 'Evening Yoga',
+      photoUrl: 'https://media.example.com/cover.webp',
+    })
+    expect(toUpdateServiceInput(parsed, service)).toEqual({ title: 'Evening Yoga' })
+  })
+
+  it('clears a column with null when the input was emptied', () => {
+    const stored = { ...service, location: 'Studio 5' } as unknown as ServiceRecord
+    const parsed = serviceFormSchema.parse({
+      ...validValues,
+      photoUrl: 'https://media.example.com/cover.webp',
+    })
+    expect(toUpdateServiceInput(parsed, stored)).toEqual({ location: null })
+  })
+
+  it('sends the options pair together when only the labels changed', () => {
+    const stored = {
+      ...service,
+      options: ['Mat'],
+      optionsSelectMode: 'single',
+    } as unknown as ServiceRecord
+    const parsed = serviceFormSchema.parse({
+      ...validValues,
+      options: ['Mat', 'Towel'],
+      optionsSelectMode: 'single',
+      photoUrl: 'https://media.example.com/cover.webp',
+    })
+    expect(toUpdateServiceInput(parsed, stored)).toEqual({
+      options: ['Mat', 'Towel'],
+      optionsSelectMode: 'single',
+    })
+  })
+
+  it('clears the pair together when the option list was emptied', () => {
+    const stored = {
+      ...service,
+      options: ['Mat'],
+      optionsSelectMode: 'multi',
+    } as unknown as ServiceRecord
+    const parsed = serviceFormSchema.parse({
+      ...validValues,
+      photoUrl: 'https://media.example.com/cover.webp',
+    })
+    expect(toUpdateServiceInput(parsed, stored)).toEqual({
+      options: null,
+      optionsSelectMode: null,
+    })
   })
 })

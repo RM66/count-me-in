@@ -2,7 +2,12 @@
 
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import type { ServiceFormOutput, ServiceFormValues, ServiceRecord } from '@repo/contracts'
-import { serviceFormSchema, toCreateServiceInput, toServiceFormValues } from '@repo/contracts'
+import {
+  serviceFormSchema,
+  toCreateServiceInput,
+  toServiceFormValues,
+  toUpdateServiceInput,
+} from '@repo/contracts'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import type { Control } from 'react-hook-form'
@@ -58,7 +63,7 @@ export function useServiceForm(service?: ServiceRecord) {
   }
 
   const submit = form.handleSubmit((values) => {
-    if (!isEdit) {
+    if (!service) {
       createService.mutate(toCreateServiceInput(values), {
         onSuccess: () => leaveToList(t('createdToast')),
         onError: (error) => toast.error(error.message || t('createFailed')),
@@ -66,10 +71,16 @@ export function useServiceForm(service?: ServiceRecord) {
       return
     }
 
-    // `updateServiceInput` is `.partial()` and nullable, so the normalized form
-    // output is a valid payload as-is — Save is disabled unless something is
-    // dirty, which is what used to require hand-rolled field diffing.
-    updateService.mutate(values, {
+    // Value-diff, not the whole record: an empty patch is a 400 server-side,
+    // and resending an unchanged photoUrl would trigger the replaced-media
+    // cleanup on every save. A reverted edit yields an empty diff — a save
+    // that changes nothing is a successful no-op.
+    const patch = toUpdateServiceInput(values, service)
+    if (Object.keys(patch).length === 0) {
+      leaveToList(t('updatedToast'))
+      return
+    }
+    updateService.mutate(patch, {
       onSuccess: () => leaveToList(t('updatedToast')),
       onError: (error) => toast.error(error.message || t('updateFailed')),
     })

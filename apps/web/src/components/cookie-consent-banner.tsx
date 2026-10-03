@@ -30,8 +30,7 @@ export function CookieConsentBanner() {
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-2xl border border-border bg-background/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-          {t('text')}
-          {t('essential')}
+          {t('text')} {t('essential')}{' '}
           <Link
             href="/privacy"
             className="font-medium underline underline-offset-4 decoration-[rgba(127,127,127,0.33)] hover:text-foreground"

@@ -6,7 +6,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { BookingManage } from '@/app/(guest)/booking/[manageToken]/_components/booking-manage'
 import { Button } from '@/components/ui/button'
-import { getGuestBookingByToken } from '@/server/db/booking'
+import { getGuestBooking } from '@/server/api-client'
 
 /**
  * A booking's management page is private to whoever holds the link, so it must
@@ -30,7 +30,7 @@ export default async function BookingManagePage({
   // The token is the whole authorization (ADR-002): it was delivered to the
   // guest's verified messenger account, so no session is checked. An unknown
   // token is a plain 404 — the page never hints that a token nearly matched.
-  const booking = await getGuestBookingByToken(manageToken)
+  const booking = await getGuestBooking(manageToken)
   if (!booking) notFound()
 
   return (

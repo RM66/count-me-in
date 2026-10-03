@@ -1,6 +1,6 @@
 'use client'
 
-import { SERVICE_PHOTO_MAX_BYTES, servicePhotoContentType } from '@repo/contracts'
+import { imageContentType, SERVICE_PHOTO_MAX_BYTES } from '@repo/contracts'
 import { ImageIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
@@ -31,7 +31,7 @@ export function ServicePhotoField({
   const t = useTranslations('Cabinet.services')
 
   const upload = useImageUpload({
-    contentType: servicePhotoContentType,
+    contentType: imageContentType,
     maxBytes: SERVICE_PHOTO_MAX_BYTES,
     maxBytesLabel: '10 MB',
     mutation: useUploadServicePhoto(),

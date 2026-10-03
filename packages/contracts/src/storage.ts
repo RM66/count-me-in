@@ -1,6 +1,33 @@
 import { z } from 'zod'
 
 /**
+ * Image types the organizer may pick in the file dialog — shared by the
+ * avatar and the service-cover pickers.
+ */
+export const imageContentType = z.enum(['image/jpeg', 'image/png', 'image/webp'])
+
+/**
+ * Type actually stored in R2 — the browser always re-encodes to WebP.
+ * Kept separate from `imageContentType` (what may be picked) on purpose.
+ */
+export const IMAGE_OUTPUT_CONTENT_TYPE = 'image/webp' as const
+
+/**
+ * Shape returned by any signed-upload endpoint — one handshake shared by
+ * the avatar and service-cover targets.
+ */
+export const imageUploadTarget = z.object({
+  uploadUrl: z.url(),
+  publicUrl: z.url(),
+  expiresAt: z.string(), // ISO
+})
+export type ImageUploadTarget = z.infer<typeof imageUploadTarget>
+
+/* -------------------------------------------------------------------------- */
+/*                                  Avatars                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
  * Max size of the *source* file the organizer may pick in the file dialog.
  * The browser downscales before upload, so this only guards against decoding
  * absurdly large files in the tab.
@@ -20,30 +47,14 @@ export const AVATAR_TARGET_SIZE = 512
 /** WebP quality used when re-encoding in the browser. */
 export const AVATAR_WEBP_QUALITY = 0.85
 
-/** Image types the organizer may pick in the file dialog. */
-export const avatarContentType = z.enum(['image/jpeg', 'image/png', 'image/webp'])
-
 /** Resized avatar payload size accepted by the API / signed PUT. */
 export const avatarUploadSize = z.number().int().min(1).max(AVATAR_UPLOAD_MAX_BYTES)
 
-/**
- * Type actually stored in R2 — the browser always re-encodes to WebP.
- * Kept separate from `avatarContentType` (what may be picked) on purpose.
- */
-export const AVATAR_OUTPUT_CONTENT_TYPE = 'image/webp' as const
-
 export const createAvatarUploadInput = z.object({
-  contentType: avatarContentType,
+  contentType: imageContentType,
   size: avatarUploadSize,
 })
 export type CreateAvatarUploadInput = z.infer<typeof createAvatarUploadInput>
-
-export const avatarUploadTarget = z.object({
-  uploadUrl: z.url(),
-  publicUrl: z.url(),
-  expiresAt: z.string(), // ISO
-})
-export type AvatarUploadTarget = z.infer<typeof avatarUploadTarget>
 
 /* -------------------------------------------------------------------------- */
 /*                             Service cover photos                           */
@@ -65,25 +76,11 @@ export const SERVICE_PHOTO_TARGET_SIZE = 1280
 /** WebP quality used when re-encoding a cover in the browser. */
 export const SERVICE_PHOTO_WEBP_QUALITY = 0.82
 
-/** Image types the organizer may pick for a service cover. */
-export const servicePhotoContentType = avatarContentType
-
-/** Type actually stored in R2 — the browser always re-encodes to WebP. */
-export const SERVICE_PHOTO_OUTPUT_CONTENT_TYPE = 'image/webp' as const
-
 /** Resized cover payload size accepted by the API / signed PUT. */
 export const servicePhotoUploadSize = z.number().int().min(1).max(SERVICE_PHOTO_UPLOAD_MAX_BYTES)
 
 export const createServicePhotoUploadInput = z.object({
-  contentType: servicePhotoContentType,
+  contentType: imageContentType,
   size: servicePhotoUploadSize,
 })
 export type CreateServicePhotoUploadInput = z.infer<typeof createServicePhotoUploadInput>
-
-/**
- * Shape returned by any signed-upload endpoint. Identical to
- * {@link avatarUploadTarget} — aliased rather than duplicated so a future
- * change to the handshake lands in one place.
- */
-export const imageUploadTarget = avatarUploadTarget
-export type ImageUploadTarget = z.infer<typeof imageUploadTarget>

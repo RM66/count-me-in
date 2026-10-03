@@ -2,9 +2,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { SlotsTable } from '@/app/cabinet/slots/_components/slots-table'
-import { getOrganizerProfile } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listSlots } from '@/server/db/time-slot'
+import { getOrganizerProfile, listServices, listSlots } from '@/server/api-client'
 import { resolveCabinetOrganizerId } from '@/server/demo'
 
 export default async function SlotsPage({
@@ -13,7 +11,7 @@ export default async function SlotsPage({
   searchParams: Promise<{ service?: string }>
 }) {
   // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
+  const { isDemo: isReadOnly } = await resolveCabinetOrganizerId()
   const { service: serviceParam } = await searchParams
 
   const t = await getTranslations('Cabinet.slots')
@@ -26,9 +24,9 @@ export default async function SlotsPage({
   // keeps past sessions one click away. Filtering them out here is what made a
   // mis-dated slot look like a failed save.
   const [organizer, services, slots] = await Promise.all([
-    getOrganizerProfile(organizerId, isReadOnly),
-    listServices(organizerId),
-    listSlots(organizerId),
+    getOrganizerProfile(),
+    listServices(),
+    listSlots(),
   ])
 
   // Sent from the server so the client's split matches what was rendered —

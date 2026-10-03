@@ -1,8 +1,8 @@
 {
-  "seats": "{count, plural, =1 {#名} other {#名}}",
+  "seats": "{count}名",
   "createdOrganizer": {
     "title": "新しい予約",
-    "stillFree": "🎟 残り{count, plural, =1 {#枠} other {#枠}}です。",
+    "stillFree": "🎟 残り{count}枠です。",
     "full": "✅ この回は満席になりました。",
     "button": "管理画面で開く"
   },
@@ -14,7 +14,7 @@
   },
   "cancelledOrganizer": {
     "title": "予約がキャンセルされました",
-    "freed": "🎟 この回に{count, plural, =1 {#枠} other {#枠}}の空きが出ました。",
+    "freed": "🎟 この回に{count}枠の空きが出ました。",
     "button": "管理画面で開く"
   },
   "cancelledGuest": {

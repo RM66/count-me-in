@@ -12,8 +12,9 @@ updates:
     # changes get their own PR.
     open-pull-requests-limit: 10
 
-  # Go API (apps/web is its own Go module).
-  - package-ecosystem: gomod
+  # Python API (apps/web — uv-managed; the uv ecosystem updates uv.lock,
+  # requirements.txt is regenerated from it by `uv export`).
+  - package-ecosystem: uv
     directory: '/apps/web'
     schedule:
       interval: weekly

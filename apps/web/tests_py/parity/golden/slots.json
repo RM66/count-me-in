@@ -1,0 +1,328 @@
+{
+  "scenario": "slots",
+  "steps": [
+    {
+      "note": "seed service; capture <serviceId>",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Slot Host",
+          "defaultPrice": "20.00",
+          "defaultCapacity": 3,
+          "defaultDurationMinutes": 60,
+          "maxSeatsPerBooking": 4
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Slot Host",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
+            "contact": null,
+            "defaultPrice": "20.00",
+            "defaultCapacity": 3,
+            "defaultDurationMinutes": 60,
+            "maxSeatsPerBooking": 4,
+            "options": null,
+            "optionsSelectMode": null,
+            "createdAt": "<ts:1>"
+          }
+        },
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Slot Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":3,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "empty slot list",
+      "request": {
+        "method": "GET",
+        "path": "/api/slots",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slots": []
+        },
+        "body_raw": "{\"slots\":[]}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "create happy path → 201; capture <slotId>",
+      "request": {
+        "method": "POST",
+        "path": "/api/slots",
+        "body": {
+          "serviceId": "<sid:1>",
+          "startsAt": "<ts:4>",
+          "durationMinutes": 60,
+          "capacity": 3
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slot": {
+            "id": "<uuid:2>",
+            "serviceId": "<sid:1>",
+            "startsAt": "<ts:2>",
+            "durationMinutes": 60,
+            "capacity": 3,
+            "bookedCount": 0,
+            "price": null,
+            "createdAt": "<ts:3>"
+          }
+        },
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "list shows the slot",
+      "request": {
+        "method": "GET",
+        "path": "/api/slots",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slots": [
+            {
+              "id": "<uuid:2>",
+              "serviceId": "<sid:1>",
+              "startsAt": "<ts:2>",
+              "durationMinutes": 60,
+              "capacity": 3,
+              "bookedCount": 0,
+              "price": null,
+              "createdAt": "<ts:3>"
+            }
+          ]
+        },
+        "body_raw": "{\"slots\":[{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}]}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "upcoming filter",
+      "request": {
+        "method": "GET",
+        "path": "/api/slots?upcoming=1",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slots": [
+            {
+              "id": "<uuid:2>",
+              "serviceId": "<sid:1>",
+              "startsAt": "<ts:2>",
+              "durationMinutes": 60,
+              "capacity": 3,
+              "bookedCount": 0,
+              "price": null,
+              "createdAt": "<ts:3>"
+            }
+          ]
+        },
+        "body_raw": "{\"slots\":[{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}]}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "past start rejected → 400",
+      "request": {
+        "method": "POST",
+        "path": "/api/slots",
+        "body": {
+          "serviceId": "<sid:1>",
+          "startsAt": "<ts:5>",
+          "durationMinutes": 60,
+          "capacity": 3
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "startsAt": [
+                "Pick a time in the future — guests cannot book a session that has already started"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"startsAt\":[\"Pick a time in the future — guests cannot book a session that has already started\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "service id fails shape validation → 400 (never reaches ownership)",
+      "request": {
+        "method": "POST",
+        "path": "/api/slots",
+        "body": {
+          "serviceId": "<uuid:3>",
+          "startsAt": "<ts:4>",
+          "durationMinutes": 60,
+          "capacity": 3
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "serviceId": [
+                "string doesn't match the regular expression \"^[A-Za-z0-9_-]{6,32}$\""
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"serviceId\":[\"string doesn't match the regular expression \\\"^[A-Za-z0-9_-]{6,32}$\\\"\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "anonymous → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/slots",
+        "body": {
+          "serviceId": "<sid:1>",
+          "startsAt": "<ts:4>",
+          "durationMinutes": 60,
+          "capacity": 3
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
+        },
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

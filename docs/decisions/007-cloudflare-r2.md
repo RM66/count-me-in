@@ -19,7 +19,7 @@ Organizers upload an avatar and service photos. Candidates: **Cloudflare R2** vs
 
 Store media in **Cloudflare R2**.
 
-- Expose helpers in `packages/media-storage` (create signed PUT URL, public URL / CDN mapping, key layout e.g. `organizers/{id}/avatar`, `services/{id}/photo`). **Note:** `packages/media-storage` was later deleted after the Go API rewrite (ADR-013); R2 helpers now live in `apps/web/pkg/storage`.
+- Expose helpers in `packages/media-storage` (create signed PUT URL, public URL / CDN mapping, key layout e.g. `organizers/{id}/avatar`, `services/{id}/photo`). **Note:** `packages/media-storage` was later deleted after the Go API rewrite (ADR-013); R2 helpers now live in the API's storage module (`apps/web/api/_lib/countmein/storage.py` since ADR-021; previously `apps/web/pkg/storage`, Go, removed).
 - API in `apps/web` issues short-lived upload credentials only to authenticated organizers; clients upload **directly to R2**.
 - Persist only the resulting URL on `Organizer.photoUrl` / `Service.photoUrl`.
 - **Downscale in the browser before upload** (see amendment below).
@@ -37,7 +37,7 @@ square, longest edge 512 px, re-encoded as WebP (quality 0.85). That lands at
 ~30–60 KB — a 50–100× reduction — pushing the same bucket past ~200 000 uploads
 and making object cleanup unnecessary for the foreseeable future.
 
-Implemented in `apps/web/lib/api/image.ts` via `createImageBitmap` +
+Implemented in `apps/web/src/api-client/image.ts` via `createImageBitmap` +
 `OffscreenCanvas`; constants live in `packages/contracts` (`storage.ts`) so
 client and server agree. Resizing must happen **before** the signed URL is
 issued, since the signature commits to an exact `Content-Type` and

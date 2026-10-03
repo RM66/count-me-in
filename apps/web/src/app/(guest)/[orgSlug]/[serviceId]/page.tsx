@@ -18,9 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { SITE_URL } from '@/constants/site'
 import { formatDate, formatTime } from '@/helpers/date'
 import { pageMetadata } from '@/lib/seo'
-import { getPublicOrganizerBySlug } from '@/server/db/organizer'
-import { getPublicService } from '@/server/db/service'
-import { listUpcomingSlotsForServices } from '@/server/db/time-slot'
+import { getPublicServiceView } from '@/server/api-client'
 
 /**
  * Resolve the `/{orgSlug}/{serviceId}` pair into an organizer and their service.
@@ -30,13 +28,12 @@ import { listUpcomingSlotsForServices } from '@/server/db/time-slot'
  * one organizer's service would render under another's name.
  */
 async function resolveService(orgSlug: string, serviceId: string) {
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
-  if (!organizer) return null
-
-  const service = await getPublicService(organizer.id, serviceId)
-  if (!service) return null
-
-  return { organizer, service }
+  const view = await getPublicServiceView(serviceId)
+  if (!view) return null
+  // The service must belong to the organizer in the URL, or one
+  // organizer's service would render under another's name.
+  if (view.organizer.slug.toLowerCase() !== orgSlug.toLowerCase()) return null
+  return view
 }
 
 export async function generateMetadata({
@@ -68,9 +65,7 @@ export default async function ServicePage({
 
   const resolved = await resolveService(orgSlug, serviceId)
   if (!resolved) notFound()
-  const { organizer, service } = resolved
-
-  const slots = await listUpcomingSlotsForServices([service.id])
+  const { organizer, service, slots } = resolved
 
   const hasOpen = slots.some((slot) => seatsLeft(slot) > 0)
 

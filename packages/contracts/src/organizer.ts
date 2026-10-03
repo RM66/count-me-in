@@ -2,12 +2,14 @@ import { z } from 'zod'
 
 import { messengerEnum } from './enums'
 import { appLocaleEnum, DEFAULT_LOCALE } from './i18n'
+import { nullableFields } from './merge-patch'
 import {
   authTicket,
   contact,
   displayName,
   httpUrl,
   location,
+  messengerId,
   organizerDescription,
   slug,
   slugShape,
@@ -33,16 +35,18 @@ export const registerOrganizerInput = z.object({
 })
 export type RegisterOrganizerInput = z.infer<typeof registerOrganizerInput>
 
+export const internalOrganizerLookupInput = z.object({
+  messenger: messengerEnum.optional(),
+  messengerId: messengerId.optional(),
+  organizerId: uuid.optional(),
+})
+export type InternalOrganizerLookupInput = z.infer<typeof internalOrganizerLookupInput>
+
 export const registeredOrganizer = z.object({
   id: uuid,
   slug: slugShape,
 })
 export type RegisteredOrganizer = z.infer<typeof registeredOrganizer>
-
-export const registered = z.object({
-  organizer: registeredOrganizer,
-})
-export type Registered = z.infer<typeof registered>
 
 /** Organizer profile as returned by the API (cabinet). Dates are ISO strings. */
 export const organizerProfile = z.object({
@@ -71,42 +75,51 @@ export type OrganizerProfile = z.infer<typeof organizerProfile>
 
 /**
  * An organizer as the **public booking pages** see them (`/{orgSlug}`).
- * A deliberately narrower projection than {@link organizerProfile}: messenger
+ * A deliberately narrower projection of {@link organizerProfile}: messenger
  * identity is the login credential (ADR-008) and `createdAt` is bookkeeping,
- * so neither may cross to an unauthenticated visitor.
+ * so neither may cross to an unauthenticated visitor — the projection cannot
+ * drift from the source record.
  */
-export const publicOrganizer = z.object({
-  id: uuid,
-  slug: slugShape,
-  name: displayName,
-  timezone,
-  description: z.string().nullable(),
-  photoUrl: z.string().nullable(),
-  location: z.string().nullable(),
-  contact: z.string().nullable(),
-  /**
-   * Read-only demo account (ADR-010), derived server-side from
-   * `DEMO_ORGANIZER_ID`. The public page uses it to warn guests before the
-   * booking flow; enforcement still lives in the API.
-   */
-  isDemo: z.boolean(),
+export const publicOrganizer = organizerProfile.pick({
+  id: true,
+  slug: true,
+  name: true,
+  timezone: true,
+  description: true,
+  photoUrl: true,
+  location: true,
+  contact: true,
+  isDemo: true,
 })
 export type PublicOrganizer = z.infer<typeof publicOrganizer>
 
+/** Always-present profile columns — patchable but never clearable to null. */
+const requiredProfileFields = {
+  name: displayName,
+  slug,
+  timezone,
+}
+
+/** Display fields an organizer may clear: `null` on update empties the column. */
+const clearableProfileFields = {
+  description: organizerDescription,
+  location,
+  contact,
+  photoUrl: httpUrl, // null = remove avatar
+}
+
 /**
- * Profile edits from the cabinet. Messenger identity is not editable.
- * `language` is not here on purpose: the language switcher owns it (ADR-011) —
- * switching while signed in persists `organizers.language` directly.
+ * Profile edits from the cabinet (JSON Merge Patch). Messenger identity is
+ * not editable. `language` is not here on purpose: the language switcher owns
+ * it (ADR-011) — switching while signed in persists `organizers.language`
+ * directly.
  */
-export const updateOrganizerProfileInput = z.object({
-  name: displayName.optional(),
-  slug: slug.optional(),
-  timezone: timezone.optional(),
-  description: organizerDescription.nullable().optional(),
-  location: location.nullable().optional(),
-  contact: contact.nullable().optional(),
-  photoUrl: httpUrl.nullable().optional(), // null = remove avatar
-})
+export const updateOrganizerProfileInput = z
+  .object({
+    ...requiredProfileFields,
+    ...nullableFields(clearableProfileFields),
+  })
+  .partial()
 export type UpdateOrganizerProfileInput = z.infer<typeof updateOrganizerProfileInput>
 
 /**
