@@ -104,6 +104,19 @@ function pad(value: number): string {
 }
 
 /**
+ * Parse the `value` strings of `<input type="date">` / `<input type="time">`
+ * (`YYYY-MM-DD` / `HH:mm`) back into a {@link WallClock} — the inverse of
+ * {@link instantToWallClockInputs}. Callers validate the format first (the
+ * form's regex guards); a malformed part yields NaN, and the downstream
+ * instant is invalid rather than throwing here.
+ */
+export function parseWallClockInputs(date: string, time: string): WallClock {
+  const [year, month, day] = date.split('-').map(Number)
+  const [hour, minute] = time.split(':').map(Number)
+  return { year: year!, month: month!, day: day!, hour: hour!, minute: minute! }
+}
+
+/**
  * Split an instant into the `value` strings an `<input type="date">` and an
  * `<input type="time">` expect (`YYYY-MM-DD` / `HH:mm`), as read in `timeZone`.
  * The exact inverse of {@link wallClockToInstant}, so seeding an edit form from

@@ -15,11 +15,10 @@ import {
 import {
   bookingRecord,
   cancelBookingByOrganizerInput,
-  cancelBookingByTokenInput,
   createBookingInput,
   guestBooking,
-  lookupBookingByTokenInput,
   lookupBookingsInput,
+  manageTokenInput,
 } from './booking'
 import { bookingStatusEnum, messengerEnum, optionsSelectModeEnum } from './enums'
 import {
@@ -35,6 +34,7 @@ import {
   publicOrganizerViewEnvelope,
   publicServiceViewEnvelope,
   publicSitemapEnvelope,
+  registrationResponse,
   serviceEnvelope,
   servicesEnvelope,
   slotEnvelope,
@@ -55,7 +55,6 @@ import {
   publicOrganizer,
   registeredOrganizer,
   registerOrganizerInput,
-  registrationResponse,
   updateOrganizerLanguageInput,
   updateOrganizerProfileInput,
 } from './organizer'
@@ -94,10 +93,10 @@ import {
 } from './records'
 import { createServiceInput, serviceRecord, updateServiceInput } from './service'
 import {
-  avatarContentType,
   avatarUploadSize,
   createAvatarUploadInput,
   createServicePhotoUploadInput,
+  imageContentType,
   imageUploadTarget,
   servicePhotoUploadSize,
 } from './storage'
@@ -111,14 +110,24 @@ import { createTimeSlotInput, slotStartsAt, timeSlotRecord, updateTimeSlotInput 
  * generated from the spec by datamodel-code-generator.
  */
 
+type WireTransform = 'trim' | 'lowercase'
+type WireFieldRule = 'ianaTimezone' | 'slugNotReserved' | 'httpUrl' | 'startsAtNotPast'
+type WireRefinement = 'optionsPair'
+
 export type WireMeta = {
   id: string
   /**
+   * JSON payloads that travel outside HTTP (Redis) carry no operation, but
+   * they are still on the wire — the generator $refs them under `x-internal`
+   * so the orphan check cannot treat them as unused.
+   */
+  internal?: boolean
+  /**
    * The cross-language validation metadata (ADR-024 C2): what the wire
-   * schema expresses beyond JSON Schema, declared once here. `generate:rules`
-   * renders it into `validation/rules_gen.py`; the Zod schemas already carry
-   * the same behavior (`.trim()`/`.toLowerCase()` in primitives, the
-   * `.superRefine` tails), so both sides derive from this one declaration.
+   * schema expresses beyond JSON Schema. For inputs it is **derived** by
+   * {@link inputValidation} from the marks the primitives carry, so a new
+   * field cannot drift from the primitive it is built from.
+   * `generate:rules` renders the result into `validation/rules_gen.py`.
    *
    * - `transforms`: per-property pre-validation transforms applied to the raw
    *   JSON object before schema validation ('trim' = jsTrim on strings and
@@ -132,12 +141,9 @@ export type WireMeta = {
    *   state must keep non-null (RFC 7386 null can erase them).
    */
   validation?: {
-    transforms?: Record<string, Array<'trim' | 'lowercase'>>
-    fieldRules?: Record<
-      string,
-      Array<'ianaTimezone' | 'slugNotReserved' | 'httpUrl' | 'startsAtNotPast'>
-    >
-    refinements?: Array<'optionsPair'>
+    transforms?: Record<string, WireTransform[]>
+    fieldRules?: Record<string, WireFieldRule[]>
+    refinements?: WireRefinement[]
     mergedRequired?: string[]
   }
 }
@@ -155,8 +161,8 @@ export function register(schema: z.ZodType, meta: WireMeta): void {
   if (WIRE_SCHEMAS[meta.id] !== undefined) {
     throw new Error(`wire: duplicate id "${meta.id}"`)
   }
-  // Aliased exports (imageUploadTarget === avatarUploadTarget) are one object;
-  // a second id for it would make identity lookup return the wrong meta.
+  // One schema object may hold only one wire id — {@link metaOfSchema} is an
+  // identity lookup, so a second registration would shadow the first meta.
   const existing = META_BY_SCHEMA.get(schema)
   if (existing !== undefined) {
     throw new Error(
@@ -175,6 +181,101 @@ export function register(schema: z.ZodType, meta: WireMeta): void {
  */
 export function metaOfSchema(schema: z.ZodType): WireMeta | undefined {
   return META_BY_SCHEMA.get(schema)
+}
+
+// ── Validation derivation ───────────────────────────────────────────────
+//
+// transforms/fieldRules follow the *primitive*, not the field: a
+// `displayName` trims wherever it appears, an `httpUrl` checks its scheme
+// wherever it appears. Marks are declared once below — not via Zod
+// `.meta()`, which writes into the global registry and would leak into the
+// OpenAPI document — and `inputValidation` resolves them through
+// optional/nullable wrappers and array elements into per-input metadata.
+
+const PRIMITIVE_VALIDATION = new Map<
+  z.ZodType,
+  { transforms?: WireTransform[]; fieldRules?: WireFieldRule[] }
+>([
+  [displayName, { transforms: ['trim'] }],
+  [priceText, { transforms: ['trim'] }],
+  [organizerDescription, { transforms: ['trim'] }],
+  [serviceDescription, { transforms: ['trim'] }],
+  [location, { transforms: ['trim'] }],
+  [contact, { transforms: ['trim'] }],
+  [optionLabel, { transforms: ['trim'] }],
+  [slug, { transforms: ['trim', 'lowercase'], fieldRules: ['slugNotReserved'] }],
+  [timezone, { fieldRules: ['ianaTimezone'] }],
+  [httpUrl, { fieldRules: ['httpUrl'] }],
+  [slotStartsAt, { fieldRules: ['startsAtNotPast'] }],
+])
+
+/**
+ * The marks a property inherits, resolved through optional/nullable/default
+ * wrappers and array elements (a `ZodArray`'s `unwrap()` yields its element,
+ * which is how `options` picks up `optionLabel`'s trim). A mark found past a
+ * `ZodArray` describes the *elements*, so only its transforms carry over — a
+ * fieldRule runs on the property value (the list), not on items.
+ */
+function fieldMarks(
+  property: z.ZodType,
+): { transforms?: WireTransform[]; fieldRules?: WireFieldRule[] } | undefined {
+  let current = property
+  let viaArray = false
+  for (;;) {
+    const marks = PRIMITIVE_VALIDATION.get(current)
+    if (marks !== undefined) {
+      if (!viaArray) return marks
+      return marks.transforms !== undefined ? { transforms: marks.transforms } : undefined
+    }
+    if (current instanceof z.ZodArray) viaArray = true
+    const unwrap = (current as z.ZodType & { unwrap?: () => z.ZodType }).unwrap
+    if (unwrap === undefined) return undefined
+    current = unwrap.call(current)
+  }
+}
+
+/**
+ * The property map of an object schema. `.refine()`/`.superRefine()` attach
+ * checks in Zod 4 and keep the `ZodObject` class, so `.shape` survives —
+ * a `.transform()`/`.pipe()` wrapper would fail loudly here instead of
+ * silently yielding no metadata.
+ */
+function shapeOf(schema: z.ZodType): Record<string, z.ZodType> {
+  if (!(schema instanceof z.ZodObject)) {
+    throw new Error('wire: validation can only be derived from an object schema')
+  }
+  return schema.shape
+}
+
+/**
+ * The validation metadata of an input schema, derived from the marks on the
+ * primitives its properties are built from. `mergedRequired: true` (update
+ * schemas) appends the keys the merged state must keep non-null — exactly the
+ * fields that reject `null`, since an explicit `null` in a merge patch would
+ * erase them (RFC 7386).
+ */
+function inputValidation(
+  schema: z.ZodType,
+  extras: { refinements?: WireRefinement[]; mergedRequired?: boolean } = {},
+): WireMeta['validation'] | undefined {
+  const shape = shapeOf(schema)
+  const transforms: Record<string, WireTransform[]> = {}
+  const fieldRules: Record<string, WireFieldRule[]> = {}
+  for (const [key, property] of Object.entries(shape)) {
+    const marks = fieldMarks(property)
+    if (marks?.transforms !== undefined) transforms[key] = marks.transforms
+    if (marks?.fieldRules !== undefined) fieldRules[key] = marks.fieldRules
+  }
+  const validation: NonNullable<WireMeta['validation']> = {}
+  if (Object.keys(transforms).length > 0) validation.transforms = transforms
+  if (Object.keys(fieldRules).length > 0) validation.fieldRules = fieldRules
+  if (extras.refinements !== undefined) validation.refinements = extras.refinements
+  if (extras.mergedRequired === true) {
+    validation.mergedRequired = Object.entries(shape)
+      .filter(([, field]) => !field.safeParse(null).success)
+      .map(([key]) => key)
+  }
+  return Object.keys(validation).length > 0 ? validation : undefined
 }
 
 // Primitives.
@@ -218,103 +319,56 @@ register(optionsSelectModeEnum, { id: 'OptionsSelectMode' })
 register(notificationRecipientEnum, { id: 'NotificationRecipient' })
 register(cancelActorEnum, { id: 'CancelActor' })
 register(appLocaleEnum, { id: 'AppLocale' })
-register(avatarContentType, { id: 'ImageContentType' })
+register(imageContentType, { id: 'ImageContentType' })
 
-// Inputs / updates. `validation` declares what the Zod builders already do
-// (ADR-024 C2); the API's decoder consumes it via validation/rules_gen.py.
-// The create/update pair of each entity shares one declaration — only the
-// update carries `mergedRequired` (RFC 7386 null can erase those keys).
-const serviceInputValidation = {
-  transforms: {
-    title: ['trim'],
-    description: ['trim'],
-    location: ['trim'],
-    contact: ['trim'],
-    defaultPrice: ['trim'],
-    options: ['trim'],
-  },
-  fieldRules: { photoUrl: ['httpUrl'] },
-  refinements: ['optionsPair'],
-} satisfies WireMeta['validation']
-const timeSlotInputValidation = {
-  transforms: { price: ['trim'] },
-  fieldRules: { startsAt: ['startsAtNotPast'] },
-} satisfies WireMeta['validation']
-
+// Inputs / updates. `validation` is derived from the primitive marks above
+// (ADR-024 C2); the API's decoder consumes the result via
+// validation/rules_gen.py. Update schemas add `mergedRequired`, computed
+// straight off their own shape.
 register(createBookingInput, {
   id: 'CreateBookingInput',
-  validation: { transforms: { guestName: ['trim'], selectedOptions: ['trim'] } },
+  validation: inputValidation(createBookingInput),
 })
-register(cancelBookingByTokenInput, { id: 'CancelBookingByTokenInput' })
-register(lookupBookingByTokenInput, { id: 'LookupBookingByTokenInput' })
+register(manageTokenInput, { id: 'ManageTokenInput' })
 register(lookupBookingsInput, { id: 'LookupBookingsInput' })
 register(cancelBookingByOrganizerInput, { id: 'CancelBookingByOrganizerInput' })
 register(createServiceInput, {
   id: 'CreateServiceInput',
-  validation: serviceInputValidation,
+  validation: inputValidation(createServiceInput, { refinements: ['optionsPair'] }),
 })
 register(updateServiceInput, {
   id: 'UpdateServiceInput',
-  validation: {
-    ...serviceInputValidation,
-    mergedRequired: [
-      'title',
-      'defaultPrice',
-      'defaultCapacity',
-      'defaultDurationMinutes',
-      'maxSeatsPerBooking',
-    ],
-  },
+  validation: inputValidation(updateServiceInput, {
+    refinements: ['optionsPair'],
+    mergedRequired: true,
+  }),
 })
 register(createTimeSlotInput, {
   id: 'CreateTimeSlotInput',
-  validation: timeSlotInputValidation,
+  validation: inputValidation(createTimeSlotInput),
 })
 register(updateTimeSlotInput, {
   id: 'UpdateTimeSlotInput',
-  validation: {
-    ...timeSlotInputValidation,
-    mergedRequired: ['startsAt', 'durationMinutes', 'capacity'],
-  },
+  validation: inputValidation(updateTimeSlotInput, { mergedRequired: true }),
 })
 register(registerOrganizerInput, {
   id: 'RegisterOrganizerInput',
-  validation: {
-    transforms: { slug: ['trim', 'lowercase'], name: ['trim'], contact: ['trim'] },
-    fieldRules: { timezone: ['ianaTimezone'], slug: ['slugNotReserved'] },
-  },
+  validation: inputValidation(registerOrganizerInput),
 })
 register(internalOrganizerLookupInput, { id: 'InternalOrganizerLookupInput' })
 register(updateOrganizerProfileInput, {
   id: 'UpdateOrganizerProfileInput',
-  validation: {
-    transforms: {
-      slug: ['trim', 'lowercase'],
-      name: ['trim'],
-      description: ['trim'],
-      location: ['trim'],
-      contact: ['trim'],
-    },
-    fieldRules: {
-      timezone: ['ianaTimezone'],
-      slug: ['slugNotReserved'],
-      photoUrl: ['httpUrl'],
-    },
-    mergedRequired: ['name', 'slug', 'timezone'],
-  },
+  validation: inputValidation(updateOrganizerProfileInput, { mergedRequired: true }),
 })
 register(updateOrganizerLanguageInput, { id: 'UpdateOrganizerLanguageInput' })
 register(createAvatarUploadInput, { id: 'CreateAvatarUploadInput' })
 register(createServicePhotoUploadInput, { id: 'CreateServicePhotoUploadInput' })
 register(telegramWidgetPayload, {
   id: 'TelegramWidgetPayload',
-  validation: { fieldRules: { photo_url: ['httpUrl'] } },
+  validation: inputValidation(telegramWidgetPayload),
 })
 
 // Records.
-// imageUploadTarget and avatarUploadTarget are one object;
-// servicePhotoContentType is the same object as avatarContentType:
-// identity lookup finds them by reference.
 register(organizerProfile, { id: 'OrganizerProfile' })
 register(publicOrganizer, { id: 'PublicOrganizer' })
 register(serviceRecord, { id: 'ServiceRecord' })
@@ -324,10 +378,10 @@ register(guestBooking, { id: 'GuestBooking' })
 register(imageUploadTarget, { id: 'ImageUploadTarget' })
 register(registeredOrganizer, { id: 'RegisteredOrganizer' })
 register(registrationResponse, { id: 'RegistrationResponse' })
-register(authTicketPayload, { id: 'AuthTicketPayload' })
+register(authTicketPayload, { id: 'AuthTicketPayload', internal: true })
 register(guestTicketResponse, { id: 'GuestTicketResponse' })
 register(authTicketResponse, { id: 'AuthTicketResponse' })
-register(loginLinkPayload, { id: 'LoginLinkPayload' })
+register(loginLinkPayload, { id: 'LoginLinkPayload', internal: true })
 register(bookingCreatedJob, { id: 'BookingCreatedJob' })
 register(bookingCancelledJob, { id: 'BookingCancelledJob' })
 
@@ -358,10 +412,3 @@ register(deletedSlotEnvelope, { id: 'DeletedSlotEnvelope' })
 register(errorBody, { id: 'ErrorBody' })
 register(validationErrors, { id: 'ValidationErrors' })
 register(invalidBody, { id: 'InvalidBody' })
-
-/**
- * JSON payloads that travel outside HTTP (Redis). They have no operation,
- * but they are still on the wire — the generator $refs them (x-internal)
- * so the orphan check cannot treat them as unused.
- */
-export const INTERNAL_RECORDS: readonly z.ZodType[] = [authTicketPayload, loginLinkPayload]

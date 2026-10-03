@@ -1,5 +1,9 @@
-"""Run the shared domain vectors in packages/contracts/vectors/domain
-(the same corpus vitest runs on the TS side)."""
+"""Run the domain vectors: the shared corpus in
+packages/contracts/vectors/domain (vitest runs the same files on the TS
+side) plus the Python-only corpus in tests_py/vectors/domain — rules the
+API enforces that have no TS callsite left to pin (can_cancel_booking,
+hash_manage_token, cancel_notification_recipient,
+validate_selected_options)."""
 
 import json
 import re
@@ -13,6 +17,7 @@ from countmein.db.serializers import can_cancel_booking
 from countmein.db.shared import hash_manage_token
 
 VECTORS_DIR = Path(__file__).resolve().parents[4] / "packages" / "contracts" / "vectors" / "domain"
+PY_ONLY_DIR = Path(__file__).resolve().parents[1] / "vectors" / "domain"
 
 # `$now±N{unit}` markers keep time-dependent vectors evergreen; the TS
 # side expands the same markers in test-helpers.ts.
@@ -41,11 +46,12 @@ def _to_utc(value: str | None) -> datetime | None:
 
 
 def _load():
-    assert VECTORS_DIR.is_dir(), f"vectors dir missing: {VECTORS_DIR}"
-    for path in sorted(VECTORS_DIR.glob("*.json")):
-        data = json.loads(path.read_text())
-        for case in data["cases"]:
-            yield pytest.param(data["fn"], case, id=f"{path.stem}/{case.get('name', '')}")
+    for vectors_dir in (VECTORS_DIR, PY_ONLY_DIR):
+        assert vectors_dir.is_dir(), f"vectors dir missing: {vectors_dir}"
+        for path in sorted(vectors_dir.glob("*.json")):
+            data = json.loads(path.read_text())
+            for case in data["cases"]:
+                yield pytest.param(data["fn"], case, id=f"{path.stem}/{case.get('name', '')}")
 
 
 @pytest.mark.parametrize(("fn", "c"), list(_load()))
@@ -101,10 +107,9 @@ def test_domain_vectors(fn, c):
 
 
 def test_hash_manage_token_parity():
-    """The lookup key is the same SHA-256 hex as the TS helper
-    (@repo/contracts/manage-token). A named test so the invariant index
-    (test_invariants.py) points at a real pin."""
-    data = json.loads((VECTORS_DIR / "hashManageToken.json").read_text())
+    """The lookup key is the SHA-256 hex of the raw token. A named test so
+    the invariant index (test_invariants.py) points at a real pin."""
+    data = json.loads((PY_ONLY_DIR / "hashManageToken.json").read_text())
     for c in data["cases"]:
         assert hash_manage_token(c["token"]) == c["expected"], f"hash mismatch: {c.get('name')}"
 

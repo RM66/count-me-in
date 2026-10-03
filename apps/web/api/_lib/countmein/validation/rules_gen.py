@@ -22,12 +22,12 @@ RULES: dict[str, dict[str, Any]] = {
         "transforms": {"guestName":["trim"],"selectedOptions":["trim"]},
     },
     "CreateServiceInput": {
-        "transforms": {"title":["trim"],"description":["trim"],"location":["trim"],"contact":["trim"],"defaultPrice":["trim"],"options":["trim"]},
+        "transforms": {"title":["trim"],"defaultPrice":["trim"],"description":["trim"],"location":["trim"],"contact":["trim"],"options":["trim"]},
         "fieldRules": {"photoUrl":["httpUrl"]},
         "refinements": ["optionsPair"],
     },
     "UpdateServiceInput": {
-        "transforms": {"title":["trim"],"description":["trim"],"location":["trim"],"contact":["trim"],"defaultPrice":["trim"],"options":["trim"]},
+        "transforms": {"title":["trim"],"defaultPrice":["trim"],"description":["trim"],"location":["trim"],"contact":["trim"],"options":["trim"]},
         "fieldRules": {"photoUrl":["httpUrl"]},
         "refinements": ["optionsPair"],
         "mergedRequired": ["title","defaultPrice","defaultCapacity","defaultDurationMinutes","maxSeatsPerBooking"],
@@ -43,11 +43,11 @@ RULES: dict[str, dict[str, Any]] = {
     },
     "RegisterOrganizerInput": {
         "transforms": {"slug":["trim","lowercase"],"name":["trim"],"contact":["trim"]},
-        "fieldRules": {"timezone":["ianaTimezone"],"slug":["slugNotReserved"]},
+        "fieldRules": {"slug":["slugNotReserved"],"timezone":["ianaTimezone"]},
     },
     "UpdateOrganizerProfileInput": {
-        "transforms": {"slug":["trim","lowercase"],"name":["trim"],"description":["trim"],"location":["trim"],"contact":["trim"]},
-        "fieldRules": {"timezone":["ianaTimezone"],"slug":["slugNotReserved"],"photoUrl":["httpUrl"]},
+        "transforms": {"name":["trim"],"slug":["trim","lowercase"],"description":["trim"],"location":["trim"],"contact":["trim"]},
+        "fieldRules": {"slug":["slugNotReserved"],"timezone":["ianaTimezone"],"photoUrl":["httpUrl"]},
         "mergedRequired": ["name","slug","timezone"],
     },
     "TelegramWidgetPayload": {

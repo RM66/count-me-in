@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { API_ROUTES } from './routes'
-import { INTERNAL_RECORDS, metaOfSchema } from './wire'
+import { metaOfSchema, WIRE_META, WIRE_SCHEMAS } from './wire'
 
 describe('API route manifest', () => {
   it('every referenced schema is registered in wire.ts', () => {
@@ -17,9 +17,15 @@ describe('API route manifest', () => {
     }
   })
 
-  it('internal records are registered in wire.ts', () => {
-    for (const schema of INTERNAL_RECORDS) {
-      expect(metaOfSchema(schema)).toBeDefined()
+  it('non-HTTP payloads are flagged internal so the spec keeps them reachable', () => {
+    const internal = Object.entries(WIRE_META)
+      .filter(([, meta]) => meta.internal === true)
+      .map(([id]) => id)
+    // The Redis payloads that exist today — a new one must opt in by flag,
+    // and a flagged schema must still be registered by identity.
+    expect(new Set(internal)).toEqual(new Set(['AuthTicketPayload', 'LoginLinkPayload']))
+    for (const id of internal) {
+      expect(metaOfSchema(WIRE_SCHEMAS[id]!)?.id).toBe(id)
     }
   })
 
@@ -33,7 +39,7 @@ describe('API route manifest', () => {
     expect(new Set(pairs).size).toBe(pairs.length)
   })
 
-  it('every route declares a 500 or is a job receiver', () => {
+  it('every route declares a 500 — the jobs receiver included (its 500 triggers a QStash retry)', () => {
     for (const route of API_ROUTES) {
       const statuses = route.responses.map((r) => r.status)
       expect(statuses, route.operationId).toContain(500)

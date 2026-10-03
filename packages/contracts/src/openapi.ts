@@ -5,7 +5,7 @@
  * [`wire.ts`](./wire.ts) (every registered schema becomes a component, id =
  * wire id), and paths are ported 1:1 from the route table in
  * [`routes.ts`](./routes.ts) — method, path, auth → `security`, rateLimit →
- * `x-rateLimit`, `INTERNAL_RECORDS` → `x-internal`.
+ * `x-rateLimit`, `internal: true` registrations → `x-internal`.
  *
  * Render directions follow usage, which matches the old generator's rule:
  * request bodies are rendered with `io: 'input'` (what a client sends),
@@ -13,12 +13,10 @@
  * returns). Schemas used in both directions keep one component because the
  * document is generated with `outputIdSuffix: ''`.
  *
- * Two overrides live here as a document-level `override` hook (they must
- * not become `.meta()` on the shared schema objects — that would write
- * into Zod's global registry and leak into every other `z.toJSONSchema`
+ * One override lives here as a document-level `override` hook (it must not
+ * become `.meta()` on the shared schema objects — that would write into
+ * Zod's global registry and leak into every other `z.toJSONSchema`
  * consumer):
- * - `SlugShape`/`Slug` — the slug pattern reaches the spec explicitly, since
- *   Zod cannot express "this refine's regex" as JSON Schema on its own;
  * - `SlotStartsAt` — the union of RFC 3339 string / epoch / Date renders
  *   more precisely as the wire's actual contract: an ISO string **or** a
  *   Unix epoch (FlexTime on the API side), which only `oneOf` can say.
@@ -31,16 +29,14 @@ import { z } from 'zod'
 import { createDocument, type ZodOpenApiOverride } from 'zod-openapi'
 
 import { SESSION_COOKIE_NAMES } from './auth'
-import { SLUG_PATTERN } from './primitives'
+import { JOB_QUEUES } from './jobs'
 import { API_ROUTES } from './routes'
-import { INTERNAL_RECORDS, metaOfSchema, WIRE_SCHEMAS } from './wire'
+import { metaOfSchema, WIRE_META, WIRE_SCHEMAS } from './wire'
 
-const slugShapeSchema = WIRE_SCHEMAS['SlugShape']
-const slugSchema = WIRE_SCHEMAS['Slug']
 const slotStartsAtSchema = WIRE_SCHEMAS['SlotStartsAt']
-if (!slugShapeSchema || !slugSchema || !slotStartsAtSchema) {
+if (!slotStartsAtSchema) {
   throw new Error(
-    'openapi: schemas "Slug", "SlugShape" and "SlotStartsAt" must stay registered in wire.ts — the OpenAPI override attaches to them',
+    'openapi: schema "SlotStartsAt" must stay registered in wire.ts — the OpenAPI override attaches to it',
   )
 }
 
@@ -59,9 +55,6 @@ function isSchema(zodSchema: unknown, candidate: unknown): boolean {
  */
 const openApiOverride: ZodOpenApiOverride = (ctx) => {
   if ('$ref' in ctx.jsonSchema) return
-  if (isSchema(ctx.zodSchema, slugShapeSchema) || isSchema(ctx.zodSchema, slugSchema)) {
-    ctx.jsonSchema.pattern = SLUG_PATTERN.source
-  }
   if (isSchema(ctx.zodSchema, slotStartsAtSchema)) {
     for (const key of Object.keys(ctx.jsonSchema)) delete ctx.jsonSchema[key]
     Object.assign(ctx.jsonSchema, {
@@ -215,14 +208,17 @@ function buildPaths(): Record<string, Record<string, unknown>> {
   }
 
   // The jobs receiver is the only requestBody that is not a single
-  // registered schema: booking.created/cancelled carry their job payloads,
-  // while demo.refresh and notification.outbox.sweep deliver an empty body
-  // (no Zod schema describes it). When adding a queue with a payload,
-  // add its $ref here alongside the enum in routes.ts — openapi.test.ts
-  // pins the mapping.
+  // registered schema: JOB_QUEUES maps each queue to its payload schema,
+  // and the schedules that carry none post an empty body.
   const runJob = paths['/api/jobs/{queue}']?.post as Record<string, unknown> | undefined
   if (!runJob) {
     throw new Error('openapi: the jobs receiver is missing from API_ROUTES')
+  }
+  const jobPayloads: { $ref: string }[] = []
+  const emptyQueues: string[] = []
+  for (const [queue, payload] of Object.entries(JOB_QUEUES)) {
+    if (payload === null) emptyQueues.push(queue)
+    else jobPayloads.push(schemaRef(payload, `runJob ${queue}`))
   }
   runJob.requestBody = {
     required: true,
@@ -230,13 +226,16 @@ function buildPaths(): Record<string, Record<string, unknown>> {
       'application/json': {
         schema: {
           oneOf: [
-            { $ref: '#/components/schemas/BookingCreatedJob' },
-            { $ref: '#/components/schemas/BookingCancelledJob' },
-            {
-              type: 'object',
-              maxProperties: 0,
-              description: 'demo.refresh and notification.outbox.sweep carry no payload',
-            },
+            ...jobPayloads,
+            ...(emptyQueues.length > 0
+              ? [
+                  {
+                    type: 'object',
+                    maxProperties: 0,
+                    description: `${new Intl.ListFormat('en', { type: 'conjunction' }).format(emptyQueues)} carry no payload`,
+                  },
+                ]
+              : []),
           ],
         },
       },
@@ -270,7 +269,9 @@ export function buildOpenApiDocument(): Record<string, unknown> {
 
   // Redis JSON payloads never appear as HTTP bodies; they still travel as
   // JSON between the API and Redis, so they are part of the wire.
-  const xInternal = INTERNAL_RECORDS.map((s, i) => schemaRef(s, `internal[${i}]`))
+  const xInternal = Object.entries(WIRE_META)
+    .filter(([, meta]) => meta.internal === true)
+    .map(([id]) => ({ $ref: `#/components/schemas/${id}` }))
   const securitySchemes = {
     sessionCookie: {
       type: 'apiKey',

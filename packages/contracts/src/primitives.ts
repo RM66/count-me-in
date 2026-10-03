@@ -64,10 +64,8 @@ export const slugShape = z
   .trim()
   .min(BOUNDS.slug.min)
   .max(BOUNDS.slug.max)
-  .transform((value) => value.toLowerCase())
-  .refine((value) => SLUG_PATTERN.test(value), {
-    message: 'slug must be lowercase letters, digits and single hyphens',
-  })
+  .toLowerCase()
+  .regex(SLUG_PATTERN, 'slug must be lowercase letters, digits and single hyphens')
 
 /** Slug as a *request*: the shape plus the registration policy. */
 export const slug = slugShape.refine((value) => !RESERVED_SLUG_SET.has(value), {

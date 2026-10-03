@@ -10,8 +10,7 @@
     ".": "./src/index.ts",
     "./wire": "./src/wire.ts",
     "./routes": "./src/routes.ts",
-    "./openapi": "./src/openapi.ts",
-    "./manage-token": "./src/manage-token.ts"
+    "./openapi": "./src/openapi.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

@@ -14,7 +14,7 @@ from countmein.contracts.constants_gen import (
     QUEUE_BOOKING_CANCELLED,
     QUEUE_BOOKING_CREATED,
     QUEUE_DEMO_REFRESH,
-    QUEUE_OUTBOX_SWEEP,
+    QUEUE_NOTIFICATION_OUTBOX_SWEEP,
 )
 from countmein.jobs.telegram import (
     TelegramTransientError,
@@ -96,7 +96,7 @@ async def test_run_job_valid_payload_reaches_env_check(monkeypatch):
 
 
 async def test_parse_job_schedule_queues_accept_empty_body():
-    for queue in (QUEUE_DEMO_REFRESH, QUEUE_OUTBOX_SWEEP):
+    for queue in (QUEUE_DEMO_REFRESH, QUEUE_NOTIFICATION_OUTBOX_SWEEP):
         for body in (None, b"{}", b'{"anything":1}'):
             run.parse_job(queue, body)  # must not raise
     for queue in (QUEUE_BOOKING_CREATED, QUEUE_BOOKING_CANCELLED):

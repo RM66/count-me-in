@@ -75,6 +75,20 @@ describe('timeSlotFormSchema', () => {
     expect(parsed.startsAt.toISOString()).toBe(past)
   })
 
+  it('compares originalStartsAt at minute precision — stored seconds stay untouched', () => {
+    // A slot written via the API can carry seconds; the time input drops
+    // them, so the stored instant must floor-compare — otherwise a past
+    // slot like this could never be saved again.
+    const parsed = timeSlotFormSchema(TZ, {
+      originalStartsAt: '2020-01-01T06:00:30.000Z',
+    }).parse({
+      ...validValues,
+      date: '2020-01-01',
+      time: '07:00',
+    })
+    expect(parsed.startsAt.toISOString()).toBe('2020-01-01T06:00:00.000Z')
+  })
+
   it('rejects malformed date and time fields', () => {
     expect(timeSlotFormSchema(TZ).safeParse({ ...validValues, date: '' }).success).toBe(false)
     expect(timeSlotFormSchema(TZ).safeParse({ ...validValues, time: 'morning' }).success).toBe(
@@ -154,10 +168,83 @@ describe('toCreateTimeSlotInput / toUpdateTimeSlotInput', () => {
     expect(toCreateTimeSlotInput(parsed).price).toBe('15 EUR')
   })
 
-  it('update drops serviceId and keeps price null (clear the override)', () => {
-    const parsed = timeSlotFormSchema(TZ).parse(validValues)
-    const input = toUpdateTimeSlotInput(parsed)
-    expect(input).not.toHaveProperty('serviceId')
-    expect(input.price).toBeNull()
+  it('update emits only changed fields — an unchanged startsAt stays out of the patch', () => {
+    // The stored slot is already in the past: resending startsAt would
+    // re-trigger the not-in-the-past rule server-side and 400 the save.
+    const slot = {
+      serviceId: 'svc-abc123xyz',
+      startsAt: '2020-01-01T06:00:00.000Z',
+      durationMinutes: 60,
+      capacity: 10,
+      price: null,
+    } as unknown as TimeSlotRecord
+    const parsed = timeSlotFormSchema(TZ, { originalStartsAt: slot.startsAt }).parse({
+      ...validValues,
+      date: '2020-01-01',
+      time: '07:00',
+      capacity: '25',
+    })
+    const patch = toUpdateTimeSlotInput(parsed, slot)
+    expect(patch).toEqual({ capacity: 25 })
+  })
+
+  it('update omits startsAt when only sub-minute precision differs', () => {
+    // API-written slot carrying seconds: the form shows the same HH:mm,
+    // so the diff must not emit startsAt — for a past slot it would 400,
+    // and for any slot it would silently truncate the stored instant.
+    const slot = {
+      serviceId: 'svc-abc123xyz',
+      startsAt: '2020-01-01T06:00:30.000Z',
+      durationMinutes: 60,
+      capacity: 10,
+      price: null,
+    } as unknown as TimeSlotRecord
+    const parsed = timeSlotFormSchema(TZ, { originalStartsAt: slot.startsAt }).parse({
+      ...validValues,
+      date: '2020-01-01',
+      time: '07:00',
+      capacity: '25',
+    })
+    expect(toUpdateTimeSlotInput(parsed, slot)).toEqual({ capacity: 25 })
+  })
+
+  it('update is empty when nothing changed', () => {
+    const slot = {
+      serviceId: 'svc-abc123xyz',
+      startsAt: '2030-07-25T05:00:00.000Z',
+      durationMinutes: 60,
+      capacity: 10,
+      price: null,
+    } as unknown as TimeSlotRecord
+    const parsed = timeSlotFormSchema(TZ, { originalStartsAt: slot.startsAt }).parse(validValues)
+    expect(toUpdateTimeSlotInput(parsed, slot)).toEqual({})
+  })
+
+  it('update sends price: null only when the override is actually cleared', () => {
+    const slot = {
+      serviceId: 'svc-abc123xyz',
+      startsAt: '2030-07-25T05:00:00.000Z',
+      durationMinutes: 60,
+      capacity: 10,
+      price: '15 EUR',
+    } as unknown as TimeSlotRecord
+    const parsed = timeSlotFormSchema(TZ, { originalStartsAt: slot.startsAt }).parse(validValues)
+    expect(toUpdateTimeSlotInput(parsed, slot)).toEqual({ price: null })
+  })
+
+  it('update sends startsAt when the instant actually moved', () => {
+    const slot = {
+      serviceId: 'svc-abc123xyz',
+      startsAt: '2030-07-25T05:00:00.000Z',
+      durationMinutes: 60,
+      capacity: 10,
+      price: null,
+    } as unknown as TimeSlotRecord
+    const parsed = timeSlotFormSchema(TZ, { originalStartsAt: slot.startsAt }).parse({
+      ...validValues,
+      time: '08:30',
+    })
+    const patch = toUpdateTimeSlotInput(parsed, slot)
+    expect(patch.startsAt?.toISOString()).toBe('2030-07-25T06:30:00.000Z')
   })
 })

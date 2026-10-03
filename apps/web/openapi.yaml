@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+a9b0e269c5c5
+  version: 1.0.0+86094f1673f4
 servers:
   - url: https://countmein.group
     description: Production
@@ -947,7 +947,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CancelBookingByTokenInput"
+              $ref: "#/components/schemas/ManageTokenInput"
       responses:
         "200":
           description: Booking cancelled
@@ -1000,7 +1000,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LookupBookingByTokenInput"
+              $ref: "#/components/schemas/ManageTokenInput"
       responses:
         "200":
           description: Guest booking details
@@ -1409,13 +1409,6 @@ components:
           $ref: "#/components/schemas/UUID"
       required:
         - bookingId
-    CancelBookingByTokenInput:
-      type: object
-      properties:
-        manageToken:
-          $ref: "#/components/schemas/ManageToken"
-      required:
-        - manageToken
     Capacity:
       type: integer
       minimum: 1
@@ -1715,13 +1708,6 @@ components:
       required:
         - organizerId
         - next
-    LookupBookingByTokenInput:
-      type: object
-      properties:
-        manageToken:
-          $ref: "#/components/schemas/ManageToken"
-      required:
-        - manageToken
     LookupBookingsInput:
       type: object
       properties:
@@ -1733,6 +1719,13 @@ components:
       type: string
       minLength: 10
       maxLength: 200
+    ManageTokenInput:
+      type: object
+      properties:
+        manageToken:
+          $ref: "#/components/schemas/ManageToken"
+      required:
+        - manageToken
     MaxSeatsPerBooking:
       type: integer
       minimum: 1

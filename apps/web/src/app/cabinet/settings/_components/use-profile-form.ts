@@ -2,7 +2,7 @@ import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import type { OrganizerFormOutput, OrganizerFormValues, OrganizerProfile } from '@repo/contracts'
 import {
   AVATAR_MAX_BYTES,
-  avatarContentType,
+  imageContentType,
   organizerFormSchema,
   toOrganizerFormValues,
   toOrganizerProfilePatch,
@@ -47,7 +47,7 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
   const { isDirty } = form.formState
 
   const avatar = useImageUpload({
-    contentType: avatarContentType,
+    contentType: imageContentType,
     maxBytes: AVATAR_MAX_BYTES,
     maxBytesLabel: '5 MB',
     mutation: useUploadAvatar(),

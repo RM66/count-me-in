@@ -24,5 +24,5 @@
       "valid": false
     }
   ],
-  "schema": "LookupBookingByTokenInput"
+  "schema": "ManageTokenInput"
 }

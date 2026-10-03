@@ -31,7 +31,7 @@ from ..contracts.constants_gen import (
     QUEUE_BOOKING_CANCELLED,
     QUEUE_BOOKING_CREATED,
     QUEUE_DEMO_REFRESH,
-    QUEUE_OUTBOX_SWEEP,
+    QUEUE_NOTIFICATION_OUTBOX_SWEEP,
 )
 from .booking_cancelled import handle_booking_cancelled
 from .booking_created import handle_booking_created
@@ -84,7 +84,7 @@ _PAYLOAD_QUEUES: dict[str, _PayloadQueue] = {
 }
 _SCHEDULE_QUEUES: dict[str, Callable[[], Awaitable[None]]] = {
     QUEUE_DEMO_REFRESH: handle_demo_refresh,
-    QUEUE_OUTBOX_SWEEP: handle_outbox_sweep,
+    QUEUE_NOTIFICATION_OUTBOX_SWEEP: handle_outbox_sweep,
 }
 
 

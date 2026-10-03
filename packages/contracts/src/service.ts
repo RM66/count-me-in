@@ -17,6 +17,18 @@ import {
   uuid,
 } from './primitives'
 
+/**
+ * What the cabinet seeds a fresh service (and a service-less slot form) with.
+ * `maxSeatsPerBooking` mirrors the DB column default (`server_default=1`) —
+ * an organizer opts into group bookings by raising it; the other two are
+ * required columns with no database default.
+ */
+export const SERVICE_DEFAULTS = {
+  capacity: 10,
+  durationMinutes: 60,
+  maxSeatsPerBooking: 1,
+} as const
+
 /** Columns a service must always have — never clearable via patch. */
 const requiredServiceFields = {
   title: displayName,

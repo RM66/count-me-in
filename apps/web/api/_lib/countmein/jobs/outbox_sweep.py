@@ -2,7 +2,7 @@
 
 The inline publish after a booking commit can fail silently (function
 killed, network drop), leaving the transactional outbox row `pending`.
-This handler — invoked by a QStash cron schedule (QUEUE_OUTBOX_SWEEP) —
+This handler — invoked by a QStash cron schedule (QUEUE_NOTIFICATION_OUTBOX_SWEEP) —
 re-publishes `pending` rows past a grace period to their original
 queue, marking them `sent` on success.
 

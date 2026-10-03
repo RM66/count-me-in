@@ -67,12 +67,12 @@ One file per entity, each holding its input, update, and record schemas built fr
 
 Rules that are **isomorphic** — the public page, the cabinet, and the notification worker must all agree — live here, not in `apps/web`:
 
-- [`time-slot.ts`](src/time-slot.ts) — [`seatsLeft()`](src/time-slot.ts:105), [`fillLabel()`](src/time-slot.ts:119), [`slotEnd()`](src/time-slot.ts:147), [`slotPrice()`](src/time-slot.ts:157).
-- [`service.ts`](src/service.ts) — [`effectiveLocation()`](src/service.ts:128), [`effectiveContact()`](src/service.ts:136) (service overrides organizer).
-- [`options.ts`](src/options.ts) — [`buildSelectedOptionsSchema()`](src/options.ts:39) (validates a booking's options against a concrete service).
-- [`timezone.ts`](src/timezone.ts) — [`wallClockToInstant()`](src/timezone.ts:73), [`instantToWallClockInputs()`](src/timezone.ts:94) (wall-clock ↔ instant for a named zone).
-- [`jobs.ts`](src/jobs.ts) — [`cancelNotificationRecipient()`](src/jobs.ts:76).
-- [`demo.ts`](src/demo.ts) — [`isDemoOrganizerId()`](src/demo.ts:52).
+- [`time-slot.ts`](src/time-slot.ts) — [`seatsLeft()`](src/time-slot.ts:123), [`fillLabel()`](src/time-slot.ts:137), [`slotEnd()`](src/time-slot.ts:165), [`slotPrice()`](src/time-slot.ts:175).
+- [`service.ts`](src/service.ts) — [`effectiveLocation()`](src/service.ts:151), [`effectiveContact()`](src/service.ts:159) (service overrides organizer).
+- [`options.ts`](src/options.ts) — `optionsList` / `uniqueOptionLabels()` / `selectedOptionsShape`. Checking a booking's options against a concrete service is API-side (`validate_selected_options`, pinned by the domain vectors).
+- [`timezone.ts`](src/timezone.ts) — [`wallClockToInstant()`](src/timezone.ts:91), [`parseWallClockInputs()`](src/timezone.ts:113), [`instantToWallClockInputs()`](src/timezone.ts:125) (wall-clock ↔ instant for a named zone).
+- [`jobs.ts`](src/jobs.ts) — `JOB_QUEUES`: every queue name mapped to its payload schema (or `null` for the empty-body schedules).
+- [`demo.ts`](src/demo.ts) — [`isDemoOrganizerId()`](src/demo.ts:48).
 
 ### Form schemas (`*-form.ts`)
 
@@ -92,7 +92,7 @@ Two mechanisms keep TypeScript and the API in lockstep:
 Single JSON test sets, run by **both** vitest and pytest:
 
 - [`vectors/validation/`](vectors/validation) — one file per input/update schema. Each case carries a body and the expected `valid`, `fieldErrors` keys, and `formErrors` count. Comparison is structural, never message text (the API deliberately deviates on messages like `"Required"`).
-- [`vectors/domain/`](vectors/domain) — one file per domain function (`seatsLeft`, `slotPrice`, `matchLocale`, `effectiveLocation`, …).
+- [`vectors/domain/`](vectors/domain) — one file per domain function (`seatsLeft`, `slotPrice`, `matchLocale`, `effectiveLocation`, …). Rules with no TS callsite left (`can_cancel_booking`, `hash_manage_token`, `cancel_notification_recipient`, `validate_selected_options`) keep their corpus in [`apps/web/tests_py/vectors/domain/`](../../apps/web/tests_py/vectors/domain), run by pytest alone — the Python side is the one that enforces them.
 
 A coverage test in [`vectors.test.ts`](src/vectors.test.ts) fails if any input/update schema lacks a vector file, a valid case, or per-field error cases.
 
@@ -109,7 +109,7 @@ Golden JSON per record lives in [`apps/web/tests_py/contracts/golden/`](../../ap
 
 Three steps (from [ADR-014](../../docs/decisions/014-contracts-wire-registry.md), [ADR-015](../../docs/decisions/015-api-route-manifest.md), [ADR-016](../../docs/decisions/016-standard-openapi-codegen.md)):
 
-1. **Build it from registered primitives and `register()` it in [`wire.ts`](src/wire.ts).** Forgetting fails the completeness test in [`wire.test.ts`](src/wire.test.ts). If the API needs a hand-written refinement, add it in [`apps/web/api/_lib/countmein/validation/refine.py`](../../apps/web/api/_lib/countmein/validation/refine.py) and call it from the matching decode entry point in [`decode.py`](../../apps/web/api/_lib/countmein/validation/decode.py).
+1. **Build it from registered primitives and `register()` it in [`wire.ts`](src/wire.ts).** Forgetting fails the completeness test in [`wire.test.ts`](src/wire.test.ts). If the API needs a hand-written refinement, add it in [`apps/web/api/_lib/countmein/validation/refine.py`](../../apps/web/api/_lib/countmein/validation/refine.py) and call it from the matching decode entry point in [`validation/decode/`](../../apps/web/api/_lib/countmein/validation/decode).
 2. **Regenerate:** `bun run generate:py` (from `apps/web`; runs generate:i18n:py + generate:openapi + generate:constants + generate-py-models.sh). Then add a validation vector in [`vectors/validation/{Id}.json`](vectors/validation) (else the coverage test is red), and for records a golden sample in [`apps/web/tests_py/contracts/golden/{Id}.json`](../../apps/web/tests_py/contracts/golden) (else `test_golden_coverage` is red).
 3. **If it crosses the wire, add the operation to [`src/routes.ts`](src/routes.ts)** — the generated router and spec derive from it, so a schema without a route is an orphan.
 

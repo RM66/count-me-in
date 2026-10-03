@@ -11,12 +11,8 @@ def decode_create_booking_input(body: bytes) -> gen.CreateBookingInput:
     return decode_input(gen.CreateBookingInput, "CreateBookingInput", body)
 
 
-def decode_cancel_booking_by_token_input(body: bytes) -> gen.CancelBookingByTokenInput:
-    return decode_input(gen.CancelBookingByTokenInput, "CancelBookingByTokenInput", body)
-
-
-def decode_lookup_booking_by_token_input(body: bytes) -> gen.LookupBookingByTokenInput:
-    return decode_input(gen.LookupBookingByTokenInput, "LookupBookingByTokenInput", body)
+def decode_manage_token_input(body: bytes) -> gen.ManageTokenInput:
+    return decode_input(gen.ManageTokenInput, "ManageTokenInput", body)
 
 
 def decode_lookup_bookings_input(body: bytes) -> gen.LookupBookingsInput:

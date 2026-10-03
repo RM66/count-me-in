@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { bookingRecord, guestBooking } from './booking'
-import { organizerProfile, publicOrganizer } from './organizer'
+import { organizerProfile, publicOrganizer, registeredOrganizer } from './organizer'
 import { serviceId, uuid } from './primitives'
 import {
   analyticsSummaryRecord,
@@ -68,6 +68,12 @@ export type GuestBookingsEnvelope = z.infer<typeof guestBookingsEnvelope>
 
 export const organizerEnvelope = z.object({ organizer: organizerProfile })
 export type OrganizerEnvelope = z.infer<typeof organizerEnvelope>
+
+/** Response of `POST /api/organizers`: the freshly created organizer. */
+export const registrationResponse = z.object({
+  organizer: registeredOrganizer,
+})
+export type RegistrationResponse = z.infer<typeof registrationResponse>
 
 export const deletedServiceEnvelope = z.object({ id: serviceId })
 export type DeletedServiceEnvelope = z.infer<typeof deletedServiceEnvelope>

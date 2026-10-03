@@ -5,12 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { loginLinkKey } from './auth'
-import { canCancelBooking } from './booking'
 import { isDemoOrganizerId } from './demo'
 import { matchLocale } from './i18n'
-import { cancelNotificationRecipient } from './jobs'
-import { hashManageToken } from './manage-token'
-import { buildSelectedOptionsSchema } from './options'
 import { API_ROUTES } from './routes'
 import { effectiveContact, effectiveLocation } from './service'
 import { expandNowMarkers } from './test-helpers'
@@ -122,19 +118,6 @@ describe('domain vectors', () => {
               )
               break
             }
-            case 'validateSelectedOptions': {
-              const schema = buildSelectedOptionsSchema({
-                options: (c.serviceOptions as string[] | null) ?? null,
-                optionsSelectMode: (c.selectMode as 'single' | 'multi' | null) ?? null,
-              })
-              const input = c.selected === null || c.selected === undefined ? undefined : c.selected
-              const result = schema.safeParse(input)
-              expect(result.success, name).toBe(c.valid)
-              if (result.success && 'expectedSelected' in c) {
-                expect(result.data, name).toEqual(c.expectedSelected)
-              }
-              break
-            }
             case 'seatsLeft': {
               expect(
                 seatsLeft({
@@ -175,31 +158,8 @@ describe('domain vectors', () => {
               ).toBe((c.expected as string | null) ?? undefined)
               break
             }
-            case 'cancelNotificationRecipient': {
-              expect(
-                cancelNotificationRecipient(c.cancelledBy as 'guest' | 'organizer'),
-                name,
-              ).toBe(c.expected)
-              break
-            }
             case 'loginLinkKey': {
               expect(loginLinkKey(c.token as string), name).toBe(c.expected)
-              break
-            }
-            case 'hashManageToken': {
-              expect(hashManageToken(c.token as string), name).toBe(c.expected)
-              break
-            }
-            case 'canCancelBooking': {
-              const expanded = expandNowMarkers(c) as {
-                status: 'confirmed' | 'cancelled'
-                expiresAt?: string | null
-              }
-              const expiresAt =
-                expanded.expiresAt === null || expanded.expiresAt === undefined
-                  ? null
-                  : new Date(expanded.expiresAt)
-              expect(canCancelBooking(expanded.status, expiresAt), name).toBe(c.expected)
               break
             }
             case 'isDemoOrganizerId': {

@@ -1,72 +1,35 @@
 import { z } from 'zod'
 
-import type { OptionsSelectMode } from './enums'
 import { optionLabel } from './primitives'
 
 /** Max options a single service may offer. */
 export const OPTIONS_MAX = 50
 
 /**
- * Shape-level cap on a booking's `selectedOptions`. The semantic check
- * (`buildSelectedOptionsSchema` / `ValidateSelectedOptions`) bounds a real
- * selection to the service's own list; this only rejects absurd payloads
- * before the service is loaded. Equal to {@link OPTIONS_MAX} by necessity:
+ * Option labels constrained to a unique list — the shared base of
+ * {@link optionsList}, which additionally requires non-empty, and of the
+ * service form's options field, where an empty list is legal input.
+ * A factory, not a shared instance: every exported Zod schema must be a
+ * registered wire shape, and this base is only a building block.
+ */
+export function uniqueOptionLabels(): z.ZodArray<typeof optionLabel> {
+  return z
+    .array(optionLabel)
+    .max(OPTIONS_MAX)
+    .refine((values) => new Set(values).size === values.length, {
+      message: 'options must be unique',
+    })
+}
+
+/** Allowed option labels on a service: unique, non-empty list. */
+export const optionsList = uniqueOptionLabels().min(1)
+
+/**
+ * Shape-only schema for a booking's chosen options. The semantic check
+ * (`validate_selected_options` in the API) bounds a real selection to the
+ * service's own list; this only rejects absurd payloads before the service
+ * is loaded. Bounded by {@link OPTIONS_MAX} by necessity:
  * a service can never offer more options than that, so a larger selection
  * is always invalid.
  */
-export const SELECTED_OPTIONS_MAX = OPTIONS_MAX
-
-/** Allowed option labels on a service: unique, non-empty list. */
-export const optionsList = z
-  .array(optionLabel)
-  .min(1)
-  .max(OPTIONS_MAX)
-  .refine((values) => new Set(values).size === values.length, {
-    message: 'options must be unique',
-  })
-
-/** Shape-only schema for a booking's chosen options (semantic check needs the service). */
-export const selectedOptionsShape = z.array(optionLabel).max(SELECTED_OPTIONS_MAX)
-
-interface ServiceOptionsConfig {
-  options?: string[] | null
-  optionsSelectMode?: OptionsSelectMode | null
-}
-
-/**
- * Builds a schema validating a booking's `selectedOptions` against a concrete service.
- * - No service options → selection must be empty (normalized to `null`).
- * - `single` → at most one; `multi` → any subset. Values must exist and be unique.
- */
-export function buildSelectedOptionsSchema({ options, optionsSelectMode }: ServiceOptionsConfig) {
-  const allowed = new Set(options ?? [])
-  const hasOptions = allowed.size > 0
-
-  return z
-    .array(optionLabel)
-    .optional()
-    .transform((values) => values ?? [])
-    .superRefine((values, ctx) => {
-      if (!hasOptions) {
-        if (values.length > 0) {
-          ctx.addIssue({ code: 'custom', message: 'this service has no options to select' })
-        }
-        return
-      }
-      if (new Set(values).size !== values.length) {
-        ctx.addIssue({ code: 'custom', message: 'selectedOptions must not contain duplicates' })
-      }
-      for (const value of values) {
-        if (!allowed.has(value)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `option "${value}" is not offered by this service`,
-          })
-        }
-      }
-      if (optionsSelectMode === 'single' && values.length > 1) {
-        ctx.addIssue({ code: 'custom', message: 'this service allows selecting only one option' })
-      }
-    })
-    .transform((values) => (values.length > 0 ? values : null))
-}
+export const selectedOptionsShape = z.array(optionLabel).max(OPTIONS_MAX)

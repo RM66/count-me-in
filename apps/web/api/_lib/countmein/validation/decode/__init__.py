@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from .booking import (
     decode_cancel_booking_by_organizer_input,
-    decode_cancel_booking_by_token_input,
     decode_create_booking_input,
-    decode_lookup_booking_by_token_input,
     decode_lookup_bookings_input,
+    decode_manage_token_input,
 )
 from .organizer import (
     decode_create_avatar_upload_input,
@@ -38,8 +37,7 @@ from .slot import (
 # vectors with no test edit: add its decode_* here under its wire id.
 DECODERS = {
     "CreateBookingInput": decode_create_booking_input,
-    "CancelBookingByTokenInput": decode_cancel_booking_by_token_input,
-    "LookupBookingByTokenInput": decode_lookup_booking_by_token_input,
+    "ManageTokenInput": decode_manage_token_input,
     "LookupBookingsInput": decode_lookup_bookings_input,
     "CancelBookingByOrganizerInput": decode_cancel_booking_by_organizer_input,
     "CreateServiceInput": decode_create_service_input,
@@ -58,15 +56,14 @@ DECODERS = {
 __all__ = [
     "DECODERS",
     "decode_cancel_booking_by_organizer_input",
-    "decode_cancel_booking_by_token_input",
     "decode_create_avatar_upload_input",
     "decode_create_booking_input",
     "decode_create_service_input",
     "decode_create_service_photo_upload_input",
     "decode_create_time_slot_input",
     "decode_internal_organizer_lookup_input",
-    "decode_lookup_booking_by_token_input",
     "decode_lookup_bookings_input",
+    "decode_manage_token_input",
     "decode_merged_organizer_input",
     "decode_merged_service_input",
     "decode_merged_slot_input",

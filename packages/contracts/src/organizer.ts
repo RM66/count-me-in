@@ -48,12 +48,6 @@ export const registeredOrganizer = z.object({
 })
 export type RegisteredOrganizer = z.infer<typeof registeredOrganizer>
 
-/** Response of `POST /api/organizers`: the freshly created organizer. */
-export const registrationResponse = z.object({
-  organizer: registeredOrganizer,
-})
-export type RegistrationResponse = z.infer<typeof registrationResponse>
-
 /** Organizer profile as returned by the API (cabinet). Dates are ISO strings. */
 export const organizerProfile = z.object({
   id: uuid,
@@ -81,25 +75,21 @@ export type OrganizerProfile = z.infer<typeof organizerProfile>
 
 /**
  * An organizer as the **public booking pages** see them (`/{orgSlug}`).
- * A deliberately narrower projection than {@link organizerProfile}: messenger
+ * A deliberately narrower projection of {@link organizerProfile}: messenger
  * identity is the login credential (ADR-008) and `createdAt` is bookkeeping,
- * so neither may cross to an unauthenticated visitor.
+ * so neither may cross to an unauthenticated visitor — the projection cannot
+ * drift from the source record.
  */
-export const publicOrganizer = z.object({
-  id: uuid,
-  slug: slugShape,
-  name: displayName,
-  timezone,
-  description: z.string().nullable(),
-  photoUrl: z.string().nullable(),
-  location: z.string().nullable(),
-  contact: z.string().nullable(),
-  /**
-   * Read-only demo account (ADR-010), derived server-side from
-   * `DEMO_ORGANIZER_ID`. The public page uses it to warn guests before the
-   * booking flow; enforcement still lives in the API.
-   */
-  isDemo: z.boolean(),
+export const publicOrganizer = organizerProfile.pick({
+  id: true,
+  slug: true,
+  name: true,
+  timezone: true,
+  description: true,
+  photoUrl: true,
+  location: true,
+  contact: true,
+  isDemo: true,
 })
 export type PublicOrganizer = z.infer<typeof publicOrganizer>
 

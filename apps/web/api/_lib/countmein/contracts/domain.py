@@ -81,10 +81,11 @@ def validate_selected_options(
 ) -> list[str] | None:
     """Check a booking's selectedOptions against a concrete service.
 
-    Mirror of buildSelectedOptionsSchema in packages/contracts/src/options.ts
-    — error strings are intentionally identical; parity is pinned by the
-    validateSelectedOptions domain vectors. Returns None on success, or
-    raises ValueError with the mirrored message.
+    The rule lives only here — the TS side shape-checks the field and the
+    semantic check needs the stored service anyway. Pinned by the
+    validateSelectedOptions domain vectors (tests_py/vectors/domain).
+    Returns the normalized selection (None when empty), or raises
+    ValueError with the rejection reason.
     """
     allowed = set(service_options)
     if not allowed:

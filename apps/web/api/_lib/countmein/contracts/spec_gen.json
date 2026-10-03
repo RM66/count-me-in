@@ -3,7 +3,7 @@
   "info": {
     "title": "CountMeIn API",
     "description": "API for group booking, organizer cabinet management, and notifications.",
-    "version": "1.0.0+a9b0e269c5c5"
+    "version": "1.0.0+86094f1673f4"
   },
   "servers": [
     {
@@ -1570,7 +1570,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelBookingByTokenInput"
+                "$ref": "#/components/schemas/ManageTokenInput"
               }
             }
           }
@@ -1656,7 +1656,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LookupBookingByTokenInput"
+                "$ref": "#/components/schemas/ManageTokenInput"
               }
             }
           }
@@ -2281,17 +2281,6 @@
           "bookingId"
         ]
       },
-      "CancelBookingByTokenInput": {
-        "type": "object",
-        "properties": {
-          "manageToken": {
-            "$ref": "#/components/schemas/ManageToken"
-          }
-        },
-        "required": [
-          "manageToken"
-        ]
-      },
       "Capacity": {
         "type": "integer",
         "minimum": 1,
@@ -2725,17 +2714,6 @@
           "next"
         ]
       },
-      "LookupBookingByTokenInput": {
-        "type": "object",
-        "properties": {
-          "manageToken": {
-            "$ref": "#/components/schemas/ManageToken"
-          }
-        },
-        "required": [
-          "manageToken"
-        ]
-      },
       "LookupBookingsInput": {
         "type": "object",
         "properties": {
@@ -2751,6 +2729,17 @@
         "type": "string",
         "minLength": 10,
         "maxLength": 200
+      },
+      "ManageTokenInput": {
+        "type": "object",
+        "properties": {
+          "manageToken": {
+            "$ref": "#/components/schemas/ManageToken"
+          }
+        },
+        "required": [
+          "manageToken"
+        ]
       },
       "MaxSeatsPerBooking": {
         "type": "integer",

@@ -18,19 +18,13 @@ import {
   DEMO_ORGANIZER_ID,
   DEMO_ORGANIZER_SLUG,
   DEMO_READ_ONLY_CODE,
-  DEMO_READ_ONLY_MESSAGE,
   DEMO_SERVICE_IDS,
+  JOB_QUEUES,
   ORGANIZER_AUTH_AUD,
   ORGANIZER_AUTH_ISS,
 } from '@repo/contracts'
 import { LOGIN_LINK_KEY_PREFIX, LOGIN_LINK_TTL_S } from '@repo/contracts'
 import { DEFAULT_LOCALE, LOCALES } from '@repo/contracts'
-import {
-  QUEUE_BOOKING_CANCELLED,
-  QUEUE_BOOKING_CREATED,
-  QUEUE_DEMO_REFRESH,
-  QUEUE_OUTBOX_SWEEP,
-} from '@repo/contracts'
 import { SLOT_START_IN_PAST_MESSAGE, SLOT_START_TOLERANCE_MS } from '@repo/contracts'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -45,6 +39,12 @@ function pyStringList(values: readonly string[]): string {
   return `[${values.map((v) => pyString(v)).join(', ')}]`
 }
 
+// QUEUE_* names derive mechanically from the queue segment — JOB_QUEUES is
+// the single source of truth for the queue list.
+const queueConstants = Object.keys(JOB_QUEUES)
+  .map((queue) => `QUEUE_${queue.toUpperCase().replace(/[^A-Z0-9]+/g, '_')} = ${pyString(queue)}`)
+  .join('\n')
+
 // Python target (ADR-021). Names are SCREAMING_SNAKE;
 // hand-written code lives in domain.py / payloads.py.
 const pyContent = `# Generated from packages/contracts via scripts/generate-constants.ts
@@ -55,16 +55,13 @@ const pyContent = `# Generated from packages/contracts via scripts/generate-cons
 DEMO_ORGANIZER_ID = ${pyString(DEMO_ORGANIZER_ID)}
 DEMO_ORGANIZER_SLUG = ${pyString(DEMO_ORGANIZER_SLUG)}
 DEMO_READ_ONLY_CODE = ${pyString(DEMO_READ_ONLY_CODE)}
-DEMO_READ_ONLY_MESSAGE = ${pyString(DEMO_READ_ONLY_MESSAGE)}
 DEMO_SERVICE_YOGA = ${pyString(DEMO_SERVICE_IDS.yoga)}
 DEMO_SERVICE_POTTERY = ${pyString(DEMO_SERVICE_IDS.pottery)}
 DEMO_SERVICE_BREATHWORK = ${pyString(DEMO_SERVICE_IDS.breathwork)}
 
-# QStash queues (ADR-012).
-QUEUE_BOOKING_CREATED = ${pyString(QUEUE_BOOKING_CREATED)}
-QUEUE_BOOKING_CANCELLED = ${pyString(QUEUE_BOOKING_CANCELLED)}
-QUEUE_DEMO_REFRESH = ${pyString(QUEUE_DEMO_REFRESH)}
-QUEUE_OUTBOX_SWEEP = ${pyString(QUEUE_OUTBOX_SWEEP)}
+# QStash queues (ADR-012) — one constant per JOB_QUEUES entry, so a queue
+# added to the manifest lands here without a second edit.
+${queueConstants}
 
 # One-time login links. The prefix is generated from the TS constant, so the
 # Python writer and the TS reader cannot disagree on the Redis key.

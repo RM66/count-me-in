@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-import type { BookingStatus } from './enums'
 import { bookingStatusEnum, messengerEnum } from './enums'
 import { appLocaleEnum, DEFAULT_LOCALE } from './i18n'
 import { selectedOptionsShape } from './options'
@@ -12,8 +11,8 @@ import { timeSlotRecord } from './time-slot'
 /**
  * Public booking request (ADR-008). Guest identity is derived from the
  * `guestTicket` server-side — never trusted from the client.
- * `selectedOptions` is shape-validated here; validate against the concrete
- * service with `buildSelectedOptionsSchema` before inserting (invariant 6).
+ * `selectedOptions` is shape-validated here; the API validates against the
+ * concrete service before inserting (`validate_selected_options`, invariant 6).
  *
  * `guestLocale` is the language the guest's confirmation message is rendered
  * in (ADR-011): captured at booking time because the worker has no other way
@@ -30,13 +29,13 @@ export const createBookingInput = z.object({
 })
 export type CreateBookingInput = z.infer<typeof createBookingInput>
 
-/** Cancel via the messenger deep-link token. */
-export const cancelBookingByTokenInput = z.object({ manageToken })
-export type CancelBookingByTokenInput = z.infer<typeof cancelBookingByTokenInput>
-
-/** Look up a booking via the guest's manageToken (in body to avoid URL leaks). */
-export const lookupBookingByTokenInput = z.object({ manageToken })
-export type LookupBookingByTokenInput = z.infer<typeof lookupBookingByTokenInput>
+/**
+ * The `manageToken` credential in a request body (in body to keep it out of
+ * logs and `Referer` headers). Shared by the cancel and booking-lookup
+ * endpoints — the payload is the same secret either way.
+ */
+export const manageTokenInput = z.object({ manageToken })
+export type ManageTokenInput = z.infer<typeof manageTokenInput>
 
 /**
  * Look up the bookings of a messenger identity (ADR-002, entry path 2).
@@ -80,6 +79,8 @@ export type BookingRecord = z.infer<typeof bookingRecord>
  * goes through the expiry, so an expired row is read-only history. The
  * row itself is always listed — the guest's booking history (including
  * cancellations) must not disappear (ADR-002); only the action does.
+ * The rule is `can_cancel_booking` in the API (countmein/db/serializers.py)
+ * — the cancel write enforces exactly what the flag promises.
  */
 export const guestBooking = z.object({
   id: uuid,
@@ -95,22 +96,3 @@ export const guestBooking = z.object({
   organizer: publicOrganizer,
 })
 export type GuestBooking = z.infer<typeof guestBooking>
-
-/**
- * Whether the guest can still act on a booking: it is confirmed and its
- * manage token has not expired. `null` expiry means a legacy row created
- * before the column existed (ADR-020) and stays cancellable. Mirrors
- * `can_cancel_booking` in the API (countmein/db/serializers.py) — the
- * cancel write enforces exactly this, so the DTO must not promise more.
- * The TS side has no production callsite: it is the executable mirror
- * pinned by `vectors/domain/canCancelBooking.json` (vitest and pytest
- * run the same cases).
- */
-export function canCancelBooking(
-  status: BookingStatus,
-  manageTokenExpiresAt: Date | null,
-): boolean {
-  return (
-    status === 'confirmed' && (manageTokenExpiresAt === null || manageTokenExpiresAt > new Date())
-  )
-}

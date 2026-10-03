@@ -58,6 +58,10 @@ class LookupBookingsInput(BaseModel):
     guestTicket: Annotated[str, Field(max_length=200, min_length=20)]
 
 
+class ManageTokenInput(BaseModel):
+    manageToken: Annotated[str, Field(max_length=200, min_length=10)]
+
+
 type OptionLabel = Annotated[str, Field(max_length=100, min_length=1)]
 
 
@@ -201,10 +205,6 @@ class CancelBookingByOrganizerInput(BaseModel):
     ]
 
 
-class CancelBookingByTokenInput(BaseModel):
-    manageToken: Annotated[str, Field(max_length=200, min_length=10)]
-
-
 class CreateAvatarUploadInput(BaseModel):
     contentType: Literal['image/jpeg', 'image/png', 'image/webp']
     size: Annotated[int, Field(ge=1, le=1048576)]
@@ -316,10 +316,6 @@ class LoginLinkPayload(BaseModel):
         ),
     ]
     next: Annotated[str, Field(pattern='^\\/.*')]
-
-
-class LookupBookingByTokenInput(BaseModel):
-    manageToken: Annotated[str, Field(max_length=200, min_length=10)]
 
 
 class OrganizerProfile(BaseModel):

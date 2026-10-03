@@ -1,8 +1,7 @@
 import {
-  AVATAR_OUTPUT_CONTENT_TYPE,
   AVATAR_TARGET_SIZE,
   AVATAR_WEBP_QUALITY,
-  SERVICE_PHOTO_OUTPUT_CONTENT_TYPE,
+  IMAGE_OUTPUT_CONTENT_TYPE,
   SERVICE_PHOTO_TARGET_SIZE,
   SERVICE_PHOTO_WEBP_QUALITY,
 } from '@repo/contracts'
@@ -118,7 +117,7 @@ export async function resizeAvatar(file: File | Blob): Promise<Blob> {
         outputWidth: outputSide,
         outputHeight: outputSide,
       },
-      AVATAR_OUTPUT_CONTENT_TYPE,
+      IMAGE_OUTPUT_CONTENT_TYPE,
       AVATAR_WEBP_QUALITY,
     )
   } finally {
@@ -149,7 +148,7 @@ export async function resizeServicePhoto(file: File | Blob): Promise<Blob> {
         outputWidth: Math.max(1, Math.round(bitmap.width * scale)),
         outputHeight: Math.max(1, Math.round(bitmap.height * scale)),
       },
-      SERVICE_PHOTO_OUTPUT_CONTENT_TYPE,
+      IMAGE_OUTPUT_CONTENT_TYPE,
       SERVICE_PHOTO_WEBP_QUALITY,
     )
   } finally {

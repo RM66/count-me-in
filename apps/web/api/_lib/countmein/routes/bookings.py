@@ -38,10 +38,9 @@ from ..services import booking_service
 from ..services.outbox_service import mark_outbox_sent, mark_outbox_skipped
 from ..validation.decode import (
     decode_cancel_booking_by_organizer_input,
-    decode_cancel_booking_by_token_input,
     decode_create_booking_input,
-    decode_lookup_booking_by_token_input,
     decode_lookup_bookings_input,
+    decode_manage_token_input,
 )
 from ..web import json_response
 from ..web.deps import (
@@ -71,8 +70,7 @@ _MARK_DEADLINE_SECONDS = 5.0
 # body exactly once.
 _create_booking_dep = decoded(decode_create_booking_input)
 _lookup_bookings_dep = decoded(decode_lookup_bookings_input)
-_cancel_by_token_dep = decoded(decode_cancel_booking_by_token_input)
-_manage_lookup_dep = decoded(decode_lookup_booking_by_token_input)
+_manage_token_dep = decoded(decode_manage_token_input)
 _cancel_by_organizer_dep = decoded(decode_cancel_booking_by_organizer_input)
 
 
@@ -255,7 +253,7 @@ async def booking_lookup(
 
 async def booking_cancel(
     _limited: None = Depends(ip_rate_limit("rl:cancel:", 10, 60.0)),
-    body: ValidatedBody[gen.CancelBookingByTokenInput] = Depends(_cancel_by_token_dep),
+    body: ValidatedBody[gen.ManageTokenInput] = Depends(_manage_token_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/bookings/cancel: the guest cancels via manageToken
@@ -290,7 +288,7 @@ async def booking_cancel(
 
 async def booking_manage_lookup(
     _limited: None = Depends(ip_rate_limit("rl:manage-lookup:", 10, 60.0)),
-    body: ValidatedBody[gen.LookupBookingByTokenInput] = Depends(_manage_lookup_dep),
+    body: ValidatedBody[gen.ManageTokenInput] = Depends(_manage_token_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/bookings/manage-lookup: a guest looks up a booking by manageToken."""

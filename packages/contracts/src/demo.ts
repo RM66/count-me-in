@@ -41,10 +41,6 @@ export const DEMO_CABINET_PATH = '/cabinet'
 /** Machine-readable error code returned by write paths that touch demo data. */
 export const DEMO_READ_ONLY_CODE = 'DEMO_READ_ONLY'
 
-/** User-facing copy for a rejected write against the demo account. */
-export const DEMO_READ_ONLY_MESSAGE =
-  'This is a read-only demo account — sign up to create your own bookable services.'
-
 /**
  * True when the given organizer id is the demo account.
  * Call this on **every** write path, including guest-facing ones.
