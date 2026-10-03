@@ -9,8 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  * Resolves `@/*` and `@repo/*` aliases, and neutralizes `server-only`.
  */
 export default defineConfig({
-  esbuild: {
-    jsx: 'automatic',
+  oxc: {
+    // The shared tsconfig sets `jsx: preserve` for Next.js; rolldown-vite
+    // honors it, so the runtime transform has to be requested explicitly.
+    jsx: { runtime: 'automatic' },
   },
   test: {
     environment: 'happy-dom',

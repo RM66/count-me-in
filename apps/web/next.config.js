@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import process from 'node:process'
-import { withSentryConfig } from '@sentry/nextjs'
+import { withSentryConfig } from '@sentry/nextjs/config'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 /** @type {import('next').NextConfig} */
@@ -224,6 +224,6 @@ export default withNextIntl(
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,
     silent: !process.env.CI,
-    disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
+    sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
   }),
 )
