@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
-import { del, get, post, put } from './client'
+import { del, get, patch, post } from './client'
 import { ApiError } from './error'
 
 const idSchema = z.object({ id: z.string() })
@@ -45,7 +45,9 @@ describe('post', () => {
   })
 
   it('throws ApiError with server error message on failure', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'Slot is full' }, false, 409))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'Slot is full', code: 'test_code' }, false, 409),
+    )
 
     await expect(post('/api/test', {}, idSchema)).rejects.toMatchObject({
       message: 'Slot is full',
@@ -110,11 +112,13 @@ describe('get', () => {
     const result = await get('/api/test', nameSchema)
 
     expect(result).toEqual({ name: 'test' })
-    expect(fetch).toHaveBeenCalledWith('/api/test')
+    expect(fetch).toHaveBeenCalledWith('/api/test', { method: 'GET' })
   })
 
   it('throws ApiError with server error message on failure', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'Not found' }, false, 404))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'Not found', code: 'test_code' }, false, 404),
+    )
 
     await expect(get('/api/test', nameSchema)).rejects.toMatchObject({
       message: 'Not found',
@@ -132,17 +136,17 @@ describe('get', () => {
   })
 })
 
-// ── put ──────────────────────────────────────────────────────────────────────
+// ── patch ────────────────────────────────────────────────────────────────────
 
-describe('put', () => {
-  it('sends a PUT with JSON body and returns parsed data on success', async () => {
+describe('patch', () => {
+  it('sends a PATCH with JSON body and returns parsed data on success', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ id: '1', name: 'updated' }, true, 200))
 
-    const result = await put('/api/test', { name: 'updated' }, idNameSchema)
+    const result = await patch('/api/test', { name: 'updated' }, idNameSchema)
 
     expect(result).toEqual({ id: '1', name: 'updated' })
     expect(fetch).toHaveBeenCalledWith('/api/test', {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'updated' }),
     })
@@ -151,19 +155,21 @@ describe('put', () => {
   it('sends the merge-patch media type when requested (partial updates, ADR-016)', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ id: '1', name: 'updated' }, true, 200))
 
-    await put('/api/test', { name: 'updated' }, idNameSchema, 'application/merge-patch+json')
+    await patch('/api/test', { name: 'updated' }, idNameSchema, 'application/merge-patch+json')
 
     expect(fetch).toHaveBeenCalledWith('/api/test', {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/merge-patch+json' },
       body: JSON.stringify({ name: 'updated' }),
     })
   })
 
   it('throws ApiError with server error message on failure', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'Conflict' }, false, 409))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'Conflict', code: 'test_code' }, false, 409),
+    )
 
-    await expect(put('/api/test', {}, idNameSchema)).rejects.toMatchObject({
+    await expect(patch('/api/test', {}, idNameSchema)).rejects.toMatchObject({
       message: 'Conflict',
       status: 409,
     })
@@ -172,7 +178,7 @@ describe('put', () => {
   it('throws ApiError with default message when no error field', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({}, false, 500))
 
-    await expect(put('/api/test', {}, idNameSchema)).rejects.toMatchObject({
+    await expect(patch('/api/test', {}, idNameSchema)).rejects.toMatchObject({
       message: 'Update failed — try again',
       status: 500,
     })
@@ -192,7 +198,9 @@ describe('del', () => {
   })
 
   it('throws ApiError with server error message on failure', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'Cannot delete' }, false, 400))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'Cannot delete', code: 'test_code' }, false, 400),
+    )
 
     await expect(del('/api/test', okSchema)).rejects.toMatchObject({
       message: 'Cannot delete',
@@ -214,22 +222,30 @@ describe('del', () => {
 
 describe('error types', () => {
   it('post throws an ApiError instance', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'fail' }, false, 400))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'fail', code: 'test_code' }, false, 400),
+    )
     await expect(post('/api/test', {}, idSchema)).rejects.toBeInstanceOf(ApiError)
   })
 
   it('get throws an ApiError instance', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'fail' }, false, 400))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'fail', code: 'test_code' }, false, 400),
+    )
     await expect(get('/api/test', nameSchema)).rejects.toBeInstanceOf(ApiError)
   })
 
   it('put throws an ApiError instance', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'fail' }, false, 400))
-    await expect(put('/api/test', {}, idNameSchema)).rejects.toBeInstanceOf(ApiError)
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'fail', code: 'test_code' }, false, 400),
+    )
+    await expect(patch('/api/test', {}, idNameSchema)).rejects.toBeInstanceOf(ApiError)
   })
 
   it('del throws an ApiError instance', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: 'fail' }, false, 400))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ error: 'fail', code: 'test_code' }, false, 400),
+    )
     await expect(del('/api/test', okSchema)).rejects.toBeInstanceOf(ApiError)
   })
 })

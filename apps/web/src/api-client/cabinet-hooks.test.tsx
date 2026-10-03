@@ -128,7 +128,7 @@ describe('useCreateService', () => {
 })
 
 describe('useUpdateService', () => {
-  it('PUTs a merge-patch body to /api/services/{id} (ADR-016)', async () => {
+  it('PATCHes a merge-patch body to /api/services/{id} (ADR-016)', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ service: serviceFixture }, true, 200))
 
     const { Wrapper } = createWrapper()
@@ -142,7 +142,7 @@ describe('useUpdateService', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/services/svc-abc123xyz',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify(input),
       }),
@@ -194,7 +194,7 @@ describe('useCreateSlot', () => {
 })
 
 describe('useUpdateSlot', () => {
-  it('PUTs a merge-patch body to /api/slots/{id}', async () => {
+  it('PATCHes a merge-patch body to /api/slots/{id}', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ slot: slotFixture }, true, 200))
 
     const { Wrapper } = createWrapper()
@@ -209,7 +209,7 @@ describe('useUpdateSlot', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/slots/01930000-0000-7000-8000-0000000000a1',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify(input),
       }),
@@ -256,7 +256,7 @@ describe('useCurrentOrganizer', () => {
     const { result } = renderHook(() => useCurrentOrganizer(), { wrapper: Wrapper })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(fetch).toHaveBeenCalledWith('/api/organizers/me')
+    expect(fetch).toHaveBeenCalledWith('/api/organizers/me', { method: 'GET' })
     expect(result.current.data).toEqual(organizerProfileFixture)
     // The cache entry lives under the shared key factory — the mutation
     // that invalidates it must agree (keys.ts is the single source).
@@ -281,7 +281,7 @@ describe('useIsDemo', () => {
 })
 
 describe('useUpdateOrganizerProfile', () => {
-  it('PUTs a merge-patch body and writes the response into the cache', async () => {
+  it('PATCHes a merge-patch body and writes the response into the cache', async () => {
     const updated = { ...organizerProfileFixture, name: 'Renamed Studio' }
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ organizer: updated }, true, 200))
 
@@ -294,7 +294,7 @@ describe('useUpdateOrganizerProfile', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/organizers/me',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify({ name: 'Renamed Studio' }),
       }),

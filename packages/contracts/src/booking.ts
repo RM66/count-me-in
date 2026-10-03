@@ -34,6 +34,10 @@ export type CreateBookingInput = z.infer<typeof createBookingInput>
 export const cancelBookingByTokenInput = z.object({ manageToken })
 export type CancelBookingByTokenInput = z.infer<typeof cancelBookingByTokenInput>
 
+/** Look up a booking via the guest's manageToken (in body to avoid URL leaks). */
+export const lookupBookingByTokenInput = z.object({ manageToken })
+export type LookupBookingByTokenInput = z.infer<typeof lookupBookingByTokenInput>
+
 /**
  * Look up the bookings of a messenger identity (ADR-002, entry path 2).
  * The identity is read from the ticket server-side — a raw `messengerId` in
@@ -96,8 +100,11 @@ export type GuestBooking = z.infer<typeof guestBooking>
  * Whether the guest can still act on a booking: it is confirmed and its
  * manage token has not expired. `null` expiry means a legacy row created
  * before the column existed (ADR-020) and stays cancellable. Mirrors
- * `CanCancelBooking` in apps/web/pkg/db/booking.go — the Go cancel write
- * enforces exactly this, so the DTO must not promise more.
+ * `can_cancel_booking` in the API (countmein/db/serializers.py) — the
+ * cancel write enforces exactly this, so the DTO must not promise more.
+ * The TS side has no production callsite: it is the executable mirror
+ * pinned by `vectors/domain/canCancelBooking.json` (vitest and pytest
+ * run the same cases).
  */
 export function canCancelBooking(
   status: BookingStatus,

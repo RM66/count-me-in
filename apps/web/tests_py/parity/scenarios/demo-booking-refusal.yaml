@@ -1,0 +1,33 @@
+name: demo-booking-refusal
+steps:
+  - reset: true
+  - seedDemoSlot: true
+    note: own demo service + slot 30 days out (never the drifting demo seed)
+  - mint: guestTicket
+    request:
+      method: POST
+      path: /api/bookings
+      json:
+        {
+          guestTicket: <guestTicket>,
+          serviceId: <serviceId>,
+          timeSlotId: <slotId>,
+          seats: 1,
+          guestName: Demo Try,
+        }
+    note: booking a demo slot → 403 (demo organizer is read-only, ADR-010)
+    expectSink: 0
+  - seedDemoBooking: true
+    note: confirmed booking on the demo slot with a known manage token (direct DB — no API may write demo data)
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: { manageToken: <manageToken> }
+    note: cancelling a demo booking by its real token → 403 (demo read-only, ADR-010)
+    expectSink: 0
+  - request:
+      method: POST
+      path: /api/bookings/cancel
+      json: { manageToken: demo-manage-token }
+    note: unknown token on demo data → 404 (never leaks existence)
+    expectSink: 0

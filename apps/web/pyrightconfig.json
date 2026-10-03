@@ -1,0 +1,13 @@
+{
+  // Pylance navigation config only — mypy is the authoritative checker
+  // (lint:py). typeCheckingMode "off" avoids a second, disagreeing
+  // opinion in the editor; reportMissingImports stays on because an
+  // unresolved import is a real problem, not a checker disagreement.
+  "include": ["api", "tests_py"],
+  "exclude": ["**/__pycache__", "**/*_gen.py"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": ["api", "tests_py", "."],
+  "typeCheckingMode": "off",
+  "reportMissingImports": "error"
+}

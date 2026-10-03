@@ -1,0 +1,239 @@
+{
+  "scenario": "organizers-register",
+  "steps": [
+    {
+      "note": "happy path → 201 registered",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "parity-org",
+          "name": "Parity Org",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "organizer": {
+            "id": "<uuid:1>",
+            "slug": "parity-org"
+          }
+        },
+        "body_raw": "{\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "slug taken → 409",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "parity-org",
+          "name": "Dup",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This handle is already taken — pick another one",
+          "code": "slugTaken"
+        },
+        "body_raw": "{\"error\":\"This handle is already taken — pick another one\",\"code\":\"slugTaken\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown ticket → 401",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "other-org",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Your Telegram confirmation expired — authenticate again",
+          "code": "ticketExpired"
+        },
+        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\",\"code\":\"ticketExpired\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "slug too short → 400 validation details",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "ab",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "slug": [
+                "minimum string length is 4"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "reserved slug → 400 validation details",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "api",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "slug": [
+                "minimum string length is 4"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"slug\":[\"minimum string length is 4\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "guest-purpose ticket refused in registration flow → 401",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers",
+        "body": {
+          "ticket": "<token>",
+          "slug": "guest-flow",
+          "name": "X",
+          "timezone": "Europe/Belgrade",
+          "language": "en"
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Your Telegram confirmation expired — authenticate again",
+          "code": "ticketExpired"
+        },
+        "body_raw": "{\"error\":\"Your Telegram confirmation expired — authenticate again\",\"code\":\"ticketExpired\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

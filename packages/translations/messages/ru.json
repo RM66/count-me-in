@@ -67,8 +67,7 @@
     "errPartyTooLarge": "За одно бронирование можно взять не больше {maxSeats, plural, one {# места} few {# мест} many {# мест} other {# мест}}",
     "errDuplicate": "У вас уже есть бронирование на это время",
     "errGone": "Выбранное время больше недоступно",
-    "errInvalidOptions": "Выбранные опции недоступны для этой услуги",
-    "errAlreadyCancelled": "Это бронирование уже отменено"
+    "errInvalidOptions": "Выбранные опции недоступны для этой услуги"
   },
   "SuccessStep": {
     "confirmedNote": "Бронь оформлена. Подтверждение придёт вам в мессенджер от нашего бота.",
@@ -419,15 +418,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Согласие на cookie",
-    "text": "Мы используем аналитические cookie, чтобы понимать, как пользуются CountMeIn, и улучшать сервис. ",
-    "essential": "Необходимые cookie для входа и бронирования всегда включены. ",
+    "text": "Мы используем аналитические cookie, чтобы понимать, как пользуются CountMeIn, и улучшать сервис.",
+    "essential": "Необходимые cookie для входа и бронирования всегда включены.",
     "privacyPolicy": "Политика конфиденциальности",
     "reject": "Отклонить",
     "accept": "Принять"
   },
   "Ui": {
     "close": "Закрыть",
-    "navigation": "Навигация",
     "loading": "Загрузка",
     "more": "Ещё",
     "sidebar": "Боковая панель",
@@ -526,8 +524,7 @@
       "changeDay": "Фильтр по дню: {day}. Изменить день",
       "filterByDay": "Фильтровать {entity} по дню",
       "showEveryBooking": "Показать все бронирования",
-      "showEveryService": "Показать все услуги",
-      "showEverySlot": "Показать все слоты"
+      "showEveryService": "Показать все услуги"
     },
     "demoBanner": {
       "readOnly": "Демо только для просмотра.",
@@ -683,8 +680,6 @@
       "createFailed": "Не удалось создать услугу",
       "updateFailed": "Не удалось обновить услугу",
       "deleteFailed": "Не удалось удалить услугу",
-      "notFound": "Услуга не найдена",
-      "backToList": "Назад к услугам",
       "pricePlaceholder": "$12",
       "editSubtitle": "Измените детали и опции услуги."
     },
@@ -776,37 +771,5 @@
       "full": "Мест нет",
       "left": "осталось {count}"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Некорректные данные",
-    "invalidOptions": "Выбранные опции недоступны для этой услуги",
-    "ticketExpired": "Срок подтверждения через Telegram истёк — подтвердите личность ещё раз",
-    "telegramNotConfigured": "Telegram-бот не настроен",
-    "telegramInvalid": "Некорректные данные авторизации Telegram",
-    "telegramValidationFailed": "Не удалось проверить авторизацию Telegram",
-    "authSessionExpired": "Сессия авторизации истекла — подтвердите вход через Telegram снова",
-    "organizerNotFound": "Организатор не найден",
-    "demoNotSeeded": "Демо-организатор не создан",
-    "serviceNotFound": "Услуга не найдена",
-    "slotNotFound": "Слот не найден",
-    "bookingNotFound": "Бронирование не найдено",
-    "photoPrefix": "Не удалось использовать фото — загрузите его заново",
-    "cannotCreateService": "Не удалось создать услугу",
-    "slugTaken": "Этот адрес уже занят — выберите другой",
-    "accountExists": "Этот аккаунт Telegram уже связан с профилем CountMeIn — войдите в него",
-    "nothingToUpdate": "Нет полей для обновления",
-    "unsupportedMediaType": "Этот эндпоинт принимает только application/merge-patch+json (RFC 7386)",
-    "capacityBelowBooked": "Вместимость нельзя уменьшить: уже забронировано {count, plural, =1 {# место} one {# место} few {# места} many {# мест} other {# места}}",
-    "demoReadOnly": "Это демо-аккаунт только для просмотра — зарегистрируйтесь, чтобы создать свои услуги для бронирования.",
-    "soldOut": "На это время мест больше нет",
-    "seatsLeftOnSession": "На это время осталось только {count, plural, =1 {# место} one {# место} few {# места} many {# мест} other {# места}}",
-    "partyTooLarge": "За одно бронирование можно взять не больше {maxSeats, plural, =1 {# места} one {# места} few {# мест} many {# мест} other {# мест}}",
-    "duplicateBooking": "У вас уже есть бронирование на это время",
-    "alreadyCancelled": "Это бронирование уже отменено",
-    "slotGone": "Выбранное время больше недоступно",
-    "tooManyRequests": "Слишком много запросов — попробуйте ещё раз через минуту",
-    "slotHasActiveBookings": "В этой сессии есть брони — её нельзя удалить",
-    "serviceHasBookings": "В сессиях этой услуги есть брони — услугу нельзя удалить",
-    "bodyTooLarge": "Тело запроса слишком большое"
   }
 }

@@ -8,8 +8,11 @@ import { createHash } from 'node:crypto'
  * never needs to hash a token — it sends the raw value in the request
  * body, and the server hashes it before lookup.
  *
- * Parity: `HashManageToken` in `apps/web/pkg/db/shared.go` — the same
- * function on the Go side. A change here requires the same change there.
+ * Parity: `hash_manage_token` in the API (countmein/db/shared.py) — the
+ * same function on the API side. The TS implementation has no
+ * production callsite: it exists as the executable mirror pinned by the
+ * shared vector `vectors/domain/hashManageToken.json` (vitest and
+ * pytest run the same cases).
  */
 export function hashManageToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex')

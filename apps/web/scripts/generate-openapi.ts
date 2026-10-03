@@ -1,14 +1,15 @@
 /**
  * Writes the OpenAPI spec from the Zod wire registry via zod-openapi
- * (ADR-016). Since oapi-codegen v2.8.0 supports OpenAPI 3.1, one document
+ * (ADR-016). Since the Python toolchain (datamodel-code-generator)
+ * supports OpenAPI 3.1, one document
  * serves both consumers: it is committed at `apps/web/openapi.yaml` —
- * the public spec and the Go toolchain's input (`go generate` reads it
- * via the relative path in pkg/api/gen/doc.go; oapi-codegen embeds it
- * into spec_gen.go).
+ * the public spec and the Python toolchain's input
+ * (datamodel-code-generator reads it into models_gen.py).
  *
  * The document itself is built in `@repo/contracts/openapi`; this script
  * only renders it to YAML. Dangling `$ref`s and orphan schemas are caught
- * by zod-openapi itself (and by oapi-codegen, which fails on an unresolved
+ * by zod-openapi itself (and by the Python codegen, which fails on an
+ * unresolved
  * `$ref`).
  *
  * Run via: `bun run generate:openapi`
@@ -21,13 +22,15 @@ import yaml from 'yaml'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const specFile = join(__dirname, '..', 'openapi.yaml')
+const specJsonFile = join(__dirname, '..', 'api', '_lib', 'countmein', 'contracts', 'spec_gen.json')
 
-const text = yaml.stringify(buildOpenApiDocument(), { indent: 2 })
-if (text.includes('x-go-')) {
-  throw new Error(
-    'generate-openapi: x-go-* metadata leaked into the spec — strip it before writing',
-  )
-}
+const document = buildOpenApiDocument()
 
-writeFileSync(specFile, text, 'utf8')
+writeFileSync(specFile, yaml.stringify(document, { indent: 2 }), 'utf8')
 console.log(`Wrote ${specFile}`)
+
+// The same document as JSON for the Python runtime (ADR-024): the API
+// validates against this bundled copy, so the deployed bundle never
+// depends on openapi.yaml being present or on a YAML parser.
+writeFileSync(specJsonFile, JSON.stringify(document, null, 2) + '\n', 'utf8')
+console.log(`Wrote ${specJsonFile}`)

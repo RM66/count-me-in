@@ -1,0 +1,384 @@
+{
+  "scenario": "bookings-cancel",
+  "steps": [
+    {
+      "note": "seed service; capture <serviceId>",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Cancel Host",
+          "defaultPrice": "20.00",
+          "defaultCapacity": 5,
+          "defaultDurationMinutes": 60,
+          "maxSeatsPerBooking": 4
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Cancel Host",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
+            "contact": null,
+            "defaultPrice": "20.00",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 60,
+            "maxSeatsPerBooking": 4,
+            "options": null,
+            "optionsSelectMode": null,
+            "createdAt": "<ts:1>"
+          }
+        },
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Cancel Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "seed slot; capture <slotId>",
+      "request": {
+        "method": "POST",
+        "path": "/api/slots",
+        "body": {
+          "serviceId": "<sid:1>",
+          "startsAt": "<ts:4>",
+          "durationMinutes": 60,
+          "capacity": 5
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slot": {
+            "id": "<uuid:2>",
+            "serviceId": "<sid:1>",
+            "startsAt": "<ts:2>",
+            "durationMinutes": 60,
+            "capacity": 5,
+            "bookedCount": 0,
+            "price": null,
+            "createdAt": "<ts:3>"
+          }
+        },
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "create booking; capture <manageToken>",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings",
+        "body": {
+          "guestTicket": "<token>",
+          "serviceId": "<sid:1>",
+          "timeSlotId": "<uuid:2>",
+          "seats": 1,
+          "guestName": "Cancel Guest"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "booking": {
+            "id": "<uuid:3>",
+            "status": "confirmed",
+            "seats": 1,
+            "guestName": "Cancel Guest",
+            "selectedOptions": null,
+            "createdAt": "<ts:5>",
+            "manageToken": "<token>",
+            "canCancel": true,
+            "slot": {
+              "id": "<uuid:2>",
+              "serviceId": "<sid:1>",
+              "startsAt": "<ts:2>",
+              "durationMinutes": 60,
+              "capacity": 5,
+              "bookedCount": 1,
+              "price": null,
+              "createdAt": "<ts:3>"
+            },
+            "service": {
+              "id": "<sid:1>",
+              "organizerId": "<uuid:1>",
+              "title": "Cancel Host",
+              "description": null,
+              "photoUrl": null,
+              "location": null,
+              "contact": null,
+              "defaultPrice": "20.00",
+              "defaultCapacity": 5,
+              "defaultDurationMinutes": 60,
+              "maxSeatsPerBooking": 4,
+              "options": null,
+              "optionsSelectMode": null,
+              "createdAt": "<ts:1>"
+            },
+            "organizer": {
+              "id": "<uuid:1>",
+              "slug": "parity-org",
+              "name": "Parity Organizer",
+              "timezone": "Europe/Belgrade",
+              "description": null,
+              "photoUrl": null,
+              "location": null,
+              "contact": null,
+              "isDemo": false
+            }
+          }
+        },
+        "body_raw": "{\"booking\":{\"id\":\"<uuid:3>\",\"status\":\"confirmed\",\"seats\":1,\"guestName\":\"Cancel Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":true,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":1,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Cancel Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": [
+        {
+          "path": "/v2/publish/http://127.0.0.1:3101/api/jobs/booking.created",
+          "body": {
+            "bookingId": "<uuid:3>",
+            "recipient": "guest",
+            "outboxId": "<uuid:4>"
+          }
+        },
+        {
+          "path": "/v2/publish/http://127.0.0.1:3101/api/jobs/booking.created",
+          "body": {
+            "bookingId": "<uuid:3>",
+            "recipient": "organizer",
+            "outboxId": "<uuid:5>"
+          }
+        }
+      ]
+    },
+    {
+      "note": "happy path → 200 cancelled",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {
+          "manageToken": "<token>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "booking": {
+            "id": "<uuid:3>",
+            "status": "cancelled",
+            "seats": 1,
+            "guestName": "Cancel Guest",
+            "selectedOptions": null,
+            "createdAt": "<ts:5>",
+            "manageToken": "<token>",
+            "canCancel": false,
+            "slot": {
+              "id": "<uuid:2>",
+              "serviceId": "<sid:1>",
+              "startsAt": "<ts:2>",
+              "durationMinutes": 60,
+              "capacity": 5,
+              "bookedCount": 0,
+              "price": null,
+              "createdAt": "<ts:3>"
+            },
+            "service": {
+              "id": "<sid:1>",
+              "organizerId": "<uuid:1>",
+              "title": "Cancel Host",
+              "description": null,
+              "photoUrl": null,
+              "location": null,
+              "contact": null,
+              "defaultPrice": "20.00",
+              "defaultCapacity": 5,
+              "defaultDurationMinutes": 60,
+              "maxSeatsPerBooking": 4,
+              "options": null,
+              "optionsSelectMode": null,
+              "createdAt": "<ts:1>"
+            },
+            "organizer": {
+              "id": "<uuid:1>",
+              "slug": "parity-org",
+              "name": "Parity Organizer",
+              "timezone": "Europe/Belgrade",
+              "description": null,
+              "photoUrl": null,
+              "location": null,
+              "contact": null,
+              "isDemo": false
+            }
+          }
+        },
+        "body_raw": "{\"booking\":{\"id\":\"<uuid:3>\",\"status\":\"cancelled\",\"seats\":1,\"guestName\":\"Cancel Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":false,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Cancel Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": [
+        {
+          "path": "/v2/publish/http://127.0.0.1:3101/api/jobs/booking.cancelled",
+          "body": {
+            "bookingId": "<uuid:3>",
+            "cancelledBy": "guest",
+            "outboxId": "<uuid:6>"
+          }
+        }
+      ]
+    },
+    {
+      "note": "already cancelled → 409",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {
+          "manageToken": "<token>"
+        }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This booking has already been cancelled",
+          "code": "alreadyCancelled"
+        },
+        "body_raw": "{\"error\":\"This booking has already been cancelled\",\"code\":\"alreadyCancelled\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown token → 404 (same answer as unknown booking)",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {
+          "manageToken": "unknown-token"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Booking not found",
+          "code": "bookingNotFound"
+        },
+        "body_raw": "{\"error\":\"Booking not found\",\"code\":\"bookingNotFound\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "invalid body → 400",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {}
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "manageToken": [
+                "Required"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"manageToken\":[\"Required\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

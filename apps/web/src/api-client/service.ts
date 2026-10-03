@@ -5,7 +5,7 @@ import { deletedServiceEnvelope, imageUploadTarget, serviceEnvelope } from '@rep
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
-import { del, post, put } from './client'
+import { del, patch, post } from './client'
 import { ApiError } from './error'
 import { resizeServicePhoto } from './image'
 
@@ -19,7 +19,7 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 
 /**
  * Client-side API for the **Service** entity — writes plus the cover upload
- * flow. Cabinet pages read services on the server (`lib/server/db/service.ts`),
+ * flow. Cabinet pages read services on the server (`server/api-client.ts`),
  * so there is no list/detail query here. The mutations return the created or
  * updated record; the caller follows with `router.refresh()` to re-render the
  * server component (Phase 2.3 — no client cache to invalidate).
@@ -36,7 +36,7 @@ export function useCreateService() {
 export function useUpdateService(serviceId: string) {
   return useMutation({
     mutationFn: (input: UpdateServiceInput) =>
-      put(`/api/services/${serviceId}`, input, serviceEnvelope, 'application/merge-patch+json'),
+      patch(`/api/services/${serviceId}`, input, serviceEnvelope, 'application/merge-patch+json'),
   })
 }
 

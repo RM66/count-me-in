@@ -1,0 +1,13 @@
+{
+  "organizers": [
+    {
+      "slug": "my-studio"
+    }
+  ],
+  "services": [
+    {
+      "orgSlug": "my-studio",
+      "serviceId": "demo-yoga"
+    }
+  ]
+}

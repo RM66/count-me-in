@@ -1,0 +1,44 @@
+{
+  "organizer": {
+    "contact": "+123456",
+    "description": "Morning practice",
+    "id": "01930000-0000-7000-8000-000000000001",
+    "isDemo": false,
+    "location": "Hall A",
+    "name": "Studio",
+    "photoUrl": "https://example.com/avatar.webp",
+    "slug": "my-studio",
+    "timezone": "Europe/Belgrade"
+  },
+  "service": {
+    "contact": "+123456",
+    "createdAt": "2026-01-02T03:04:05.000Z",
+    "defaultCapacity": 5,
+    "defaultDurationMinutes": 60,
+    "defaultPrice": "10",
+    "description": "Morning flow",
+    "id": "demo-yoga",
+    "location": "Hall A",
+    "maxSeatsPerBooking": 1,
+    "options": [
+      "Beginner",
+      "Intermediate"
+    ],
+    "optionsSelectMode": "single",
+    "organizerId": "01930000-0000-7000-8000-000000000001",
+    "photoUrl": "https://example.com/photo.webp",
+    "title": "Yoga"
+  },
+  "slots": [
+    {
+      "bookedCount": 3,
+      "capacity": 10,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "durationMinutes": 60,
+      "id": "01930000-0000-7000-8000-000000000002",
+      "price": "15",
+      "serviceId": "demo-yoga",
+      "startsAt": "2026-01-02T03:04:05.000Z"
+    }
+  ]
+}

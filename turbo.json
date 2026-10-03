@@ -19,6 +19,8 @@
     "NODE_ENV",
     "NEXT_RUNTIME",
     "CI",
+    "CHECK",
+    "DOCS_PORT",
     "SENTRY_DSN",
     "SENTRY_ORG",
     "SENTRY_PROJECT",
@@ -26,7 +28,8 @@
     "NEXT_PUBLIC_POSTHOG_KEY",
     "NEXT_PUBLIC_POSTHOG_HOST",
     "POSTHOG_KEY",
-    "GO_API_URL",
+    "API_URL",
+    "VERCEL",
     "VERCEL_ENV",
     "NEXT_PUBLIC_SENTRY_DSN",
     "NEXT_PUBLIC_TELEGRAM_BOT_USERNAME",
@@ -50,12 +53,56 @@
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^build", "generate:i18n", "generate:openapi", "generate:constants"],
+      "dependsOn": ["^build", "generate:openapi", "generate:constants", "generate:i18n:py"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/contracts/vectors/**"],
       "outputs": ["coverage/**"]
     },
-    "@repo/db#test": {
+    "test:py": {
+      "dependsOn": ["generate:py"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "api/**",
+        "tests_py/**",
+        "pyproject.toml",
+        "uv.lock",
+        "requirements.txt"
+      ],
       "outputs": []
+    },
+    "lint:py": {
+      "dependsOn": ["generate:py"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "api/**",
+        "tests_py/**",
+        "pyproject.toml",
+        "uv.lock",
+        "requirements.txt"
+      ],
+      "outputs": []
+    },
+    "generate:py": {
+      "dependsOn": [
+        "generate:i18n:py",
+        "generate:openapi",
+        "generate:constants",
+        "generate:rules",
+        "generate:models"
+      ],
+      "inputs": [
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
+        "$TURBO_ROOT$/packages/translations/**",
+        "scripts/**",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": [
+        "api/_lib/countmein/contracts/models_gen.py",
+        "api/_lib/countmein/contracts/constants_gen.py",
+        "api/_lib/countmein/contracts/spec_gen.json",
+        "api/_lib/countmein/validation/rules_gen.py",
+        "api/_lib/countmein/i18n/translations_gen.py",
+        "openapi.yaml"
+      ]
     },
     "@repo/translations#test": {
       "outputs": []
@@ -64,16 +111,14 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
-    "test:go": {
-      "dependsOn": ["generate:i18n", "generate:openapi", "generate:constants"],
+    "generate:i18n:py": {
       "inputs": [
-        "pkg/**",
-        "api/**",
-        "go.mod",
-        "go.sum",
-        "scripts/**",
-        "$TURBO_ROOT$/packages/contracts/vectors/**"
-      ]
+        "$TURBO_ROOT$/packages/translations/**",
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
+        "scripts/generate-i18n-py.ts",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": ["api/_lib/countmein/i18n/translations_gen.py"]
     },
     "generate:openapi": {
       "inputs": [
@@ -81,7 +126,20 @@
         "scripts/generate-openapi.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["openapi.yaml", "pkg/api/gen/openapi.yaml"]
+      "outputs": ["openapi.yaml", "api/_lib/countmein/contracts/spec_gen.json"]
+    },
+    "generate:rules": {
+      "inputs": [
+        "$TURBO_ROOT$/packages/contracts/src/**/*.ts",
+        "scripts/generate-rules.ts",
+        "$TURBO_ROOT$/bun.lock"
+      ],
+      "outputs": ["api/_lib/countmein/validation/rules_gen.py"]
+    },
+    "generate:models": {
+      "dependsOn": ["generate:openapi"],
+      "inputs": ["openapi.yaml", "scripts/generate-py-models.sh", "uv.lock"],
+      "outputs": ["api/_lib/countmein/contracts/models_gen.py"]
     },
     "generate:constants": {
       "inputs": [
@@ -89,11 +147,7 @@
         "scripts/generate-constants.ts",
         "$TURBO_ROOT$/bun.lock"
       ],
-      "outputs": ["pkg/contracts/constants_gen.go"]
-    },
-    "generate:i18n": {
-      "inputs": ["$TURBO_ROOT$/packages/translations/**/*.json"],
-      "outputs": ["pkg/i18n/translations_gen.go"]
+      "outputs": ["api/_lib/countmein/contracts/constants_gen.py"]
     },
     "test:watch": {
       "cache": false,

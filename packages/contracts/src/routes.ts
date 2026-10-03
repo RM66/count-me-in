@@ -2,8 +2,8 @@
  * The HTTP surface of the API, as data.
  *
  * Schemas describe payloads; this describes where they travel. Both the
- * OpenAPI spec and the Go route table are derived from it, and a Go test
- * asserts the mux dispatches exactly these method/path pairs — so an endpoint
+ * OpenAPI spec and the Python route table are derived from it, and a test
+ * asserts the app dispatches exactly these method/path pairs — so an endpoint
  * cannot exist without being described, and a described endpoint cannot be
  * missing.
  *
@@ -15,34 +15,33 @@
  */
 import type { z } from 'zod'
 
-import {
-  authTicketPayload,
-  authTicketResponse,
-  guestTicketResponse,
-  loginLinkPayload,
-  telegramWidgetPayload,
-} from './auth'
+import { authTicketResponse, guestTicketResponse, telegramWidgetPayload } from './auth'
 import {
   cancelBookingByOrganizerInput,
   cancelBookingByTokenInput,
   createBookingInput,
+  lookupBookingByTokenInput,
   lookupBookingsInput,
 } from './booking'
 import {
   bookingEnvelope,
+  bookingsEnvelope,
+  cabinetSummaryEnvelope,
   deletedServiceEnvelope,
   deletedSlotEnvelope,
-  errorBody,
   guestBookingEnvelope,
   guestBookingsEnvelope,
-  invalidBody,
-  invalidIssuesBody,
+  internalOrganizerEnvelope,
   organizerEnvelope,
+  publicOrganizerViewEnvelope,
+  publicServiceViewEnvelope,
+  publicSitemapEnvelope,
   serviceEnvelope,
   servicesEnvelope,
   slotEnvelope,
   slotsEnvelope,
 } from './envelopes'
+import { errorBody, invalidBody } from './errors'
 import {
   QUEUE_BOOKING_CANCELLED,
   QUEUE_BOOKING_CREATED,
@@ -50,12 +49,13 @@ import {
   QUEUE_OUTBOX_SWEEP,
 } from './jobs'
 import {
-  registered,
+  internalOrganizerLookupInput,
   registerOrganizerInput,
+  registrationResponse,
   updateOrganizerLanguageInput,
   updateOrganizerProfileInput,
 } from './organizer'
-import { serviceId, uuid } from './primitives'
+import { queryLimit, queryOffset, serviceId, slugShape, uuid } from './primitives'
 import { createServiceInput, updateServiceInput } from './service'
 import {
   createAvatarUploadInput,
@@ -68,10 +68,10 @@ import { createTimeSlotInput, updateTimeSlotInput } from './time-slot'
  * How a request proves it may do what it asks.
  * - `public` — no credential at all.
  * - `guestTicket` — a single-use auth ticket carried in the request body and
- *   consumed server-side (`RequireGuestIdentity`).
+ *   consumed server-side (`require_guest_identity` in the API).
  * - `manageToken` — the guest's per-booking secret, in the body.
  * - `sessionWritable` — an Auth.js session that is neither absent nor the demo
- *   organizer (`RequireWritableOrganizer`); refusal is 403, never 401.
+ *   organizer (`require_writable_organizer` in the API); refusal is 403, never 401.
  * - `sessionOrDemoRead` — an Auth.js session if present, otherwise the demo
  *   organizer (ADR-010). Never 401.
  * - `qstashSignature` — the `upstash-signature` header.
@@ -83,6 +83,7 @@ export type ApiAuth =
   | 'sessionWritable'
   | 'sessionOrDemoRead'
   | 'qstashSignature'
+  | 'internal'
 
 export type ApiParam = {
   name: string
@@ -99,13 +100,13 @@ export type ApiResponse = {
   /** Absent means the response carries no body. */
   body?: z.ZodType
   /** Several payload shapes behind one status (the jobs receiver). */
-  bodyOneOf?: readonly z.ZodType[]
+  bodyAnyOf?: readonly z.ZodType[]
 }
 
 export type ApiRoute = {
   operationId: string
   method: 'get' | 'post' | 'put' | 'patch' | 'delete'
-  /** OpenAPI and Go 1.22 mux share the `{param}` spelling. */
+  /** OpenAPI path spelling, `{param}` for path parameters. */
   path: string
   summary: string
   auth: ApiAuth
@@ -134,19 +135,25 @@ const UNSUPPORTED_MEDIA_TYPE = {
 } as const
 const TOO_MANY = { status: 429, description: 'Rate limit exceeded', body: errorBody } as const
 const INVALID_BODY = { status: 400, description: 'Validation error', body: invalidBody } as const
+/** 400s that are not all body-shape failures: the validation envelope
+ * (invalidBody, details) shares the status with plain coded refusals —
+ * nothing to update, media-prefix or empty-criteria violations. */
+const BAD_REQUEST = {
+  status: 400,
+  description: 'Validation error or a plain coded refusal',
+  bodyAnyOf: [invalidBody, errorBody],
+} as const
+const MALFORMED_ID = {
+  status: 400,
+  description: 'Malformed path parameter',
+  body: errorBody,
+} as const
 const INTERNAL = { status: 500, description: 'Internal error' } as const
 const DEMO_FORBIDDEN = {
   status: 403,
   description: 'Demo account is read-only, or the caller has no session (ADR-010)',
   body: errorBody,
 } as const
-
-/**
- * JSON payloads that travel outside HTTP (Redis). They have no operation,
- * but they are still on the wire — the generator $refs them so the orphan
- * check cannot treat them as unused.
- */
-export const INTERNAL_RECORDS: readonly z.ZodType[] = [authTicketPayload, loginLinkPayload]
 
 export const API_ROUTES: readonly ApiRoute[] = [
   // ── Auth (Telegram widget) ────────────────────────────────────────────────
@@ -189,15 +196,17 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: 'Register a new organizer using an auth ticket',
     auth: 'public',
     request: registerOrganizerInput,
+    rateLimit: { limit: 10, windowSeconds: 3600, per: 'ip' },
     responses: [
-      { status: 201, description: 'Organizer created', body: registered },
-      { status: 400, description: 'Validation error (field issues)', body: invalidIssuesBody },
+      { status: 201, description: 'Organizer created', body: registrationResponse },
+      INVALID_BODY,
       { status: 401, description: 'Auth ticket expired or unknown', body: errorBody },
       {
         status: 409,
         description: 'Slug taken, or an account already exists for this identity',
         body: errorBody,
       },
+      TOO_MANY,
       INTERNAL,
     ],
   },
@@ -219,7 +228,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   },
   {
     operationId: 'updateMyProfile',
-    method: 'put',
+    method: 'patch',
     path: '/api/organizers/me',
     summary: 'Update organizer profile',
     auth: 'sessionWritable',
@@ -228,7 +237,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     responses: [
       { status: 200, description: 'Updated profile', body: organizerEnvelope },
       UNSUPPORTED_MEDIA_TYPE,
-      INVALID_BODY,
+      BAD_REQUEST,
       DEMO_FORBIDDEN,
       { status: 404, description: 'Organizer not found', body: errorBody },
       INTERNAL,
@@ -280,6 +289,62 @@ export const API_ROUTES: readonly ApiRoute[] = [
       INTERNAL,
     ],
   },
+  {
+    operationId: 'getCabinetSummary',
+    method: 'get',
+    path: '/api/cabinet/summary',
+    summary: 'Get cabinet summary counts and 30-day analytics for the organizer',
+    auth: 'sessionOrDemoRead',
+    responses: [
+      { status: 200, description: 'Cabinet summary and analytics', body: cabinetSummaryEnvelope },
+      INTERNAL,
+    ],
+  },
+
+  // ── Public ────────────────────────────────────────────────────────────────
+  {
+    operationId: 'getPublicOrganizer',
+    method: 'get',
+    path: '/api/public/organizers/{slug}',
+    summary: 'Get public organizer profile, services, and upcoming slots by slug',
+    auth: 'public',
+    params: [{ name: 'slug', in: 'path', required: true, schema: slugShape }],
+    rateLimit: { limit: 60, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Public organizer view', body: publicOrganizerViewEnvelope },
+      { status: 404, description: 'Organizer not found', body: errorBody },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
+  {
+    operationId: 'getPublicService',
+    method: 'get',
+    path: '/api/public/services/{id}',
+    summary: 'Get public service details, parent organizer, and upcoming slots',
+    auth: 'public',
+    params: [{ name: 'id', in: 'path', required: true, schema: serviceId }],
+    rateLimit: { limit: 60, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Public service view', body: publicServiceViewEnvelope },
+      { status: 404, description: 'Service not found', body: errorBody },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
+  {
+    operationId: 'getPublicSitemap',
+    method: 'get',
+    path: '/api/public/sitemap',
+    summary: 'List all public organizer slugs and service paths for sitemap generation',
+    auth: 'public',
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Public sitemap catalog', body: publicSitemapEnvelope },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
 
   // ── Services ──────────────────────────────────────────────────────────────
   {
@@ -301,8 +366,9 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 201, description: 'Service created', body: serviceEnvelope },
       {
         status: 400,
-        description: 'Validation error, or photoUrl outside the organizer media prefix',
-        body: invalidBody,
+        description:
+          'Body-shape failures answer invalidBody; photoUrl outside the organizer media prefix answers errorBody',
+        bodyAnyOf: [invalidBody, errorBody],
       },
       DEMO_FORBIDDEN,
       INTERNAL,
@@ -323,7 +389,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   },
   {
     operationId: 'updateService',
-    method: 'put',
+    method: 'patch',
     path: '/api/services/{id}',
     summary: 'Update a service',
     auth: 'sessionWritable',
@@ -336,8 +402,8 @@ export const API_ROUTES: readonly ApiRoute[] = [
       {
         status: 400,
         description:
-          'Validation error, nothing to update, or photoUrl outside the organizer media prefix',
-        body: invalidBody,
+          'Validation error answers invalidBody; nothing to update or a photoUrl outside the organizer media prefix answers errorBody',
+        bodyAnyOf: [invalidBody, errorBody],
       },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Service not found', body: errorBody },
@@ -348,13 +414,18 @@ export const API_ROUTES: readonly ApiRoute[] = [
     operationId: 'deleteService',
     method: 'delete',
     path: '/api/services/{id}',
-    summary: 'Delete a service; slots and bookings cascade',
+    summary: 'Delete a service; refuses when booking rows reference its slots',
     auth: 'sessionWritable',
     params: [{ name: 'id', in: 'path', required: true, schema: serviceId }],
     responses: [
       { status: 200, description: 'Service deleted', body: deletedServiceEnvelope },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Service not found', body: errorBody },
+      {
+        status: 409,
+        description: 'Service still has bookings referencing its slots',
+        body: errorBody,
+      },
       INTERNAL,
     ],
   },
@@ -375,7 +446,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
         description: 'When "1", slots that have already started are omitted.',
       },
     ],
-    responses: [{ status: 200, description: 'Slots', body: slotsEnvelope }, INTERNAL],
+    responses: [
+      { status: 200, description: 'Slots', body: slotsEnvelope },
+      { status: 400, description: 'Invalid query parameters', body: errorBody },
+      INTERNAL,
+    ],
   },
   {
     operationId: 'createSlot',
@@ -401,13 +476,14 @@ export const API_ROUTES: readonly ApiRoute[] = [
     params: [{ name: 'id', in: 'path', required: true, schema: uuid }],
     responses: [
       { status: 200, description: 'Slot', body: slotEnvelope },
+      MALFORMED_ID,
       { status: 404, description: 'Slot not found', body: errorBody },
       INTERNAL,
     ],
   },
   {
     operationId: 'updateSlot',
-    method: 'put',
+    method: 'patch',
     path: '/api/slots/{id}',
     summary: 'Update a time slot; bookedCount is never writable',
     auth: 'sessionWritable',
@@ -417,7 +493,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
     responses: [
       { status: 200, description: 'Slot updated', body: slotEnvelope },
       UNSUPPORTED_MEDIA_TYPE,
-      { status: 400, description: 'Validation error or nothing to update', body: invalidBody },
+      {
+        status: 400,
+        description:
+          'Validation error answers invalidBody; a malformed path id or nothing to update answers errorBody',
+        bodyAnyOf: [invalidBody, errorBody],
+      },
       DEMO_FORBIDDEN,
       { status: 404, description: 'Slot not found', body: errorBody },
       { status: 409, description: 'Capacity below the seats already booked', body: errorBody },
@@ -433,6 +514,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     params: [{ name: 'id', in: 'path', required: true, schema: uuid }],
     responses: [
       { status: 200, description: 'Slot deleted', body: deletedSlotEnvelope },
+      MALFORMED_ID,
       DEMO_FORBIDDEN,
       { status: 404, description: 'Slot not found', body: errorBody },
       { status: 409, description: 'Slot still has confirmed bookings', body: errorBody },
@@ -441,6 +523,34 @@ export const API_ROUTES: readonly ApiRoute[] = [
   },
 
   // ── Bookings ──────────────────────────────────────────────────────────────
+  {
+    operationId: 'listBookings',
+    method: 'get',
+    path: '/api/bookings',
+    summary: 'List bookings of the organizer this request may view',
+    auth: 'sessionOrDemoRead',
+    params: [
+      {
+        name: 'limit',
+        in: 'query',
+        required: false,
+        schema: queryLimit,
+        description: 'Maximum bookings to return (default 50, max 100).',
+      },
+      {
+        name: 'offset',
+        in: 'query',
+        required: false,
+        schema: queryOffset,
+        description: 'Number of bookings to skip (default 0).',
+      },
+    ],
+    responses: [
+      { status: 200, description: 'Bookings', body: bookingsEnvelope },
+      { status: 400, description: 'Invalid query parameters', body: errorBody },
+      INTERNAL,
+    ],
+  },
   {
     operationId: 'createBooking',
     method: 'post',
@@ -454,8 +564,8 @@ export const API_ROUTES: readonly ApiRoute[] = [
       {
         status: 400,
         description:
-          'Validation error, invalid option selection, or party over the per-booking cap',
-        body: invalidBody,
+          'Body-shape failures answer invalidBody; domain refusals (invalid option selection, party over the per-booking cap) answer errorBody with a code',
+        bodyAnyOf: [invalidBody, errorBody],
       },
       { status: 401, description: 'Guest ticket expired or already used', body: errorBody },
       DEMO_FORBIDDEN,
@@ -477,10 +587,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: "Look up a guest's bookings with a single-use ticket",
     auth: 'guestTicket',
     request: lookupBookingsInput,
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 200, description: 'Guest bookings', body: guestBookingsEnvelope },
       INVALID_BODY,
       { status: 401, description: 'Guest ticket expired or already used', body: errorBody },
+      TOO_MANY,
       INTERNAL,
     ],
   },
@@ -491,6 +603,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
     summary: 'Guest cancels a booking via manageToken',
     auth: 'manageToken',
     request: cancelBookingByTokenInput,
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 200, description: 'Booking cancelled', body: guestBookingEnvelope },
       INVALID_BODY,
@@ -501,6 +614,27 @@ export const API_ROUTES: readonly ApiRoute[] = [
         body: errorBody,
       },
       { status: 409, description: 'Booking already cancelled', body: errorBody },
+      TOO_MANY,
+      INTERNAL,
+    ],
+  },
+  {
+    operationId: 'getBookingByManageToken',
+    method: 'post',
+    path: '/api/bookings/manage-lookup',
+    summary: 'Guest looks up a booking via manageToken',
+    auth: 'manageToken',
+    request: lookupBookingByTokenInput,
+    rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
+    responses: [
+      { status: 200, description: 'Guest booking details', body: guestBookingEnvelope },
+      INVALID_BODY,
+      {
+        status: 404,
+        description: 'Booking not found or token expired',
+        body: errorBody,
+      },
+      TOO_MANY,
       INTERNAL,
     ],
   },
@@ -553,6 +687,23 @@ export const API_ROUTES: readonly ApiRoute[] = [
       { status: 401, description: 'Missing or invalid upstash-signature' },
       { status: 404, description: 'Unknown queue name' },
       { status: 500, description: 'Handler failure (triggers a QStash retry)' },
+    ],
+  },
+
+  // ── Internal ──────────────────────────────────────────────────────────────
+  {
+    operationId: 'getOrganizerByMessenger',
+    method: 'post',
+    path: '/api/internal/auth/organizer-by-messenger',
+    summary: 'Internal lookup of organizer by messenger identity or organizer ID for Auth.js',
+    auth: 'internal',
+    request: internalOrganizerLookupInput,
+    responses: [
+      { status: 200, description: 'Organizer found', body: internalOrganizerEnvelope },
+      BAD_REQUEST,
+      { status: 401, description: 'Invalid or missing internal secret', body: errorBody },
+      { status: 404, description: 'Organizer not found', body: errorBody },
+      INTERNAL,
     ],
   },
 ]

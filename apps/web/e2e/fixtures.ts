@@ -1,5 +1,9 @@
 import { loginLinkKey } from '@repo/contracts'
 import Redis from 'ioredis'
+// `postgres` is an E2E-only dependency: it exists in devDependencies
+// strictly for test database setup/teardown below. Production code must
+// never import it — Next.js has zero direct Postgres access; all server
+// reads go through src/server/api-client.ts over HTTP to the Python API.
 import postgres from 'postgres'
 
 /**
@@ -66,7 +70,7 @@ export async function seedE2EOrganizer(): Promise<void> {
   `)
 }
 
-/** Mint a one-time login link for the e2e organizer (the Go job's mint half). */
+/** Mint a one-time login link for the e2e organizer (the notification job's mint half). */
 export async function mintLoginLink(token: string, next = '/cabinet'): Promise<void> {
   await getRedis().set(
     loginLinkKey(token),

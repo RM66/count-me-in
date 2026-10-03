@@ -279,6 +279,16 @@
       "fieldErrors": [
         "photoUrl"
       ]
+    },
+    {
+      "name": "options not an array (refinement must not crash on it)",
+      "body": {
+        "options": 5
+      },
+      "valid": false,
+      "fieldErrors": [
+        "options"
+      ]
     }
   ],
   "schema": "UpdateServiceInput"

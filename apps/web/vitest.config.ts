@@ -29,7 +29,7 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/i18n/global.d.ts',
         // Auth.js wiring (thin singletons): config glue whose behavior is
-        // pinned by the Go-side session tests and the E2E smoke.
+        // pinned by the API-side session tests and the E2E smoke.
         'src/server/auth/index.ts',
         'src/server/auth/telegram-provider.ts',
       ],
@@ -63,8 +63,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
       'server-only': path.resolve(__dirname, 'vitest.server-only-stub.ts'),
       '@repo/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
-      '@repo/db': path.resolve(__dirname, '../../packages/db/src'),
-      '@repo/redis': path.resolve(__dirname, '../../packages/redis/src'),
     },
   },
 })

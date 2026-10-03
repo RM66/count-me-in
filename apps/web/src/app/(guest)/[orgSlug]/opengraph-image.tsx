@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 import { getTranslations } from 'next-intl/server'
 
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
-import { getPublicOrganizerBySlug } from '@/server/db/organizer'
+import { getPublicOrganizerView } from '@/server/api-client'
 
 // Route segment config for the generated image. The size doubles as the
 // og:image dimensions Next emits, so it matches the 1.91:1 card ratio.
@@ -24,11 +24,12 @@ export default async function OrganizerOgImage({
 }) {
   const { orgSlug } = await params
   const t = await getTranslations('OrgPage')
-  const [organizer, fonts, logo] = await Promise.all([
-    getPublicOrganizerBySlug(orgSlug),
+  const [view, fonts, logo] = await Promise.all([
+    getPublicOrganizerView(orgSlug),
     loadFigtreeFonts(),
     loadLogoDataUri(),
   ])
+  const organizer = view?.organizer ?? null
 
   // Satori cannot fetch remote URLs, so the R2-hosted photo is inlined as a
   // data URI (same approach as the logo). Falls back to `null` on failure so

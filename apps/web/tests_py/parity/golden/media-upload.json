@@ -1,0 +1,180 @@
+{
+  "scenario": "media-upload",
+  "steps": [
+    {
+      "note": "happy path → 200 signed upload target (URL normalized)",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "image/png",
+          "size": 1024
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "uploadUrl": "<presigned-url>",
+          "publicUrl": "https://parity.r2.example/organizers/<uuid:1>/avatar-<media>.png",
+          "expiresAt": "<ts:1>"
+        },
+        "body_raw": "<presigned-url>",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "service photo happy path",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/service-photo",
+        "body": {
+          "contentType": "image/png",
+          "size": 2048
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "uploadUrl": "<presigned-url>",
+          "publicUrl": "https://parity.r2.example/organizers/<uuid:1>/services/photo-<media>.png",
+          "expiresAt": "<ts:2>"
+        },
+        "body_raw": "<presigned-url>",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "non-image content type → 400",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "application/pdf"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "contentType": [
+                "value is not one of the allowed values [\"image/jpeg\",\"image/png\",\"image/webp\"]"
+              ],
+              "size": [
+                "Required"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"contentType\":[\"value is not one of the allowed values [\\\"image/jpeg\\\",\\\"image/png\\\",\\\"image/webp\\\"]\"],\"size\":[\"Required\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "demo refused → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "image/png"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
+        },
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "anonymous → 403",
+      "request": {
+        "method": "POST",
+        "path": "/api/organizers/me/avatar",
+        "body": {
+          "contentType": "image/png"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
+        },
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

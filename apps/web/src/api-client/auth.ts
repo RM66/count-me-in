@@ -1,7 +1,7 @@
 'use client'
 
 import type { RegisterOrganizerInput } from '@repo/contracts'
-import { registered } from '@repo/contracts'
+import { registrationResponse } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 import { signIn } from 'next-auth/react'
 
@@ -23,7 +23,8 @@ const SIGN_IN_ERROR_FALLBACK = 'Could not sign you in — authenticate with Tele
  */
 export function useRegisterOrganizer() {
   return useMutation({
-    mutationFn: (input: RegisterOrganizerInput) => post('/api/organizers', input, registered),
+    mutationFn: (input: RegisterOrganizerInput) =>
+      post('/api/organizers', input, registrationResponse),
   })
 }
 

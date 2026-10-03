@@ -67,8 +67,7 @@
     "errPartyTooLarge": "Puedes reservar como máximo {maxSeats, plural, =1 {# plaza} other {# plazas}} en una sola reserva",
     "errDuplicate": "Ya tienes una reserva para esta sesión",
     "errGone": "Esta sesión ya no está disponible",
-    "errInvalidOptions": "Las opciones seleccionadas no son válidas para este servicio",
-    "errAlreadyCancelled": "Esta reserva ya se ha cancelado"
+    "errInvalidOptions": "Las opciones seleccionadas no son válidas para este servicio"
   },
   "SuccessStep": {
     "confirmedNote": "Tu plaza está reservada. Recibirás una confirmación de nuestro bot en tu aplicación de mensajería.",
@@ -419,15 +418,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Consentimiento de cookies",
-    "text": "Utilizamos cookies de analítica para entender cómo se usa CountMeIn y mejorarlo. ",
-    "essential": "Las cookies esenciales para iniciar sesión y reservar están siempre activas. ",
+    "text": "Utilizamos cookies de analítica para entender cómo se usa CountMeIn y mejorarlo.",
+    "essential": "Las cookies esenciales para iniciar sesión y reservar están siempre activas.",
     "privacyPolicy": "Política de privacidad",
     "reject": "Rechazar",
     "accept": "Aceptar"
   },
   "Ui": {
     "close": "Cerrar",
-    "navigation": "Navegación",
     "loading": "Cargando",
     "more": "Más",
     "sidebar": "Barra lateral",
@@ -526,8 +524,7 @@
       "changeDay": "Filtrando por {day}. Cambiar día",
       "filterByDay": "Filtrar {entity} por día",
       "showEveryBooking": "Mostrar todas las reservas",
-      "showEveryService": "Mostrar todos los servicios",
-      "showEverySlot": "Mostrar todos los horarios"
+      "showEveryService": "Mostrar todos los servicios"
     },
     "demoBanner": {
       "readOnly": "Demostración de solo lectura.",
@@ -683,8 +680,6 @@
       "createFailed": "No se pudo crear el servicio",
       "updateFailed": "No se pudo actualizar el servicio",
       "deleteFailed": "No se pudo eliminar el servicio",
-      "notFound": "Servicio no encontrado",
-      "backToList": "Volver a los servicios",
       "pricePlaceholder": "$12",
       "editSubtitle": "Edita los detalles y las opciones del servicio."
     },
@@ -776,37 +771,5 @@
       "full": "Completo",
       "left": "Quedan {count}"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Datos no válidos",
-    "invalidOptions": "Las opciones seleccionadas no son válidas para este servicio",
-    "ticketExpired": "Tu confirmación de Telegram ha caducado; vuelve a autenticarte",
-    "telegramNotConfigured": "El bot de Telegram no está configurado",
-    "telegramInvalid": "Datos de autenticación de Telegram no válidos",
-    "telegramValidationFailed": "No se pudo validar la autenticación de Telegram",
-    "authSessionExpired": "La sesión de autenticación ha caducado; vuelve a autenticarte con Telegram",
-    "organizerNotFound": "Organizador no encontrado",
-    "demoNotSeeded": "No se han cargado los datos del organizador de demostración",
-    "serviceNotFound": "Servicio no encontrado",
-    "slotNotFound": "Horario no encontrado",
-    "bookingNotFound": "Reserva no encontrada",
-    "photoPrefix": "photoUrl no válida: debe pertenecer a tu prefijo de archivos multimedia",
-    "cannotCreateService": "No se pudo crear el servicio",
-    "slugTaken": "Este identificador ya está en uso; elige otro",
-    "accountExists": "Ya existe una cuenta con esta identidad de Telegram; inicia sesión",
-    "nothingToUpdate": "No hay campos que actualizar",
-    "unsupportedMediaType": "Este endpoint solo acepta application/merge-patch+json (RFC 7386)",
-    "capacityBelowBooked": "El aforo no puede ser inferior a {count, plural, =1 {la # plaza ya reservada} other {las # plazas ya reservadas}}",
-    "demoReadOnly": "Esta es una cuenta de demostración de solo lectura; regístrate para crear tus propios servicios reservables.",
-    "soldOut": "Esta sesión está completa",
-    "seatsLeftOnSession": "Solo quedan {count, plural, =1 {# plaza} other {# plazas}} en esta sesión",
-    "partyTooLarge": "Puedes reservar como máximo {maxSeats, plural, =1 {# plaza} other {# plazas}} en una sola reserva",
-    "duplicateBooking": "Ya tienes una reserva para esta sesión",
-    "alreadyCancelled": "Esta reserva ya se ha cancelado",
-    "slotGone": "Esta sesión ya no está disponible",
-    "tooManyRequests": "Demasiadas solicitudes — inténtalo de nuevo en un momento",
-    "slotHasActiveBookings": "Esta sesión tiene reservas y no se puede eliminar",
-    "serviceHasBookings": "Este servicio tiene reservas en sus sesiones y no se puede eliminar",
-    "bodyTooLarge": "El cuerpo de la solicitud es demasiado grande"
   }
 }

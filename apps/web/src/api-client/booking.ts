@@ -14,8 +14,8 @@ import { post } from './client'
  * a cache-backed `useQuery` that React Query is free to refetch on a whim.
  * Results are written into the cache by hand instead.
  *
- * The pages themselves are server components that read Postgres directly
- * (`lib/server/db/booking.ts`); this file exists for the interactive parts.
+ * The pages themselves are server components that read through
+ * `server/api-client.ts`; this file exists for the interactive parts.
  */
 
 /**

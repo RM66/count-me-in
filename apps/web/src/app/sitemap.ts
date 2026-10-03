@@ -1,8 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 import { SITE_URL } from '@/constants/site'
-import { listPublicOrganizerSlugs } from '@/server/db/organizer'
-import { listPublicServicePaths } from '@/server/db/service'
+import { getPublicSitemap } from '@/server/api-client'
 
 // Dynamic rather than prerendered: a static sitemap would make every
 // `next build` query Postgres, breaking builds without database access.
@@ -17,10 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
   ]
 
-  const [organizers, services] = await Promise.all([
-    listPublicOrganizerSlugs(),
-    listPublicServicePaths(),
-  ])
+  // One API call returns both catalogs.
+  const { organizers, services } = await getPublicSitemap()
 
   const organizerPages: MetadataRoute.Sitemap = organizers.map(({ slug }) => ({
     url: `${SITE_URL}/${slug}`,

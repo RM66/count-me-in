@@ -25,8 +25,8 @@ test.describe('cabinet create flow', () => {
     page,
   }) => {
     await skipCookieBanner(page)
-    // ── Login via the one-time link (the mint half of the flow the Go job
-    // performs; the consume half runs for real on POST).
+    // ── Login via the one-time link (the mint half of the flow the
+    // notification job performs; the consume half runs for real on POST).
     const linkToken = `e2e-login-link-${Date.now()}`
     await mintLoginLink(linkToken)
     await page.goto(`/login/link/${linkToken}`)

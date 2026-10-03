@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // the read-side demo resolution (ADR-010). Anonymous visitors get
 // the demo organizer; a signed-in organizer gets their own id; a session
 // carrying the demo id is still demo. The write-side guards live in the
-// Go API — this is the page-rendering half.
+// Python API — this is the page-rendering half.
 
 const mockAuth = vi.fn()
 vi.mock('./auth', () => ({

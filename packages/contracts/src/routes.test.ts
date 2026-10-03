@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { API_ROUTES, INTERNAL_RECORDS } from './routes'
-import { metaOfSchema } from './wire'
+import { API_ROUTES } from './routes'
+import { INTERNAL_RECORDS, metaOfSchema } from './wire'
 
 describe('API route manifest', () => {
   it('every referenced schema is registered in wire.ts', () => {
     for (const route of API_ROUTES) {
       const schemas = [
         route.request,
-        ...route.responses.flatMap((r) => [r.body, ...(r.bodyOneOf ?? [])]),
+        ...route.responses.flatMap((r) => [r.body, ...(r.bodyAnyOf ?? [])]),
         ...(route.params ?? []).map((p) => ('enum' in p.schema ? undefined : p.schema)),
       ].filter((s) => s !== undefined)
       for (const schema of schemas) {

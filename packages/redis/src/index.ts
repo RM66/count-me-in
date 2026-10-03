@@ -1,1 +1,0 @@
-export { getRedis } from './client'

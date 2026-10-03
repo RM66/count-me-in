@@ -77,9 +77,10 @@ describe('timezone', () => {
     expect(timezone.safeParse('Not/AZone').success).toBe(false)
   })
 
-  // Parity vector with pkg/validation TestTimezoneRuleCaseInsensitive: IANA ids
-  // are case-insensitive, and "Local" is a Go-only name neither side accepts.
-  it('accepts case-insensitive IANA ids like the Go API', () => {
+  // Parity vector with the API's timezone rule (validation/rules.py):
+  // IANA ids are case-insensitive, and "Local" is not an IANA id —
+  // neither side accepts it.
+  it('accepts case-insensitive IANA ids like the Python API', () => {
     expect(timezone.safeParse('europe/belgrade').success).toBe(true)
     expect(timezone.safeParse('america/new_york').success).toBe(true)
     expect(timezone.safeParse('Local').success).toBe(false)
@@ -88,9 +89,9 @@ describe('timezone', () => {
 })
 
 /**
- * Parity with the Go length rule (pkg/validation): length bounds are
- * UTF-16 code units (JS String.length), not bytes. These vectors keep the Go
- * port from drifting back to byte length for multi-byte text.
+ * Parity with the API's length rule (validation/rules.py): length bounds
+ * are UTF-16 code units (JS String.length), not bytes. These vectors keep
+ * the Python port from drifting to byte length for multi-byte text.
  */
 describe('UTF-16 length bounds', () => {
   it('measures multi-byte text in code units, not bytes', () => {

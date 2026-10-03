@@ -12,9 +12,10 @@ import { describe, expect, it } from 'vitest'
 import { zodMessages } from './messages'
 
 /**
- * These strings are reproduced verbatim in Go (pkg/validation). Zod owns the
- * wording; this test fails when a Zod upgrade changes it, so the Go templates
- * are updated deliberately instead of drifting.
+ * These strings are reproduced verbatim in the API's hand-written rule
+ * messages (validation/refine.py). Zod owns the wording; this test fails
+ * when a Zod upgrade changes it, so the pinned messages are updated
+ * deliberately instead of drifting.
  */
 function firstMessage(result: {
   success: boolean
@@ -23,7 +24,7 @@ function firstMessage(result: {
   return result.error?.issues[0]?.message ?? ''
 }
 
-describe('Go rule messages match Zod', () => {
+describe('Hand-written API rule messages match Zod', () => {
   it('string min/max', () => {
     expect(firstMessage(displayName.safeParse('x'.repeat(BOUNDS.displayName.max + 1)))).toBe(
       zodMessages.stringTooBig(BOUNDS.displayName.max),

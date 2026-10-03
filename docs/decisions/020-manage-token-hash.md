@@ -27,7 +27,7 @@ Dropping the raw column (contract phase) requires re-issuing tokens through the 
 
 ### Parity
 
-- Go: `HashManageToken` in [`pkg/db/shared.go`](../../apps/web/pkg/db/shared.go)
+- Python: `hash_manage_token` in `apps/web/api/_lib/countmein/db/shared.py` (Go `HashManageToken` in `pkg/db/shared.go`, removed in ADR-021)
 - TS: `hashManageToken` in [`packages/contracts/src/manage-token.ts`](../../packages/contracts/src/manage-token.ts)
 - DB backfill: migration `0013_manage_token_hash` (built-in `sha256()`, no pgcrypto)
 

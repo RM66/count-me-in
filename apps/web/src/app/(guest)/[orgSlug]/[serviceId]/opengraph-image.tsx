@@ -2,8 +2,7 @@ import { ImageResponse } from 'next/og'
 import { getTranslations } from 'next-intl/server'
 
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
-import { getPublicOrganizerBySlug } from '@/server/db/organizer'
-import { getPublicService } from '@/server/db/service'
+import { getPublicServiceView } from '@/server/api-client'
 
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -24,12 +23,16 @@ export default async function ServiceOgImage({
   const t = await getTranslations('OrgPage')
   const gradient = 'linear-gradient(135deg, #2726CF 0%, #6F23F7 100%)'
 
-  const [organizer, fonts, logo] = await Promise.all([
-    getPublicOrganizerBySlug(orgSlug),
+  const [view, fonts, logo] = await Promise.all([
+    getPublicServiceView(serviceId),
     loadFigtreeFonts(),
     loadLogoDataUri(),
   ])
-  const service = organizer ? await getPublicService(organizer.id, serviceId) : null
+  // The service must belong to the organizer in the URL, or one
+  // organizer's card would render under another's name.
+  const organizer =
+    view && view.organizer.slug.toLowerCase() === orgSlug.toLowerCase() ? view.organizer : null
+  const service = organizer ? (view?.service ?? null) : null
 
   // Satori cannot fetch remote URLs, so R2-hosted photos are inlined as data
   // URIs (same approach as the logo). Each falls back to `null` on failure so

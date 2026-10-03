@@ -1,0 +1,20 @@
+# Both images build from the repo-root context (docker-compose.yml).
+# Only build inputs may be sent to the daemon — never VCS history,
+# installed dependencies, build output, test artifacts or secrets.
+.git
+.github
+**/node_modules
+apps/web/.next
+apps/web/coverage
+apps/web/test-results
+apps/web/tests_py
+apps/web/e2e
+apps/web/.storybook
+packages/*/coverage
+docs
+.next
+dist
+*.log
+.env
+.env.*
+!.env.example
