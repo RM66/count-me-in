@@ -21,10 +21,16 @@ function trimSlash(value: string | undefined): string | undefined {
  *
  * Resolution order:
  * 1. `API_URL` — a separate API origin (dev API server, container twin).
- * 2. `VERCEL_URL` — the deployment's own host; the Python API is reached
- *    through the same-origin rewrite on every Vercel deployment.
- * 3. `VERCEL_PROJECT_PRODUCTION_URL` — present even when VERCEL_URL is not
- *    (e.g. `vercel dev` serving production traffic locally).
+ * 2. Production (`VERCEL_ENV=production`): `VERCEL_PROJECT_PRODUCTION_URL` —
+ *    the project's production domain, which is NOT gated by Deployment
+ *    Protection. `VERCEL_URL` (the `*.vercel.app` deployment URL) IS gated
+ *    when protection is on: a server-side fetch is redirected to the SSO
+ *    login page and reads its HTML as a broken JSON body — surfacing as a
+ *    Zod "contract violation" on every read. The production domain serves
+ *    the same deployment through the same rewrites, unprotected.
+ * 3. `VERCEL_URL` — the deployment's own host; correct on previews (where
+ *    the `_vercel_jwt` bypass cookie or `VERCEL_AUTOMATION_BYPASS_SECRET`
+ *    cover the gate) and as a last resort on production.
  * 4. `NEXT_PUBLIC_SITE_URL` — the configured public origin.
  *
  * In production, none configured is a misconfiguration — fail closed
@@ -36,9 +42,21 @@ export async function resolveApiOrigin(): Promise<string> {
   if (apiUrl) {
     return apiUrl
   }
+  const toHttps = (host: string) =>
+    `https://${host.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
+  if (process.env.VERCEL_ENV === 'production') {
+    const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    if (prodHost) {
+      return toHttps(prodHost)
+    }
+    const siteUrl = trimSlash(process.env.NEXT_PUBLIC_SITE_URL)
+    if (siteUrl) {
+      return siteUrl
+    }
+  }
   const vercelHost = process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL
   if (vercelHost) {
-    return `https://${vercelHost.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
+    return toHttps(vercelHost)
   }
   const siteUrl = trimSlash(process.env.NEXT_PUBLIC_SITE_URL)
   if (siteUrl) {
