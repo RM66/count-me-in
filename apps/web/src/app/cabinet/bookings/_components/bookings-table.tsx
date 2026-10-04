@@ -12,12 +12,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { BookingRow } from './booking-row'
 import { BookingsFilterBar } from './bookings-filter-bar'
-import {
-  type BookingSort,
-  type BookingStatusFilter,
-  SORT_KEYS,
-  useBookingsTable,
-} from './use-bookings-table'
+import { type BookingSort, SORT_KEYS } from './sort'
+import { type BookingStatusFilter, useBookingsTable } from './use-bookings-table'
 
 type BookingsTableProps = {
   /** The current page of the filtered view — the API already applied every filter. */

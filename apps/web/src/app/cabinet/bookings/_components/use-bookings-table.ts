@@ -6,12 +6,7 @@ import { useLocale } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { dayKeyToDate, formatDayLabel } from '@/helpers/day-key'
-
-const SORT_KEYS = ['guest', 'service', 'when', 'seats', 'status'] as const
-export type SortKey = (typeof SORT_KEYS)[number]
-export type BookingSort = SortKey
-
-export { SORT_KEYS }
+import type { SortKey } from './sort'
 
 export type BookingStatusFilter = 'all' | 'confirmed' | 'cancelled'
 

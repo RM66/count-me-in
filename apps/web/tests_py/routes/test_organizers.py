@@ -218,7 +218,16 @@ async def test_me_patch_photo_cleanup_gets_pre_update_url(client, fake_redis, db
     from countmein import storage
     from countmein.routes import organizers as org_routes
 
-    monkeypatch.setenv("R2_PUBLIC_BASE_URL", "https://media.example.com")
+    # config() requires the full R2 set — setting only the public base
+    # leaves the prefix check raising inside is_own_media_url (400).
+    for name, value in (
+        ("R2_ACCOUNT_ID", "test-account"),
+        ("R2_ACCESS_KEY_ID", "test-access-key"),
+        ("R2_SECRET_ACCESS_KEY", "test-secret-key"),
+        ("R2_BUCKET", "test-bucket"),
+        ("R2_PUBLIC_BASE_URL", "https://media.example.com"),
+    ):
+        monkeypatch.setenv(name, value)
     storage.reset_for_test()
 
     calls: list[tuple[str, str, str]] = []
@@ -234,19 +243,22 @@ async def test_me_patch_photo_cleanup_gets_pre_update_url(client, fake_redis, db
 
     base = f"https://media.example.com/organizers/{org['id']}"
     patch_headers = {**headers, "content-type": "application/merge-patch+json"}
-    r = await client.patch(
-        "/api/organizers/me",
-        headers=patch_headers,
-        content=json.dumps({"photoUrl": f"{base}/first.jpg"}).encode(),
-    )
-    assert r.status_code == 200, r.text
-    r = await client.patch(
-        "/api/organizers/me",
-        headers=patch_headers,
-        content=json.dumps({"photoUrl": f"{base}/second.jpg"}).encode(),
-    )
-    assert r.status_code == 200, r.text
-    assert calls == [
-        (org["id"], "", f"{base}/first.jpg"),
-        (org["id"], f"{base}/first.jpg", f"{base}/second.jpg"),
-    ]
+    try:
+        r = await client.patch(
+            "/api/organizers/me",
+            headers=patch_headers,
+            content=json.dumps({"photoUrl": f"{base}/first.jpg"}).encode(),
+        )
+        assert r.status_code == 200, r.text
+        r = await client.patch(
+            "/api/organizers/me",
+            headers=patch_headers,
+            content=json.dumps({"photoUrl": f"{base}/second.jpg"}).encode(),
+        )
+        assert r.status_code == 200, r.text
+        assert calls == [
+            (org["id"], "", f"{base}/first.jpg"),
+            (org["id"], f"{base}/first.jpg", f"{base}/second.jpg"),
+        ]
+    finally:
+        storage.reset_for_test()
