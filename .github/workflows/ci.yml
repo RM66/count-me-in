@@ -289,7 +289,7 @@ jobs:
       APP_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: countmeingroupbot
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
