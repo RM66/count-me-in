@@ -69,6 +69,20 @@ describe('apiFetch', () => {
     expect(String(url)).toBe('https://countmein-web-abc123.vercel.app/api/services')
   })
 
+  it('prefers the production domain over VERCEL_URL on production deploys', async () => {
+    // The *.vercel.app deployment URL sits behind Deployment Protection's
+    // SSO wall; the production domain serves the same deployment ungated.
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('API_URL', '')
+    vi.stubEnv('VERCEL_URL', 'countmein-web-abc123.vercel.app')
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'countmein.group')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
+    const [url] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('https://countmein.group/api/services')
+  })
+
   it('fails closed in production when no origin is configured', async () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('API_URL', '')
