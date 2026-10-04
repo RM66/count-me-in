@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { dateToDayKey } from '@/app/cabinet/_components/day-filter'
+import { dateToDayKey } from '@/helpers/day-key'
 import { addDays, assignColumns, startOfWeek, timeToMinutes } from './week-layout'
 
 // the week grid's pure geometry. Wall-clock minutes only — the

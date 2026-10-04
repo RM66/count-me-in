@@ -1,4 +1,4 @@
-import type { GuestBooking, ServiceRecord } from '@repo/contracts'
+import type { GuestBooking, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -328,6 +328,33 @@ describe('useBookingDialog — handleTicket', () => {
     expect(result.current.booking).toEqual(guestBooking)
     expect(result.current.error).toBeNull()
     expect(mockRouterRefresh).toHaveBeenCalled()
+  })
+
+  it('clamps the party size when the picked slot has fewer seats left', () => {
+    const tightSlot = {
+      id: 'slot-tight',
+      serviceId: 'svc-1',
+      startsAt: '2026-07-25T05:00:00.000Z',
+      durationMinutes: 60,
+      capacity: 10,
+      bookedCount: 8,
+      price: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+    } as TimeSlotRecord
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithGroupBookings, slots: [tightSlot] }),
+      { wrapper: createWrapper() },
+    )
+
+    act(() => {
+      result.current.setSeats(4)
+      result.current.setSlotId('slot-tight')
+    })
+
+    // seatsLeft = 10 - 8 = 2 — the party is re-clamped, not left stale.
+    expect(result.current.seats).toBe(2)
+    expect(result.current.maxSeats).toBe(2)
   })
 
   it('uses ticket displayName when name is empty', async () => {

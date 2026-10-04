@@ -28,7 +28,6 @@ function setup(mutationOverrides: Record<string, unknown> = {}) {
       useImageUpload({
         contentType: z.enum(['image/jpeg', 'image/png']),
         maxBytes: 100,
-        maxBytesLabel: '100 B',
         mutation: { mutate, isPending: false, ...mutationOverrides } as never,
         onUploaded,
       }),

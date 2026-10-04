@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreateBookingInput, Messenger } from '@repo/contracts'
+import type { CreateBookingInput } from '@repo/contracts'
 import { bookingEnvelope, guestBookingEnvelope, guestBookingsEnvelope } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
@@ -14,8 +14,8 @@ import { post } from './client'
  * a cache-backed `useQuery` that React Query is free to refetch on a whim.
  * Results are written into the cache by hand instead.
  *
- * The pages themselves are server components that read Postgres directly
- * (`lib/server/db/booking.ts`); this file exists for the interactive parts.
+ * The pages themselves are server components that read through
+ * `server/api-client.ts`; this file exists for the interactive parts.
  */
 
 /**
@@ -23,7 +23,7 @@ import { post } from './client'
  * success screen. `retry: false` — the booking spends a single-use guest
  * ticket, so a retry always hits a 401 that overwrites the real result.
  *
- * Idempotency (architecture review fix #9): there is no explicit
+ * Idempotency (ADR-024): there is no explicit
  * idempotency key. The single-use ticket prevents replay, and the
  * partial unique index (one active booking per guest per slot) prevents
  * a duplicate on a same-slot manual retry. The residual edge case is a
@@ -49,7 +49,7 @@ export function useCancelBooking() {
     mutationFn: (manageToken: string) =>
       post('/api/bookings/cancel', { manageToken }, guestBookingEnvelope),
     // Non-idempotent: a retried cancel of an already-cancelled booking
-    // surfaces `alreadyCancelled` and overwrites the real result (review W-6).
+    // surfaces `alreadyCancelled` and overwrites the real result.
     retry: false,
   })
 }
@@ -60,29 +60,28 @@ export function useCancelBooking() {
  * credential (session + ownership) against a different endpoint, and resolves
  * to a `BookingRecord` (no `manageToken`).
  * The cabinet lists are server-rendered, so the caller follows this with
- * `router.refresh()` (Phase 2.3 — no client cache to invalidate).
+ * `router.refresh()` — there is no client cache to invalidate.
  */
 export function useCancelBookingByOrganizer() {
   return useMutation({
     mutationFn: (bookingId: string) =>
       post('/api/bookings/cancel-by-organizer', { bookingId }, bookingEnvelope),
-    // Non-idempotent: same reason as useCancelBooking (review W-6).
+    // Non-idempotent: same reason as useCancelBooking.
     retry: false,
   })
 }
 
 /**
- * Look up all bookings for a messenger identity ("lost my link" flow).
- * Caches under the identity (not the ticket — tickets are one-shot).
- * `retry: false` — same reason as `useCreateBooking`.
+ * Look up all bookings for a guest ticket ("lost my link" flow).
+ * `retry: false` — same reason as `useCreateBooking`: the ticket is single-use.
  */
 export function useLookupBookings() {
   return useMutation({
-    mutationFn: async (identity: { ticket: string; messenger: Messenger; messengerId: string }) => {
+    mutationFn: async (ticket: string) => {
       const data = await post(
         '/api/bookings/lookup',
         {
-          guestTicket: identity.ticket,
+          guestTicket: ticket,
         },
         guestBookingsEnvelope,
       )

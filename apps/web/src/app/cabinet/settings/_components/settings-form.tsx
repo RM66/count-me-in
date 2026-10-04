@@ -1,13 +1,14 @@
 'use client'
 
 import type { OrganizerProfile } from '@repo/contracts'
-import { CopyIcon, ImageIcon, PencilIcon } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
-import { toast } from 'sonner'
+import { useController } from 'react-hook-form'
 
 import { useCurrentOrganizer } from '@/api-client'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { FieldShell } from '@/components/field-shell'
+import { FormTextField } from '@/components/form-field'
+import { MarkdownEditor } from '@/components/markdown/markdown-editor'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -17,15 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from '@/components/ui/input-group'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { FieldGroup } from '@/components/ui/field'
 import {
   Select,
   SelectContent,
@@ -35,9 +28,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SITE_DOMAIN, SITE_URL } from '@/constants/site'
-import { TIMEZONES } from '@/constants/timezones'
-import { initials } from '@/helpers/name'
+import { timezoneLabel, TIMEZONES } from '@/constants/timezones'
+import { AvatarField } from './avatar-field'
+import { SlugField } from './slug-field'
 import { useProfileForm } from './use-profile-form'
 
 export function SettingsForm() {
@@ -62,122 +55,97 @@ export function SettingsForm() {
 
 function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
   const [isSlugEditable, setIsSlugEditable] = useState(false)
-  const form = useProfileForm(organizer, () => setIsSlugEditable(false))
+  const {
+    form,
+    save,
+    isSaving,
+    fileInputRef,
+    handleAvatarChange,
+    triggerAvatarUpload,
+    isUploadingAvatar,
+  } = useProfileForm(organizer, () => setIsSlugEditable(false))
   const t = useTranslations('Cabinet.settings')
   const tc = useTranslations('Cabinet.common')
+
+  const slug = useController({ control: form.control, name: 'slug' })
+  const description = useController({ control: form.control, name: 'description' })
+  const timezone = useController({ control: form.control, name: 'timezone' })
+  const locale = useLocale()
+
+  // A stored zone missing from the curated list still needs an option or
+  // the Select renders blank.
+  const timezoneOptions =
+    timezone.field.value && !TIMEZONES.includes(timezone.field.value)
+      ? [timezone.field.value, ...TIMEZONES]
+      : TIMEZONES
 
   // Read-only demo account (ADR-010). Copy / navigation stay enabled — only
   // controls that would write are locked. The API rejects demo writes anyway.
   const isReadOnly = organizer.isDemo
 
   return (
-    <div className="flex flex-col gap-6">
+    <form onSubmit={save} noValidate className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>{t('profile')}</CardTitle>
           <CardDescription>{t('profileDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-16">
-              {organizer.photoUrl ? (
-                <AvatarImage src={organizer.photoUrl} sizes="4rem" alt={organizer.name} />
-              ) : null}
-              <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
-            </Avatar>
-            <input
-              ref={form.fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={form.handleAvatarChange}
-            />
-            <Button
-              variant="outline"
-              onClick={form.triggerAvatarUpload}
-              disabled={form.isUploadingAvatar || isReadOnly}
-            >
-              <ImageIcon data-icon="inline-start" />
-              {form.isUploadingAvatar ? t('uploading') : t('changePhoto')}
-            </Button>
-          </div>
+          <AvatarField
+            organizer={organizer}
+            fileInputRef={fileInputRef}
+            isUploading={isUploadingAvatar}
+            isReadOnly={isReadOnly}
+            onTriggerUpload={triggerAvatarUpload}
+            onAvatarChange={handleAvatarChange}
+          />
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="name">{t('displayName')}</FieldLabel>
-              <Input
-                id="name"
-                value={form.state.name}
-                onChange={(e) => form.updateField('name')(e.target.value)}
-                disabled={isReadOnly}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="slug">{t('publicPageUrl')}</FieldLabel>
-              <InputGroup>
-                <InputGroupAddon>
-                  <InputGroupText>{SITE_DOMAIN}/</InputGroupText>
-                </InputGroupAddon>
-                <InputGroupInput
-                  id="slug"
-                  value={form.state.slug}
-                  onChange={(e) => form.updateField('slug')(e.target.value)}
-                  disabled={!isSlugEditable || isReadOnly}
-                />
-                <InputGroupAddon align="inline-end" className="max-sm:gap-0">
-                  {!isSlugEditable && !isReadOnly && (
-                    <Button size="sm" variant="ghost" onClick={() => setIsSlugEditable(true)}>
-                      <PencilIcon data-icon="inline-start" />
-                      <span className="max-sm:hidden">{t('edit')}</span>
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${SITE_URL}/${form.state.slug}`)
-                      toast.success(t('linkCopied'))
-                    }}
-                  >
-                    <CopyIcon data-icon="inline-start" />
-                    <span className="max-sm:hidden">{t('copy')}</span>
-                  </Button>
-                </InputGroupAddon>
-              </InputGroup>
-              <FieldDescription>
-                {isReadOnly
-                  ? t('slugFixed')
-                  : !isSlugEditable
-                    ? t('slugEditable')
-                    : t('slugWarning')}
-              </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="bio">{t('bio')}</FieldLabel>
+            <FormTextField
+              control={form.control}
+              name="name"
+              label={t('displayName')}
+              disabled={isReadOnly}
+            />
+            <SlugField
+              field={slug.field}
+              invalid={slug.fieldState.invalid}
+              error={slug.fieldState.error}
+              isEditable={isSlugEditable}
+              onEdit={() => setIsSlugEditable(true)}
+              isReadOnly={isReadOnly}
+            />
+            <FieldShell
+              htmlFor="bio"
+              label={t('bio')}
+              description={t('bioHint')}
+              invalid={description.fieldState.invalid}
+              error={description.fieldState.error}
+            >
               <MarkdownEditor
-                value={form.state.bio}
-                onChange={form.updateField('bio')}
+                value={description.field.value}
+                onChange={description.field.onChange}
                 height="220px"
                 readOnly={isReadOnly}
               />
-              <FieldDescription>{t('bioHint')}</FieldDescription>
-            </Field>
+            </FieldShell>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="contact">{t('contact')}</FieldLabel>
-                <Input
-                  id="contact"
-                  value={form.state.contact}
-                  onChange={(e) => form.updateField('contact')(e.target.value)}
-                  placeholder={t('contactPlaceholder')}
-                  disabled={isReadOnly}
-                />
-                <FieldDescription>{t('contactHint')}</FieldDescription>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="tz">{t('timezone')}</FieldLabel>
+              <FormTextField
+                control={form.control}
+                name="contact"
+                label={t('contact')}
+                placeholder={t('contactPlaceholder')}
+                description={t('contactHint')}
+                disabled={isReadOnly}
+              />
+              <FieldShell
+                htmlFor="tz"
+                label={t('timezone')}
+                invalid={timezone.fieldState.invalid}
+                error={timezone.fieldState.error}
+              >
                 <Select
-                  value={form.state.timezone}
-                  onValueChange={form.updateField('timezone')}
+                  value={timezone.field.value}
+                  onValueChange={timezone.field.onChange}
                   disabled={isReadOnly}
                 >
                   <SelectTrigger id="tz">
@@ -185,37 +153,34 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {TIMEZONES.map((tz) => (
-                        <SelectItem key={tz.value} value={tz.value}>
-                          {tz.label}
+                      {timezoneOptions.map((tz) => (
+                        <SelectItem key={tz} value={tz}>
+                          {timezoneLabel(tz, locale)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-              </Field>
+              </FieldShell>
             </div>
-            <Field>
-              <FieldLabel htmlFor="location">{t('location')}</FieldLabel>
-              <Input
-                id="location"
-                value={form.state.location}
-                onChange={(e) => form.updateField('location')(e.target.value)}
-                placeholder={t('locationPlaceholder')}
-                disabled={isReadOnly}
-              />
-              <FieldDescription>{t('locationHint')}</FieldDescription>
-            </Field>
+            <FormTextField
+              control={form.control}
+              name="location"
+              label={t('location')}
+              placeholder={t('locationPlaceholder')}
+              description={t('locationHint')}
+              disabled={isReadOnly}
+            />
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button onClick={form.save} disabled={form.isSaving || isReadOnly}>
-            {form.isSaving ? tc('saving') : t('saveChanges')}
+          <Button type="submit" disabled={isSaving || isReadOnly}>
+            {isSaving ? tc('saving') : t('saveChanges')}
           </Button>
         </CardFooter>
       </Card>
 
       {/* TODO: Notifications tab ('@/components/ui/tabs') */}
-    </div>
+    </form>
   )
 }

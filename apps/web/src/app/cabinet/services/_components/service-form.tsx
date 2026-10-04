@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
 import { useIsDemo } from '@/api-client'
+import { FormTextareaField, FormTextField } from '@/components/form-field'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +24,6 @@ import { FieldGroup } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import { ServiceOptionsField } from './service-options-field'
 import { ServicePhotoField } from './service-photo-field'
-import { ServiceTextareaField, ServiceTextField } from './service-text-field'
 import { useServiceForm } from './use-service-form'
 
 export function ServiceForm({ service }: { service?: ServiceRecord }) {
@@ -50,14 +50,14 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
           </CardHeader>
           <CardContent>
             <FieldGroup>
-              <ServiceTextField
+              <FormTextField
                 control={control}
                 name="title"
                 label={t('fieldTitle')}
                 placeholder={t('titlePlaceholder')}
                 disabled={isReadOnly}
               />
-              <ServiceTextareaField
+              <FormTextareaField
                 control={control}
                 name="description"
                 label={t('fieldDescription')}
@@ -67,7 +67,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                 disabled={isReadOnly}
               />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <ServiceTextField
+                <FormTextField
                   control={control}
                   name="location"
                   label={t('fieldLocation')}
@@ -75,7 +75,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                   description={t('locationHint')}
                   disabled={isReadOnly}
                 />
-                <ServiceTextField
+                <FormTextField
                   control={control}
                   name="contact"
                   label={t('fieldContact')}
@@ -96,14 +96,14 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
           <CardContent>
             <FieldGroup>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <ServiceTextField
+                <FormTextField
                   control={control}
                   name="defaultPrice"
                   label={t('fieldPrice')}
                   placeholder={t('pricePlaceholder')}
                   disabled={isReadOnly}
                 />
-                <ServiceTextField
+                <FormTextField
                   control={control}
                   name="defaultCapacity"
                   label={t('fieldCapacity')}
@@ -112,7 +112,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                   inputMode="numeric"
                   disabled={isReadOnly}
                 />
-                <ServiceTextField
+                <FormTextField
                   control={control}
                   name="defaultDurationMinutes"
                   label={t('fieldDuration')}
@@ -133,7 +133,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
           </CardHeader>
           <CardContent>
             <FieldGroup>
-              <ServiceTextField
+              <FormTextField
                 control={control}
                 name="maxSeatsPerBooking"
                 label={t('fieldMaxSeats')}
@@ -198,10 +198,7 @@ export function ServiceForm({ service }: { service?: ServiceRecord }) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>{t('keepService')}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={remove}
-                        className="bg-destructive text-white hover:bg-destructive/90"
-                      >
+                      <AlertDialogAction variant="destructive" onClick={remove}>
                         {t('delete')}
                       </AlertDialogAction>
                     </AlertDialogFooter>

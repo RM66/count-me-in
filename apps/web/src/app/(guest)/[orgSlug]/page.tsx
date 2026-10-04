@@ -1,4 +1,4 @@
-import { seatsLeft } from '@repo/contracts'
+import { seatsLeft, slugShape } from '@repo/contracts'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -7,14 +7,13 @@ import { ServiceCard } from '@/app/(guest)/[orgSlug]/_components/service-card'
 import { ContactLink } from '@/components/contact-link'
 import { JsonLd } from '@/components/json-ld'
 import { LocationLink } from '@/components/location-link'
+import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/markdown/markdown-preview'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MARKDOWN_CLASS, MarkdownPreview } from '@/components/ui/markdown-preview'
 import { Separator } from '@/components/ui/separator'
 import { SITE_URL } from '@/constants/site'
+import { initials } from '@/helpers/name'
 import { pageMetadata } from '@/lib/seo'
-import { getPublicOrganizerBySlug } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listUpcomingSlotsForServices } from '@/server/db/time-slot'
+import { getPublicOrganizerView } from '@/server/api-client'
 
 /**
  * Metadata has to be a function, not a static object: the title names the
@@ -28,8 +27,13 @@ export async function generateMetadata({
   params: Promise<{ orgSlug: string }>
 }): Promise<Metadata> {
   const { orgSlug } = await params
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
-  const t = await getTranslations('OrgPage')
+  // Anything can match [orgSlug] — /favicon.ico, /wp-login.php. A value that
+  // cannot be a slug is a 404 without spending an API round-trip.
+  const [view, t] = await Promise.all([
+    slugShape.safeParse(orgSlug).success ? getPublicOrganizerView(orgSlug) : null,
+    getTranslations('OrgPage'),
+  ])
+  const organizer = view?.organizer ?? null
 
   if (!organizer) {
     // The page itself answers `404`; the metadata only has to avoid claiming a
@@ -46,20 +50,17 @@ export async function generateMetadata({
 
 export default async function OrganizerPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params
-  const t = await getTranslations('OrgPage')
-  const locale = await getLocale()
-
-  // The slug is the only identifier a guest has, so it is resolved first — every
-  // read below is scoped to the organizer it returns.
-  const organizer = await getPublicOrganizerBySlug(orgSlug)
-  if (!organizer) notFound()
-
-  const services = await listServices(organizer.id)
-
-  // Every service's upcoming slots in one query, so each card can show its next
-  // open session without a lookup per card. `listServices` is reused as-is: a
-  // service row holds nothing an organizer would not print on their own page.
-  const slots = await listUpcomingSlotsForServices(services.map((service) => service.id))
+  if (!slugShape.safeParse(orgSlug).success) notFound()
+  // The slug is the only identifier a guest has — one API call returns the
+  // organizer, their services, and every service's upcoming slots, so each
+  // card can show its next open session without a lookup per card.
+  const [t, locale, view] = await Promise.all([
+    getTranslations('OrgPage'),
+    getLocale(),
+    getPublicOrganizerView(orgSlug),
+  ])
+  if (!view) notFound()
+  const { organizer, services, slots } = view
 
   // Grouped once here rather than filtered inside each card — the cards receive
   // exactly their own slots and stay free of the parent's data shape.
@@ -108,7 +109,7 @@ export default async function OrganizerPage({ params }: { params: Promise<{ orgS
           {organizer.photoUrl ? (
             <AvatarImage src={organizer.photoUrl} sizes="5rem" alt={organizer.name} />
           ) : null}
-          <AvatarFallback>{organizer.name.slice(0, 2)}</AvatarFallback>
+          <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">{organizer.name}</h1>

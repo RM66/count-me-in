@@ -2,22 +2,15 @@ import { getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { SlotsTable } from '@/app/cabinet/slots/_components/slots-table'
-import { getOrganizerProfile } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listSlots } from '@/server/db/time-slot'
-import { resolveCabinetOrganizerId } from '@/server/demo'
+import { isRealDayKey } from '@/helpers/day-key'
+import { getOrganizerProfile, listServices, listSlots } from '@/server/api-client'
 
 export default async function SlotsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ service?: string }>
+  searchParams: Promise<{ service?: string; day?: string; past?: string }>
 }) {
-  // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
-  const { service: serviceParam } = await searchParams
-
-  const t = await getTranslations('Cabinet.slots')
-  const tcrumbs = await getTranslations('Cabinet.crumbs')
+  const { service: serviceParam, day: dayParam, past: pastParam } = await searchParams
 
   // The profile supplies the timezone every slot instant is rendered in, and
   // the services back both the table's titles and the dialog's picker.
@@ -25,11 +18,18 @@ export default async function SlotsPage({
   // Every slot is fetched, not just upcoming ones: the table splits them and
   // keeps past sessions one click away. Filtering them out here is what made a
   // mis-dated slot look like a failed save.
-  const [organizer, services, slots] = await Promise.all([
-    getOrganizerProfile(organizerId, isReadOnly),
-    listServices(organizerId),
-    listSlots(organizerId),
+  const [t, tcrumbs, organizer, services, slotsPage] = await Promise.all([
+    getTranslations('Cabinet.slots'),
+    getTranslations('Cabinet.crumbs'),
+    getOrganizerProfile(),
+    listServices(),
+    listSlots(),
   ])
+  const slots = slotsPage.slots
+
+  // Anonymous visitors get the read-only demo profile from the API itself
+  // (ADR-010) — `isDemo` is the single source of truth, not the session.
+  const isReadOnly = organizer?.isDemo ?? true
 
   // Sent from the server so the client's split matches what was rendered —
   // deriving "now" during render would risk a hydration mismatch.
@@ -43,6 +43,12 @@ export default async function SlotsPage({
       ? serviceParam
       : undefined
   const activeService = services.find((service) => service.id === activeServiceId)
+
+  // Day and the upcoming/past toggle share the same URL contract as the
+  // service filter — a picked day is validated as a real calendar date
+  // before the table sees it, and `?past=1` is the only truthy spelling.
+  const day = dayParam && isRealDayKey(dayParam) ? dayParam : undefined
+  const showPast = pastParam === '1'
 
   return (
     <>
@@ -68,6 +74,8 @@ export default async function SlotsPage({
           services={services}
           nowIso={nowIso}
           activeServiceId={activeServiceId}
+          day={day}
+          showPast={showPast}
           // Falls back to UTC only if the profile row is missing (e.g. the demo
           // seed has not run) — the table still renders rather than throwing.
           timezone={organizer?.timezone ?? 'UTC'}

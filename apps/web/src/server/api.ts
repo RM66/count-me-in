@@ -1,61 +1,71 @@
-import { headers } from 'next/headers'
+import { cache } from 'react'
 
+import { deploymentBypassHeaders, resolveApiOrigin } from '@/server/api-origin'
 import { auth } from '@/server/auth'
 import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
+import { withInternalHeaders } from '@/server/internal-api'
 
 import 'server-only'
 
 /**
- * Server-side fetch to the Go API — the write-side counterpart of the
+ * Server-side fetch to the Python API — the write-side counterpart of the
  * browser `api-client/`. Server actions call mutating endpoints here;
- * the Go API authenticates via the organizer-auth header (architecture
- * review fix #1), which this helper mints from the Auth.js session and
- * forwards so the Go side can resolve the organizer.
+ * the API authenticates via the organizer-auth header (ADR-021),
+ * which this helper mints from the Auth.js session and
+ * forwards so the API can resolve the organizer.
  *
  * Browser-direct calls (the `api-client/` hooks) go through `proxy.ts`,
  * which mints the same header in the edge middleware. Server actions
  * bypass the middleware (they run after it, in the same request), so they
  * mint the header here.
  *
- * In production, Go functions live at the same origin (Vercel filesystem
- * routing); the incoming request's Host header supplies the origin. In
- * dev, the Go server runs separately at `GO_API_URL` (default :3001).
+ * In production, the API lives at the same origin (Vercel rewrites route
+ * routing); the origin comes from deployment configuration
+ * (`api-origin.ts`), never from request headers — a spoofed Host must not
+ * steer a fetch that carries credentials.
  */
 
-/** Resolve the Go API origin for a server-side fetch. */
-async function goApiOrigin(): Promise<string> {
-  if (process.env.NODE_ENV !== 'production') {
-    return (process.env.GO_API_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '')
-  }
-  const h = await headers()
-  const host = h.get('host')
-  if (host) {
-    const proto = h.get('x-forwarded-proto') ?? 'https'
-    return `${proto}://${host}`
-  }
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://countmein.group').replace(/\/$/, '')
-}
+/**
+ * The organizer-auth headers for this request, computed once per request:
+ * `cache()` memoizes the session decode + JWT mint so a page's parallel
+ * reads share one Auth.js lookup and one HKDF instead of repeating both.
+ */
+const getOrganizerAuthHeaders = cache(async (): Promise<Record<string, string>> => {
+  const session = await auth()
+  if (!session?.user?.id) return {}
+  const token = await mintOrganizerAuth(session.user.id, session.user.slug)
+  return token ? { [ORGANIZER_AUTH_HEADER]: token } : {}
+})
 
 /**
- * Fetch a Go API path with the organizer-auth header forwarded. The caller
+ * Fetch an API path with the organizer-auth header forwarded. The caller
  * sets method, body and any non-cookie headers; this helper adds the
  * origin and the `X-Organizer-Auth` header for organizer authentication.
  *
- * The Auth.js session cookie is no longer forwarded to the Go API — the
- * Go side no longer decrypts it (architecture review fix #1). The
+ * The Auth.js session cookie is not forwarded to the API — the
+ * API does not decrypt it (ADR-021). The
  * organizer-auth JWT is the credential now.
  */
-export async function goApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const origin = await goApiOrigin()
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const origin = await resolveApiOrigin()
   const reqHeaders = new Headers(init.headers)
 
-  const session = await auth()
-  if (session?.user?.id) {
-    const token = await mintOrganizerAuth(session.user.id, session.user.slug)
-    if (token) {
-      reqHeaders.set(ORGANIZER_AUTH_HEADER, token)
-    }
+  // Server-to-server calls carry the internal secret so they count
+  // against the dedicated SSR rate-limit bucket, not the caller-IP one
+  // (ADR-023). Server actions share Vercel egress IPs with SSR
+  // fetches, so the distinction is "trusted caller", not "which edge".
+  withInternalHeaders(reqHeaders)
+
+  for (const [key, value] of Object.entries(await deploymentBypassHeaders())) {
+    reqHeaders.set(key, value)
   }
 
-  return fetch(`${origin}${path}`, { ...init, headers: reqHeaders })
+  for (const [key, value] of Object.entries(await getOrganizerAuthHeaders())) {
+    reqHeaders.set(key, value)
+  }
+
+  // Same no-store rule as the cabinet reads in api-client.ts: the
+  // request carries a per-organizer credential, so its response is
+  // private to this request and must not land in the shared cache.
+  return fetch(`${origin}${path}`, { ...init, cache: 'no-store', headers: reqHeaders })
 }

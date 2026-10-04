@@ -27,3 +27,13 @@ export class ApiError extends Error {
     this.details = details
   }
 }
+
+/**
+ * Display text for a caught error: its `message` when it has one, otherwise
+ * the caller's localized fallback. Mutation errors arrive typed `unknown`, so
+ * the `instanceof Error` + non-empty-message check lives here once rather
+ * than at every `onError`.
+ */
+export function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
+}

@@ -106,11 +106,11 @@
       "body": {
         "startsAt": "2030-06-15"
       },
+      "fieldErrors": [
+        "startsAt"
+      ],
       "name": "date-only startsAt",
-      "skip": {
-        "go": "FlexTime rejects date-only by design (flex.go:18-27)"
-      },
-      "valid": true
+      "valid": false
     }
   ],
   "schema": "UpdateTimeSlotInput"

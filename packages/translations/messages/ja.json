@@ -36,7 +36,7 @@
   },
   "SeatsBadge": {
     "fullyBooked": "満席",
-    "seatsLeft": "{count, plural, =1 {残り#枠} other {残り#枠}}"
+    "seatsLeft": "残り{count}枠"
   },
   "Booking": {
     "pickTime": "日時を選択",
@@ -52,7 +52,7 @@
     "seats": "予約人数",
     "removeSeat": "1人減らす",
     "addSeat": "1人追加",
-    "seatsHint": "ご本人を含みます。この回では最大{maxSeats, plural, =1 {#名} other {#名}}まで予約できます。",
+    "seatsHint": "ご本人を含みます。この回では最大{maxSeats}名まで予約できます。",
     "optionsLegend": "オプション",
     "demoIntro": "これは閲覧専用のデモページのため、予約は保存されません。",
     "createOwn": "自分のページを作成",
@@ -63,12 +63,11 @@
     "reserving": "予約を確保しています…",
     "notConfigured": "Telegramログインが設定されていないため、予約できません。",
     "errSoldOut": "この回は満席です",
-    "errSeatsLeft": "この回の空きは{count, plural, =1 {残り#枠} other {残り#枠}}です",
-    "errPartyTooLarge": "1回の予約で申し込めるのは最大{maxSeats, plural, =1 {#名} other {#名}}です",
+    "errSeatsLeft": "この回の空きは残り{count}枠です",
+    "errPartyTooLarge": "1回の予約で申し込めるのは最大{maxSeats}名です",
     "errDuplicate": "この回はすでに予約済みです",
     "errGone": "この回は現在予約できません",
-    "errInvalidOptions": "選択したオプションはこのサービスでは利用できません",
-    "errAlreadyCancelled": "この予約はすでにキャンセルされています"
+    "errInvalidOptions": "選択したオプションはこのサービスでは利用できません"
   },
   "SuccessStep": {
     "confirmedNote": "予約を受け付けました。確認メッセージがボットからメッセンジャーに届きます。",
@@ -85,8 +84,8 @@
     "lookingUp": "予約を検索しています…",
     "lookupFailed": "予約を検索できませんでした",
     "onlyThisAccount": "このアカウントで行った予約のみ表示されます。",
-    "bookingsFound": "{count, plural, =1 {予約が#件見つかりました} other {予約が#件見つかりました}}",
-    "seats": "{count, plural, =1 {#名} other {#名}}",
+    "bookingsFound": "予約が{count}件見つかりました",
+    "seats": "{count}名",
     "cancelled": "キャンセル済み",
     "noBookingsFound": "予約が見つかりません",
     "noBookingsDescription": "このTelegramアカウントでの予約はまだありません。別のアカウントで予約した場合は、そちらのアカウントで確認してください。",
@@ -327,7 +326,8 @@
       "contact": "お問い合わせ",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "グループクラス、イベント、ツアー向けのシンプルなオンライン予約。"
+    "ogDescription": "グループクラス、イベント、ツアー向けのシンプルなオンライン予約。",
+    "metaTitle": "CountMeIn — グループイベント向けオンライン予約"
   },
   "Legal": {
     "lastUpdated": "最終更新日：{date}",
@@ -375,7 +375,8 @@
       "createAccount": "アカウントを作成",
       "noAccountFound": "アカウントが見つかりません。先にアカウントを作成してください。",
       "sameAccount": "登録時と同じTelegramアカウントを使用してください。",
-      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。"
+      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。",
+      "signInFailed": "ログインできませんでした。もう一度Telegramで認証してください"
     },
     "signup": {
       "title": "アカウントを作成",
@@ -402,8 +403,10 @@
     },
     "loginLink": {
       "opening": "管理画面を開いています。少々お待ちください。",
-      "continue": "管理画面へ進む"
-    }
+      "continue": "管理画面へ進む",
+      "title": "管理画面を開いています…"
+    },
+    "metaTitle": "アカウントへのアクセス"
   },
   "NotFound": {
     "title": "ページが見つかりません",
@@ -427,7 +430,6 @@
   },
   "Ui": {
     "close": "閉じる",
-    "navigation": "ナビゲーション",
     "loading": "読み込み中",
     "more": "その他",
     "sidebar": "サイドバー",
@@ -454,7 +456,7 @@
     "common": {
       "deletedService": "削除済みのサービス",
       "session": "開催回",
-      "seats": "{count, plural, =1 {#名} other {#名}}",
+      "seats": "{count}名",
       "min": "{minutes}分",
       "left": "残り{count}枠",
       "confirmed": "予約確定",
@@ -467,7 +469,8 @@
       "cancel": "キャンセル",
       "saving": "保存しています...",
       "close": "閉じる",
-      "full": "満席"
+      "full": "満席",
+      "clearFilter": "フィルターを解除"
     },
     "sidebar": {
       "subtitle": "主催者",
@@ -527,7 +530,8 @@
       "filterByDay": "{entity}を日付で絞り込む",
       "showEveryBooking": "すべての予約を表示",
       "showEveryService": "すべてのサービスを表示",
-      "showEverySlot": "すべての開催枠を表示"
+      "entityBookings": "予約",
+      "entitySlots": "開催枠"
     },
     "demoBanner": {
       "readOnly": "閲覧専用デモです。",
@@ -543,10 +547,10 @@
       "cancelBooking": "予約をキャンセル",
       "cancelling": "キャンセルしています…",
       "cancelTitle": "この予約をキャンセルしますか？",
-      "cancelDescriptionBoth": "{name}さんが{when}の「{service}」で予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
-      "cancelDescriptionService": "{name}さんが「{service}」で予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
-      "cancelDescriptionWhen": "{name}さんが{when}に予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
-      "cancelDescriptionPlain": "{name}さんが予約した{seats, plural, =1 {予約枠} other {予約枠}}を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionBoth": "{name}さんが{when}の「{service}」で予約した{seats}名分を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionService": "{name}さんが「{service}」で予約した{seats}名分を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionWhen": "{name}さんが{when}に予約した{seats}名分を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
+      "cancelDescriptionPlain": "{name}さんが予約した{seats}名分を解放し、ほかの参加者が予約できるようにします。この操作は取り消せません。",
       "keepBooking": "予約を維持",
       "yesCancel": "キャンセルする",
       "cancelledToast": "予約をキャンセルしました",
@@ -566,8 +570,8 @@
       "upcomingSchedule": "今後の予定",
       "nothingRun": "終了した回はまだありません。",
       "noUpcomingSessions": "今後の開催予定はありません。",
-      "upcomingCount": "今後の開催枠：{count, plural, =1 {#件} other {#件}}",
-      "pastCount": "過去の開催枠：{count, plural, =1 {#件} other {#件}}",
+      "upcomingCount": "今後の開催枠：{count}件",
+      "pastCount": "過去の開催枠：{count}件",
       "forServiceSuffix": "（{service}）",
       "nothingOnDay": "この日の予定はありません",
       "noPastSessions": "過去の開催回はありません",
@@ -590,14 +594,14 @@
       "editSlot": "開催枠を編集",
       "viewBookings": "予約を表示",
       "duplicate": "複製",
-      "cancelSlot": "開催枠をキャンセル",
-      "cancelTitle": "この開催枠をキャンセルしますか？",
-      "cancelDescriptionWithBookings": "この回には{count, plural, =1 {#名分} other {#名分}}の予約があります。キャンセルすると、開催枠と紐づくすべての予約が削除されます。この操作は取り消せません。",
-      "cancelDescriptionPlain": "開催枠が削除され、参加者には表示されなくなります。この操作は取り消せません。",
+      "deleteSlot": "開催枠を削除",
+      "deleteBlocked": "予約のある開催枠は削除できません。",
+      "deleteTitle": "この開催枠を削除しますか？",
+      "deleteDescription": "開催枠が削除され、参加者には表示されなくなります。この操作は取り消せません。",
       "keepSlot": "開催枠を維持",
-      "cancellingDialog": "キャンセルしています...",
-      "cancelledToast": "開催枠をキャンセルしました",
-      "cancelFailed": "開催枠をキャンセルできませんでした",
+      "deletingDialog": "削除しています...",
+      "deletedToast": "開催枠を削除しました",
+      "deleteFailed": "開催枠を削除できませんでした",
       "dialogCreateTitle": "開催枠を追加",
       "dialogCreateDescription": "新しい開催日時を設定します。初期値にはサービスの設定が使用されます。",
       "dialogEditTitle": "開催枠を編集",
@@ -627,7 +631,7 @@
       "newSubtitle": "参加者が予約できるプログラムを作成します。",
       "noServicesYet": "サービスはまだありません",
       "noServicesDescription": "最初のサービスを作成して、参加者が予約できるようにしましょう。",
-      "countBookings": "{count, plural, =1 {予約#件} other {予約#件}}",
+      "countBookings": "予約{count}件",
       "details": "詳細",
       "detailsDescription": "参加者に表示される基本情報です。",
       "fieldTitle": "タイトル",
@@ -666,7 +670,7 @@
       "deleteService": "サービスを削除",
       "deleting": "削除しています...",
       "deleteTitle": "このサービスを削除しますか？",
-      "deleteDescription": "「{title}」と、そのすべての開催枠および予約が削除されます。この操作は取り消せません。",
+      "deleteDescription": "「{title}」とそのすべての開催枠が削除されます。予約履歴がある場合、削除は拒否されます。",
       "keepService": "サービスを維持",
       "delete": "削除",
       "coverPhoto": "カバー画像",
@@ -683,8 +687,6 @@
       "createFailed": "サービスを作成できませんでした",
       "updateFailed": "サービスを更新できませんでした",
       "deleteFailed": "サービスを削除できませんでした",
-      "notFound": "サービスが見つかりません",
-      "backToList": "サービス一覧に戻る",
       "pricePlaceholder": "$12",
       "editSubtitle": "サービスの詳細とオプションを編集します。"
     },
@@ -716,7 +718,8 @@
       "noChanges": "保存する変更はありません",
       "updatedToast": "プロフィールを更新しました",
       "updateFailed": "プロフィールを更新できませんでした",
-      "loadFailed": "プロフィールを読み込めませんでした。ページを再読み込みして、もう一度お試しください。"
+      "loadFailed": "プロフィールを読み込めませんでした。ページを再読み込みして、もう一度お試しください。",
+      "copyFailed": "リンクをコピーできませんでした"
     },
     "bookings": {
       "title": "予約",
@@ -750,7 +753,7 @@
       "avgFillRate": "平均予約率",
       "cancellations": "キャンセル数",
       "confirmedLast30": "過去30日間に確定",
-      "bookingsInWindow": "期間内の予約：{count, plural, =1 {#件} other {#件}}",
+      "bookingsInWindow": "期間内の予約：{count}件",
       "bookingsThisWeek": "今週の予約",
       "bookingsThisWeekHint": "日ごとの確定予約数と予約人数です。",
       "noBookingsYet": "予約はまだありません。参加者が予約すると、すぐにここへ表示されます。",
@@ -759,7 +762,7 @@
       "noBookings30": "過去30日間に予約はありません。",
       "trendAria": "過去7日間の日ごとの確定予約数と予約人数",
       "serviceAria": "過去30日間のサービスごとの確定予約数",
-      "upcomingSlotsCount": "{count, plural, =1 {今後の開催枠#件} other {今後の開催枠#件}}",
+      "upcomingSlotsCount": "今後の開催枠{count}件",
       "bookingsLabel": "予約",
       "seatsLabel": "予約人数"
     },
@@ -776,37 +779,5 @@
       "full": "満席",
       "left": "残り{count}枠"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "入力内容が正しくありません",
-    "invalidOptions": "選択したオプションはこのサービスでは利用できません",
-    "ticketExpired": "Telegramでの確認が期限切れです。もう一度認証してください",
-    "telegramNotConfigured": "Telegramボットが設定されていません",
-    "telegramInvalid": "Telegramの認証データが無効です",
-    "telegramValidationFailed": "Telegramの認証データを検証できませんでした",
-    "authSessionExpired": "認証セッションが期限切れです。もう一度Telegramで認証してください",
-    "organizerNotFound": "主催者が見つかりません",
-    "demoNotSeeded": "デモ主催者のデータが登録されていません",
-    "serviceNotFound": "サービスが見つかりません",
-    "slotNotFound": "開催枠が見つかりません",
-    "bookingNotFound": "予約が見つかりません",
-    "photoPrefix": "photoUrlが無効です。ご自身のメディア領域にある画像を指定してください",
-    "cannotCreateService": "サービスを作成できませんでした",
-    "slugTaken": "この公開用IDはすでに使用されています。別のものを選んでください",
-    "accountExists": "このTelegramアカウントではすでに登録されています。ログインしてください",
-    "nothingToUpdate": "更新する項目がありません",
-    "unsupportedMediaType": "このエンドポイントは application/merge-patch+json (RFC 7386) のみを受け付けます",
-    "capacityBelowBooked": "定員を予約済みの{count, plural, =1 {#名} other {#名}}より少なくすることはできません",
-    "demoReadOnly": "これは閲覧専用のデモアカウントです。アカウントを作成すると、ご自身の予約可能なサービスを公開できます。",
-    "soldOut": "この回は満席です",
-    "seatsLeftOnSession": "この回の空きは{count, plural, =1 {残り#枠} other {残り#枠}}です",
-    "partyTooLarge": "1回の予約で申し込めるのは最大{maxSeats, plural, =1 {#名} other {#名}}です",
-    "duplicateBooking": "この回はすでに予約済みです",
-    "alreadyCancelled": "この予約はすでにキャンセルされています",
-    "slotGone": "この回は現在予約できません",
-    "tooManyRequests": "リクエストが多すぎます — しばらくしてからもう一度お試しください",
-    "slotHasActiveBookings": "この回には予約があるため削除できません",
-    "serviceHasBookings": "このサービスの回には予約があるため削除できません",
-    "bodyTooLarge": "リクエスト本文が大きすぎます"
   }
 }

@@ -9,7 +9,7 @@
  * 4. text   — anything else                        → plain span, no link
  */
 
-export type ContactKind = 'phone' | 'email' | 'url' | 'text'
+type ContactKind = 'phone' | 'email' | 'url' | 'text'
 
 export interface ContactInfo {
   kind: ContactKind

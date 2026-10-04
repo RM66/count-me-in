@@ -20,16 +20,13 @@ import type { Control } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { useCreateSlot, useUpdateSlot } from '@/api-client'
+import { errorMessage, useCreateSlot, useUpdateSlot } from '@/api-client'
 
 /**
  * Field components take `control` rather than the whole form instance, so each
  * subscribes only to the field it renders.
  */
 export type SlotFormControl = Control<TimeSlotFormValues, unknown, TimeSlotFormOutput>
-
-/** Fields backed by a plain text/number input — excludes the two `<Select>`-shaped ones. */
-export type SlotTextFieldName = Exclude<keyof TimeSlotFormValues, 'serviceId'>
 
 type SlotFormOptions = {
   /** Services the organizer owns — the picker's options and the source of defaults. */
@@ -99,9 +96,7 @@ export function useSlotForm({
   })
 
   const createSlot = useCreateSlot()
-  // Hooks are unconditional: the id is only used by the mutation function, so a
-  // create-mode placeholder is never requested.
-  const updateSlot = useUpdateSlot(slot?.id ?? '')
+  const updateSlot = useUpdateSlot()
 
   /** Every write re-runs the server render that painted the table. */
   const finish = (message: string) => {
@@ -114,15 +109,29 @@ export function useSlotForm({
     if (!isEdit) {
       createSlot.mutate(toCreateTimeSlotInput(values), {
         onSuccess: () => finish(t('addedToast')),
-        onError: (error) => toast.error(error.message || t('addFailed')),
+        onError: (error) => toast.error(errorMessage(error, t('addFailed'))),
       })
       return
     }
 
-    updateSlot.mutate(toUpdateTimeSlotInput(values), {
-      onSuccess: () => finish(t('updatedToast')),
-      onError: (error) => toast.error(error.message || t('updateFailed')),
-    })
+    if (!slot) return
+
+    // Value-diff, not the whole record: an empty patch is a 400 server-side,
+    // and an unchanged startsAt would re-trigger the not-in-the-past rule
+    // for a past slot. A reverted edit yields an empty diff — a save that
+    // changes nothing is a successful no-op.
+    const patch = toUpdateTimeSlotInput(values, slot)
+    if (Object.keys(patch).length === 0) {
+      finish(t('updatedToast'))
+      return
+    }
+    updateSlot.mutate(
+      { id: slot.id, input: patch },
+      {
+        onSuccess: () => finish(t('updatedToast')),
+        onError: (error) => toast.error(errorMessage(error, t('updateFailed'))),
+      },
+    )
   })
 
   /**

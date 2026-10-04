@@ -1,0 +1,38 @@
+{
+  "analytics": {
+    "byService": [
+      {
+        "bookings": 15,
+        "service": "Yoga Class"
+      }
+    ],
+    "cancelledInWindow": 2,
+    "prevSeatsSold": 18,
+    "prevTotalBookings": 10,
+    "seatsSold": 25,
+    "totalBookings": 15,
+    "trend": [
+      {
+        "bookings": 3,
+        "day": "2026-03-30",
+        "seats": 5
+      }
+    ],
+    "windowBookings": 15
+  },
+  "overview": {
+    "confirmedBookings": 12,
+    "confirmedLast7Days": 3,
+    "upcomingSeatsBooked": 9,
+    "upcomingSeatsOffered": 40,
+    "upcomingSlots": 5,
+    "upcomingSlotsNext7Days": 2
+  },
+  "serviceCounts": [
+    {
+      "confirmedBookingsCount": 12,
+      "serviceId": "demo-yoga",
+      "upcomingSlotsCount": 5
+    }
+  ]
+}

@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// the middleware contract. Two behaviors are load-bearing:
+// the middleware contract. Three behaviors are load-bearing:
 // 1. A signed-in organizer never sees /login or /signup (redirect to the
 //    cabinet) — if this file stops being picked up as middleware, this
 //    silently breaks (see the header comment in proxy.ts).
-// 2. /api/* requests carry the minted X-Organizer-Auth header for the Go
+// 2. /api/* requests carry the minted X-Organizer-Auth header for the
 //    API — in the *request* headers, never the response.
+// 3. In the container twin (API_URL set, VERCEL !== '1') /api/* is
+//    rewritten to the API origin — browser calls would 404 on the
+//    standalone server, which owns no such routes.
 
 const mockAuth = vi.fn()
 vi.mock('@/server/auth', () => ({
@@ -30,6 +33,7 @@ function makeRequest(pathname: string, headers: Record<string, string> = {}): Ne
 beforeEach(() => {
   mockAuth.mockReset()
   mockMint.mockReset()
+  vi.unstubAllEnvs()
 })
 
 describe('proxy — auth pages', () => {
@@ -64,14 +68,14 @@ describe('proxy — API header minting', () => {
     const res = await proxy(makeRequest('/api/services'))
     expect(res).toBeInstanceOf(NextResponse)
     expect(mockMint).toHaveBeenCalledWith('org-1', 'yoga')
-    // The minted token must reach the Go handler: NextResponse.next with
+    // The minted token must reach the API handler: NextResponse.next with
     // request headers encodes the override as `x-middleware-request-*` on
     // the response, which is what Next forwards to the handler. Setting
     // the header on the response itself (the old bug) never did.
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe('minted-jwt')
   })
 
-  it('does not mint for anonymous API requests (the Go API sees no header)', async () => {
+  it('does not mint for anonymous API requests (the Python API sees no header)', async () => {
     mockAuth.mockResolvedValueOnce(null)
     const res = await proxy(makeRequest('/api/services'))
     expect(mockMint).not.toHaveBeenCalled()
@@ -85,7 +89,7 @@ describe('proxy — API header minting', () => {
     )
     expect(mockMint).not.toHaveBeenCalled()
     // The header is middleware-minted or absent — a forged value must
-    // never reach the Go API.
+    // never reach the Python API.
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBeNull()
   })
 
@@ -104,12 +108,65 @@ describe('proxy — API header minting', () => {
     expect(mockMint).not.toHaveBeenCalled()
   })
 
+  it('treats /api/auth/telegram-* as Python routes despite the auth prefix', async () => {
+    // The widget→ticket endpoints live under /api/auth/ but belong to the
+    // Python API — in the container twin they must be rewritten to API_URL
+    // like every other API route, or Auth.js answers "unknown action".
+    vi.stubEnv('API_URL', 'http://api:3001')
+    mockAuth.mockResolvedValueOnce(null)
+
+    const guest = await proxy(makeRequest('/api/auth/telegram-guest'))
+    expect(guest!.headers.get('x-middleware-rewrite')).toBe(
+      'http://api:3001/api/auth/telegram-guest',
+    )
+
+    mockAuth.mockResolvedValueOnce(null)
+    const signup = await proxy(makeRequest('/api/auth/telegram-signup'))
+    expect(signup!.headers.get('x-middleware-rewrite')).toBe(
+      'http://api:3001/api/auth/telegram-signup',
+    )
+  })
+
   it('a failed mint degrades to anonymous (no header, no crash)', async () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'org-1', slug: 'yoga' } })
     mockMint.mockResolvedValueOnce(null) // e.g. AUTH_SECRET missing
     const res = await proxy(makeRequest('/api/services'))
     expect(res).toBeInstanceOf(NextResponse)
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBeNull()
+  })
+})
+
+describe('proxy — container rewrite (API_URL, VERCEL !== 1)', () => {
+  it('rewrites /api/* to API_URL, carrying the minted header', async () => {
+    vi.stubEnv('API_URL', 'http://api:3001/')
+    mockAuth.mockResolvedValueOnce({ user: { id: 'org-1', slug: 'yoga' } })
+    mockMint.mockResolvedValueOnce('minted-jwt')
+
+    const res = await proxy(makeRequest('/api/services?limit=50'))
+    expect(res).toBeInstanceOf(NextResponse)
+    // A rewrite answers with the rewrite target in x-middleware-rewrite.
+    expect(res!.headers.get('x-middleware-rewrite')).toBe('http://api:3001/api/services?limit=50')
+    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe('minted-jwt')
+  })
+
+  it('passes through on Vercel even with API_URL set (Edge Router owns routing)', async () => {
+    vi.stubEnv('API_URL', 'http://api:3001')
+    vi.stubEnv('VERCEL', '1')
+    mockAuth.mockResolvedValueOnce(null)
+
+    const res = await proxy(makeRequest('/api/services'))
+    expect(res).toBeInstanceOf(NextResponse)
+    expect(res!.headers.get('x-middleware-rewrite')).toBeNull()
+    // Pass-through: status 200 with no redirect/rewrite markers.
+    expect(res!.status).toBe(200)
+  })
+
+  it('passes through without API_URL (Vercel same-origin)', async () => {
+    mockAuth.mockResolvedValueOnce(null)
+
+    const res = await proxy(makeRequest('/api/services'))
+    expect(res!.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res!.status).toBe(200)
   })
 })
 

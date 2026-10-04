@@ -23,6 +23,10 @@
  * idempotent and scoped to the destination derived from `APP_URL`, so a
  * hand-run with different variables manages a different schedule and never
  * touches the production one.
+ *
+ * `CHECK=1` (or `--check`) is the read-only mode: it verifies the
+ * schedules already match the desired state and exits non-zero on any
+ * drift, without creating or deleting anything in Upstash.
  */
 
 import {
@@ -46,6 +50,9 @@ const appUrl = required('APP_URL').replace(/\/+$/, '')
 // regional instance is addressed directly — see the QSTASH_URL note above.
 const client = new Client({ token: required('QSTASH_TOKEN'), baseUrl: process.env.QSTASH_URL })
 
+/** Read-only mode: verify the desired state, mutate nothing. */
+const check = process.argv.includes('--check') || process.env.CHECK === '1'
+
 /** The schedules this script owns: queue → cron. */
 const schedules = [
   { queue: QUEUE_DEMO_REFRESH, cron: DEMO_REFRESH_CRON },
@@ -53,6 +60,7 @@ const schedules = [
 ]
 
 const existing = await client.schedules.list()
+let drift = 0
 
 for (const { queue, cron } of schedules) {
   const destination = `${appUrl}/api/jobs/${queue}`
@@ -60,6 +68,22 @@ for (const { queue, cron } of schedules) {
 
   const correct = ours.filter((schedule) => schedule.cron === cron)
   const stale = ours.filter((schedule) => schedule.cron !== cron)
+
+  if (check) {
+    // Desired state: exactly one schedule, correct cron, no strays.
+    if (correct.length !== 1 || stale.length > 0) {
+      drift++
+      console.error(
+        `DRIFT ${queue}: expected exactly one "${cron}" schedule at ${destination}, ` +
+          `found ${correct.length} correct + ${stale.length} stale`,
+      )
+    } else {
+      console.log(
+        `${queue} schedule ${correct[0]!.scheduleId} matches — ${destination} at "${cron}"`,
+      )
+    }
+    continue
+  }
 
   for (const schedule of stale) {
     await client.schedules.delete(schedule.scheduleId)
@@ -79,4 +103,12 @@ for (const { queue, cron } of schedules) {
       `${queue} schedule ${correct[0]!.scheduleId} already correct — ${destination} at "${cron}"`,
     )
   }
+}
+
+if (check && drift > 0) {
+  console.error(`qstash schedules: ${drift} queue(s) drifted from the desired state`)
+  process.exit(1)
+}
+if (check) {
+  console.log('qstash schedules: no changes needed')
 }

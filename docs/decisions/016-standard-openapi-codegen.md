@@ -1,10 +1,10 @@
 # ADR-016: Standard OpenAPI codegen (Zod → OpenAPI → Go)
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR-021](021-api-python-rewrite.md) (codegen toolchain: datamodel-code-generator replaces oapi-codegen on the API side; the Zod → OpenAPI flow is unchanged)
 - **Date:** 2026-09-20
 - **Supersedes:** [ADR-014](014-contracts-wire-registry.md), [ADR-015](015-api-route-manifest.md)
 - **Partially relaxes:** ADR-013's "net/http only, no frameworks" rule — Go **library** dependencies are added (`kin-openapi`, `oapi-codegen/runtime`, `evanphx/json-patch`); the router stays std `net/http`
-- **Plan:** [docs/contracts-standard-codegen-migration.md](../contracts-standard-codegen-migration.md)
+- **Plan:** `docs/contracts-standard-codegen-migration.md` (removed after completion; the Go pipeline itself was removed in ADR-021)
 
 ## Context
 
@@ -16,7 +16,7 @@ The SSOT requirement does not change: [`packages/contracts`](../../packages/cont
 
 Replace the custom generator with standard tools; the flow is single and unidirectional: **Zod → OpenAPI → Go**.
 
-1. **Zod → OpenAPI 3.1** via [`zod-openapi`](https://github.com/asteasolutions/zod-openapi) (native Zod v4 support). A new `packages/contracts/src/openapi.ts` holds an `OpenAPIRegistry`: every wire schema registers as a component (same ids as today — `CreateBookingInput`, `ServiceRecord`, …), and paths register via `registerPath(...)` with data ported 1:1 from `routes.ts` (auth → `security`, rateLimit → `x-rateLimit`, `INTERNAL_RECORDS` → `x-internal`). Overrides that live in the generator today move into schema declarations (`.openapi({ format: 'date-time' })`, `.openapi({ pattern })`). A ~150-line script `apps/web/scripts/generate-openapi.ts` renders the registry to [`apps/web/openapi.yaml`](../../apps/web/openapi.yaml) (committed; freshness-checked in CI via `git diff --exit-code`, as today).
+1. **Zod → OpenAPI 3.1** via [`zod-openapi`](https://github.com/asteasolutions/zod-openapi) (native Zod v4 support). A new `packages/contracts/src/openapi.ts` holds an `OpenAPIRegistry`: every wire schema registers as a component (same ids as today — `CreateBookingInput`, `ServiceRecord`, …), and paths register via `registerPath(...)` with data ported 1:1 from `routes.ts` (auth → `security`, rateLimit → `x-rateLimit`, `internal: true` registrations → `x-internal`). Overrides that live in the generator today move into schema declarations (`.openapi({ format: 'date-time' })`, `.openapi({ pattern })`). A ~150-line script `apps/web/scripts/generate-openapi.ts` renders the registry to [`apps/web/openapi.yaml`](../../apps/web/openapi.yaml) (committed; freshness-checked in CI via `git diff --exit-code`, as today).
 2. **OpenAPI → Go** via [`oapi-codegen`](https://github.com/oapi-codegen/oapi-codegen) v2 (`std-http` + strict server + models + embedded spec), driven by a YAML config — no custom code. Output: `types_gen.go`, `server_gen.go` (`StrictServerInterface` + std `net/http` router), `spec_gen.go` (`go:embed`).
 3. **Runtime validation** via [`kin-openapi`](https://github.com/getkin/kin-openapi) (`openapi3filter`) + [`oapi-codegen/runtime`](https://github.com/oapi-codegen/runtime): `BindValidatableRequest` validates body/params against the embedded spec. Auth stays in `httpx` (order unchanged: QStash signature → session → body validation). One error adapter (~120 lines, `error_adapter.go`) maps `*openapi3.SchemaError` / `*openapi3filter.RequestError` to the existing envelope `{error: 'Validation error', issues: {<path>: [<message>]}}` — one mapper instead of 14 generated parsers.
 4. **Partial updates** via JSON Merge Patch ([RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386), [`evanphx/json-patch`](https://github.com/evanphx/json-patch)) for `UpdateServiceInput`, `UpdateTimeSlotInput`, `UpdateOrganizerProfileInput` (`Content-Type: application/merge-patch+json`). "Absent = keep, null = clear" comes from RFC 7386 itself; bounds are applied to the **final** state — semantically stricter than today (currently the patch is validated, not the result).

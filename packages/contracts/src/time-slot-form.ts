@@ -3,9 +3,10 @@ import { z } from 'zod'
 import { numericText, optionalText } from './form-fields'
 import { capacity, durationMinutes, priceText, serviceId } from './primitives'
 import type { ServiceRecord } from './service'
+import { SERVICE_DEFAULTS } from './service'
 import type { CreateTimeSlotInput, TimeSlotRecord, UpdateTimeSlotInput } from './time-slot'
 import { isAcceptableSlotStart, SLOT_START_IN_PAST_MESSAGE } from './time-slot'
-import { instantToWallClockInputs, wallClockToInstant } from './timezone'
+import { instantToWallClockInputs, parseWallClockInputs, wallClockToInstant } from './timezone'
 
 /**
  * The cabinet slot form, as the *inputs* hold it — the same split as
@@ -40,6 +41,9 @@ const timeSlotFormFields = {
   price: optionalText(priceText),
 }
 
+const MINUTE_MS = 60_000
+const DAY_MS = 24 * 60 * MINUTE_MS
+
 /**
  * Validate the form and fold `date` + `time` into the `startsAt` instant.
  * `timeZone` is the organizer's — the same value the table renders with — so
@@ -57,22 +61,19 @@ const timeSlotFormFields = {
  */
 export function timeSlotFormSchema(timeZone: string, options: { originalStartsAt?: string } = {}) {
   const { originalStartsAt } = options
-  const originalMs = originalStartsAt ? new Date(originalStartsAt).getTime() : undefined
+  // The time input carries no seconds, so "untouched" is compared at minute
+  // precision: a stored instant like 06:00:30 (writable via the API directly)
+  // reads back as 06:00 and would otherwise make the slot unsavable.
+  const originalMs = originalStartsAt
+    ? Math.floor(new Date(originalStartsAt).getTime() / MINUTE_MS) * MINUTE_MS
+    : undefined
 
   return z
     .object(timeSlotFormFields)
-    .transform(({ date, time, ...rest }) => {
-      const [year, month, day] = date.split('-').map(Number)
-      const [hour, minute] = time.split(':').map(Number)
-
-      return {
-        ...rest,
-        startsAt: wallClockToInstant(
-          { year: year!, month: month!, day: day!, hour: hour!, minute: minute! },
-          timeZone,
-        ),
-      }
-    })
+    .transform(({ date, time, ...rest }) => ({
+      ...rest,
+      startsAt: wallClockToInstant(parseWallClockInputs(date, time), timeZone),
+    }))
     .refine(
       ({ startsAt }) => startsAt.getTime() === originalMs || isAcceptableSlotStart(startsAt),
       { path: ['date'], message: SLOT_START_IN_PAST_MESSAGE },
@@ -93,9 +94,6 @@ const NEW_SLOT_LEAD_HOURS = 1
 /** Days to look ahead when re-dating a time of day that has already passed. */
 const REDATE_SEARCH_DAYS = 8
 
-const MINUTE_MS = 60_000
-const DAY_MS = 24 * 60 * MINUTE_MS
-
 /**
  * Default start for a new slot: the next whole hour, at least an hour out.
  * Anchored to the clock rather than to a fixed "today at 09:00" — that
@@ -115,19 +113,13 @@ function defaultStart(timeZone: string, now: Date): { date: string; time: string
  * Walks forward a day at a time so the kept time of day is preserved.
  */
 function nextDateForTime(time: string, timeZone: string, now: Date): string {
-  const [hour, minute] = time.split(':').map(Number)
-
   for (let offset = 0; offset < REDATE_SEARCH_DAYS; offset++) {
     const { date } = instantToWallClockInputs(
       new Date(now.getTime() + offset * DAY_MS).toISOString(),
       timeZone,
     )
-    const [year, month, day] = date.split('-').map(Number)
 
-    const instant = wallClockToInstant(
-      { year: year!, month: month!, day: day!, hour: hour!, minute: minute! },
-      timeZone,
-    )
+    const instant = wallClockToInstant(parseWallClockInputs(date, time), timeZone)
 
     if (isAcceptableSlotStart(instant, now)) return date
   }
@@ -178,8 +170,8 @@ export function toTimeSlotFormValues(
     serviceId: service?.id ?? '',
     date: start.date,
     time: start.time,
-    durationMinutes: String(service?.defaultDurationMinutes ?? 60),
-    capacity: String(service?.defaultCapacity ?? 10),
+    durationMinutes: String(service?.defaultDurationMinutes ?? SERVICE_DEFAULTS.durationMinutes),
+    capacity: String(service?.defaultCapacity ?? SERVICE_DEFAULTS.capacity),
     price: '',
   }
 }
@@ -199,16 +191,35 @@ export function toCreateTimeSlotInput(values: TimeSlotFormOutput): CreateTimeSlo
 }
 
 /**
- * Narrow the form output to the update contract.
- * `serviceId` is dropped: a slot cannot be moved to another service
- * (see {@link updateTimeSlotInput}), and `price: null` is meaningful here —
- * it clears an override back to the service default.
+ * Narrow the form output to the update contract — a **value diff** against
+ * the stored slot, not the whole record. Merge-patch counts every arriving
+ * key as a changed column: re-sending an unchanged `startsAt` re-runs the
+ * not-in-the-past rule on it server-side, which would make a past slot
+ * unsavable (the form deliberately allows that edit via `originalStartsAt`).
+ * `serviceId` is dropped entirely: a slot cannot be moved to another service
+ * (see {@link updateTimeSlotInput}), and `price: null` is meaningful — it
+ * clears an override back to the service default.
+ *
+ * An empty result means "nothing changed" — the caller must not send it:
+ * an empty patch is a 400.
  */
-export function toUpdateTimeSlotInput(values: TimeSlotFormOutput): UpdateTimeSlotInput {
-  return {
-    startsAt: values.startsAt,
-    durationMinutes: values.durationMinutes,
-    capacity: values.capacity,
-    price: values.price,
+export function toUpdateTimeSlotInput(
+  values: TimeSlotFormOutput,
+  slot: TimeSlotRecord,
+): UpdateTimeSlotInput {
+  const patch: UpdateTimeSlotInput = {}
+  // Compare at the precision the form expresses: a stored startsAt carrying
+  // seconds (writable via the API directly) displays identically and must
+  // not look changed — emitting it would truncate the stored value and, for
+  // a past slot, trip startsAtNotPast.
+  const storedStartsAtMs = Math.floor(new Date(slot.startsAt).getTime() / MINUTE_MS) * MINUTE_MS
+  if (values.startsAt.getTime() !== storedStartsAtMs) {
+    patch.startsAt = values.startsAt
   }
+  if (values.durationMinutes !== slot.durationMinutes) {
+    patch.durationMinutes = values.durationMinutes
+  }
+  if (values.capacity !== slot.capacity) patch.capacity = values.capacity
+  if (values.price !== slot.price) patch.price = values.price
+  return patch
 }

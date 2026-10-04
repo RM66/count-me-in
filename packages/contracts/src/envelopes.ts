@@ -1,10 +1,43 @@
 import { z } from 'zod'
 
 import { bookingRecord, guestBooking } from './booking'
-import { organizerProfile } from './organizer'
+import { organizerProfile, publicOrganizer, registeredOrganizer } from './organizer'
 import { serviceId, uuid } from './primitives'
+import {
+  analyticsSummaryRecord,
+  cabinetOverviewRecord,
+  internalOrganizerRecord,
+  serviceCountsRecord,
+  sitemapOrganizerEntry,
+  sitemapServiceEntry,
+} from './records'
 import { serviceRecord } from './service'
 import { timeSlotRecord } from './time-slot'
+
+/**
+ * Response envelopes: the named wrapper objects every endpoint returns.
+ * Record shapes live in `./records`, error bodies in `./errors`.
+ */
+
+export const publicOrganizerViewEnvelope = z.object({
+  organizer: publicOrganizer,
+  services: z.array(serviceRecord),
+  slots: z.array(timeSlotRecord),
+})
+export type PublicOrganizerViewEnvelope = z.infer<typeof publicOrganizerViewEnvelope>
+
+export const publicServiceViewEnvelope = z.object({
+  service: serviceRecord,
+  organizer: publicOrganizer,
+  slots: z.array(timeSlotRecord),
+})
+export type PublicServiceViewEnvelope = z.infer<typeof publicServiceViewEnvelope>
+
+export const publicSitemapEnvelope = z.object({
+  organizers: z.array(sitemapOrganizerEntry),
+  services: z.array(sitemapServiceEntry),
+})
+export type PublicSitemapEnvelope = z.infer<typeof publicSitemapEnvelope>
 
 export const serviceEnvelope = z.object({ service: serviceRecord })
 export type ServiceEnvelope = z.infer<typeof serviceEnvelope>
@@ -15,7 +48,16 @@ export type ServicesEnvelope = z.infer<typeof servicesEnvelope>
 export const slotEnvelope = z.object({ slot: timeSlotRecord })
 export type SlotEnvelope = z.infer<typeof slotEnvelope>
 
-export const slotsEnvelope = z.object({ slots: z.array(timeSlotRecord) })
+export const slotsEnvelope = z.object({
+  slots: z.array(timeSlotRecord),
+  /**
+   * `YYYY-MM-DD` day keys in the organizer's timezone that hold any
+   * session — the calendar picker's marks. Always the full set: a
+   * `from`/`to` range narrows `slots`, never `days`. `null` unless
+   * requested with `?include=days` — the DISTINCT scan is not free.
+   */
+  days: z.array(z.string()).nullable(),
+})
 export type SlotsEnvelope = z.infer<typeof slotsEnvelope>
 
 export const guestBookingEnvelope = z.object({ booking: guestBooking })
@@ -24,11 +66,37 @@ export type GuestBookingEnvelope = z.infer<typeof guestBookingEnvelope>
 export const bookingEnvelope = z.object({ booking: bookingRecord })
 export type BookingEnvelope = z.infer<typeof bookingEnvelope>
 
+export const bookingsEnvelope = z.object({
+  bookings: z.array(bookingRecord),
+  /** Whether another page exists past `offset + bookings.length`. */
+  hasMore: z.boolean(),
+  /**
+   * The slots the page's bookings reference, plus the `slotId` filter
+   * session when it is the viewer's — resolving a row's service/start time
+   * must not require fetching the whole schedule.
+   */
+  slots: z.array(timeSlotRecord),
+  /**
+   * `YYYY-MM-DD` day keys in the organizer's timezone whose sessions carry a
+   * booking inside the active service/slot scope — the day picker's marks.
+   * Only the scope narrows it: status/day/search/sort never do. `null`
+   * unless requested with `?include=days` — the DISTINCT scan is not free.
+   */
+  bookedDays: z.array(z.string()).nullable(),
+})
+export type BookingsEnvelope = z.infer<typeof bookingsEnvelope>
+
 export const guestBookingsEnvelope = z.object({ bookings: z.array(guestBooking) })
 export type GuestBookingsEnvelope = z.infer<typeof guestBookingsEnvelope>
 
 export const organizerEnvelope = z.object({ organizer: organizerProfile })
 export type OrganizerEnvelope = z.infer<typeof organizerEnvelope>
+
+/** Response of `POST /api/organizers`: the freshly created organizer. */
+export const registrationResponse = z.object({
+  organizer: registeredOrganizer,
+})
+export type RegistrationResponse = z.infer<typeof registrationResponse>
 
 export const deletedServiceEnvelope = z.object({ id: serviceId })
 export type DeletedServiceEnvelope = z.infer<typeof deletedServiceEnvelope>
@@ -36,25 +104,14 @@ export type DeletedServiceEnvelope = z.infer<typeof deletedServiceEnvelope>
 export const deletedSlotEnvelope = z.object({ id: uuid })
 export type DeletedSlotEnvelope = z.infer<typeof deletedSlotEnvelope>
 
-export const errorBody = z.looseObject({
-  error: z.string(),
-  code: z.string().optional(),
-  seatsLeft: z.number().int().optional(),
-  maxSeats: z.number().int().optional(),
+export const cabinetSummaryEnvelope = z.object({
+  overview: cabinetOverviewRecord,
+  serviceCounts: z.array(serviceCountsRecord),
+  analytics: analyticsSummaryRecord,
 })
-export type ErrorBody = z.infer<typeof errorBody>
+export type CabinetSummaryEnvelope = z.infer<typeof cabinetSummaryEnvelope>
 
-export const validationErrors = z.object({
-  formErrors: z.array(z.string()),
-  fieldErrors: z.record(z.string(), z.array(z.string())),
+export const internalOrganizerEnvelope = z.object({
+  organizer: internalOrganizerRecord,
 })
-export type ValidationErrors = z.infer<typeof validationErrors>
-
-export const invalidBody = z.object({ error: z.string(), details: validationErrors })
-export type InvalidBody = z.infer<typeof invalidBody>
-
-export const invalidIssuesBody = z.object({
-  error: z.string(),
-  issues: z.record(z.string(), z.array(z.string())),
-})
-export type InvalidIssuesBody = z.infer<typeof invalidIssuesBody>
+export type InternalOrganizerEnvelope = z.infer<typeof internalOrganizerEnvelope>

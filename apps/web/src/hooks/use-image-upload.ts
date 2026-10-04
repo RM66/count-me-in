@@ -7,14 +7,19 @@ import { useRef } from 'react'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
-import { ApiError } from '@/api-client/error'
+import { ApiError, errorMessage } from '@/api-client/error'
 
 type ImageUploadOptions<TResult> = {
   contentType: z.ZodType<string>
   maxBytes: number
-  maxBytesLabel: string
   mutation: UseMutationResult<TResult, Error, File>
   onUploaded: (result: TResult) => void
+}
+
+/** Byte count → the "10 MB" label error messages interpolate. */
+function formatBytesLabel(bytes: number): string {
+  const mib = bytes / (1024 * 1024)
+  return mib >= 1 ? `${Math.round(mib)} MB` : `${Math.max(1, Math.ceil(bytes / 1024))} KB`
 }
 
 type ImageUpload = {
@@ -33,12 +38,12 @@ type ImageUpload = {
 export function useImageUpload<TResult>({
   contentType,
   maxBytes,
-  maxBytesLabel,
   mutation,
   onUploaded,
 }: ImageUploadOptions<TResult>): ImageUpload {
   const inputRef = useRef<HTMLInputElement>(null)
   const t = useTranslations('Ui')
+  const maxBytesLabel = formatBytesLabel(maxBytes)
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target
@@ -70,7 +75,7 @@ export function useImageUpload<TResult>({
         toast.error(
           error instanceof ApiError && error.status === 413
             ? t('compressFailed')
-            : error.message || t('uploadFailed'),
+            : errorMessage(error, t('uploadFailed')),
         )
         reset()
       },

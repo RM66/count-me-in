@@ -25,8 +25,17 @@ export function isAcceptableSlotStart(startsAt: Date, now: Date = new Date()): b
   return startsAt.getTime() > now.getTime() - SLOT_START_TOLERANCE_MS
 }
 
-/** Slot start instant (ISO string or epoch); FlexTime on the Go side. */
-export const slotStartsAt = z.coerce.date()
+/**
+ * Slot start instant: an RFC 3339 string with an explicit offset, a Unix
+ * epoch (seconds, or milliseconds when > 1e12 — the same heuristic the
+ * API's FlexTime applies), or an already-parsed `Date` from internal TS
+ * callers (the cabinet form folds date+time into a Date). Date-only
+ * strings are rejected on purpose: they parse as *local* midnight, so
+ * accepting them would silently move a slot by the runtime's UTC offset.
+ */
+export const slotStartsAt = z
+  .union([z.iso.datetime({ offset: true }), z.number().int(), z.date()])
+  .pipe(z.coerce.date())
 
 export const createTimeSlotInput = z
   .object({
@@ -36,10 +45,15 @@ export const createTimeSlotInput = z
     capacity,
     price: priceText.optional(),
   })
-  .refine(({ startsAt }) => isAcceptableSlotStart(startsAt), {
-    path: ['startsAt'],
-    message: SLOT_START_IN_PAST_MESSAGE,
-  })
+  .refine(
+    // `instanceof` guard: Zod v4 runs object checks even when a field
+    // already failed, handing the refine the raw (non-Date) value.
+    ({ startsAt }) => startsAt instanceof Date && isAcceptableSlotStart(startsAt),
+    {
+      path: ['startsAt'],
+      message: SLOT_START_IN_PAST_MESSAGE,
+    },
+  )
 export type CreateTimeSlotInput = z.infer<typeof createTimeSlotInput>
 
 /** Slot edits; a slot cannot be moved to a different service. */
@@ -50,10 +64,14 @@ export const updateTimeSlotInput = z
     capacity: capacity.optional(),
     price: priceText.nullable().optional(),
   })
-  .refine(({ startsAt }) => startsAt === undefined || isAcceptableSlotStart(startsAt), {
-    path: ['startsAt'],
-    message: SLOT_START_IN_PAST_MESSAGE,
-  })
+  .refine(
+    ({ startsAt }) =>
+      startsAt === undefined || (startsAt instanceof Date && isAcceptableSlotStart(startsAt)),
+    {
+      path: ['startsAt'],
+      message: SLOT_START_IN_PAST_MESSAGE,
+    },
+  )
 export type UpdateTimeSlotInput = z.infer<typeof updateTimeSlotInput>
 
 /**
@@ -70,6 +88,15 @@ export const timeSlotRecord = z.object({
   durationMinutes,
   capacity,
   bookedCount: z.number().int().min(0),
+  /**
+   * Whether any booking row references the slot — confirmed or cancelled.
+   * Deletion is refused on either, and `bookedCount` alone cannot see a
+   * cancelled row (it counts seats, which a cancellation releases). `null`
+   * on surfaces that do not compute it (public lists, single-slot reads);
+   * the cabinet slot list resolves it as the delete affordance's source
+   * of truth.
+   */
+  hasBookings: z.boolean().nullable(),
   price: z.string().nullable(),
   createdAt: z.string(),
 })

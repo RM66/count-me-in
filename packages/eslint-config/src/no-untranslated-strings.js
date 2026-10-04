@@ -34,7 +34,8 @@
 
 const DEFAULT_ALLOWED = ['CountMeIn', 'Telegram']
 
-const VISIBLE_ATTRIBUTES = /^(aria-label|aria-description|alt|placeholder)$/
+const VISIBLE_ATTRIBUTES =
+  /^(title|description|label|ariaLabel|aria-label|aria-description|placeholder|alt)$/
 
 /** True when the text may stay hardcoded (no letters, single letter, allowed proper noun). */
 function isAllowed(text, allowed) {
@@ -126,7 +127,8 @@ export default {
         check(node, node.value)
       },
       JSXAttribute(node) {
-        if (!VISIBLE_ATTRIBUTES.test(node.name.name)) return
+        // JSXNamespacedName (e.g. xml:lang) has no `.name` — skip it.
+        if (node.name.type !== 'JSXIdentifier' || !VISIBLE_ATTRIBUTES.test(node.name.name)) return
         const value = node.value
         if (value && value.type === 'Literal' && typeof value.value === 'string') {
           check(value, value.value)

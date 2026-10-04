@@ -2,18 +2,25 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { SITE_URL } from '@/constants/site'
 
-// The sitemap is wiring, not data: static pages plus the catalog reads.
-// The reads themselves are pinned by reads.integration.test.ts — here the
-// DB modules are stubbed so the shape survives without Postgres.
-vi.mock('@/server/db/organizer', () => ({
-  listPublicOrganizerSlugs: vi.fn(async () => [{ slug: 'studio-demo' }, { slug: 'yoga-club' }]),
-}))
-
-vi.mock('@/server/db/service', () => ({
-  listPublicServicePaths: vi.fn(async () => [{ orgSlug: 'studio-demo', serviceId: 'demo-yoga' }]),
+// The sitemap is wiring, not data: static pages plus the catalog read.
+// The API contract is pinned by the Python parity suite — here the
+// client is stubbed so the shape survives without a backend.
+vi.mock('@/server/api-client', () => ({
+  getPublicSitemap: vi.fn(async () => ({
+    organizers: [{ slug: 'studio-demo' }, { slug: 'yoga-club' }],
+    services: [{ orgSlug: 'studio-demo', serviceId: 'demo-yoga' }],
+  })),
 }))
 
 describe('sitemap', () => {
+  it('throws on an unexpected catalog 404 instead of masking it as empty', async () => {
+    const { getPublicSitemap } = await import('@/server/api-client')
+    vi.mocked(getPublicSitemap).mockRejectedValueOnce(
+      new Error('API request failed: /api/public/sitemap answered 404'),
+    )
+    await expect((await import('./sitemap')).default()).rejects.toThrow('404')
+  })
+
   it('lists static pages, organizer pages and service pages', async () => {
     const { default: sitemap } = await import('./sitemap')
     const entries = await sitemap()

@@ -67,8 +67,7 @@
     "errPartyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
     "errDuplicate": "Du hast für diesen Termin bereits eine Buchung",
     "errGone": "Dieser Termin ist nicht mehr verfügbar",
-    "errInvalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
-    "errAlreadyCancelled": "Diese Buchung wurde bereits storniert"
+    "errInvalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig"
   },
   "SuccessStep": {
     "confirmedNote": "Dein Platz ist gebucht. Unser Bot sendet dir eine Bestätigung in deinem Messenger.",
@@ -327,7 +326,8 @@
       "contact": "Kontakt",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Einfache Online-Buchungen für Gruppenkurse, Veranstaltungen und Ausflüge."
+    "ogDescription": "Einfache Online-Buchungen für Gruppenkurse, Veranstaltungen und Ausflüge.",
+    "metaTitle": "CountMeIn — Online-Buchungen für Gruppenveranstaltungen"
   },
   "Legal": {
     "lastUpdated": "Zuletzt aktualisiert am {date}",
@@ -375,7 +375,8 @@
       "createAccount": "Konto erstellen",
       "noAccountFound": "Kein Konto gefunden. Erstelle bitte zuerst ein Konto.",
       "sameAccount": "Verwende dasselbe Telegram-Konto wie bei deiner Registrierung.",
-      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support."
+      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support.",
+      "signInFailed": "Du konntest nicht angemeldet werden — authentifiziere dich erneut mit Telegram"
     },
     "signup": {
       "title": "Konto erstellen",
@@ -402,8 +403,10 @@
     },
     "loginLink": {
       "opening": "Einen Moment, wir öffnen deinen Veranstalterbereich.",
-      "continue": "Weiter zum Veranstalterbereich"
-    }
+      "continue": "Weiter zum Veranstalterbereich",
+      "title": "Dein Veranstalterbereich wird geöffnet…"
+    },
+    "metaTitle": "Kontozugang"
   },
   "NotFound": {
     "title": "Seite nicht gefunden",
@@ -419,15 +422,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Cookie-Einwilligung",
-    "text": "Wir verwenden Analyse-Cookies, um zu verstehen, wie CountMeIn genutzt wird, und um den Dienst zu verbessern. ",
-    "essential": "Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv. ",
+    "text": "Wir verwenden Analyse-Cookies, um zu verstehen, wie CountMeIn genutzt wird, und um den Dienst zu verbessern.",
+    "essential": "Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv.",
     "privacyPolicy": "Datenschutzerklärung",
     "reject": "Ablehnen",
     "accept": "Akzeptieren"
   },
   "Ui": {
     "close": "Schließen",
-    "navigation": "Navigation",
     "loading": "Wird geladen",
     "more": "Mehr",
     "sidebar": "Seitenleiste",
@@ -467,7 +469,8 @@
       "cancel": "Abbrechen",
       "saving": "Wird gespeichert...",
       "close": "Schließen",
-      "full": "Ausgebucht"
+      "full": "Ausgebucht",
+      "clearFilter": "Filter zurücksetzen"
     },
     "sidebar": {
       "subtitle": "Veranstalter",
@@ -527,7 +530,8 @@
       "filterByDay": "{entity} nach Tag filtern",
       "showEveryBooking": "Alle Buchungen anzeigen",
       "showEveryService": "Alle Angebote anzeigen",
-      "showEverySlot": "Alle Termine anzeigen"
+      "entityBookings": "Buchungen",
+      "entitySlots": "Termine"
     },
     "demoBanner": {
       "readOnly": "Schreibgeschützte Demo.",
@@ -590,14 +594,14 @@
       "editSlot": "Termin bearbeiten",
       "viewBookings": "Buchungen ansehen",
       "duplicate": "Duplizieren",
-      "cancelSlot": "Termin absagen",
-      "cancelTitle": "Diesen Termin absagen?",
-      "cancelDescriptionWithBookings": "Dieser Termin hat {count} {count, plural, =1 {gebuchten Platz} other {gebuchte Plätze}}. Wenn du ihn absagst, werden der Termin und alle zugehörigen Buchungen gelöscht. Dies kann nicht rückgängig gemacht werden.",
-      "cancelDescriptionPlain": "Der Termin wird entfernt und ist für Gäste nicht mehr sichtbar. Dies kann nicht rückgängig gemacht werden.",
+      "deleteSlot": "Termin löschen",
+      "deleteBlocked": "Termine mit Buchungen können nicht gelöscht werden.",
+      "deleteTitle": "Diesen Termin löschen?",
+      "deleteDescription": "Der Termin wird entfernt und ist für Gäste nicht mehr sichtbar. Dies kann nicht rückgängig gemacht werden.",
       "keepSlot": "Termin behalten",
-      "cancellingDialog": "Wird abgesagt...",
-      "cancelledToast": "Termin abgesagt",
-      "cancelFailed": "Der Termin konnte nicht abgesagt werden",
+      "deletingDialog": "Wird gelöscht...",
+      "deletedToast": "Termin gelöscht",
+      "deleteFailed": "Der Termin konnte nicht gelöscht werden",
       "dialogCreateTitle": "Termin hinzufügen",
       "dialogCreateDescription": "Plane einen neuen Termin. Die Standardwerte werden aus dem Angebot übernommen.",
       "dialogEditTitle": "Termin bearbeiten",
@@ -666,7 +670,7 @@
       "deleteService": "Angebot löschen",
       "deleting": "Wird gelöscht...",
       "deleteTitle": "Dieses Angebot löschen?",
-      "deleteDescription": "{title} und alle zugehörigen Termine und Buchungen werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "deleteDescription": "{title} und alle zugehörigen Termine werden gelöscht. Liegen Buchungen für diese Leistung vor, wird das Löschen abgelehnt.",
       "keepService": "Angebot behalten",
       "delete": "Löschen",
       "coverPhoto": "Titelbild",
@@ -683,8 +687,6 @@
       "createFailed": "Das Angebot konnte nicht erstellt werden",
       "updateFailed": "Das Angebot konnte nicht aktualisiert werden",
       "deleteFailed": "Das Angebot konnte nicht gelöscht werden",
-      "notFound": "Angebot nicht gefunden",
-      "backToList": "Zurück zu den Angeboten",
       "pricePlaceholder": "$12",
       "editSubtitle": "Details und Optionen des Angebots bearbeiten."
     },
@@ -716,7 +718,8 @@
       "noChanges": "Keine Änderungen zu speichern",
       "updatedToast": "Profil aktualisiert",
       "updateFailed": "Das Profil konnte nicht aktualisiert werden",
-      "loadFailed": "Dein Profil konnte nicht geladen werden — aktualisiere die Seite, um es erneut zu versuchen."
+      "loadFailed": "Dein Profil konnte nicht geladen werden — aktualisiere die Seite, um es erneut zu versuchen.",
+      "copyFailed": "Der Link konnte nicht kopiert werden"
     },
     "bookings": {
       "title": "Buchungen",
@@ -776,37 +779,5 @@
       "full": "Ausgebucht",
       "left": "Noch {count}"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Ungültige Eingabe",
-    "invalidOptions": "Die ausgewählten Optionen sind für dieses Angebot nicht gültig",
-    "ticketExpired": "Deine Telegram-Bestätigung ist abgelaufen — authentifiziere dich erneut",
-    "telegramNotConfigured": "Der Telegram-Bot ist nicht eingerichtet",
-    "telegramInvalid": "Ungültige Telegram-Authentifizierungsdaten",
-    "telegramValidationFailed": "Die Telegram-Authentifizierung konnte nicht validiert werden",
-    "authSessionExpired": "Die Authentifizierungssitzung ist abgelaufen — authentifiziere dich erneut mit Telegram",
-    "organizerNotFound": "Veranstalter nicht gefunden",
-    "demoNotSeeded": "Der Demo-Veranstalter wurde nicht angelegt",
-    "serviceNotFound": "Angebot nicht gefunden",
-    "slotNotFound": "Termin nicht gefunden",
-    "bookingNotFound": "Buchung nicht gefunden",
-    "photoPrefix": "Ungültige photoUrl: Die URL muss zu deinem Medienpräfix gehören",
-    "cannotCreateService": "Das Angebot konnte nicht erstellt werden",
-    "slugTaken": "Dieser öffentliche Kurzname ist bereits vergeben — wähle einen anderen",
-    "accountExists": "Für diese Telegram-Identität besteht bereits ein Konto — melde dich stattdessen an",
-    "nothingToUpdate": "Keine Felder zum Aktualisieren",
-    "unsupportedMediaType": "Dieser Endpunkt akzeptiert nur application/merge-patch+json (RFC 7386)",
-    "capacityBelowBooked": "Die Kapazität darf nicht unter {count, plural, =1 {dem bereits gebuchten # Platz} other {den bereits gebuchten # Plätzen}} liegen",
-    "demoReadOnly": "Dies ist ein schreibgeschütztes Demokonto — registriere dich, um eigene buchbare Angebote zu erstellen.",
-    "soldOut": "Dieser Termin ist ausgebucht",
-    "seatsLeftOnSession": "Bei diesem Termin sind nur noch {count, plural, =1 {# Platz} other {# Plätze}} frei",
-    "partyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
-    "duplicateBooking": "Du hast für diesen Termin bereits eine Buchung",
-    "alreadyCancelled": "Diese Buchung wurde bereits storniert",
-    "slotGone": "Dieser Termin ist nicht mehr verfügbar",
-    "tooManyRequests": "Zu viele Anfragen — bitte versuchen Sie es gleich noch einmal",
-    "slotHasActiveBookings": "Dieser Termin hat Buchungen und kann nicht gelöscht werden",
-    "serviceHasBookings": "Dieses Angebot hat Buchungen in seinen Terminen und kann nicht gelöscht werden",
-    "bodyTooLarge": "Der Anforderungstext ist zu groß"
   }
 }

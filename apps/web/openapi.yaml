@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: CountMeIn API
   description: API for group booking, organizer cabinet management, and notifications.
-  version: 1.0.0+5fab21c281ec
+  version: 1.0.0+111351c7f692
 servers:
   - url: https://countmein.group
     description: Production
@@ -91,6 +91,10 @@ paths:
     post:
       summary: Register a new organizer using an auth ticket
       operationId: registerOrganizer
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 3600
+        per: ip
       requestBody:
         required: true
         content:
@@ -103,13 +107,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Registered"
+                $ref: "#/components/schemas/RegistrationResponse"
         "400":
-          description: Validation error (field issues)
+          description: Validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidIssuesBody"
+                $ref: "#/components/schemas/InvalidBody"
         "401":
           description: Auth ticket expired or unknown
           content:
@@ -118,6 +122,12 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
           description: Slug taken, or an account already exists for this identity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -145,7 +155,7 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
-    put:
+    patch:
       summary: Update organizer profile
       operationId: updateMyProfile
       security:
@@ -164,11 +174,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrganizerEnvelope"
         "400":
-          description: Validation error
+          description: Validation error or a plain coded refusal
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -304,6 +316,114 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
+  /api/cabinet/summary:
+    get:
+      summary: Get cabinet summary counts and 30-day analytics for the organizer
+      operationId: getCabinetSummary
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Cabinet summary and analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CabinetSummaryEnvelope"
+        "500":
+          description: Internal error
+  /api/public/organizers/{slug}:
+    get:
+      summary: Get public organizer profile, services, and upcoming slots by slug
+      operationId: getPublicOrganizer
+      x-rateLimit:
+        limit: 60
+        windowSeconds: 60
+        per: ip
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SlugShape"
+      responses:
+        "200":
+          description: Public organizer view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicOrganizerViewEnvelope"
+        "404":
+          description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/public/services/{id}:
+    get:
+      summary: Get public service details, parent organizer, and upcoming slots
+      operationId: getPublicService
+      x-rateLimit:
+        limit: 60
+        windowSeconds: 60
+        per: ip
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+      responses:
+        "200":
+          description: Public service view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicServiceViewEnvelope"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/public/sitemap:
+    get:
+      summary: List all public organizer slugs and service paths for sitemap generation
+      operationId: getPublicSitemap
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
+      responses:
+        "200":
+          description: Public sitemap catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSitemapEnvelope"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
   /api/services:
     get:
       summary: List the services of the organizer this request may view
@@ -338,11 +458,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServiceEnvelope"
         "400":
-          description: Validation error, or photoUrl outside the organizer media prefix
+          description: Body-shape failures answer invalidBody; photoUrl outside the
+            organizer media prefix answers errorBody
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -378,7 +501,7 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
-    put:
+    patch:
       summary: Update a service
       operationId: updateService
       security:
@@ -403,12 +526,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServiceEnvelope"
         "400":
-          description: Validation error, nothing to update, or photoUrl outside the
-            organizer media prefix
+          description: Validation error answers invalidBody; nothing to update or a
+            photoUrl outside the organizer media prefix answers errorBody
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -430,7 +555,7 @@ paths:
         "500":
           description: Internal error
     delete:
-      summary: Delete a service; slots and bookings cascade
+      summary: Delete a service; refuses when booking rows reference its slots
       operationId: deleteService
       security:
         - sessionCookie: []
@@ -459,6 +584,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: Service still has bookings referencing its slots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
   /api/slots:
@@ -476,6 +607,35 @@ paths:
             enum:
               - "1"
           description: When "1", slots that have already started are omitted.
+        - name: from
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryInstant"
+          description: Only sessions starting at or after this instant — range reads
+            (calendar week).
+        - name: to
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryInstant"
+          description: Only sessions starting before this instant.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryLimit"
+          description: Maximum slots to return (earliest first), e.g. the "next N
+            sessions" preview.
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - days
+          description: Optional side-data; "days" adds the full set of session day keys
+            (calendar marks).
       responses:
         "200":
           description: Slots
@@ -483,6 +643,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SlotsEnvelope"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
     post:
@@ -542,6 +708,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SlotEnvelope"
+        "400":
+          description: Malformed path parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "404":
           description: Slot not found
           content:
@@ -550,7 +722,7 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
-    put:
+    patch:
       summary: Update a time slot; bookedCount is never writable
       operationId: updateSlot
       security:
@@ -575,11 +747,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/SlotEnvelope"
         "400":
-          description: Validation error or nothing to update
+          description: Validation error answers invalidBody; a malformed path id or
+            nothing to update answers errorBody
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -624,6 +799,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeletedSlotEnvelope"
+        "400":
+          description: Malformed path parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "403":
           description: Demo account is read-only, or the caller has no session (ADR-010)
           content:
@@ -645,6 +826,104 @@ paths:
         "500":
           description: Internal error
   /api/bookings:
+    get:
+      summary: List bookings of the organizer this request may view
+      operationId: listBookings
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryLimit"
+          description: Maximum bookings to return (default 50, max 100).
+        - name: offset
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryOffset"
+          description: Number of bookings to skip (default 0).
+        - name: serviceId
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ServiceID"
+          description: Only bookings whose slot belongs to this service.
+        - name: slotId
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/UUID"
+          description: Only bookings on this session — the narrower scope.
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - confirmed
+              - cancelled
+          description: Only bookings in this status; absent lists both.
+        - name: q
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QuerySearch"
+          description: Case-insensitive substring match on guest name, messenger login,
+            messenger id and service title.
+        - name: day
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/QueryDayKey"
+          description: Only bookings whose session starts on this calendar day in the
+            organizer timezone.
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - guest
+              - service
+              - when
+              - seats
+              - status
+          description: Sort column; absent keeps the default order (newest booking first).
+        - name: dir
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+          description: Sort direction (default asc); ignored without `sort`.
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - days
+          description: Optional side-data; "days" adds the scoped booked-day keys (picker
+            marks).
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingsEnvelope"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
     post:
       summary: Guest creates a booking (atomic reserve)
       operationId: createBooking
@@ -666,12 +945,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/GuestBookingEnvelope"
         "400":
-          description: Validation error, invalid option selection, or party over the
-            per-booking cap
+          description: Body-shape failures answer invalidBody; domain refusals (invalid
+            option selection, party over the per-booking cap) answer errorBody
+            with a code
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InvalidBody"
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
         "401":
           description: Guest ticket expired or already used
           content:
@@ -709,6 +991,10 @@ paths:
     post:
       summary: Look up a guest's bookings with a single-use ticket
       operationId: lookupBookings
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
@@ -734,18 +1020,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
         "500":
           description: Internal error
   /api/bookings/cancel:
     post:
       summary: Guest cancels a booking via manageToken
       operationId: cancelBookingByToken
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CancelBookingByTokenInput"
+              $ref: "#/components/schemas/ManageTokenInput"
       responses:
         "200":
           description: Booking cancelled
@@ -773,6 +1069,53 @@ paths:
                 $ref: "#/components/schemas/ErrorBody"
         "409":
           description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
+  /api/bookings/manage-lookup:
+    post:
+      summary: Guest looks up a booking via manageToken
+      operationId: getBookingByManageToken
+      x-rateLimit:
+        limit: 10
+        windowSeconds: 60
+        per: ip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManageTokenInput"
+      responses:
+        "200":
+          description: Guest booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestBookingEnvelope"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvalidBody"
+        "404":
+          description: Booking not found or token expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -861,6 +1204,48 @@ paths:
           description: Unknown queue name
         "500":
           description: Handler failure (triggers a QStash retry)
+  /api/internal/auth/organizer-by-messenger:
+    post:
+      summary: Internal lookup of organizer by messenger identity or organizer ID for
+        Auth.js
+      operationId: getOrganizerByMessenger
+      security:
+        - internalSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InternalOrganizerLookupInput"
+      responses:
+        "200":
+          description: Organizer found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalOrganizerEnvelope"
+        "400":
+          description: Validation error or a plain coded refusal
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/InvalidBody"
+                  - $ref: "#/components/schemas/ErrorBody"
+        "401":
+          description: Invalid or missing internal secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: Organizer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: Internal error
 x-internal:
   - $ref: "#/components/schemas/AuthTicketPayload"
   - $ref: "#/components/schemas/LoginLinkPayload"
@@ -872,7 +1257,86 @@ components:
       name: __Secure-authjs.session-token
       description: "Auth.js session cookie: `__Secure-authjs.session-token` in
         production, `authjs.session-token` in local development."
+    internalSecret:
+      type: apiKey
+      in: header
+      name: x-internal-secret
+      description: Internal secret header for service-to-service communication between
+        Next.js BFF and Python API.
   schemas:
+    AnalyticsServiceCount:
+      type: object
+      properties:
+        service:
+          type: string
+        bookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - service
+        - bookings
+    AnalyticsSummaryRecord:
+      type: object
+      properties:
+        totalBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        prevTotalBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        seatsSold:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        prevSeatsSold:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        windowBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        cancelledInWindow:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsTrendDay"
+        byService:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsServiceCount"
+      required:
+        - totalBookings
+        - prevTotalBookings
+        - seatsSold
+        - prevSeatsSold
+        - windowBookings
+        - cancelledInWindow
+        - trend
+        - byService
+    AnalyticsTrendDay:
+      type: object
+      properties:
+        day:
+          type: string
+        bookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        seats:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - day
+        - bookings
+        - seats
     AppLocale:
       type: string
       enum:
@@ -898,8 +1362,7 @@ components:
         displayName:
           type: string
         photoUrl:
-          type: string
-          format: uri
+          $ref: "#/components/schemas/URL"
         messengerLogin:
           type: string
         purpose:
@@ -977,9 +1440,9 @@ components:
         guestMessengerId:
           type: string
         guestMessengerLogin:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         selectedOptions:
           anyOf:
             - type: array
@@ -1004,6 +1467,79 @@ components:
       enum:
         - confirmed
         - cancelled
+    BookingsEnvelope:
+      type: object
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookingRecord"
+        hasMore:
+          type: boolean
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlotRecord"
+        bookedDays:
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
+      required:
+        - bookings
+        - hasMore
+        - slots
+        - bookedDays
+    CabinetOverviewRecord:
+      type: object
+      properties:
+        confirmedBookings:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        confirmedLast7Days:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        upcomingSlots:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        upcomingSlotsNext7Days:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        upcomingSeatsBooked:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        upcomingSeatsOffered:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - confirmedBookings
+        - confirmedLast7Days
+        - upcomingSlots
+        - upcomingSlotsNext7Days
+        - upcomingSeatsBooked
+        - upcomingSeatsOffered
+    CabinetSummaryEnvelope:
+      type: object
+      properties:
+        overview:
+          $ref: "#/components/schemas/CabinetOverviewRecord"
+        serviceCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceCountsRecord"
+        analytics:
+          $ref: "#/components/schemas/AnalyticsSummaryRecord"
+      required:
+        - overview
+        - serviceCounts
+        - analytics
     CancelActor:
       type: string
       enum:
@@ -1016,13 +1552,6 @@ components:
           $ref: "#/components/schemas/UUID"
       required:
         - bookingId
-    CancelBookingByTokenInput:
-      type: object
-      properties:
-        manageToken:
-          $ref: "#/components/schemas/ManageToken"
-      required:
-        - manageToken
     Capacity:
       type: integer
       minimum: 1
@@ -1070,12 +1599,6 @@ components:
       properties:
         title:
           $ref: "#/components/schemas/DisplayName"
-        description:
-          $ref: "#/components/schemas/ServiceDescription"
-        location:
-          $ref: "#/components/schemas/Location"
-        contact:
-          $ref: "#/components/schemas/Contact"
         defaultPrice:
           $ref: "#/components/schemas/PriceText"
         defaultCapacity:
@@ -1084,6 +1607,12 @@ components:
           $ref: "#/components/schemas/DurationMinutes"
         maxSeatsPerBooking:
           $ref: "#/components/schemas/MaxSeatsPerBooking"
+        description:
+          $ref: "#/components/schemas/ServiceDescription"
+        location:
+          $ref: "#/components/schemas/Location"
+        contact:
+          $ref: "#/components/schemas/Contact"
         options:
           $ref: "#/components/schemas/OptionsList"
         optionsSelectMode:
@@ -1163,6 +1692,7 @@ components:
           maximum: 9007199254740991
       required:
         - error
+        - code
       additionalProperties: {}
     GuestBooking:
       type: object
@@ -1258,32 +1788,53 @@ components:
         - uploadUrl
         - publicUrl
         - expiresAt
+    InternalOrganizerEnvelope:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/InternalOrganizerRecord"
+      required:
+        - organizer
+    InternalOrganizerLookupInput:
+      type: object
+      properties:
+        messenger:
+          $ref: "#/components/schemas/Messenger"
+        messengerId:
+          $ref: "#/components/schemas/MessengerID"
+        organizerId:
+          $ref: "#/components/schemas/UUID"
+    InternalOrganizerRecord:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          $ref: "#/components/schemas/DisplayName"
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+        photoUrl:
+          type:
+            - string
+            - "null"
+      required:
+        - id
+        - name
+        - slug
+        - photoUrl
     InvalidBody:
       type: object
       properties:
         error:
           type: string
+        code:
+          type: string
         details:
           $ref: "#/components/schemas/ValidationErrors"
       required:
         - error
+        - code
         - details
-    InvalidIssuesBody:
-      type: object
-      properties:
-        error:
-          type: string
-        issues:
-          type: object
-          propertyNames:
-            type: string
-          additionalProperties:
-            type: array
-            items:
-              type: string
-      required:
-        - error
-        - issues
     Location:
       type: string
       minLength: 1
@@ -1295,6 +1846,7 @@ components:
           $ref: "#/components/schemas/UUID"
         next:
           type: string
+          format: starts_with
           pattern: ^\/.*
       required:
         - organizerId
@@ -1310,6 +1862,13 @@ components:
       type: string
       minLength: 10
       maxLength: 200
+    ManageTokenInput:
+      type: object
+      properties:
+        manageToken:
+          $ref: "#/components/schemas/ManageToken"
+      required:
+        - manageToken
     MaxSeatsPerBooking:
       type: integer
       minimum: 1
@@ -1368,21 +1927,21 @@ components:
         timezone:
           $ref: "#/components/schemas/Timezone"
         description:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         photoUrl:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         location:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         contact:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         language:
           $ref: "#/components/schemas/AppLocale"
         createdAt:
@@ -1419,21 +1978,21 @@ components:
         timezone:
           $ref: "#/components/schemas/Timezone"
         description:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         photoUrl:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         location:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         contact:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         isDemo:
           type: boolean
       required:
@@ -1446,6 +2005,71 @@ components:
         - location
         - contact
         - isDemo
+    PublicOrganizerViewEnvelope:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/PublicOrganizer"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRecord"
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlotRecord"
+      required:
+        - organizer
+        - services
+        - slots
+    PublicServiceViewEnvelope:
+      type: object
+      properties:
+        service:
+          $ref: "#/components/schemas/ServiceRecord"
+        organizer:
+          $ref: "#/components/schemas/PublicOrganizer"
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlotRecord"
+      required:
+        - service
+        - organizer
+        - slots
+    PublicSitemapEnvelope:
+      type: object
+      properties:
+        organizers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SitemapOrganizerEntry"
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/SitemapServiceEntry"
+      required:
+        - organizers
+        - services
+    QueryDayKey:
+      type: string
+      pattern: ^\d{4}-\d{2}-\d{2}$
+    QueryInstant:
+      type: string
+      format: date-time
+      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+    QueryLimit:
+      type: integer
+      minimum: 1
+      maximum: 100
+    QueryOffset:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    QuerySearch:
+      type: string
+      minLength: 1
+      maxLength: 200
     RegisterOrganizerInput:
       type: object
       properties:
@@ -1467,13 +2091,6 @@ components:
         - slug
         - name
         - timezone
-    Registered:
-      type: object
-      properties:
-        organizer:
-          $ref: "#/components/schemas/RegisteredOrganizer"
-      required:
-        - organizer
     RegisteredOrganizer:
       type: object
       properties:
@@ -1484,6 +2101,13 @@ components:
       required:
         - id
         - slug
+    RegistrationResponse:
+      type: object
+      properties:
+        organizer:
+          $ref: "#/components/schemas/RegisteredOrganizer"
+      required:
+        - organizer
     Seats:
       type: integer
       minimum: 1
@@ -1493,6 +2117,23 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/OptionLabel"
+    ServiceCountsRecord:
+      type: object
+      properties:
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+        upcomingSlotsCount:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        confirmedBookingsCount:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - serviceId
+        - upcomingSlotsCount
+        - confirmedBookingsCount
     ServiceDescription:
       type: string
       maxLength: 2000
@@ -1520,21 +2161,21 @@ components:
         title:
           $ref: "#/components/schemas/DisplayName"
         description:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         photoUrl:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         location:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         contact:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         defaultPrice:
           $ref: "#/components/schemas/PriceText"
         defaultCapacity:
@@ -1579,6 +2220,23 @@ components:
             $ref: "#/components/schemas/ServiceRecord"
       required:
         - services
+    SitemapOrganizerEntry:
+      type: object
+      properties:
+        slug:
+          $ref: "#/components/schemas/SlugShape"
+      required:
+        - slug
+    SitemapServiceEntry:
+      type: object
+      properties:
+        orgSlug:
+          $ref: "#/components/schemas/SlugShape"
+        serviceId:
+          $ref: "#/components/schemas/ServiceID"
+      required:
+        - orgSlug
+        - serviceId
     SlotEnvelope:
       type: object
       properties:
@@ -1601,8 +2259,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TimeSlotRecord"
+        days:
+          anyOf:
+            - type: array
+              items:
+                type: string
+            - type: "null"
       required:
         - slots
+        - days
     Slug:
       $ref: "#/components/schemas/SlugShape"
     SlugShape:
@@ -1668,10 +2333,14 @@ components:
           type: integer
           minimum: 0
           maximum: 9007199254740991
+        hasBookings:
+          type:
+            - boolean
+            - "null"
         price:
-          anyOf:
-            - type: string
-            - type: "null"
+          type:
+            - string
+            - "null"
         createdAt:
           type: string
       required:
@@ -1681,6 +2350,7 @@ components:
         - durationMinutes
         - capacity
         - bookedCount
+        - hasBookings
         - price
         - createdAt
     Timezone:
@@ -1729,6 +2399,14 @@ components:
       properties:
         title:
           $ref: "#/components/schemas/DisplayName"
+        defaultPrice:
+          $ref: "#/components/schemas/PriceText"
+        defaultCapacity:
+          $ref: "#/components/schemas/Capacity"
+        defaultDurationMinutes:
+          $ref: "#/components/schemas/DurationMinutes"
+        maxSeatsPerBooking:
+          $ref: "#/components/schemas/MaxSeatsPerBooking"
         description:
           anyOf:
             - $ref: "#/components/schemas/ServiceDescription"
@@ -1741,14 +2419,6 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Contact"
             - type: "null"
-        defaultPrice:
-          $ref: "#/components/schemas/PriceText"
-        defaultCapacity:
-          $ref: "#/components/schemas/Capacity"
-        defaultDurationMinutes:
-          $ref: "#/components/schemas/DurationMinutes"
-        maxSeatsPerBooking:
-          $ref: "#/components/schemas/MaxSeatsPerBooking"
         options:
           anyOf:
             - $ref: "#/components/schemas/OptionsList"

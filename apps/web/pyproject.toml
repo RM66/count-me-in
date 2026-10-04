@@ -1,0 +1,113 @@
+[project]
+name = "countmein-api"
+version = "0.1.0"
+description = "CountMeIn API — FastAPI implementation of the Zod-owned OpenAPI contract"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.7",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "psycopg[binary]>=3.2",
+    "redis>=5",
+    "httpx",
+    "qstash>=2",
+    "jsonschema>=4.23",
+    # Imported directly by validation/spec.py (the $ref registry) — declared
+    # explicitly even though jsonschema also pulls it transitively.
+    "referencing>=0.35",
+    "boto3",
+    "alembic>=1.13.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-xdist",
+    "fakeredis[lua]",
+    "respx",
+    "ruff",
+    "mypy",
+    "datamodel-code-generator[black,isort]",
+    "uvicorn[standard]",
+    "boto3-stubs[s3]",
+    "pyyaml",
+    "types-pyyaml",
+    "python-dotenv",
+    "types-jsonschema>=4.26.0.20260518",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["api/_lib", "api"]
+testpaths = ["tests_py"]
+asyncio_mode = "auto"
+# importlib mode: test modules with the same basename in different
+# directories (tests_py/auth/test_telegram.py vs tests_py/jobs/…)
+# collide under the default rootdir import mode.
+addopts = "--import-mode=importlib"
+markers = [
+    "integration: tests requiring live Postgres or Redis (docker compose services)",
+    "unit: standalone in-memory unit tests",
+]
+# Pydantic serializer warnings (a UUID/AnyUrl sneaking past the row
+# mappers) are the same class of bug as the demo-guard UUID==str miss —
+# fail the suite instead of letting them scroll by.
+filterwarnings = ["error::UserWarning:pydantic"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [
+    "**/*_gen.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# The parity harness reads small scenario YAMLs inside its async runner —
+# blocking reads of test fixtures, not production code.
+"tests_py/parity/test_replay.py" = ["ASYNC240"]
+# Asserts are the point of tests; test fixtures carry named fake secrets
+# and intentionally assert broad exceptions; Cyrillic/EN-dash strings are
+# the i18n test data itself.
+"tests_py/**" = [
+    "S101",
+    "S105",
+    "S106",
+    "B017",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "E501",
+]
+# The db layer speaks SQL: text() with named bound params is not an
+# injection vector, and long DRL/DDL lines cannot be wrapped without
+# hurting the queries.
+"api/_lib/countmein/db/**" = ["S608", "E501"]
+# FastAPI's dependency injection is declared as calls in argument
+# defaults (Depends(...) / the deps.py factories) — B008's "no function
+# call in defaults" is the framework's own idiom.
+"api/_lib/countmein/routes/**" = ["B008"]
+"api/_lib/countmein/web/deps.py" = ["B008"]
+"api/_lib/countmein/web/guards.py" = ["B008"]
+# Notification copy embeds real Russian strings on purpose.
+"api/_lib/countmein/jobs/templates.py" = ["RUF001"]
+# The singleton reset helpers close best-effort and swallow close
+# errors (S110).
+"api/_lib/countmein/db/client.py" = ["S110"]
+"api/_lib/countmein/redis.py" = ["S110"]
+
+[tool.mypy]
+strict = true
+mypy_path = "api/_lib:api"
+packages = ["countmein"]
+exclude = ["_gen\\.py$"]
+
+[[tool.mypy.overrides]]
+module = [
+    "countmein.contracts.models_gen",
+    "countmein.contracts.constants_gen",
+    "countmein.i18n.translations_gen",
+]
+ignore_errors = true

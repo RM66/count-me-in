@@ -4,14 +4,14 @@ import type { CreateTimeSlotInput, UpdateTimeSlotInput } from '@repo/contracts'
 import { deletedSlotEnvelope, slotEnvelope } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
-import { del, post, put } from './client'
+import { del, patch, post } from './client'
 
 /**
  * Client-side API for the **TimeSlot** entity.
- * The cabinet reads slots on the server (`lib/server/db/time-slot.ts`), so
+ * The cabinet reads slots on the server (`server/api-client.ts`), so
  * there is no list/detail query here. The mutations return the created or
  * updated record; the caller follows with `router.refresh()` to re-render the
- * server component (Phase 2.3 — no client cache to invalidate).
+ * server component — there is no client cache to invalidate.
  */
 
 /** Create a slot under one of the signed-in organizer's services. */
@@ -22,19 +22,19 @@ export function useCreateSlot() {
 }
 
 /** Update one slot. Only the fields present in `input` are written. */
-export function useUpdateSlot(slotId: string) {
+export function useUpdateSlot() {
   return useMutation({
-    mutationFn: (input: UpdateTimeSlotInput) =>
-      put(`/api/slots/${slotId}`, input, slotEnvelope, 'application/merge-patch+json'),
+    mutationFn: ({ id, input }: { id: string; input: UpdateTimeSlotInput }) =>
+      patch(`/api/slots/${id}`, input, slotEnvelope, 'application/merge-patch+json'),
   })
 }
 
 /**
- * Delete one slot. Refused server-side (409) while the slot still has
- * confirmed bookings — the organizer must cancel them first.
+ * Delete one slot. Refused server-side (409) as soon as any booking row —
+ * confirmed or cancelled — references it.
  */
-export function useDeleteSlot(slotId: string) {
+export function useDeleteSlot() {
   return useMutation({
-    mutationFn: () => del(`/api/slots/${slotId}`, deletedSlotEnvelope),
+    mutationFn: (id: string) => del(`/api/slots/${id}`, deletedSlotEnvelope),
   })
 }

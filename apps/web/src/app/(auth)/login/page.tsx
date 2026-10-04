@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 
 import { AuthShell } from '@/app/(auth)/_components/auth-shell'
+import { SIGNUP_TICKET_KEY } from '@/app/(auth)/signup/_components/use-signup-form'
 import { TelegramLoginButton } from '@/components/telegram-login-button'
 
 export default function LoginPage() {
@@ -34,8 +35,12 @@ export default function LoginPage() {
             redirectTo="/cabinet"
             onSignupRequired={(ticket) => {
               toast.error(t('noAccountFound'))
-              router.push(`/signup?ticket=${ticket}`)
+              // sessionStorage, not ?ticket=: a one-time credential must
+              // not land in history, logs or Referer headers.
+              sessionStorage.setItem(SIGNUP_TICKET_KEY, ticket)
+              router.push('/signup')
             }}
+            onError={() => toast.error(t('signInFailed'))}
           />
           <p className="text-center text-sm text-muted-foreground">{t('sameAccount')}</p>
         </div>

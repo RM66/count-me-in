@@ -46,6 +46,7 @@ const slotFixture = {
   durationMinutes: 60,
   capacity: 10,
   bookedCount: 3,
+  hasBookings: null,
   price: null,
   createdAt: '2026-01-01T00:00:00.000Z',
 }
@@ -308,11 +309,7 @@ describe('useLookupBookings', () => {
     const { result } = renderHook(() => useLookupBookings(), { wrapper: createWrapper() })
     let bookings: unknown
     await act(async () => {
-      bookings = await result.current.mutateAsync({
-        ticket: 'guest-ticket-123',
-        messenger: 'telegram',
-        messengerId: '67890',
-      })
+      bookings = await result.current.mutateAsync('guest-ticket-123')
     })
 
     const calls = vi.mocked(fetch).mock.calls as unknown as Array<[string, RequestInit]>
@@ -333,11 +330,7 @@ describe('useLookupBookings', () => {
     let caught: unknown
     await act(async () => {
       try {
-        await result.current.mutateAsync({
-          ticket: 't',
-          messenger: 'telegram',
-          messengerId: '67890',
-        })
+        await result.current.mutateAsync('t')
       } catch (e) {
         caught = e
       }

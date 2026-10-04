@@ -6,7 +6,7 @@ import { authTicket, httpUrl, messengerId, uuid } from './primitives'
 /**
  * Auth.js session cookie names, most-secure first. Auth.js itself reads only
  * the `__Secure-` name on HTTPS; both are listed because local development
- * serves plain HTTP, and the Go API accepts either.
+ * serves plain HTTP, and the Python API accepts either.
  */
 export const SESSION_COOKIE_NAMES = [
   '__Secure-authjs.session-token',
@@ -14,8 +14,18 @@ export const SESSION_COOKIE_NAMES = [
 ] as const
 
 /**
- * Telegram numeric user id. Bounded rather than `.positive()` so the bound is
- * derivable as a Go int range — an exclusive minimum is not (D10).
+ * iss/aud claims of the organizer-auth JWT the Next.js middleware mints
+ * into X-Organizer-Auth and the Python API verifies (ADR-024). Bound so a
+ * token minted for some other purpose under the same AUTH_SECRET cannot
+ * be replayed as an organizer session.
+ */
+export const ORGANIZER_AUTH_ISS = 'countmein-web'
+export const ORGANIZER_AUTH_AUD = 'countmein-api'
+
+/**
+ * Telegram numeric user id. Bounded rather than `.positive()` so the bound
+ * is derivable as an inclusive JSON Schema range — an exclusive minimum
+ * is not.
  */
 export const telegramUserId = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER)
 
@@ -67,11 +77,30 @@ export const authTicketPayload = z.object({
   messenger: messengerEnum,
   messengerId,
   displayName: z.string(),
-  photoUrl: z.string().url().optional(),
+  photoUrl: httpUrl.optional(),
   messengerLogin: z.string().optional(),
   purpose: z.enum(['guest', 'organizer']),
 })
 export type AuthTicketPayload = z.infer<typeof authTicketPayload>
+
+/**
+ * How long an auth ticket stays valid (10 minutes) — long enough to finish
+ * the signup/booking it was minted for, short enough that a leaked ticket
+ * is useless quickly.
+ */
+export const AUTH_TICKET_TTL_S = 10 * 60
+
+/**
+ * Redis key prefix for auth tickets. Exported separately from
+ * {@link authTicketKey} because the Python API is code-generated from this
+ * file: the generator interpolates the prefix into
+ * `contracts.AUTH_TICKET_KEY_PREFIX`, so the two sides cannot drift.
+ */
+export const AUTH_TICKET_KEY_PREFIX = 'auth:ticket:'
+
+export function authTicketKey(token: string): string {
+  return `${AUTH_TICKET_KEY_PREFIX}${token}`
+}
 
 /**
  * POST /api/auth/telegram-guest — same widget validation but issues a guest
@@ -105,7 +134,7 @@ export const LOGIN_LINK_TTL_S = 30 * 24 * 60 * 60
 
 /**
  * Redis key prefix for login links. Exported separately from
- * {@link loginLinkKey} because the Go API is code-generated from this file:
+ * {@link loginLinkKey} because the Python API is code-generated from this file:
  * the generator interpolates the prefix into `contracts.LoginLinkKey`, so the
  * two sides cannot drift.
  */
@@ -117,10 +146,10 @@ export function loginLinkKey(token: string): string {
 
 /**
  * Whether a `next` path is safe to redirect to: a relative path with no
- * backslashes or control characters. Mirrors Go `isSafeNextPath` — browsers
- * treat backslashes as slashes, and embedded CR/LF/NUL can split responses in
- * downstream consumers. Written as a loop because a control-character regex
- * trips `no-control-regex`.
+ * backslashes or control characters. Mirrors `_is_safe_next_path` in the
+ * API — browsers treat backslashes as slashes, and embedded CR/LF/NUL can
+ * split responses in downstream consumers. Written as a loop because a
+ * control-character regex trips `no-control-regex`.
  */
 function hasUnsafeNextChars(value: string): boolean {
   for (const ch of value) {

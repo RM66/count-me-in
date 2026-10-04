@@ -30,6 +30,8 @@ const createMutate = vi.fn()
 const updateMutate = vi.fn()
 const deleteMutate = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   useCreateService: () => ({ mutate: createMutate, isPending: false }),
   useUpdateService: () => ({ mutate: updateMutate, isPending: false }),
   useDeleteService: () => ({ mutate: deleteMutate, isPending: false }),

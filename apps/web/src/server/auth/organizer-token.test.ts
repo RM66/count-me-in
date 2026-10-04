@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Unit tests for the organizer-auth JWT mint (architecture review fix #1).
+ * Unit tests for the organizer-auth JWT mint (ADR-021).
  *
- * The token is the credential the Go API verifies (HS256, HKDF-derived key);
- * the derivation parameters are pinned by a golden vector on the Go side
- * (`pkg/auth/session_test.go`). Here we pin the TS side: shape, TTL, and the
+ * The token is the credential the API verifies (HS256, HKDF-derived key);
+ * the derivation parameters are pinned by a golden vector on the API side
+ * (`tests_py/auth/test_session.py`). Here we pin the TS side: shape, TTL, and the
  * no-secret → anonymous behavior.
  */
 
@@ -28,7 +28,7 @@ describe('mintOrganizerAuth', () => {
     expect(await mintOrganizerAuth('org-id', 'slug')).toBeNull()
   })
 
-  it('mints a compact HS256 JWT with sub/slug/iat/exp', async () => {
+  it('mints a compact HS256 JWT with iss/aud/sub/slug/iat/exp', async () => {
     const { mintOrganizerAuth, ORGANIZER_AUTH_TTL_S } =
       await import('@/server/auth/organizer-token')
     const before = Math.floor(Date.now() / 1000)
@@ -43,6 +43,9 @@ describe('mintOrganizerAuth', () => {
     expect(decodedHeader).toEqual({ alg: 'HS256', typ: 'JWT' })
 
     const decoded = JSON.parse(atob(payload!.replace(/-/g, '+').replace(/_/g, '/')))
+    // ADR-021: the API refuses a token without this iss/aud pair.
+    expect(decoded.iss).toBe('countmein-web')
+    expect(decoded.aud).toBe('countmein-api')
     expect(decoded.sub).toBe('01930000-0000-7000-8000-0000000000de')
     expect(decoded.slug).toBe('studio-demo')
     expect(decoded.iat).toBeGreaterThanOrEqual(before)

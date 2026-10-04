@@ -67,8 +67,7 @@
     "errPartyTooLarge": "Você pode reservar no máximo {maxSeats, plural, =1 {# vaga} other {# vagas}} em uma única reserva",
     "errDuplicate": "Você já tem uma reserva para esta sessão",
     "errGone": "Esta sessão não está mais disponível",
-    "errInvalidOptions": "As opções selecionadas não são válidas para este serviço",
-    "errAlreadyCancelled": "Esta reserva já foi cancelada"
+    "errInvalidOptions": "As opções selecionadas não são válidas para este serviço"
   },
   "SuccessStep": {
     "confirmedNote": "Sua vaga está reservada. Você receberá uma confirmação do nosso bot no seu aplicativo de mensagens.",
@@ -327,7 +326,8 @@
       "contact": "Contato",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Reservas online simples para aulas, eventos e passeios em grupo."
+    "ogDescription": "Reservas online simples para aulas, eventos e passeios em grupo.",
+    "metaTitle": "CountMeIn — reservas online para eventos em grupo"
   },
   "Legal": {
     "lastUpdated": "Última atualização: {date}",
@@ -375,7 +375,8 @@
       "createAccount": "Criar uma conta",
       "noAccountFound": "Nenhuma conta encontrada. Primeiro, crie uma conta.",
       "sameAccount": "Use a mesma conta do Telegram com que você se cadastrou.",
-      "notConfigured": "O login com o Telegram não está configurado. Entre em contato com o suporte."
+      "notConfigured": "O login com o Telegram não está configurado. Entre em contato com o suporte.",
+      "signInFailed": "Não foi possível entrar — autentique-se novamente com o Telegram"
     },
     "signup": {
       "title": "Crie sua conta",
@@ -402,8 +403,10 @@
     },
     "loginLink": {
       "opening": "Aguarde enquanto abrimos seu painel.",
-      "continue": "Continuar para o painel"
-    }
+      "continue": "Continuar para o painel",
+      "title": "Abrindo seu painel…"
+    },
+    "metaTitle": "Acesso à conta"
   },
   "NotFound": {
     "title": "Página não encontrada",
@@ -419,15 +422,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Consentimento de cookies",
-    "text": "Usamos cookies de análise para entender como o CountMeIn é usado e melhorá-lo. ",
-    "essential": "Os cookies essenciais para entrar e fazer reservas estão sempre ativos. ",
+    "text": "Usamos cookies de análise para entender como o CountMeIn é usado e melhorá-lo.",
+    "essential": "Os cookies essenciais para entrar e fazer reservas estão sempre ativos.",
     "privacyPolicy": "Política de Privacidade",
     "reject": "Recusar",
     "accept": "Aceitar"
   },
   "Ui": {
     "close": "Fechar",
-    "navigation": "Navegação",
     "loading": "Carregando",
     "more": "Mais",
     "sidebar": "Barra lateral",
@@ -467,7 +469,8 @@
       "cancel": "Cancelar",
       "saving": "Salvando...",
       "close": "Fechar",
-      "full": "Lotado"
+      "full": "Lotado",
+      "clearFilter": "Limpar filtro"
     },
     "sidebar": {
       "subtitle": "Organizador",
@@ -527,7 +530,8 @@
       "filterByDay": "Filtrar {entity} por dia",
       "showEveryBooking": "Mostrar todas as reservas",
       "showEveryService": "Mostrar todos os serviços",
-      "showEverySlot": "Mostrar todos os horários"
+      "entityBookings": "reservas",
+      "entitySlots": "horários"
     },
     "demoBanner": {
       "readOnly": "Demonstração somente para visualização.",
@@ -590,14 +594,14 @@
       "editSlot": "Editar horário",
       "viewBookings": "Ver reservas",
       "duplicate": "Duplicar",
-      "cancelSlot": "Cancelar horário",
-      "cancelTitle": "Cancelar este horário?",
-      "cancelDescriptionWithBookings": "Esta sessão tem {count} {count, plural, =1 {vaga reservada} other {vagas reservadas}}. O cancelamento remove o horário e todas as reservas dele. Esta ação não pode ser desfeita.",
-      "cancelDescriptionPlain": "O horário será removido e os participantes não poderão mais vê-lo. Esta ação não pode ser desfeita.",
+      "deleteSlot": "Excluir horário",
+      "deleteBlocked": "Horários com reservas não podem ser excluídos.",
+      "deleteTitle": "Excluir este horário?",
+      "deleteDescription": "O horário será removido e os participantes não poderão mais vê-lo. Esta ação não pode ser desfeita.",
       "keepSlot": "Manter horário",
-      "cancellingDialog": "Cancelando...",
-      "cancelledToast": "Horário cancelado",
-      "cancelFailed": "Falha ao cancelar o horário",
+      "deletingDialog": "Excluindo...",
+      "deletedToast": "Horário excluído",
+      "deleteFailed": "Falha ao excluir o horário",
       "dialogCreateTitle": "Adicionar horário",
       "dialogCreateDescription": "Agende uma nova sessão. Os valores padrão vêm do serviço.",
       "dialogEditTitle": "Editar horário",
@@ -666,7 +670,7 @@
       "deleteService": "Excluir serviço",
       "deleting": "Excluindo...",
       "deleteTitle": "Excluir este serviço?",
-      "deleteDescription": "{title} e todos os seus horários e reservas serão removidos. Esta ação não pode ser desfeita.",
+      "deleteDescription": "{title} e todos os seus horários serão removidos. Se o serviço tiver reservas, a exclusão será recusada.",
       "keepService": "Manter serviço",
       "delete": "Excluir",
       "coverPhoto": "Foto de capa",
@@ -683,8 +687,6 @@
       "createFailed": "Falha ao criar o serviço",
       "updateFailed": "Falha ao atualizar o serviço",
       "deleteFailed": "Falha ao excluir o serviço",
-      "notFound": "Serviço não encontrado",
-      "backToList": "Voltar aos serviços",
       "pricePlaceholder": "R$ 60",
       "editSubtitle": "Edite os detalhes e as opções do serviço."
     },
@@ -716,7 +718,8 @@
       "noChanges": "Nenhuma alteração para salvar",
       "updatedToast": "Perfil atualizado",
       "updateFailed": "Falha ao atualizar o perfil",
-      "loadFailed": "Não foi possível carregar seu perfil — atualize a página para tentar novamente."
+      "loadFailed": "Não foi possível carregar seu perfil — atualize a página para tentar novamente.",
+      "copyFailed": "Não foi possível copiar o link"
     },
     "bookings": {
       "title": "Reservas",
@@ -776,37 +779,5 @@
       "full": "Lotado",
       "left": "{count} restantes"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Dados inválidos",
-    "invalidOptions": "As opções selecionadas não são válidas para este serviço",
-    "ticketExpired": "Sua confirmação pelo Telegram expirou — autentique-se novamente",
-    "telegramNotConfigured": "O bot do Telegram não está configurado",
-    "telegramInvalid": "Dados de autenticação do Telegram inválidos",
-    "telegramValidationFailed": "Falha ao validar a autenticação do Telegram",
-    "authSessionExpired": "A sessão de autenticação expirou — autentique-se novamente com o Telegram",
-    "organizerNotFound": "Organizador não encontrado",
-    "demoNotSeeded": "Os dados do organizador de demonstração não foram carregados",
-    "serviceNotFound": "Serviço não encontrado",
-    "slotNotFound": "Horário não encontrado",
-    "bookingNotFound": "Reserva não encontrada",
-    "photoPrefix": "photoUrl inválida: deve pertencer ao seu prefixo de mídia",
-    "cannotCreateService": "Não foi possível criar o serviço",
-    "slugTaken": "Este identificador já está em uso — escolha outro",
-    "accountExists": "Já existe uma conta com esta identidade do Telegram — entre em vez de criar outra",
-    "nothingToUpdate": "Nenhum campo para atualizar",
-    "unsupportedMediaType": "Este endpoint aceita apenas application/merge-patch+json (RFC 7386)",
-    "capacityBelowBooked": "A capacidade não pode ser menor que {count, plural, =1 {# vaga já reservada} other {# vagas já reservadas}}",
-    "demoReadOnly": "Esta é uma conta de demonstração somente para visualização — cadastre-se para criar seus próprios serviços com reservas.",
-    "soldOut": "Esta sessão está totalmente reservada",
-    "seatsLeftOnSession": "Restam apenas {count, plural, =1 {# vaga} other {# vagas}} nesta sessão",
-    "partyTooLarge": "Você pode reservar no máximo {maxSeats, plural, =1 {# vaga} other {# vagas}} em uma única reserva",
-    "duplicateBooking": "Você já tem uma reserva para esta sessão",
-    "alreadyCancelled": "Esta reserva já foi cancelada",
-    "slotGone": "Esta sessão não está mais disponível",
-    "tooManyRequests": "Muitas solicitações — tente novamente em instantes",
-    "slotHasActiveBookings": "Esta sessão tem reservas e não pode ser excluída",
-    "serviceHasBookings": "Este serviço tem reservas em suas sessões e não pode ser excluído",
-    "bodyTooLarge": "O corpo da requisição é grande demais"
   }
 }

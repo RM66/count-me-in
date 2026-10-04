@@ -1,16 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { bookingCancelledJob, bookingCreatedJob, cancelNotificationRecipient } from './jobs'
-
-describe('cancelNotificationRecipient', () => {
-  it('returns "organizer" when cancelled by the guest', () => {
-    expect(cancelNotificationRecipient('guest')).toBe('organizer')
-  })
-
-  it('returns "guest" when cancelled by the organizer', () => {
-    expect(cancelNotificationRecipient('organizer')).toBe('guest')
-  })
-})
+import { bookingCancelledJob, bookingCreatedJob } from './jobs'
 
 describe('bookingCreatedJob', () => {
   it('parses a valid payload', () => {

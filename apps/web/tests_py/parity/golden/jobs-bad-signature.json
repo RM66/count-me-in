@@ -1,0 +1,31 @@
+{
+  "scenario": "jobs-bad-signature",
+  "steps": [
+    {
+      "note": "signature minted over a DIFFERENT body (recorder mints over mismatched bytes) → 401 body-hash mismatch",
+      "request": {
+        "method": "POST",
+        "path": "/api/jobs/booking.created",
+        "body": "{\"bookingId\":\"<uuid:1>\",\"recipient\":\"organizer\",\"outboxId\":\"<uuid:2>\"}"
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

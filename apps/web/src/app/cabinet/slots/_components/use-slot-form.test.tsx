@@ -29,6 +29,8 @@ vi.mock('sonner', () => ({
 const createMutate = vi.fn()
 const updateMutate = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   useCreateSlot: () => ({ mutate: createMutate, isPending: false }),
   useUpdateSlot: () => ({ mutate: updateMutate, isPending: false }),
 }))
@@ -86,19 +88,48 @@ describe('useSlotForm', () => {
     expect(payload.capacity).toBe(10)
   })
 
-  it('editing a past slot untouched stays submittable and updates', async () => {
+  it('editing a past slot sends a patch without re-sending its startsAt', async () => {
     const { result } = renderHook(
       () =>
         useSlotForm({ services: [makeService()], timezone: TZ, mode: 'edit', slot: makeSlot() }),
       { wrapper },
     )
+    act(() => {
+      result.current.form.setValue('capacity', '12', { shouldDirty: true })
+    })
     await act(async () => {
       await result.current.submit()
     })
+    // Re-sending the unchanged (past) startsAt would re-run the
+    // not-in-the-past rule server-side and answer 400.
     expect(updateMutate).toHaveBeenCalledTimes(1)
-    const payload = updateMutate.mock.calls[0]![0] as Record<string, unknown>
-    expect(payload).not.toHaveProperty('serviceId')
+    const call = updateMutate.mock.calls[0]![0] as { id: string; input: Record<string, unknown> }
+    expect(call.id).toBe(makeSlot().id)
+    expect(call.input).toEqual({ capacity: 12 })
+    expect(call.input).not.toHaveProperty('startsAt')
+    expect(call.input).not.toHaveProperty('serviceId')
     expect(createMutate).not.toHaveBeenCalled()
+  })
+
+  it('an edit that changed nothing finishes without a mutation — an empty patch is a 400', async () => {
+    const onSuccess = vi.fn()
+    const { result } = renderHook(
+      () =>
+        useSlotForm({
+          services: [makeService()],
+          timezone: TZ,
+          mode: 'edit',
+          slot: makeSlot(),
+          onSuccess,
+        }),
+      { wrapper },
+    )
+    await act(async () => {
+      await result.current.submit()
+    })
+    expect(updateMutate).not.toHaveBeenCalled()
+    expect(mockToastSuccess).toHaveBeenCalledTimes(1)
+    expect(onSuccess).toHaveBeenCalledTimes(1)
   })
 
   it('selectService re-seeds untouched capacity/duration from the new service', () => {

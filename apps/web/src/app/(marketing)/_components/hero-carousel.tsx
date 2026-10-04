@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 type Slide = {
@@ -16,35 +15,40 @@ type Slide = {
 
 const INTERVAL_MS = 3000
 
+/**
+ * Image for each `Marketing.carousel.slides` dictionary entry — same order.
+ * The copy lives in translations (it is localized); the asset paths are fixed,
+ * so the pairing is declared once here instead of an index-coupled literal
+ * inside the component.
+ */
+const SLIDE_IMAGES = [
+  '/service-yoga.png',
+  '/service-hiking.png',
+  '/service-workshop.png',
+  '/service-tour.png',
+  '/service-breathwork.png',
+] as const
+
 export function HeroCarousel() {
   const t = useTranslations('Marketing.carousel')
 
-  // The slide copy lives in the dictionaries; only the image path is fixed.
   const slides: Slide[] = (
     t.raw('slides') as Array<{ alt: string; title: string; meta: string }>
   ).map((slide, index) => ({
     ...slide,
-    src: [
-      '/service-yoga.png',
-      '/service-hiking.png',
-      '/service-workshop.png',
-      '/service-tour.png',
-      '/service-breathwork.png',
-    ][index] as string,
+    src: SLIDE_IMAGES[index % SLIDE_IMAGES.length] ?? SLIDE_IMAGES[0],
   }))
 
-  // `active` starts at 0 so the server and the first client render agree; the
-  // random slide is picked only after mount, when the images are rendered.
+  // `active` stays 0 through mount: the server render ships slide 0 — the
+  // hero's largest element, preloaded for LCP. Swapping to a random slide on
+  // mount would hide that preloaded image behind a transition; variety comes
+  // from the interval instead.
   const [active, setActive] = useState(0)
-  const [mounted, setMounted] = useState(false)
   const [paused, setPaused] = useState(false)
   const reducedMotion = useRef(false)
 
   useEffect(() => {
     reducedMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    setMounted(true)
-    setActive(Math.floor(slides.length * Math.random()))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const goTo = useCallback(
@@ -77,25 +81,21 @@ export function HeroCarousel() {
         aria-roledescription="carousel"
         aria-label={t('ariaLabel')}
       >
-        {mounted ? (
-          slides.map((slide, index) => (
-            <Image
-              key={slide.src}
-              src={slide.src || '/placeholder.svg'}
-              alt={slide.alt}
-              fill
-              sizes="(min-width: 1024px) 50vw, 100vw"
-              className={cn(
-                'object-cover transition-opacity duration-700 ease-in-out motion-reduce:transition-none',
-                index === active ? 'opacity-100' : 'opacity-0',
-              )}
-              priority={index === 0}
-              aria-hidden={index === active ? undefined : true}
-            />
-          ))
-        ) : (
-          <div className="absolute inset-0 animate-pulse bg-muted" aria-hidden />
-        )}
+        {slides.map((slide, index) => (
+          <Image
+            key={slide.src}
+            src={slide.src}
+            alt={slide.alt}
+            fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            className={cn(
+              'object-cover transition-opacity duration-700 ease-in-out motion-reduce:transition-none',
+              index === active ? 'opacity-100' : 'opacity-0',
+            )}
+            preload={index === 0}
+            aria-hidden={index === active ? undefined : true}
+          />
+        ))}
       </div>
 
       {/* Caption card, in sync with the active slide. */}
@@ -103,17 +103,8 @@ export function HeroCarousel() {
         className="absolute -bottom-5 -left-5 hidden rounded-xl border bg-card p-4 shadow-md sm:block"
         aria-live="polite"
       >
-        {mounted ? (
-          <>
-            <p className="text-sm font-medium">{current?.title}</p>
-            <p className="text-sm text-muted-foreground">{current?.meta}</p>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-        )}
+        <p className="text-sm font-medium">{current?.title}</p>
+        <p className="text-sm text-muted-foreground">{current?.meta}</p>
       </div>
 
       {/* Dot controls. */}

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 
 import { Audiences } from '@/app/(marketing)/_components/audiences'
@@ -7,14 +8,18 @@ import { Features } from '@/app/(marketing)/_components/features'
 import { Hero } from '@/app/(marketing)/_components/hero'
 import { HowItWorks } from '@/app/(marketing)/_components/how-it-works'
 import { Trust } from '@/app/(marketing)/_components/trust'
-import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '@/constants/site'
+import { JsonLd } from '@/components/json-ld'
+import { SITE_URL } from '@/constants/site'
 import { pageMetadata } from '@/lib/seo'
 
-export const metadata = pageMetadata({
-  title: { absolute: SITE_TITLE },
-  description: SITE_DESCRIPTION,
-  path: '/',
-})
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('Marketing')
+  return pageMetadata({
+    title: { absolute: t('metaTitle') },
+    description: t('ogDescription'),
+    path: '/',
+  })
+}
 
 /**
  * JSON-LD structured data. Emitted server-side so search engines can render a
@@ -42,7 +47,7 @@ export default async function Home() {
         url: SITE_URL,
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        description: SITE_DESCRIPTION,
+        description: t('ogDescription'),
         offers: {
           '@type': 'Offer',
           price: '0',
@@ -65,11 +70,7 @@ export default async function Home() {
 
   return (
     <main className="flex-1">
-      <script
-        type="application/ld+json"
-        // Structured data is trusted, static content defined in this file.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      <JsonLd data={structuredData} />
       <Hero />
       <HowItWorks />
       <Audiences />

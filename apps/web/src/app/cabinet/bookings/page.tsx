@@ -1,49 +1,94 @@
+import { serviceId, uuid } from '@repo/contracts'
 import { getLocale, getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { BookingsTable } from '@/app/cabinet/bookings/_components/bookings-table'
+import type { BookingSort } from '@/app/cabinet/bookings/_components/sort'
+import { SORT_KEYS } from '@/app/cabinet/bookings/_components/sort'
 import { formatDateTime } from '@/helpers/date'
-import { listBookings } from '@/server/db/booking'
-import { getOrganizerProfile } from '@/server/db/organizer'
-import { listServices } from '@/server/db/service'
-import { listSlots } from '@/server/db/time-slot'
-import { resolveCabinetOrganizerId } from '@/server/demo'
+import { isRealDayKey } from '@/helpers/day-key'
+import { getOrganizerProfile, listBookings, listServices } from '@/server/api-client'
+
+const STATUS_VALUES = ['confirmed', 'cancelled'] as const
+
+type BookingStatus = (typeof STATUS_VALUES)[number]
 
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ service?: string; slot?: string; page?: string }>
+  searchParams: Promise<{
+    service?: string
+    slot?: string
+    page?: string
+    status?: string
+    q?: string
+    day?: string
+    sort?: string
+    dir?: string
+  }>
 }) {
-  // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
-  const { service: serviceParam, slot: slotParam, page: pageParam } = await searchParams
+  const params = await searchParams
 
-  // Pagination (Phase 2.2): one page of bookings at a time, 50 per page, so
+  // Pagination: one page of bookings at a time, 50 per page, so
   // the cabinet never loads the whole history into memory. The page number
   // lives in the URL so back/forward and deep links keep working.
-  const page = Math.max(1, Number(pageParam) || 1)
+  const page = Math.max(1, Number(params.page) || 1)
   const PAGE_SIZE = 50
   const offset = (page - 1) * PAGE_SIZE
 
-  const t = await getTranslations('Cabinet.bookings')
-  const tcrumbs = await getTranslations('Cabinet.crumbs')
-  const locale = await getLocale()
+  // Every filter is URL state — the API answers exactly the view the URL
+  // describes, so a page of 50 rows is already filtered, not a window the
+  // table narrows further. Unknown values are ignored rather than
+  // forwarded as a 400.
+  const status = (STATUS_VALUES as readonly string[]).includes(params.status ?? '')
+    ? (params.status as BookingStatus)
+    : undefined
+  const sort = (SORT_KEYS as readonly string[]).includes(params.sort ?? '')
+    ? (params.sort as BookingSort)
+    : undefined
+  const dir = params.dir === 'desc' ? 'desc' : params.dir === 'asc' ? 'asc' : undefined
+  const day = params.day && isRealDayKey(params.day) ? params.day : undefined
+  const q = params.q?.trim() ? params.q.trim() : undefined
 
-  // A booking reaches its service transitively (Booking → TimeSlot → Service),
-  // so the table needs all three lists to render a row; the profile supplies
-  // the timezone every slot instant is shown in. Bookings on past slots are
-  // history, not noise — nothing is filtered out here.
-  const [organizer, services, slots, bookings] = await Promise.all([
-    getOrganizerProfile(organizerId, isReadOnly),
-    listServices(organizerId),
-    listSlots(organizerId),
-    listBookings(organizerId, { limit: PAGE_SIZE, offset }),
+  // Well-formed ids go to the API as-is: ownership is the API's job — it
+  // scopes the lookups, and a foreign id resolves to an empty scoped page
+  // (the chips then stay hidden). Only the slots the page actually
+  // references are fetched — the bookings envelope carries them — instead
+  // of the whole schedule.
+  const serviceParam =
+    params.service && serviceId.safeParse(params.service).success ? params.service : undefined
+  const slotParam = params.slot && uuid.safeParse(params.slot).success ? params.slot : undefined
+
+  // Translations, profile, services and the bookings page are independent
+  // reads — one parallel batch, not a staircase.
+  const [t, tcrumbs, locale, organizer, services, bookingsPage] = await Promise.all([
+    getTranslations('Cabinet.bookings'),
+    getTranslations('Cabinet.crumbs'),
+    getLocale(),
+    getOrganizerProfile(),
+    listServices(),
+    listBookings({
+      limit: PAGE_SIZE,
+      offset,
+      serviceId: serviceParam,
+      slotId: slotParam,
+      status,
+      q,
+      day,
+      sort,
+      dir,
+      includeDays: true,
+    }),
   ])
+  const { bookings, hasMore, slots, bookedDays } = bookingsPage
 
-  // The filters live in the URL so the services and slots pages can deep-link
-  // into them and the browser's back button works — the same contract as the
-  // slots page. An id the organizer does not own is ignored rather than shown
-  // as an empty filter for data they cannot see.
+  // Anonymous visitors get the read-only demo profile from the API itself
+  // (ADR-010) — `isDemo` is the single source of truth, not the session.
+  const isReadOnly = organizer?.isDemo ?? true
+
+  // The service chip names an owned service: an id the organizer does not
+  // own is dropped from the UI rather than shown as an empty filter for
+  // data they cannot see (the API already scoped it away).
   const activeServiceId =
     serviceParam && services.some((service) => service.id === serviceParam)
       ? serviceParam
@@ -98,14 +143,19 @@ export default async function BookingsPage({
           slots={slots}
           services={services}
           activeServiceId={activeServiceId}
-          activeSlotId={activeSlot?.id}
           activeSlotLabel={activeSlotLabel}
+          status={status}
+          query={q}
+          day={day}
+          sort={sort}
+          dir={dir}
+          bookedDays={bookedDays}
           // Falls back to UTC only if the profile row is missing (e.g. the demo
           // seed has not run) — the table still renders rather than throwing.
           timezone={timezone}
           isReadOnly={isReadOnly}
           page={page}
-          pageSize={PAGE_SIZE}
+          hasMore={hasMore}
         />
       </div>
     </>

@@ -38,18 +38,43 @@ export default [
     },
   },
   {
-    // CQRS boundary (Phase 3.1): `src/server/db/*` is read-only — the write
-    // side lives in the Go API. Forbid Drizzle's mutating methods here so a
-    // stray `.insert/.update/.delete/.set` cannot slip a write past the
-    // server-render layer. Reads (`.select`, `.query`) stay legal.
-    files: ['src/server/db/**/*.ts'],
+    // Architectural guard (ADR-021/022): app code has
+    // ZERO direct Postgres access — every server read goes through
+    // src/server/api-client.ts over HTTP to the Python API. Forbid DB
+    // driver imports so the seam cannot silently re-open. The single
+    // exception is e2e/, whose fixtures own the test precondition
+    // (seed rows, Redis tickets) — they are test infrastructure, not app
+    // code, and cannot be expressed through the wire API.
+    files: ['**/*.{ts,tsx}'],
+    ignores: ['e2e/**'],
     rules: {
-      'no-restricted-syntax': [
+      'no-restricted-imports': [
         'error',
         {
-          selector: 'CallExpression[callee.property.name=/^(insert|update|delete|set)$/]',
-          message:
-            'src/server/db is read-only — writes go through the Go API. Use .select() for reads.',
+          paths: [
+            {
+              name: 'pg',
+              message:
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+            {
+              name: 'postgres',
+              message:
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+            {
+              name: 'drizzle-orm',
+              message:
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['drizzle-orm/*', '@repo/db', '@repo/db/*', '**/server/db/**'],
+              message:
+                'No direct Postgres access outside e2e/ — server reads go through src/server/api-client.ts over HTTP to the Python API.',
+            },
+          ],
         },
       ],
     },

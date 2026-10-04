@@ -1,8 +1,11 @@
+import { slugShape } from '@repo/contracts'
 import { ImageResponse } from 'next/og'
 import { getTranslations } from 'next-intl/server'
 
+import { initials } from '@/helpers/name'
 import { loadFigtreeFonts, loadLogoDataUri, loadRemoteImageDataUri } from '@/lib/og/assets'
-import { getPublicOrganizerBySlug } from '@/server/db/organizer'
+import { OG_GRADIENT, OgFallbackCard } from '@/lib/og/theme'
+import { getPublicOrganizerView } from '@/server/api-client'
 
 // Route segment config for the generated image. The size doubles as the
 // og:image dimensions Next emits, so it matches the 1.91:1 card ratio.
@@ -23,44 +26,25 @@ export default async function OrganizerOgImage({
   params: Promise<{ orgSlug: string }>
 }) {
   const { orgSlug } = await params
-  const t = await getTranslations('OrgPage')
-  const [organizer, fonts, logo] = await Promise.all([
-    getPublicOrganizerBySlug(orgSlug),
+  const [t, view, fonts, logo] = await Promise.all([
+    getTranslations('OrgPage'),
+    // A non-slug path segment renders the fallback card without an API call.
+    slugShape.safeParse(orgSlug).success ? getPublicOrganizerView(orgSlug) : Promise.resolve(null),
     loadFigtreeFonts(),
     loadLogoDataUri(),
   ])
+  const organizer = view?.organizer ?? null
 
   // Satori cannot fetch remote URLs, so the R2-hosted photo is inlined as a
   // data URI (same approach as the logo). Falls back to `null` on failure so
   // the initials placeholder below still renders.
   const photoDataUri = organizer?.photoUrl ? await loadRemoteImageDataUri(organizer.photoUrl) : null
 
-  // Brand gradient lifted from logo.svg (#2726CF → #6F23F7).
-  const gradient = 'linear-gradient(135deg, #2726CF 0%, #6F23F7 100%)'
-
   if (!organizer) {
-    return new ImageResponse(
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: gradient,
-          color: 'white',
-          fontSize: 64,
-          fontWeight: 700,
-          fontFamily: 'Figtree',
-        }}
-      >
-        CountMeIn
-      </div>,
-      { ...size, fonts },
-    )
+    return new ImageResponse(<OgFallbackCard />, { ...size, fonts })
   }
 
-  const initials = organizer.name.slice(0, 2).toUpperCase()
+  const fallbackInitials = initials(organizer.name)
 
   return new ImageResponse(
     <div
@@ -77,7 +61,13 @@ export default async function OrganizerOgImage({
     >
       {/* A thin brand bar keeps the service identity present but subordinate. */}
       <div
-        style={{ display: 'flex', height: 12, width: 160, borderRadius: 999, background: gradient }}
+        style={{
+          display: 'flex',
+          height: 12,
+          width: 160,
+          borderRadius: 999,
+          background: OG_GRADIENT,
+        }}
       />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
@@ -98,13 +88,13 @@ export default async function OrganizerOgImage({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: gradient,
+              background: OG_GRADIENT,
               color: 'white',
               fontSize: 88,
               fontWeight: 700,
             }}
           >
-            {initials}
+            {fallbackInitials}
           </div>
         )}
 

@@ -7,7 +7,9 @@
  */
 import * as Sentry from '@sentry/nextjs'
 
-const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN
+// Only the NEXT_PUBLIC_ var is inlined into the browser bundle — a bare
+// SENTRY_DSN fallback would always read undefined here.
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
 
 if (dsn) {
   Sentry.init({

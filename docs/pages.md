@@ -15,7 +15,7 @@ Landing links to both demo sides — guest page (`/demo`) and cabinet (`/cabinet
 
 Signed-in organizers are **not** redirected from `/`: header swaps "Log in" for "Go to cabinet".
 
-Rendering note: locale resolution reads cookies/headers per request ([ADR-011](decisions/011-i18n.md)), so every route renders dynamically — there is no static prerender. Public guest-page reads are cached instead: `unstable_cache` (5 min TTL) with tag invalidation on organizer/service writes; `app/sitemap.ts` re-reads the catalog on each fetch. Pages overwrite the `Vary` header with Next's internal RSC values, so they rely on not being shared-cached; `/api/*` sends `Vary: Accept-Language` for its localized error copy.
+Rendering note: locale resolution reads cookies/headers per request ([ADR-011](decisions/011-i18n.md)), so every route renders dynamically — there is no static prerender. Public guest-page reads are cached in the Next.js Data Cache (`revalidate: 60`) under `public-organizer:{slug}` / `public-service:{id}` / `public-sitemap` tags; after a committed write the Python API POSTs the affected tags to `POST /api/internal/revalidate` — a small Next.js route (`x-internal-secret` auth, tag allowlist) — so staleness is bounded by a best-effort call, with the 60s TTL as fallback. `app/sitemap.ts` re-reads the catalog on each fetch. Pages overwrite the `Vary` header with Next's internal RSC values, so they rely on not being shared-cached; `/api/*` sends `Vary: Accept-Language` for its localized error copy.
 
 ## 2. Guest (public booking, no Auth.js account)
 
@@ -46,8 +46,9 @@ Reachable without session: signed-in → own data; anonymous → read-only demo 
 | Service editor      | `/cabinet/services/{serviceId}` (+ `/new`) | Edit title, description, photo, defaults, options                                                             |
 | Time slots          | `/cabinet/slots` (+ `?service=`)           | Schedule: list and create / edit / duplicate / delete slots                                                   |
 | Bookings            | `/cabinet/bookings`                        | All bookings (transitively); filter; view detail; cancel                                                      |
-| Profile / settings  | `/cabinet/settings`                        | Name, slug, description, avatar (R2), timezone, messenger                                                     |
-| Occupancy analytics | `/cabinet/analytics`                       | Fill-rate heatmap _(later — Phase 2)_                                                                         |
+| Week calendar       | `/cabinet/calendar`                        | The same schedule as `/cabinet/slots`, laid out on a week time grid                                           |
+| Profile / settings  | `/cabinet/settings`                        | Name, slug, description, avatar (R2), timezone, messenger, language                                           |
+| Occupancy analytics | `/cabinet/analytics`                       | Booking/seat stats, trend and per-service charts                                                              |
 
 ## 4. Shared / system
 
@@ -64,4 +65,3 @@ Reachable without session: signed-in → own data; anonymous → read-only demo 
 - Slugs min 4 chars, reserved words blocked (`api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`, `demo`) — ADR-009, ADR-010.
 - `/demo` is seeded read-only organizer through normal `/{orgSlug}` route; all writes reject it (ADR-010).
 - `TimeSlot` has no public URL — reached inside its service page.
-- Only analytics dashboard is Phase 2; everything else is MVP.

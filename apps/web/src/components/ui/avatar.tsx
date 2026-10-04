@@ -2,10 +2,42 @@
 
 import NextImage, { type ImageProps } from 'next/image'
 import { Avatar as AvatarPrimitive } from 'radix-ui'
-import { ComponentProps, useState } from 'react'
+import {
+  ComponentProps,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
 import { cn } from '@/lib/utils'
 import { MakeOptional, MakeRequired } from '@/types'
+
+type AvatarImageStatus = 'loading' | 'loaded' | 'error'
+
+type AvatarContextValue = {
+  hasImage: boolean
+  imageStatus: AvatarImageStatus
+  registerImage: () => void
+  setImageStatus: (status: AvatarImageStatus) => void
+}
+
+/**
+ * `AvatarImage` renders through next/image, so Radix never sees the
+ * underlying `<img>` and its own loading-status machinery cannot drive the
+ * fallback. The root holds the status instead: the fallback mounts while
+ * the image loads and after it errors, and unmounts once it is painted —
+ * otherwise the initials would sit (and be announced) underneath every
+ * successful photo.
+ */
+const AvatarContext = createContext<AvatarContextValue>({
+  hasImage: false,
+  imageStatus: 'loading',
+  registerImage: () => {},
+  setImageStatus: () => {},
+})
 
 function Avatar({
   className,
@@ -14,16 +46,25 @@ function Avatar({
 }: ComponentProps<typeof AvatarPrimitive.Root> & {
   size?: 'default' | 'sm' | 'lg'
 }) {
+  const [hasImage, setHasImage] = useState(false)
+  const [imageStatus, setImageStatus] = useState<AvatarImageStatus>('loading')
+  const registerImage = useCallback(() => setHasImage(true), [])
+  const context = useMemo<AvatarContextValue>(
+    () => ({ hasImage, imageStatus, registerImage, setImageStatus }),
+    [hasImage, imageStatus, registerImage],
+  )
   return (
-    <AvatarPrimitive.Root
-      data-slot="avatar"
-      data-size={size}
-      className={cn(
-        'group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none after:absolute after:inset-0 after:z-20 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten',
-        className,
-      )}
-      {...props}
-    />
+    <AvatarContext.Provider value={context}>
+      <AvatarPrimitive.Root
+        data-slot="avatar"
+        data-size={size}
+        className={cn(
+          'group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none after:absolute after:inset-0 after:z-20 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten',
+          className,
+        )}
+        {...props}
+      />
+    </AvatarContext.Provider>
   )
 }
 
@@ -36,10 +77,14 @@ function AvatarImage({
   className,
   sizes,
   alt = '',
+  onLoad,
   onError,
   ...props
 }: MakeOptional<ImageProps, 'alt'> & MakeRequired<ImageProps, 'sizes'>) {
+  const { registerImage, setImageStatus } = useContext(AvatarContext)
   const [errored, setErrored] = useState(false)
+
+  useEffect(registerImage, [registerImage])
 
   if (errored) return null
 
@@ -50,8 +95,13 @@ function AvatarImage({
       sizes={sizes}
       alt={alt}
       className={cn('z-10 rounded-full object-cover', className)}
+      onLoad={(e) => {
+        setImageStatus('loaded')
+        onLoad?.(e)
+      }}
       onError={(e) => {
         setErrored(true)
+        setImageStatus('error')
         onError?.(e)
       }}
       {...props}
@@ -60,6 +110,11 @@ function AvatarImage({
 }
 
 function AvatarFallback({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Fallback>) {
+  const { hasImage, imageStatus } = useContext(AvatarContext)
+  // See the context note above: once the photo is painted the initials must
+  // leave the tree entirely — always mounted, they were announced alongside
+  // the image's alt text.
+  if (hasImage && imageStatus === 'loaded') return null
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"

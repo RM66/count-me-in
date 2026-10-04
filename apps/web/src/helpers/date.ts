@@ -21,7 +21,9 @@ export function formatTime(iso: string, timezone: string, locale: string = DEFAU
   return new Date(iso).toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    // h23, not hour12: false — the latter maps to the h24 cycle in some
+    // engines and renders midnight as "24:00" instead of "00:00".
+    hourCycle: 'h23',
     timeZone: timezone,
   })
 }

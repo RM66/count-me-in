@@ -14,10 +14,9 @@ import { formatDate, formatTime } from '@/helpers/date'
 /**
  * Step 5: the confirmation screen.
  *
- * Deliberately does not promise a message: the notification worker is still a
- * stub (ADR-004), so the management link below is the guest's only way back to
- * this booking. Restore the "we've sent the details" line when
- * `booking.created` actually dispatches.
+ * The management link below matters even with notifications live: the
+ * `manageToken` URL is the guest's own way back to the booking if the
+ * messenger message is lost.
  */
 export function SuccessStep({ booking }: { booking: GuestBooking }) {
   const t = useTranslations('SuccessStep')
@@ -65,6 +64,7 @@ export function SuccessStep({ booking }: { booking: GuestBooking }) {
 
       <div className="flex flex-col gap-2">
         <AddToCalendar
+          uid={booking.id}
           title={booking.service.title}
           startsAt={booking.slot.startsAt}
           endsAt={slotEnd(booking.slot)}

@@ -1,0 +1,105 @@
+{
+  "scenario": "demo-booking-refusal",
+  "steps": [
+    {
+      "note": "booking a demo slot → 403 (demo organizer is read-only, ADR-010)",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings",
+        "body": {
+          "guestTicket": "<token>",
+          "serviceId": "<sid:1>",
+          "timeSlotId": "<uuid:1>",
+          "seats": 1,
+          "guestName": "Demo Try"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
+        },
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "cancelling a demo booking by its real token → 403 (demo read-only, ADR-010)",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {
+          "manageToken": "<token>"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
+        },
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown token on demo data → 404 (never leaks existence)",
+      "request": {
+        "method": "POST",
+        "path": "/api/bookings/cancel",
+        "body": {
+          "manageToken": "demo-manage-token"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Booking not found",
+          "code": "bookingNotFound"
+        },
+        "body_raw": "{\"error\":\"Booking not found\",\"code\":\"bookingNotFound\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

@@ -1,22 +1,13 @@
 'use client'
 
 import type { UpdateOrganizerProfileInput } from '@repo/contracts'
-import { imageUploadTarget, organizerEnvelope } from '@repo/contracts'
+import { organizerEnvelope } from '@repo/contracts'
 import { AVATAR_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { get, post, put } from './client'
-import { ApiError } from './error'
-import { resizeAvatar } from './image'
+import { get, patch } from './client'
+import { resizeAvatar, uploadImage } from './image'
 import { queryKeys } from './keys'
-
-/**
- * Last-resort fallbacks for upload failures: api-client has no locale, so the
- * display site (use-image-upload) translates by status. Named constants rather
- * than inline literals — intentional, documented fallback, not stray copy.
- */
-const COMPRESS_ERROR_FALLBACK = 'Could not compress that image enough — try another one'
-const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 
 /**
  * Client-side API for the **Organizer** entity: reads, profile writes and the
@@ -26,7 +17,7 @@ const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 
 /**
  * Current organizer profile (cabinet). Identity comes from the Auth.js session
- * cookie — the endpoint returns 401 when unauthenticated.
+ * via `X-Organizer-Auth`; anonymous callers get the demo profile (ADR-010).
  */
 export function useCurrentOrganizer() {
   return useQuery({
@@ -56,7 +47,7 @@ export function useUpdateOrganizerProfile() {
 
   return useMutation({
     mutationFn: (input: UpdateOrganizerProfileInput) =>
-      put('/api/organizers/me', input, organizerEnvelope, 'application/merge-patch+json'),
+      patch('/api/organizers/me', input, organizerEnvelope, 'application/merge-patch+json'),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.organizer.me, data)
     },
@@ -73,36 +64,16 @@ export function useUploadAvatar() {
 
   return useMutation({
     mutationFn: async (file: File) => {
-      const image = await resizeAvatar(file)
-
-      if (image.size > AVATAR_UPLOAD_MAX_BYTES) {
-        throw new ApiError(COMPRESS_ERROR_FALLBACK, 413)
-      }
-
-      const target = await post(
-        '/api/organizers/me/avatar',
-        {
-          contentType: image.type,
-          size: image.size,
-        },
-        imageUploadTarget,
-      )
-
-      const r2Response = await fetch(target.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': image.type },
-        body: image,
+      const photoUrl = await uploadImage({
+        file,
+        resize: resizeAvatar,
+        maxBytes: AVATAR_UPLOAD_MAX_BYTES,
+        endpoint: '/api/organizers/me/avatar',
       })
 
-      if (!r2Response.ok) {
-        throw new ApiError(UPLOAD_ERROR_FALLBACK, r2Response.status)
-      }
-
-      return put(
+      return patch(
         '/api/organizers/me',
-        {
-          photoUrl: target.publicUrl,
-        },
+        { photoUrl },
         organizerEnvelope,
         'application/merge-patch+json',
       )

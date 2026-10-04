@@ -1,13 +1,12 @@
-import { fillRate } from '@repo/contracts'
 import { TicketIcon, TrendingUpIcon, UsersIcon, XCircleIcon } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { StatCard } from '@/app/cabinet/_components/stat-card'
-import { getAnalyticsSummary } from '@/server/db/booking'
-import { listSlots } from '@/server/db/time-slot'
-import { resolveCabinetOrganizerId } from '@/server/demo'
+import { Skeleton } from '@/components/ui/skeleton'
+import { toChartTrend } from '@/helpers/analytics'
+import { getCabinetSummary } from '@/server/api-client'
 
 // recharts is a heavy client bundle; defer it so the page shell and stat cards
 // paint before the chart chunk loads. The charts are the only consumer. The
@@ -21,8 +20,8 @@ const AnalyticsCharts = dynamic(
 function ChartSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div className="h-80 rounded-xl border bg-muted/30 lg:col-span-2" />
-      <div className="h-80 rounded-xl border bg-muted/30" />
+      <Skeleton className="h-80 rounded-xl lg:col-span-2" />
+      <Skeleton className="h-80 rounded-xl" />
     </div>
   )
 }
@@ -40,23 +39,26 @@ function formatDelta(delta: number | null): string | undefined {
 }
 
 export default async function AnalyticsPage() {
-  // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId } = await resolveCabinetOrganizerId()
-
-  const t = await getTranslations('Cabinet.analytics')
-  const tcrumbs = await getTranslations('Cabinet.crumbs')
-
-  // The booking-derived metrics are aggregated in Postgres (Phase 2.2) rather
-  // than loaded into JS memory; slots are still needed for the fill rate,
-  // which reads off the atomic-reserve `bookedCount` column.
-  const [slots, summary] = await Promise.all([
-    listSlots(organizerId),
-    getAnalyticsSummary(organizerId),
+  // Anonymous visitors get the read-only demo scope from the API (ADR-010).
+  // Every metric is aggregated in the Python API rather than loaded into
+  // JS memory — the fill rate's seats come off the atomic-reserve
+  // `bookedCount`/`capacity` columns, summed across the upcoming schedule.
+  const [t, tcrumbs, locale, summaryEnvelope] = await Promise.all([
+    getTranslations('Cabinet.analytics'),
+    getTranslations('Cabinet.crumbs'),
+    getLocale(),
+    getCabinetSummary(),
   ])
+  const summary = summaryEnvelope.analytics
+  const overview = summaryEnvelope.overview
 
-  const now = Date.now()
-  const upcoming = slots.filter((slot) => new Date(slot.startsAt).getTime() >= now)
-  const fillRateValue = fillRate(upcoming)
+  // Zero-fill the 14-day API trend into the 7-day chart buckets.
+  const trend = toChartTrend(summary.trend, locale)
+
+  const fillRateValue =
+    overview.upcomingSeatsOffered === 0
+      ? null
+      : Math.round((overview.upcomingSeatsBooked / overview.upcomingSeatsOffered) * 100)
   const totalBookingsDelta =
     summary.prevTotalBookings === 0
       ? null
@@ -99,7 +101,7 @@ export default async function AnalyticsPage() {
           <StatCard
             title={t('avgFillRate')}
             value={fillRateValue === null ? '—' : `${fillRateValue}%`}
-            hint={t('upcomingSlotsCount', { count: upcoming.length })}
+            hint={t('upcomingSlotsCount', { count: overview.upcomingSlots })}
             icon={TrendingUpIcon}
           />
           <StatCard
@@ -110,7 +112,7 @@ export default async function AnalyticsPage() {
           />
         </div>
 
-        <AnalyticsCharts trend={summary.trend} byService={summary.byService} />
+        <AnalyticsCharts trend={trend} byService={summary.byService} />
       </div>
     </>
   )

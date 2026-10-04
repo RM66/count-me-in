@@ -24,6 +24,8 @@ export async function Features() {
 
       <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => {
+          // `ICONS` is never empty, so the fallback is type-level only
+          // (noUncheckedIndexedAccess types indexed reads as optional).
           const Icon = f.icon ?? Users
           return (
             <div key={f.title} className="flex flex-col gap-3 rounded-xl border p-6">

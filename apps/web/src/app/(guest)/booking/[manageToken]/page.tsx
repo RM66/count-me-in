@@ -6,7 +6,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { BookingManage } from '@/app/(guest)/booking/[manageToken]/_components/booking-manage'
 import { Button } from '@/components/ui/button'
-import { getGuestBookingByToken } from '@/server/db/booking'
+import { getGuestBooking } from '@/server/api-client'
 
 /**
  * A booking's management page is private to whoever holds the link, so it must
@@ -25,16 +25,18 @@ export default async function BookingManagePage({
   params: Promise<{ manageToken: string }>
 }) {
   const { manageToken } = await params
-  const t = await getTranslations('ManageBooking')
 
   // The token is the whole authorization (ADR-002): it was delivered to the
   // guest's verified messenger account, so no session is checked. An unknown
   // token is a plain 404 — the page never hints that a token nearly matched.
-  const booking = await getGuestBookingByToken(manageToken)
+  const [t, booking] = await Promise.all([
+    getTranslations('ManageBooking'),
+    getGuestBooking(manageToken),
+  ])
   if (!booking) notFound()
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-10 md:py-16">
+    <div className="mx-auto w-full max-w-2xl py-4 md:py-10">
       <Button variant="ghost" size="sm" asChild className="mb-6 -ml-2">
         <Link href={`/${booking.organizer.slug}`}>
           <ArrowLeftIcon data-icon="inline-start" />

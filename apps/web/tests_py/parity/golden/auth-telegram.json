@@ -1,0 +1,549 @@
+{
+  "scenario": "auth-telegram",
+  "steps": [
+    {
+      "note": "valid widget payload → 200 guest ticket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "valid widget payload → 200 auth ticket + organizerExists flag",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-signup",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "organizerExists": false
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"organizerExists\":false}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "malformed/failed-HMAC payload → 400",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 1,
+          "first_name": "A",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Telegram auth validation failed",
+          "code": "telegramValidationFailed"
+        },
+        "body_raw": "{\"error\":\"Telegram auth validation failed\",\"code\":\"telegramValidationFailed\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "empty body → 400 validation error",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {}
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid Telegram auth data",
+          "code": "telegramInvalid"
+        },
+        "body_raw": "{\"error\":\"Invalid Telegram auth data\",\"code\":\"telegramInvalid\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "ticket": "<token>",
+          "messenger": "telegram",
+          "messengerId": "900100200",
+          "displayName": "Parity Guest"
+        },
+        "body_raw": "{\"ticket\":\"<token>\",\"messenger\":\"telegram\",\"messengerId\":\"900100200\",\"displayName\":\"Parity Guest\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "retry-after": "<retry-after:seconds>",
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
+        },
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false,
+        "retryAfterWithinWindow": true
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "retry-after": "<retry-after:seconds>",
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
+        },
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false,
+        "retryAfterWithinWindow": true
+      },
+      "sink": []
+    },
+    {
+      "note": "exhaust the 10/min guest bucket",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "retry-after": "<retry-after:seconds>",
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
+        },
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false,
+        "retryAfterWithinWindow": true
+      },
+      "sink": []
+    },
+    {
+      "note": "11th call → 429",
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/telegram-guest",
+        "body": {
+          "id": 900100200,
+          "first_name": "Parity Guest",
+          "auth_date": "<epoch>",
+          "hash": "<hash>"
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "retry-after": "<retry-after:seconds>",
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Too many requests — please try again in a moment",
+          "code": "tooManyRequests"
+        },
+        "body_raw": "{\"error\":\"Too many requests — please try again in a moment\",\"code\":\"tooManyRequests\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false,
+        "retryAfterWithinWindow": true
+      },
+      "sink": []
+    }
+  ]
+}

@@ -2,11 +2,9 @@
 
 import type { ServiceRecord } from '@repo/contracts'
 import { useTranslations } from 'next-intl'
-import type { ComponentProps } from 'react'
 import { useController } from 'react-hook-form'
 
 import { FieldShell } from '@/components/field-shell'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -15,44 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { SlotFormControl, SlotTextFieldName } from './use-slot-form'
-
-/** Single-line text, date, time or number field. */
-export function SlotTextField({
-  control,
-  name,
-  label,
-  description,
-  disabled,
-  ...inputProps
-}: {
-  control: SlotFormControl
-  name: SlotTextFieldName
-  label: string
-  description?: string
-  disabled?: boolean
-} & Pick<ComponentProps<typeof Input>, 'placeholder' | 'type' | 'min' | 'inputMode'>) {
-  const { field, fieldState } = useController({ control, name })
-  const id = `slot-${name}`
-
-  return (
-    <FieldShell
-      htmlFor={id}
-      label={label}
-      description={description}
-      invalid={fieldState.invalid}
-      error={fieldState.error}
-    >
-      <Input
-        {...field}
-        {...inputProps}
-        id={id}
-        disabled={disabled}
-        aria-invalid={fieldState.invalid || undefined}
-      />
-    </FieldShell>
-  )
-}
+import type { SlotFormControl } from './use-slot-form'
 
 /**
  * Service picker.

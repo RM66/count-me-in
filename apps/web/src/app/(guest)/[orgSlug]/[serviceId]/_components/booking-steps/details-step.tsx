@@ -2,7 +2,6 @@
 
 import { ArrowLeft, Minus, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -41,17 +40,11 @@ export function DetailsStep({
   const t = useTranslations('Booking')
 
   const showStepper = maxSeats > 1
-  // Guard against a stale value if the selected slot lost seats between steps.
+  // The hook clamps `seats` on slot change and at submit; this is display-only
+  // defense for a standalone render with a stale value.
   const clamped = Math.min(Math.max(1, seats), maxSeats)
   const canDecrement = clamped > 1
   const canIncrement = clamped < maxSeats
-
-  // Keep the hook's `seats` in sync when the clamp actually changed it — e.g.
-  // the guest picked a party of 4, then went back and chose a slot with 2 left.
-  // Without this the display would show 2 but the request would still send 4.
-  useEffect(() => {
-    if (clamped !== seats) onSeatsChange(clamped)
-  }, [clamped, seats, onSeatsChange])
 
   return (
     <form

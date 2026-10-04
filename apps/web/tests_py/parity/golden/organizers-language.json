@@ -1,0 +1,105 @@
+{
+  "scenario": "organizers-language",
+  "steps": [
+    {
+      "note": "happy path → 204 no body",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/organizers/me/language",
+        "body": {
+          "language": "ru"
+        }
+      },
+      "response": {
+        "status": 204,
+        "headers": {
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": "",
+        "body_raw": "",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unsupported locale → 400",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/organizers/me/language",
+        "body": {
+          "language": "xx"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "language": [
+                "value is not one of the allowed values [\"en\",\"de\",\"es\",\"fr\",\"pt\",\"ru\",\"ar\",\"ja\"]"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"language\":[\"value is not one of the allowed values [\\\"en\\\",\\\"de\\\",\\\"es\\\",\\\"fr\\\",\\\"pt\\\",\\\"ru\\\",\\\"ar\\\",\\\"ja\\\"]\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "demo refused → 403",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/organizers/me/language",
+        "body": {
+          "language": "ru"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This is a read-only demo account — sign up to create your own bookable services.",
+          "code": "DEMO_READ_ONLY"
+        },
+        "body_raw": "{\"error\":\"This is a read-only demo account — sign up to create your own bookable services.\",\"code\":\"DEMO_READ_ONLY\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

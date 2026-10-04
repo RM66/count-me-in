@@ -1,6 +1,6 @@
 'use client'
 
-import { SERVICE_PHOTO_MAX_BYTES, servicePhotoContentType } from '@repo/contracts'
+import { imageContentType, SERVICE_PHOTO_MAX_BYTES } from '@repo/contracts'
 import { ImageIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
@@ -31,9 +31,8 @@ export function ServicePhotoField({
   const t = useTranslations('Cabinet.services')
 
   const upload = useImageUpload({
-    contentType: servicePhotoContentType,
+    contentType: imageContentType,
     maxBytes: SERVICE_PHOTO_MAX_BYTES,
-    maxBytesLabel: '10 MB',
     mutation: useUploadServicePhoto(),
     onUploaded: (url) => {
       // `shouldDirty` is what enables Save — without it an upload alone would
@@ -69,7 +68,7 @@ export function ServicePhotoField({
         <input
           ref={upload.inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={imageContentType.options.join(',')}
           className="hidden"
           onChange={upload.onFileChange}
         />

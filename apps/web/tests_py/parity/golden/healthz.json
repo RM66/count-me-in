@@ -1,0 +1,27 @@
+{
+  "scenario": "healthz",
+  "steps": [
+    {
+      "note": "healthy probe answers 200 with postgres/redis status",
+      "request": {
+        "method": "GET",
+        "path": "/api/healthz",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "postgres": "ok",
+          "redis": "ok"
+        },
+        "body_raw": "{\"postgres\":\"ok\",\"redis\":\"ok\"}\n",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

@@ -14,25 +14,23 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { countConfirmedBookings } from '@/server/db/booking'
-import { countUpcomingSlots, listServices } from '@/server/db/service'
-import { resolveCabinetOrganizerId } from '@/server/demo'
+import { serviceCountsById } from '@/helpers/analytics'
+import { getCabinetSummary, getOrganizerProfile, listServices } from '@/server/api-client'
 
 export default async function ServicesPage() {
-  // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { organizerId, isDemo: isReadOnly } = await resolveCabinetOrganizerId()
-
-  const t = await getTranslations('Cabinet.services')
-  const tc = await getTranslations('Cabinet.common')
-  const tcrumbs = await getTranslations('Cabinet.crumbs')
-  const tslots = await getTranslations('Cabinet.slots')
-
-  const services = await listServices(organizerId)
-  const serviceIds = services.map((service) => service.id)
-  const [slotCounts, bookingCounts] = await Promise.all([
-    countUpcomingSlots(serviceIds),
-    countConfirmedBookings(serviceIds),
+  const [t, tc, tcrumbs, tslots, organizer, services, summary] = await Promise.all([
+    getTranslations('Cabinet.services'),
+    getTranslations('Cabinet.common'),
+    getTranslations('Cabinet.crumbs'),
+    getTranslations('Cabinet.slots'),
+    getOrganizerProfile(),
+    listServices(),
+    getCabinetSummary(),
   ])
+  // Anonymous visitors get the read-only demo profile from the API itself
+  // (ADR-010) — `isDemo` is the single source of truth, not the session.
+  const isReadOnly = organizer?.isDemo ?? true
+  const countsById = serviceCountsById(summary.serviceCounts)
 
   return (
     <>
@@ -80,8 +78,8 @@ export default async function ServicesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {services.map((svc) => {
-              const slotCount = slotCounts[svc.id] ?? 0
-              const bookingCount = bookingCounts[svc.id] ?? 0
+              const slotCount = countsById[svc.id]?.upcomingSlots ?? 0
+              const bookingCount = countsById[svc.id]?.confirmedBookings ?? 0
               return (
                 <Card key={svc.id} className="overflow-hidden pt-0">
                   <div className="relative aspect-video w-full">

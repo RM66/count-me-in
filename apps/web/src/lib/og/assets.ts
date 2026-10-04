@@ -68,6 +68,11 @@ export async function loadLogoDataUri(): Promise<string> {
 // cannot trace a directory URL, so `new URL('…/public/', …)` is avoided here.
 const publicDir = join(process.cwd(), 'public')
 
+/** One image fetch must not stall the whole OG render. */
+const OG_FETCH_TIMEOUT_MS = 3000
+/** Photos are downscaled client-side to a few hundred KB; 5 MB is generous. */
+const OG_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+
 // Map a public asset path to its content type. Satori needs the MIME type to
 // build the data URI; the extension is the only reliable signal for files read
 // from disk (no HTTP headers there).
@@ -104,11 +109,17 @@ export async function loadRemoteImageDataUri(url: string): Promise<string | null
       return `data:${mime};base64,${buffer.toString('base64')}`
     }
 
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(OG_FETCH_TIMEOUT_MS) })
     if (!res.ok) return null
     const contentType = res.headers.get('content-type')
     if (!contentType || !contentType.startsWith('image/')) return null
+    // Defense in depth: URLs already come API-validated to the media
+    // prefix, but a bounded read keeps a huge body from turning one OG
+    // render into a memory spike.
+    const declared = Number(res.headers.get('content-length') ?? 0)
+    if (declared > OG_IMAGE_MAX_BYTES) return null
     const buffer = Buffer.from(await res.arrayBuffer())
+    if (buffer.byteLength > OG_IMAGE_MAX_BYTES) return null
     return `data:${contentType};base64,${buffer.toString('base64')}`
   } catch {
     return null

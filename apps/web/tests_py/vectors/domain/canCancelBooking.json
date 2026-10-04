@@ -1,0 +1,35 @@
+{
+  "fn": "canCancelBooking",
+  "cases": [
+    {
+      "name": "confirmed, no expiry (legacy row)",
+      "status": "confirmed",
+      "expiresAt": null,
+      "expected": true
+    },
+    {
+      "name": "confirmed, token still live",
+      "status": "confirmed",
+      "expiresAt": "$now+1d",
+      "expected": true
+    },
+    {
+      "name": "confirmed, token expired",
+      "status": "confirmed",
+      "expiresAt": "$now-1h",
+      "expected": false
+    },
+    {
+      "name": "cancelled, token still live",
+      "status": "cancelled",
+      "expiresAt": "$now+1d",
+      "expected": false
+    },
+    {
+      "name": "cancelled, no expiry",
+      "status": "cancelled",
+      "expiresAt": null,
+      "expected": false
+    }
+  ]
+}

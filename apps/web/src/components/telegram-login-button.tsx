@@ -28,7 +28,8 @@ type TelegramLoginButtonProps = {
   redirectTo?: string
   /**
    * Called when the widget auth succeeds but no organizer exists for the identity.
-   * Receives the signup ticket so the caller can redirect to /signup?ticket=…
+   * Receives the signup ticket; the caller hands it to /signup via
+   * sessionStorage — a one-time credential must not land in the URL.
    */
   onSignupRequired?: (ticket: string) => void
 
@@ -49,14 +50,18 @@ type TelegramLoginButtonProps = {
    * lookup; it is single-use and short-lived, so it should not be held.
    */
   onGuestTicket?: (ticket: GuestTicketResponse) => void
+
+  /** Called when widget auth fails (fetch or sign-in errors) — alongside console.error. */
+  onError?: (err: unknown) => void
 }
 
 /**
  * Telegram Login Widget component (ADR-008).
  *
- * Both modes POST widget data to `/api/auth/telegram-signup` which validates
- * the HMAC server-side and returns a short-lived auth ticket plus whether an
- * organizer already exists for this identity.
+ * The organizer modes (login, signup) POST widget data to
+ * `/api/auth/telegram-signup` which validates the HMAC server-side and
+ * returns a short-lived auth ticket plus whether an organizer already
+ * exists for this identity.
  *
  * **Login mode** (default): if `organizerExists` → signs in via Auth.js with
  * the ticket and redirects. If not → calls `onSignupRequired(ticket)`.
@@ -83,6 +88,7 @@ export function TelegramLoginButton({
   mode = 'login',
   onTicketIssued,
   onGuestTicket,
+  onError,
 }: TelegramLoginButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const callbackName = useRef(`onTelegramAuth_${Math.random().toString(36).substring(7)}`)
@@ -93,9 +99,11 @@ export function TelegramLoginButton({
   const onGuestTicketRef = useRef(onGuestTicket)
   const onTicketIssuedRef = useRef(onTicketIssued)
   const onSignupRequiredRef = useRef(onSignupRequired)
+  const onErrorRef = useRef(onError)
   onGuestTicketRef.current = onGuestTicket
   onTicketIssuedRef.current = onTicketIssued
   onSignupRequiredRef.current = onSignupRequired
+  onErrorRef.current = onError
 
   // Dedup: the widget can fire its callback twice for one tap. Each auth event
   // has a unique `hash`, so a repeat with the same hash is dropped.
@@ -117,22 +125,26 @@ export function TelegramLoginButton({
           const data = await post('/api/auth/telegram-guest', user, guestTicketResponse)
           if (!data.ticket) {
             console.error('[TelegramLoginButton] Guest ticket error: missing ticket')
+            onErrorRef.current?.(new Error('missing guest ticket'))
             return
           }
           onGuestTicketRef.current?.(data)
         } catch (err) {
           console.error('[TelegramLoginButton] Guest fetch error:', err)
+          onErrorRef.current?.(err)
         }
       } else if (mode === 'signup') {
         try {
           const data = await post('/api/auth/telegram-signup', user, authTicketResponse)
           if (!data.ticket) {
             console.error('[TelegramLoginButton] Signup ticket error: missing ticket')
+            onErrorRef.current?.(new Error('missing signup ticket'))
             return
           }
           onTicketIssuedRef.current?.(data.ticket, data.organizerExists ?? false)
         } catch (err) {
           console.error('[TelegramLoginButton] Signup fetch error:', err)
+          onErrorRef.current?.(err)
         }
       } else {
         try {
@@ -140,6 +152,7 @@ export function TelegramLoginButton({
 
           if (!data.ticket) {
             console.error('[TelegramLoginButton] Login validation error: missing ticket')
+            onErrorRef.current?.(new Error('missing login ticket'))
             return
           }
 
@@ -150,12 +163,14 @@ export function TelegramLoginButton({
               window.location.href = redirectTo
             } else {
               console.error('[TelegramLoginButton] Sign-in with ticket failed:', result?.error)
+              onErrorRef.current?.(result?.error)
             }
           } else {
             onSignupRequiredRef.current?.(data.ticket)
           }
         } catch (err) {
           console.error('[TelegramLoginButton] Login fetch error:', err)
+          onErrorRef.current?.(err)
         }
       }
     }

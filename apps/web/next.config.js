@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import process from 'node:process'
-import { withSentryConfig } from '@sentry/nextjs'
+import { withSentryConfig } from '@sentry/nextjs/config'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 /** @type {import('next').NextConfig} */
@@ -31,7 +31,10 @@ function buildRemotePatterns() {
 }
 
 const nextConfig = {
-  transpilePackages: ['@repo/contracts', '@repo/db', '@repo/redis', '@repo/translations'],
+  transpilePackages: ['@repo/contracts', '@repo/translations'],
+  // Container twin: the web image runs the standalone server
+  // (Dockerfile.web). No effect on Vercel — it ignores this mode.
+  output: 'standalone',
   images: {
     remotePatterns: [
       ...buildRemotePatterns(),
@@ -49,8 +52,8 @@ const nextConfig = {
       return { beforeFiles: [], afterFiles: [], fallback: [] }
     }
 
-    // Dev: proxy the routes declared in vercel.json to the local Go server (cmd/dev on :3001).
-    const rawOrigin = process.env.GO_API_URL || 'http://127.0.0.1:3001'
+    // Dev: proxy the routes declared in vercel.json to the local API server (uvicorn on :3001).
+    const rawOrigin = process.env.API_URL || 'http://127.0.0.1:3001'
     const origin = new URL(rawOrigin)
     if (
       !['http:', 'https:'].includes(origin.protocol) ||
@@ -60,11 +63,11 @@ const nextConfig = {
       origin.hash ||
       origin.pathname !== '/'
     ) {
-      throw new Error('GO_API_URL must be an origin without credentials, path, query or fragment')
+      throw new Error('API_URL must be an origin without credentials, path, query or fragment')
     }
     const appUrl = process.env.APP_URL
     if (appUrl && origin.origin === new URL(appUrl).origin) {
-      throw new Error('GO_API_URL must differ from APP_URL to avoid a proxy loop')
+      throw new Error('API_URL must differ from APP_URL to avoid a proxy loop')
     }
 
     return {
@@ -94,7 +97,7 @@ const nextConfig = {
     // hardcoded hosts broke the Telegram login widget, R2 uploads and
     // PostHog in production.
     // Next.js needs 'unsafe-inline' for styles (styled-jsx / inline
-    // critical CSS) and 'unsafe-eval' only in dev. The Go API sets its
+    // critical CSS) and 'unsafe-eval' only in dev. The Python API sets its
     // own security headers in pkg/httpx (its responses bypass headers())
     // — but no CSP there: API responses are JSON, never HTML documents.
     const isDev = process.env.NODE_ENV === 'development'
@@ -142,19 +145,28 @@ const nextConfig = {
       }
       return ` ${posthogOrigin}`
     })()
-    // Sentry ingest region. instrumentation-client.ts reads
-    // NEXT_PUBLIC_SENTRY_DSN ?? SENTRY_DSN, so the CSP must allow
-    // whichever one is set.
-    const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN
+    // Sentry ingest region; instrumentation-client.ts reads
+    // NEXT_PUBLIC_SENTRY_DSN (the only var bundled into the browser).
+    const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN
     const sentryOrigin = sentryDsn
       ? originOf(sentryDsn, 'https://o0.ingest.sentry.io')
       : 'https://o0.ingest.sentry.io'
+    // The Vercel toolbar (comments / live feedback) is injected by the
+    // platform into preview deployments — its script and iframe come
+    // from vercel.live, live updates over a Pusher websocket. Allowed
+    // only on previews so the production policy stays tight; origins per
+    // https://vercel.com/docs/vercel-toolbar/managing-toolbar
+    const isPreview = process.env.VERCEL_ENV === 'preview'
+    const vercelLive = isPreview ? ' https://vercel.live' : ''
+    const vercelLiveConnect = isPreview ? `${vercelLive} wss://*.pusher.com` : ''
+    const vercelLiveImg = isPreview ? `${vercelLive} https://vercel.com` : ''
+    const vercelLiveFont = isPreview ? `${vercelLive} https://assets.vercel.com` : ''
 
     const csp = [
       "default-src 'self'",
       // Next.js injects inline/bootstrap scripts; nonces are not wired
       // through the App Router here, so script-src allows 'unsafe-inline'
-      // for now — the JSON-LD XSS fix (P0-3) escapes payloads, and CSP is
+      // for now — JsonLd escapes payloads (`escapeJsonForHtml`), and CSP is
       // the compensating control to tighten later with nonces.
       // telegram.org hosts the login widget script (ADR-008) — the only
       // auth mechanism, so it must load.
@@ -163,11 +175,17 @@ const nextConfig = {
       // JSON-LD XSS vector is closed by escaping, and 'unsafe-inline'
       // is already granted — the marginal loss is
       // small. The long-term fix is the OAuth-redirect flow.
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org ${posthogWildcard}${posthogExtra}`,
-      "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${r2UploadOrigin} ${posthogWildcard}${posthogExtra}`,
-      "font-src 'self' data:",
-      `connect-src 'self' https://*.upstash.io ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}`,
+      // va.vercel-scripts.com hosts the <Analytics/> and <SpeedInsights/>
+      // loader scripts (providers.tsx); their beacons post to same-origin
+      // /_vercel/* endpoints already covered by connect-src 'self'.
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}${vercelLive}`,
+      `style-src 'self' 'unsafe-inline'${vercelLive}`,
+      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${posthogWildcard}${posthogExtra}${vercelLiveImg}`,
+      `font-src 'self' data:${vercelLiveFont}`,
+      // r2UploadOrigin is in connect-src (the signed PUT goes straight from
+      // the browser to R2) but not img-src — rendered media always comes
+      // from mediaOrigin. No upstash.io: the browser never talks to Upstash.
+      `connect-src 'self' ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}${vercelLiveConnect}`,
       // Session replay runs its recorder in a blob: worker — without an
       // explicit worker-src it falls back to default-src 'self' and replay
       // silently never starts.
@@ -175,7 +193,7 @@ const nextConfig = {
       // The Telegram login widget renders in an iframe from
       // oauth.telegram.org — without frame-src it falls back to
       // default-src 'self' and the widget never appears.
-      'frame-src https://oauth.telegram.org',
+      `frame-src https://oauth.telegram.org${vercelLive}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -199,10 +217,10 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        // In production Vercel's filesystem routing serves Go functions at
-        // /api/* directly (bypassing headers()); Go sets its own Vary /
+        // In production Vercel's filesystem routing serves the API functions at
+        // /api/* directly (bypassing headers()); the API sets its own Vary /
         // X-Robots-Tag. In dev, beforeFiles rewrites proxy /api/* to the
-        // local Go server (also bypassing headers()). Only the Auth.js route
+        // local API server (also bypassing headers()). Only the Auth.js route
         // stays on Next.js and needs noindex here.
         source: '/api/auth/:path*',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
@@ -221,6 +239,6 @@ export default withNextIntl(
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,
     silent: !process.env.CI,
-    disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
+    sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
   }),
 )

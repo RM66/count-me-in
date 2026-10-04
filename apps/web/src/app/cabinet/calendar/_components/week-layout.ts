@@ -1,6 +1,7 @@
 /**
  * Pure geometry for the week grid — everything that turns slots into positions
- * without touching React or the DOM, so it can be unit-tested on its own.
+ * without touching React or the DOM, so it can be unit-tested on its own —
+ * plus the visual constants the toolbar and grid share.
  *
  * Time is handled as wall-clock minutes-from-midnight in the organizer's
  * timezone: the component derives those with `instantToWallClockInputs`, and
@@ -9,8 +10,28 @@
  * place.
  */
 
+import type { SlotFill } from '@repo/contracts'
+
 /** Minutes in a day — the grid's full vertical extent. */
 export const MINUTES_PER_DAY = 24 * 60
+
+/** Pixels per hour row. The grid is a fixed 24 h tall and scrolls. */
+export const HOUR_HEIGHT = 48
+
+/** The 24 hour marks the gutter renders. */
+export const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
+
+/**
+ * Event tint by fill status, so a full week reads at a glance: open sessions
+ * sit quiet, filling ones lean on the brand colour, full ones grey out. The
+ * left rule is the status marker (see day calendars generally), not
+ * decoration — the toolbar's legend swatches share the same map.
+ */
+export const FILL_STYLES: Record<SlotFill, string> = {
+  open: 'border-s-primary/50 bg-primary/10 text-foreground hover:bg-primary/15',
+  filling: 'border-s-primary bg-primary/20 text-foreground hover:bg-primary/30',
+  full: 'border-s-muted-foreground/40 bg-muted text-muted-foreground hover:bg-muted/70',
+}
 
 /**
  * 00:00 of the week containing `date`, as a local `Date`.

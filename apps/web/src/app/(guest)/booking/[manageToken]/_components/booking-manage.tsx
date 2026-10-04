@@ -9,9 +9,10 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { useCancelBooking } from '@/api-client'
+import { errorMessage, useCancelBooking } from '@/api-client'
 import { AddToCalendar } from '@/app/(guest)/_components/add-to-calendar'
 import { ContactLink } from '@/components/contact-link'
+import { LocationLink } from '@/components/location-link'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,7 +74,7 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
       // server render both have stale counts until a refresh.
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message || t('cancelFailed') : t('cancelFailed'))
+      toast.error(errorMessage(error, t('cancelFailed')))
     }
   }
 
@@ -130,7 +131,9 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
               {location ? (
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">{t('where')}</dt>
-                  <dd className="text-right font-medium">{location}</dd>
+                  <dd className="text-right font-medium">
+                    <LocationLink location={location} />
+                  </dd>
                 </div>
               ) : null}
               {contact ? (
@@ -171,6 +174,7 @@ export function BookingManage({ booking }: { booking: GuestBooking }) {
         ) : (
           <div className="flex w-full flex-col gap-2 sm:flex-row-reverse sm:justify-between">
             <AddToCalendar
+              uid={current.id}
               title={service.title}
               startsAt={slot.startsAt}
               endsAt={slotEnd(slot)}

@@ -1,0 +1,15 @@
+{
+  "cases": [
+    {
+      "expected": "auth:ticket:abc",
+      "name": "token",
+      "token": "abc"
+    },
+    {
+      "expected": "auth:ticket:",
+      "name": "empty token",
+      "token": ""
+    }
+  ],
+  "fn": "authTicketKey"
+}

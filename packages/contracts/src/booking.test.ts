@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  bookingRecord,
-  canCancelBooking,
-  cancelBookingByTokenInput,
-  createBookingInput,
-  guestBooking,
-} from './booking'
+import { bookingRecord, createBookingInput, guestBooking, manageTokenInput } from './booking'
 
 describe('createBookingInput', () => {
   const validPayload = {
@@ -51,16 +45,16 @@ describe('createBookingInput', () => {
   })
 })
 
-describe('cancelBookingByTokenInput', () => {
+describe('manageTokenInput', () => {
   it('parses a valid token', () => {
-    const result = cancelBookingByTokenInput.safeParse({
+    const result = manageTokenInput.safeParse({
       manageToken: 'a'.repeat(32),
     })
     expect(result.success).toBe(true)
   })
 
   it('rejects a short token', () => {
-    const result = cancelBookingByTokenInput.safeParse({ manageToken: 'short' })
+    const result = manageTokenInput.safeParse({ manageToken: 'short' })
     expect(result.success).toBe(false)
   })
 })
@@ -112,6 +106,7 @@ describe('guestBooking (guest view)', () => {
       durationMinutes: 60,
       capacity: 10,
       bookedCount: 2,
+      hasBookings: null,
       price: '€15',
       createdAt: '2026-07-20T10:00:00.000Z',
     },
@@ -159,21 +154,5 @@ describe('guestBooking (guest view)', () => {
     expect(guestBooking.safeParse({ ...validGuestBooking, canCancel: undefined }).success).toBe(
       false,
     )
-  })
-})
-
-describe('canCancelBooking', () => {
-  const future = new Date(Date.now() + 60_000)
-  const past = new Date(Date.now() - 60_000)
-
-  it('is true only for confirmed bookings with a live token', () => {
-    expect(canCancelBooking('confirmed', future)).toBe(true)
-    expect(canCancelBooking('confirmed', null)).toBe(true) // legacy non-expiring row
-    expect(canCancelBooking('confirmed', past)).toBe(false)
-  })
-
-  it('is false for cancelled bookings regardless of expiry', () => {
-    expect(canCancelBooking('cancelled', future)).toBe(false)
-    expect(canCancelBooking('cancelled', null)).toBe(false)
   })
 })

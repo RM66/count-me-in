@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
  *
  * Takes `SlotOccupancy` rather than a full slot record: capacity and
  * `bookedCount` are all it reads, so it renders equally well for a slot DTO or a
- * row straight from Postgres.
+ * nested occupancy summary.
  */
 export function SeatsBadge({ slot }: { slot: SlotOccupancy }) {
   const t = useTranslations('SeatsBadge')

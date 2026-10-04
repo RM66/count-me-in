@@ -4,42 +4,24 @@ import {
   BarChart3Icon,
   CalendarClockIcon,
   CalendarDaysIcon,
-  ChevronsUpDownIcon,
   ExternalLinkIcon,
   GlobeIcon,
   LayoutDashboardIcon,
-  LogInIcon,
-  LogOutIcon,
   MailIcon,
   SettingsIcon,
   SparklesIcon,
   TicketIcon,
-  UserIcon,
-  UserPlusIcon,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
 import { useLocale, useTranslations } from 'next-intl'
 
 import { useCurrentOrganizer } from '@/api-client'
 import { LanguageSwitcher } from '@/components/language-switcher'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -49,10 +31,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { Skeleton } from '@/components/ui/skeleton'
 import { SUPPORT_EMAIL } from '@/constants/site'
-import { initials } from '@/helpers/name'
-import { cn } from '@/lib/utils'
+import { SidebarAccount } from './sidebar-account'
 
 export function CabinetSidebar() {
   const pathname = usePathname()
@@ -166,90 +146,7 @@ export function CabinetSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {organizer?.isDemo ? (
-              // Read-only demo (ADR-010): the visitor has no account, so offer
-              // both entry points instead of a meaningless "Log out".
-              <div className="flex flex-col gap-2 p-1 group-data-[collapsible=icon]:hidden">
-                <p className="px-1 text-xs text-muted-foreground">{t('demoNote')}</p>
-                <Button size="sm" asChild>
-                  <Link href="/signup">
-                    <UserPlusIcon data-icon="inline-start" />
-                    {t('signUp')}
-                  </Link>
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <Link href="/login">
-                    <LogInIcon data-icon="inline-start" />
-                    {t('logIn')}
-                  </Link>
-                </Button>
-              </div>
-            ) : organizer ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    className={cn(
-                      'data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground',
-                    )}
-                  >
-                    <Avatar className="size-8 rounded-md">
-                      {organizer.photoUrl && (
-                        <AvatarImage src={organizer.photoUrl} sizes="2rem" alt={organizer.name} />
-                      )}
-                      <AvatarFallback className="rounded-md">
-                        {initials(organizer.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate font-medium">{organizer.name}</span>
-                    {/* <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="truncate font-medium">{organizer.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        TODO: Info about subscription
-                      </span>
-                    </div> */}
-                    <ChevronsUpDownIcon className="ms-auto size-4" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" className="w-56">
-                  <DropdownMenuLabel>{t('myAccount')}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem asChild>
-                      <Link href="/cabinet/settings">
-                        <UserIcon />
-                        {t('profile')}
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      // Must actually clear the session: linking to /login only
-                      // navigated, leaving the organizer signed in.
-                      void signOut({ redirectTo: '/' })
-                    }}
-                  >
-                    <LogOutIcon />
-                    {t('logOut')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <SidebarMenuButton size="lg" disabled>
-                <Skeleton className="size-8 rounded-md" />
-                <div className="flex flex-1 flex-col gap-1">
-                  <Skeleton className="h-3.5 w-24" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarAccount organizer={organizer} />
       <SidebarRail />
     </Sidebar>
   )

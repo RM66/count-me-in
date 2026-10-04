@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { optionsSelectModeEnum } from './enums'
+import { nullableFields, optionalFields } from './merge-patch'
 import { optionsList } from './options'
 import {
   capacity,
@@ -16,17 +17,39 @@ import {
   uuid,
 } from './primitives'
 
-const serviceFields = {
+/**
+ * What the cabinet seeds a fresh service (and a service-less slot form) with.
+ * `maxSeatsPerBooking` mirrors the DB column default (`server_default=1`) —
+ * an organizer opts into group bookings by raising it; the other two are
+ * required columns with no database default.
+ */
+export const SERVICE_DEFAULTS = {
+  capacity: 10,
+  durationMinutes: 60,
+  maxSeatsPerBooking: 1,
+} as const
+
+/** Columns a service must always have — never clearable via patch. */
+const requiredServiceFields = {
   title: displayName,
-  description: serviceDescription.optional(),
-  location: location.optional(),
-  contact: contact.optional(),
   defaultPrice: priceText,
   defaultCapacity: capacity,
   defaultDurationMinutes: durationMinutes,
   maxSeatsPerBooking,
-  options: optionsList.optional(),
-  optionsSelectMode: optionsSelectModeEnum.optional(),
+}
+
+/**
+ * Display fields an organizer may clear: absent on create ("not set"),
+ * `null` on update ("clear the column"). One table, two wrappings — the
+ * create and update field lists cannot drift.
+ */
+const clearableServiceFields = {
+  description: serviceDescription,
+  location,
+  contact,
+  options: optionsList,
+  optionsSelectMode: optionsSelectModeEnum,
+  photoUrl: httpUrl,
 }
 
 /**
@@ -34,12 +57,12 @@ const serviceFields = {
  * `null` counts as "no options": the cabinet clears an option list by sending
  * `options: null` together with `optionsSelectMode: null`.
  *
- * On the merge-patch (`PUT …/services/{id}`) this refinement runs on the
+ * On the merge-patch (`PATCH …/services/{id}`) this refinement runs on the
  * **patch**, not on the merged row — deliberately stricter than RFC 7386
  * (ADR-016): a patch that sets a non-empty `options` must carry
  * `optionsSelectMode` in the same document, and a mode without options is
- * rejected. The Go endpoint then validates the merged state as well
- * (`RefineServiceMergedState`), so a patch that clears `options` without
+ * rejected. The API endpoint then validates the merged state as well
+ * (`decode_merged`), so a patch that clears `options` without
  * clearing the mode still answers 400 — the pair is one value split across
  * two columns and clients send it together (see `service-form.ts`).
  */
@@ -69,31 +92,22 @@ function refineOptionsConsistency<T extends z.ZodType>(schema: T) {
 
 export const createServiceInput = refineOptionsConsistency(
   z.object({
-    ...serviceFields,
-    photoUrl: httpUrl.optional(),
+    ...requiredServiceFields,
+    ...optionalFields(clearableServiceFields),
   }),
 )
 export type CreateServiceInput = z.infer<typeof createServiceInput>
 
 /**
- * Cabinet edits. Every optional display field is additionally **nullable**:
+ * Cabinet edits (JSON Merge Patch). Every clearable field is **nullable**:
  * `undefined` means "leave unchanged", `null` means "clear it". Without that
  * distinction an organizer could never remove a description or a cover photo.
  */
 export const updateServiceInput = refineOptionsConsistency(
   z
     .object({
-      title: displayName,
-      description: serviceDescription.nullable(),
-      location: location.nullable(),
-      contact: contact.nullable(),
-      defaultPrice: priceText,
-      defaultCapacity: capacity,
-      defaultDurationMinutes: durationMinutes,
-      maxSeatsPerBooking,
-      options: optionsList.nullable(),
-      optionsSelectMode: optionsSelectModeEnum.nullable(),
-      photoUrl: httpUrl.nullable(), // null = remove cover photo
+      ...requiredServiceFields,
+      ...nullableFields(clearableServiceFields),
     })
     .partial(),
 )

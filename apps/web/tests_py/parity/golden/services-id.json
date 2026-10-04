@@ -1,0 +1,469 @@
+{
+  "scenario": "services-id",
+  "steps": [
+    {
+      "note": "seed a service with options; capture <serviceId>",
+      "request": {
+        "method": "POST",
+        "path": "/api/services",
+        "body": {
+          "title": "Parity Service",
+          "defaultPrice": "20.00",
+          "defaultCapacity": 5,
+          "defaultDurationMinutes": 45,
+          "maxSeatsPerBooking": 4,
+          "options": [
+            "Option A"
+          ],
+          "optionsSelectMode": "single"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
+            "contact": null,
+            "defaultPrice": "20.00",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "maxSeatsPerBooking": 4,
+            "options": [
+              "Option A"
+            ],
+            "optionsSelectMode": "single",
+            "createdAt": "<ts:1>"
+          }
+        },
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"createdAt\":\"<ts:1>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "get own service → 200",
+      "request": {
+        "method": "GET",
+        "path": "/api/services/<sid:1>",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": null,
+            "photoUrl": null,
+            "location": null,
+            "contact": null,
+            "defaultPrice": "20.00",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "maxSeatsPerBooking": 4,
+            "options": [
+              "Option A"
+            ],
+            "optionsSelectMode": "single",
+            "createdAt": "<ts:1>"
+          }
+        },
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"createdAt\":\"<ts:1>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown id → 404",
+      "request": {
+        "method": "GET",
+        "path": "/api/services/<uuid:2>",
+        "body": null
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Service not found",
+          "code": "serviceNotFound"
+        },
+        "body_raw": "{\"error\":\"Service not found\",\"code\":\"serviceNotFound\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "malformed path param → 404 (mux answers unknown id, never leaks shape)",
+      "request": {
+        "method": "GET",
+        "path": "/api/services/not-a-uuid",
+        "body": null
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Service not found",
+          "code": "serviceNotFound"
+        },
+        "body_raw": "{\"error\":\"Service not found\",\"code\":\"serviceNotFound\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "wrong content type → 415",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/services/<sid:1>",
+        "body": {
+          "title": "X"
+        }
+      },
+      "response": {
+        "status": 415,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "This endpoint accepts only application/merge-patch+json (RFC 7386)",
+          "code": "unsupportedMediaType"
+        },
+        "body_raw": "{\"error\":\"This endpoint accepts only application/merge-patch+json (RFC 7386)\",\"code\":\"unsupportedMediaType\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "absent keys kept → 200",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/services/<sid:1>",
+        "body": {
+          "description": "patched"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": "patched",
+            "photoUrl": null,
+            "location": null,
+            "contact": null,
+            "defaultPrice": "20.00",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "maxSeatsPerBooking": 4,
+            "options": [
+              "Option A"
+            ],
+            "optionsSelectMode": "single",
+            "createdAt": "<ts:1>"
+          }
+        },
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":\"patched\",\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":[\"Option A\"],\"optionsSelectMode\":\"single\",\"createdAt\":\"<ts:1>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "pair cleared together → 200",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/services/<sid:1>",
+        "body": {
+          "options": null,
+          "optionsSelectMode": null
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "service": {
+            "id": "<sid:1>",
+            "organizerId": "<uuid:1>",
+            "title": "Parity Service",
+            "description": "patched",
+            "photoUrl": null,
+            "location": null,
+            "contact": null,
+            "defaultPrice": "20.00",
+            "defaultCapacity": 5,
+            "defaultDurationMinutes": 45,
+            "maxSeatsPerBooking": 4,
+            "options": null,
+            "optionsSelectMode": null,
+            "createdAt": "<ts:1>"
+          }
+        },
+        "body_raw": "{\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Parity Service\",\"description\":\"patched\",\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":45,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "options set without mode → pair rule violation → 400",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/services/<sid:1>",
+        "body": {
+          "options": [
+            "Option One"
+          ]
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Invalid input",
+          "code": "invalidInput",
+          "details": {
+            "formErrors": [],
+            "fieldErrors": {
+              "optionsSelectMode": [
+                "optionsSelectMode is required when options are set"
+              ]
+            }
+          }
+        },
+        "body_raw": "{\"error\":\"Invalid input\",\"code\":\"invalidInput\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"optionsSelectMode\":[\"optionsSelectMode is required when options are set\"]}}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "empty patch → 400 nothing to update",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/services/<sid:1>",
+        "body": {}
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "No fields to update",
+          "code": "nothingToUpdate"
+        },
+        "body_raw": "{\"error\":\"No fields to update\",\"code\":\"nothingToUpdate\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "seed a slot under the service (for the delete guard)",
+      "request": {
+        "method": "POST",
+        "path": "/api/slots",
+        "body": {
+          "serviceId": "<sid:1>",
+          "startsAt": "<ts:4>",
+          "durationMinutes": 60,
+          "capacity": 2
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slot": {
+            "id": "<uuid:3>",
+            "serviceId": "<sid:1>",
+            "startsAt": "<ts:2>",
+            "durationMinutes": 60,
+            "capacity": 2,
+            "bookedCount": 0,
+            "hasBookings": null,
+            "price": null,
+            "createdAt": "<ts:3>"
+          }
+        },
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:3>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":2,\"bookedCount\":0,\"hasBookings\":null,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "service with a slot but no bookings → 200 (slots cascade)",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/services/<sid:1>",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "id": "<sid:1>"
+        },
+        "body_raw": "{\"id\":\"<sid:1>\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "unknown id → 404",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/services/<uuid:2>",
+        "body": null
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "error": "Service not found",
+          "code": "serviceNotFound"
+        },
+        "body_raw": "{\"error\":\"Service not found\",\"code\":\"serviceNotFound\"}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    }
+  ]
+}

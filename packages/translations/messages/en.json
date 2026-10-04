@@ -67,8 +67,7 @@
     "errPartyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
     "errDuplicate": "You already have a booking for this session",
     "errGone": "This session is no longer available",
-    "errInvalidOptions": "Selected options are not valid for this service",
-    "errAlreadyCancelled": "This booking has already been cancelled"
+    "errInvalidOptions": "Selected options are not valid for this service"
   },
   "SuccessStep": {
     "confirmedNote": "Your seat is booked. A confirmation will arrive in your messenger from our bot.",
@@ -327,7 +326,8 @@
       "contact": "Contact",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Simple online booking for group classes, events, and outings."
+    "ogDescription": "Simple online booking for group classes, events, and outings.",
+    "metaTitle": "CountMeIn — online booking for group events"
   },
   "Legal": {
     "lastUpdated": "Last updated {date}",
@@ -375,7 +375,8 @@
       "createAccount": "Create an account",
       "noAccountFound": "No account found. Please create an account first.",
       "sameAccount": "Use the same Telegram account you signed up with.",
-      "notConfigured": "Telegram login is not configured. Please contact support."
+      "notConfigured": "Telegram login is not configured. Please contact support.",
+      "signInFailed": "Could not sign you in — authenticate with Telegram again"
     },
     "signup": {
       "title": "Create your account",
@@ -402,8 +403,10 @@
     },
     "loginLink": {
       "opening": "One moment while we open your cabinet.",
-      "continue": "Continue to your cabinet"
-    }
+      "continue": "Continue to your cabinet",
+      "title": "Opening your cabinet…"
+    },
+    "metaTitle": "Account access"
   },
   "NotFound": {
     "title": "Page not found",
@@ -419,15 +422,14 @@
   },
   "CookieConsent": {
     "ariaLabel": "Cookie consent",
-    "text": "We use analytics cookies to understand how CountMeIn is used and improve it. ",
-    "essential": "Essential cookies for sign-in and booking are always on. ",
+    "text": "We use analytics cookies to understand how CountMeIn is used and improve it.",
+    "essential": "Essential cookies for sign-in and booking are always on.",
     "privacyPolicy": "Privacy Policy",
     "reject": "Reject",
     "accept": "Accept"
   },
   "Ui": {
     "close": "Close",
-    "navigation": "Navigation",
     "loading": "Loading",
     "more": "More",
     "sidebar": "Sidebar",
@@ -467,7 +469,8 @@
       "cancel": "Cancel",
       "saving": "Saving...",
       "close": "Close",
-      "full": "Full"
+      "full": "Full",
+      "clearFilter": "Clear filter"
     },
     "sidebar": {
       "subtitle": "Organizer",
@@ -527,7 +530,8 @@
       "filterByDay": "Filter {entity} by day",
       "showEveryBooking": "Show every booking",
       "showEveryService": "Show every service",
-      "showEverySlot": "Show every slot"
+      "entityBookings": "bookings",
+      "entitySlots": "slots"
     },
     "demoBanner": {
       "readOnly": "Read-only demo.",
@@ -590,14 +594,14 @@
       "editSlot": "Edit slot",
       "viewBookings": "View bookings",
       "duplicate": "Duplicate",
-      "cancelSlot": "Cancel slot",
-      "cancelTitle": "Cancel this slot?",
-      "cancelDescriptionWithBookings": "This session has {count} booked {count, plural, =1 {seat} other {seats}}. Cancelling removes the slot and every booking on it. This cannot be undone.",
-      "cancelDescriptionPlain": "The slot will be removed and guests will no longer see it. This cannot be undone.",
+      "deleteSlot": "Delete slot",
+      "deleteBlocked": "Slots with bookings cannot be deleted.",
+      "deleteTitle": "Delete this slot?",
+      "deleteDescription": "The slot will be removed and guests will no longer see it. This cannot be undone.",
       "keepSlot": "Keep slot",
-      "cancellingDialog": "Cancelling...",
-      "cancelledToast": "Slot cancelled",
-      "cancelFailed": "Failed to cancel the slot",
+      "deletingDialog": "Deleting...",
+      "deletedToast": "Slot deleted",
+      "deleteFailed": "Failed to delete the slot",
       "dialogCreateTitle": "Add time slot",
       "dialogCreateDescription": "Schedule a new session. Defaults come from the service.",
       "dialogEditTitle": "Edit time slot",
@@ -666,7 +670,7 @@
       "deleteService": "Delete service",
       "deleting": "Deleting...",
       "deleteTitle": "Delete this service?",
-      "deleteDescription": "{title} and all of its time slots and bookings will be removed. This cannot be undone.",
+      "deleteDescription": "{title} and all of its time slots will be removed. If the service has any booking history, deletion will be refused.",
       "keepService": "Keep service",
       "delete": "Delete",
       "coverPhoto": "Cover photo",
@@ -683,8 +687,6 @@
       "createFailed": "Failed to create the service",
       "updateFailed": "Failed to update the service",
       "deleteFailed": "Failed to delete the service",
-      "notFound": "Service not found",
-      "backToList": "Back to services",
       "pricePlaceholder": "$12",
       "editSubtitle": "Edit service details and options."
     },
@@ -716,7 +718,8 @@
       "noChanges": "No changes to save",
       "updatedToast": "Profile updated",
       "updateFailed": "Failed to update profile",
-      "loadFailed": "Could not load your profile — refresh the page to try again."
+      "loadFailed": "Could not load your profile — refresh the page to try again.",
+      "copyFailed": "Could not copy the link"
     },
     "bookings": {
       "title": "Bookings",
@@ -776,37 +779,5 @@
       "full": "Full",
       "left": "{count} left"
     }
-  },
-  "ApiErrors": {
-    "invalidInput": "Invalid input",
-    "invalidOptions": "Selected options are not valid for this service",
-    "ticketExpired": "Your Telegram confirmation expired — authenticate again",
-    "telegramNotConfigured": "Telegram bot not configured",
-    "telegramInvalid": "Invalid Telegram auth data",
-    "telegramValidationFailed": "Telegram auth validation failed",
-    "authSessionExpired": "Auth session expired — authenticate with Telegram again",
-    "organizerNotFound": "Organizer not found",
-    "demoNotSeeded": "Demo organizer is not seeded",
-    "serviceNotFound": "Service not found",
-    "slotNotFound": "Slot not found",
-    "bookingNotFound": "Booking not found",
-    "photoPrefix": "Invalid photoUrl: must belong to your media prefix",
-    "cannotCreateService": "Could not create the service",
-    "slugTaken": "This handle is already taken — pick another one",
-    "accountExists": "An account with this Telegram identity already exists — log in instead",
-    "nothingToUpdate": "No fields to update",
-    "unsupportedMediaType": "This endpoint accepts only application/merge-patch+json (RFC 7386)",
-    "capacityBelowBooked": "Capacity cannot be lower than the {count, plural, =1 {# seat} other {# seats}} already booked",
-    "demoReadOnly": "This is a read-only demo account — sign up to create your own bookable services.",
-    "soldOut": "This session is fully booked",
-    "seatsLeftOnSession": "Only {count, plural, =1 {# seat} other {# seats}} left on this session",
-    "partyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
-    "duplicateBooking": "You already have a booking for this session",
-    "alreadyCancelled": "This booking has already been cancelled",
-    "slotGone": "This session is no longer available",
-    "tooManyRequests": "Too many requests — please try again in a moment",
-    "slotHasActiveBookings": "This session has bookings and cannot be deleted",
-    "serviceHasBookings": "This service has bookings in its sessions and cannot be deleted",
-    "bodyTooLarge": "The request body is too large"
   }
 }
