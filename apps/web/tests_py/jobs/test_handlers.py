@@ -5,14 +5,16 @@ sweeper.
 
 The handlers read the booking chain fresh from Postgres at send time —
 integration tests: real Postgres plus fakeredis for the login links and
-a fake Bot API transport for send_message."""
+a respx-mocked Bot API transport for send_message."""
 
+import json
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import countmein.jobs.telegram as telegram_mod
+import httpx
 import pytest
+import respx
 from countmein import redis as redis_mod
 from countmein.contracts import models_gen as gen
 from countmein.db.client import engine
@@ -38,13 +40,13 @@ def fake_redis():
 
 
 class FakeTelegram:
+    """respx side_effect recording sendMessage bodies."""
+
     def __init__(self):
         self.calls: list[dict] = []
 
-    async def __call__(self, url, content=None, headers=None, **kwargs):
-        import json
-
-        body = json.loads(content or b"{}")
+    async def __call__(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content or b"{}")
         markup = body.get("reply_markup")
         button = ""
         if markup and markup.get("inline_keyboard"):
@@ -52,17 +54,15 @@ class FakeTelegram:
         self.calls.append(
             {"chat_id": body.get("chat_id"), "text": body.get("text"), "button": button}
         )
-        import httpx
-
         return httpx.Response(200, json={"ok": True})
 
 
 @pytest.fixture()
-def fake_telegram(monkeypatch):
+def fake_telegram():
     ft = FakeTelegram()
-    monkeypatch.setattr(telegram_mod, "_post", ft)
-    yield ft
-    telegram_mod._reset_for_test()
+    with respx.mock:
+        respx.post(url__regex=r"https://api\.telegram\.org/bot.+/sendMessage").mock(side_effect=ft)
+        yield ft
 
 
 @pytest.fixture()

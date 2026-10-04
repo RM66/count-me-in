@@ -9,6 +9,8 @@ calls. Anything that is not an ApiError propagates to the 500 recovery
 — a wrapped error must never be flattened into a misleading 4xx.
 """
 
+import json
+
 import pytest
 from countmein.contracts.constants_gen import (
     DEFAULT_LOCALE,
@@ -36,7 +38,7 @@ from countmein.web.response import render_api_error
 
 
 def _body(resp) -> dict:
-    return resp.body.model_dump()
+    return json.loads(resp.body)
 
 
 @pytest.mark.parametrize(
@@ -69,7 +71,7 @@ def test_error_response(err, want_status, want_code, want_seats, want_max):
     i18n key by default, or the pinned token the client contracts."""
     for locale in LOCALES:
         resp = render_api_error(err, locale)
-        assert resp.status == want_status
+        assert resp.status_code == want_status
         body = _body(resp)
         assert body["error"], f"{locale}: localized error copy must not be empty"
         assert body["code"] == want_code
@@ -103,7 +105,7 @@ def test_error_response(err, want_status, want_code, want_seats, want_max):
 def test_cabinet_error_response(err, want_status):
     for locale in LOCALES:
         resp = render_api_error(err, locale)
-        assert resp.status == want_status
+        assert resp.status_code == want_status
         body = _body(resp)
         assert body["error"], f"{locale}: localized copy must not be empty"
         assert body["code"], "every error body carries a machine-readable code"
@@ -111,7 +113,7 @@ def test_cabinet_error_response(err, want_status):
 
 def test_rate_limited_headers():
     resp = render_api_error(RateLimited(7), "en")
-    assert resp.status == 429
+    assert resp.status_code == 429
     assert resp.headers["Retry-After"] == "7"
 
 

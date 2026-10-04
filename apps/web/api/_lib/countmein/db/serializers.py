@@ -1,9 +1,8 @@
-"""Row → generated-DTO serialization — the wire half of the boundary.
+"""Model → generated-DTO serialization — the wire half of the boundary.
 
-db/rows.py owns the detached domain snapshots and the ORM→Row mapping;
-this module owns the Row→DTO projection the routes layer performs. The
-split keeps the services layer (services/) free of wire types: a service
-returns Rows, a route serializes them.
+Repositories return ORM models (expire_on_commit=False + lazy="raise"
+make them detached snapshots); routes project them to records here.
+The split keeps services free of wire types.
 
 Two audiences, two DTOs: BookingRecord is the organizer's view and drops
 manageToken; GuestBooking is the guest's own booking and keeps it,
@@ -12,28 +11,24 @@ because that token is their link to the management page.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
+from datetime import datetime
 
 from ..contracts import domain
 from ..contracts import models_gen as gen
-from .rows import BookingChain, BookingRow, OrganizerRow, ServiceRow, TimeSlotRow
-
-
-def _uuid(value: Any) -> str:
-    """Render a uuid column as its canonical string — the wire form of
-    an id (mappers use model_construct, so this fixes the form here)."""
-    return str(value)
-
+from ..models.booking import Booking
+from ..models.organizer import Organizer
+from ..models.service import Service
+from ..models.time_slot import TimeSlot
+from ..repositories.booking_repo import BookingChain
 
 # model_construct (not model_validate) in every mapper: the generated
 # UUID fields carry a pattern constraint pydantic-core cannot apply
 # (TypeError on every construct), and DB rows are already canonical.
 
 
-def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
+def to_time_slot_record(s: TimeSlot) -> gen.TimeSlotRecord:
     return gen.TimeSlotRecord.model_construct(
-        id=_uuid(s.id),
+        id=s.id,
         serviceId=s.service_id,
         startsAt=domain.iso_date(s.starts_at),
         durationMinutes=s.duration_minutes,
@@ -44,10 +39,10 @@ def to_time_slot_record(s: TimeSlotRow) -> gen.TimeSlotRecord:
     )
 
 
-def to_service_record(s: ServiceRow) -> gen.ServiceRecord:
+def to_service_record(s: Service) -> gen.ServiceRecord:
     return gen.ServiceRecord.model_construct(
         id=s.id,
-        organizerId=_uuid(s.organizer_id),
+        organizerId=s.organizer_id,
         title=s.title,
         description=s.description,
         photoUrl=s.photo_url,
@@ -57,15 +52,17 @@ def to_service_record(s: ServiceRow) -> gen.ServiceRecord:
         defaultCapacity=s.default_capacity,
         defaultDurationMinutes=s.default_duration_minutes,
         maxSeatsPerBooking=s.max_seats_per_booking,
-        options=s.options,
-        optionsSelectMode=s.options_select_mode,
+        options=list(s.options) if s.options is not None else None,
+        optionsSelectMode=(
+            str(s.options_select_mode) if s.options_select_mode is not None else None
+        ),
         createdAt=domain.iso_date(s.created_at),
     )
 
 
-def to_public_organizer(o: OrganizerRow) -> gen.PublicOrganizer:
+def to_public_organizer(o: Organizer) -> gen.PublicOrganizer:
     return gen.PublicOrganizer.model_construct(
-        id=_uuid(o.id),
+        id=o.id,
         slug=o.slug,
         name=o.name,
         timezone=o.timezone,
@@ -77,15 +74,15 @@ def to_public_organizer(o: OrganizerRow) -> gen.PublicOrganizer:
     )
 
 
-def to_organizer_profile(o: OrganizerRow, is_demo: bool) -> gen.OrganizerProfile:
+def to_organizer_profile(o: Organizer, is_demo: bool) -> gen.OrganizerProfile:
     # Language clamped to the supported set — a stale column value must
     # not break rendering.
     language = o.language if domain.is_app_locale(o.language) else domain.DEFAULT_LOCALE
     return gen.OrganizerProfile.model_construct(
-        id=_uuid(o.id),
+        id=o.id,
         slug=o.slug,
         name=o.name,
-        messenger=o.messenger,
+        messenger=str(o.messenger),
         messengerId=o.messenger_id,
         timezone=o.timezone,
         description=o.description,
@@ -98,14 +95,14 @@ def to_organizer_profile(o: OrganizerRow, is_demo: bool) -> gen.OrganizerProfile
     )
 
 
-def to_booking_record(b: BookingRow) -> gen.BookingRecord:
+def to_booking_record(b: Booking) -> gen.BookingRecord:
     return gen.BookingRecord.model_construct(
-        id=_uuid(b.id),
-        timeSlotId=_uuid(b.time_slot_id),
-        status=b.status,
+        id=b.id,
+        timeSlotId=b.time_slot_id,
+        status=str(b.status),
         seats=b.seats,
         guestName=b.guest_name,
-        guestMessenger=b.guest_messenger,
+        guestMessenger=str(b.guest_messenger),
         guestMessengerId=b.guest_messenger_id,
         guestMessengerLogin=b.guest_messenger_login,
         selectedOptions=b.selected_options,
@@ -113,27 +110,23 @@ def to_booking_record(b: BookingRow) -> gen.BookingRecord:
     )
 
 
-def can_cancel_booking(b: BookingRow, now: datetime | None = None) -> bool:
+def can_cancel_booking(b: Booking, now: datetime | None = None) -> bool:
     """The guest may still act on this booking: confirmed and
     manageToken unexpired. None expiry = legacy row (ADR-020), stays
     cancellable, matching the cancel write's check. The guest DTO
     carries this as canCancel so the link is offered only while it
     works."""
-    if b.status != "confirmed":
-        return False
-    if b.manage_token_expires_at is None:
-        return True
-    if now is None:
-        now = datetime.now(UTC)
-    return b.manage_token_expires_at > now
+    return str(b.status) == "confirmed" and not domain.manage_token_expired(
+        b.manage_token_expires_at, now
+    )
 
 
 def to_guest_booking(
-    b: BookingRow, slot: TimeSlotRow, service: ServiceRow, organizer: OrganizerRow
+    b: Booking, slot: TimeSlot, service: Service, organizer: Organizer
 ) -> gen.GuestBooking:
     return gen.GuestBooking.model_construct(
-        id=_uuid(b.id),
-        status=b.status,
+        id=b.id,
+        status=str(b.status),
         seats=b.seats,
         guestName=b.guest_name,
         selectedOptions=b.selected_options,
@@ -148,5 +141,4 @@ def to_guest_booking(
 
 def to_guest_booking_chain(chain: BookingChain) -> gen.GuestBooking:
     """The 4-part chain projected to the guest DTO in one call."""
-    booking, slot, service, organizer = chain
-    return to_guest_booking(booking, slot, service, organizer)
+    return to_guest_booking(chain.booking, chain.slot, chain.service, chain.organizer)

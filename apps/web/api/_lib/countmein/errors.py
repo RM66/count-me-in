@@ -1,12 +1,12 @@
 """The API exception hierarchy.
 
 One base class carries everything a handler needs to answer an error:
-status, i18n key, optional ICU params, optional ErrorBody extras.
-Subclasses are the domain failure modes — raised where they happen,
-rendered by the app-level `ApiError` handler, so route handlers never
-pattern-match exception chains or flatten an unexpected error into a
-misleading 4xx: anything that is not an ApiError propagates to the 500
-recovery.
+status, i18n key, machine code, optional ICU params, optional ErrorBody
+extra fields, optional headers. Subclasses are the domain failure
+modes — raised where they happen, rendered by the app-level `ApiError`
+handler, so route handlers never pattern-match exception chains or
+flatten an unexpected error into a misleading 4xx: anything that is
+not an ApiError propagates to the 500 recovery.
 
 This module holds only data: the error→Response conversion lives in
 web/response.render_api_error, wired once in app.py — the lower layer
@@ -15,52 +15,23 @@ never depends on the transport.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
-from .contracts.models_gen import ErrorBody
-
-
-def walk_exception_chain(err: BaseException) -> Iterator[BaseException]:
-    """Yield err and everything it wraps via __cause__/__context__, each
-    once. A wrapped driver error must not slip past a mapping into a
-    bare 500 — SQLSTATE classification, unique-constraint naming and
-    job error mapping all build on this."""
-    seen: set[int] = set()
-    current: BaseException | None = err
-    while current is not None and id(current) not in seen:
-        yield current
-        seen.add(id(current))
-        current = current.__cause__ or current.__context__
+from typing import Any
 
 
 class ApiError(Exception):
-    """Base: an error the API answers with a specific status + copy."""
+    """Base: an error the API answers with a specific status + copy.
+
+    `code` defaults to `key` — subclasses set it when the wire pins a
+    different stable token (slot_sold_out, duplicate_booking, …).
+    `params` feeds the ICU message, `extra` additional ErrorBody fields
+    (seatsLeft/maxSeats), `headers` extra response headers."""
 
     status = 500
     key = "internal"
-
-    def params(self) -> dict[str, object] | None:
-        """ICU params for the localized message, if any."""
-        return None
-
-    def headers(self) -> dict[str, str] | None:
-        """Extra response headers (e.g. Retry-After), if any."""
-        return None
-
-    def code(self) -> str:
-        """The machine-readable error code on every error body (ADR-024):
-        the i18n key by default; subclasses override when the wire pins
-        a different stable token (slot_sold_out, duplicate_booking, …)."""
-        return self.response_key()
-
-    def extras(self) -> ErrorBody | None:
-        """Additional ErrorBody fields (seatsLeft/maxSeats), if any."""
-        return None
-
-    def response_key(self) -> str:
-        """The i18n key the response renders — a hook for errors whose
-        copy depends on the instance (SoldOut)."""
-        return self.key
+    code: str | None = None
+    params: dict[str, object] | None = None
+    extra: dict[str, Any] | None = None
+    headers: dict[str, str] | None = None
 
 
 class ValidationFailed(Exception):
@@ -81,13 +52,11 @@ class DemoReadOnly(ApiError):
     status = 403
     key = "demoReadOnly"
 
-    def code(self) -> str:
+    def __init__(self) -> None:
         from .contracts.constants_gen import DEMO_READ_ONLY_CODE
 
-        return DEMO_READ_ONLY_CODE
-
-    def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code=self.code())
+        self.code = DEMO_READ_ONLY_CODE
+        super().__init__("demo organizer is read-only")
 
 
 class RateLimited(ApiError):
@@ -98,10 +67,8 @@ class RateLimited(ApiError):
 
     def __init__(self, retry_after: int) -> None:
         self.retry_after = retry_after
+        self.headers = {"Retry-After": str(retry_after)}
         super().__init__(f"rate limited, retry after {retry_after}s")
-
-    def headers(self) -> dict[str, str]:
-        return {"Retry-After": str(self.retry_after)}
 
 
 class PayloadTooLarge(ApiError):
@@ -172,24 +139,16 @@ class SoldOut(ApiError):
     actually left rather than only that the attempt failed."""
 
     status = 409
+    # Pinned by the client: the booking dialog reacts to this token.
+    code = "slot_sold_out"
 
     def __init__(self, seats_left: int) -> None:
         self.seats_left = seats_left
-        super().__init__(f"slot sold out, {seats_left} seats left")
-
-    def response_key(self) -> str:
         # The copy differs by whether anything is left at all.
-        return "soldOut" if self.seats_left == 0 else "seatsLeftOnSession"
-
-    def params(self) -> dict[str, object] | None:
-        return None if self.seats_left == 0 else {"count": self.seats_left}
-
-    def code(self) -> str:
-        # Pinned by the client: the booking dialog reacts to this token.
-        return "slot_sold_out"
-
-    def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code=self.code(), seatsLeft=self.seats_left)
+        self.key = "soldOut" if seats_left == 0 else "seatsLeftOnSession"
+        self.params = None if seats_left == 0 else {"count": seats_left}
+        self.extra = {"seatsLeft": seats_left}
+        super().__init__(f"slot sold out, {seats_left} seats left")
 
 
 class DuplicateBooking(ApiError):
@@ -197,12 +156,7 @@ class DuplicateBooking(ApiError):
 
     status = 409
     key = "duplicateBooking"
-
-    def code(self) -> str:
-        return "duplicate_booking"
-
-    def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code=self.code())
+    code = "duplicate_booking"
 
 
 class AlreadyCancelled(ApiError):
@@ -227,15 +181,7 @@ class InvalidOptions(ApiError):
 
     status = 400
     key = "invalidOptions"
-
-    def __init__(self, detail: str) -> None:
-        super().__init__(detail)
-
-    def code(self) -> str:
-        return "invalid_option"
-
-    def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code=self.code())
+    code = "invalid_option"
 
 
 class PartyTooLarge(ApiError):
@@ -246,13 +192,9 @@ class PartyTooLarge(ApiError):
 
     def __init__(self, max_seats: int) -> None:
         self.max_seats = max_seats
+        self.params = {"maxSeats": max_seats}
+        self.extra = {"maxSeats": max_seats}
         super().__init__(f"party size over per-booking cap of {max_seats}")
-
-    def params(self) -> dict[str, object]:
-        return {"maxSeats": self.max_seats}
-
-    def extras(self) -> ErrorBody:
-        return ErrorBody(error="", code=self.code(), maxSeats=self.max_seats)
 
 
 class NothingToUpdate(ApiError):
@@ -270,10 +212,8 @@ class CapacityBelowBooked(ApiError):
 
     def __init__(self, booked_count: int) -> None:
         self.booked_count = booked_count
+        self.params = {"count": booked_count}
         super().__init__(f"capacity below booked count {booked_count}")
-
-    def params(self) -> dict[str, object]:
-        return {"count": self.booked_count}
 
 
 class SlotHasActiveBookings(ApiError):

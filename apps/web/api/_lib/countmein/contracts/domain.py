@@ -6,7 +6,6 @@ packages/contracts/vectors/domain/* (vitest + pytest).
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from zoneinfo import ZoneInfo
 
 from .constants_gen import (
@@ -194,7 +193,7 @@ def slot_end(starts_at: datetime, duration_minutes: int) -> datetime:
 # ── FlexTime: RFC3339 string or Unix epoch (seconds or milliseconds) ────────
 
 
-def parse_flex_time(value: str | int | float) -> datetime:
+def parse_flex_time(value: str | int | float | datetime) -> datetime:
     """Accept an RFC3339 string or a Unix epoch number (seconds or
     milliseconds). A deliberate tightening over Zod's z.coerce.date(),
     which accepts anything new Date() parses. Safe for the wire: the
@@ -241,8 +240,13 @@ def iso_date(t: datetime | None) -> str:
     )
 
 
-def deref_or(p: Any, default: Any) -> Any:
-    """The value behind an optional, or the default when None."""
-    if p is None:
-        return default
-    return p
+def manage_token_expired(expires_at: datetime | None, now: datetime | None = None) -> bool:
+    """The manageToken's hard expiry (slot start + 24h grace, ADR-020).
+    An expired token answers like an unknown one on every credential
+    path, so the endpoints cannot probe token existence. NULL means a
+    legacy non-expiring row."""
+    if expires_at is None:
+        return False
+    if now is None:
+        now = datetime.now(UTC)
+    return expires_at <= now

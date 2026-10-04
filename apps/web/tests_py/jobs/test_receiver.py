@@ -187,7 +187,10 @@ def test_token_without_body_claim_rejected():
     assert not receiver.verify_qstash_signature(b"body", sig, CURRENT_KEY, NEXT_KEY, TEST_SUB)
 
 
-def test_trace_id_from_headers():
-    assert receiver.trace_id_from_headers({"Upstash-Trace-Id": "t-1"}) == "t-1"
-    assert receiver.trace_id_from_headers({"upstash-trace-id": "t-2"}) == "t-2"
-    assert receiver.trace_id_from_headers({}) == ""
+def test_trace_id_read_is_case_insensitive():
+    """The route reads the forwarded Upstash-Trace-Id through Starlette
+    headers — case-insensitive by contract."""
+    from starlette.datastructures import Headers
+
+    assert Headers({"Upstash-Trace-Id": "t-1"}).get("upstash-trace-id", "") == "t-1"
+    assert Headers({}).get("upstash-trace-id", "") == ""

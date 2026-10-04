@@ -68,13 +68,6 @@ def test_line_carries_time_and_level_keys(capture):
     assert [parse(line)["level"] for line in capture.lines] == ["INFO", "WARN", "ERROR"]
 
 
-def test_error_none_is_dropped(capture):
-    """Callers pass optional errors straight through — None must not
-    emit a line."""
-    logx.error(None)
-    assert capture.lines == []
-
-
 def test_error_message_is_the_exception_text(capture):
     logx.error(RuntimeError("qstash publish failed"), {"queue": "booking.created"})
     rec = parse(capture.lines[0])

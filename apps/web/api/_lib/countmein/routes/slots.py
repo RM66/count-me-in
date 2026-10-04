@@ -9,7 +9,7 @@ session.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,10 +17,10 @@ from starlette.background import BackgroundTask
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
-from ..contracts.domain import iso_date
-from ..db.rows import TimeSlotRow
 from ..db.serializers import to_time_slot_record
 from ..errors import ServiceNotFound, SlotNotFound
+from ..models.time_slot import TimeSlot
+from ..repositories import slot_repo
 from ..services import slot_service
 from ..validation.decode import (
     decode_create_time_slot_input,
@@ -39,27 +39,19 @@ from ..web.deps import (
 )
 from ..web.guards import require_writable_organizer
 from ..web.revalidate import public_tags, trigger_revalidation
-from .mergepatch import apply_merge_patch, touched_update
+from .mergepatch import SLOT_FIELDS, apply_merge_patch
 
 # One malformed-UUID rule for every /api/slots/{id} route: the JSON
 # error envelope, never a bare 500.
 _uuid_id = uuid_path_param("id")
 
 
-def slot_writable_state(s: TimeSlotRow) -> dict[str, Any]:
-    """The writable fields of a slot row in their wire shape — the
-    merge-patch base. A patch may replace startsAt with an epoch
-    number."""
-    return {
-        "startsAt": iso_date(s.starts_at),
-        "durationMinutes": s.duration_minutes,
-        "capacity": s.capacity,
-        "price": s.price,
-    }
-
-
-async def _fetch_owned_slot(session: AsyncSession, organizer_id: str, slot_id: str) -> TimeSlotRow:
-    row = await slot_service.get_owned_slot_tx(session, organizer_id, slot_id)
+async def _fetch_owned_slot(session: AsyncSession, organizer_id: str, slot_id: str) -> TimeSlot:
+    """The merge-patch read — under FOR UPDATE, so two concurrent
+    PATCHes serialize on the row instead of merging one snapshot, and
+    the capacity check sees a booked_count stable against the atomic
+    reserve."""
+    row = await slot_repo.get_owned_slot_for_update(session, organizer_id, slot_id)
     if row is None:
         raise SlotNotFound()
     return row
@@ -67,14 +59,15 @@ async def _fetch_owned_slot(session: AsyncSession, organizer_id: str, slot_id: s
 
 async def _update_owned_slot(
     session: AsyncSession,
+    row: TimeSlot,
+    values: dict[str, object],
+    *,
     organizer_id: str,
-    slot_id: str,
-    update: Any,
-) -> TimeSlotRow:
-    row = await slot_service.update_owned_slot_tx(session, organizer_id, slot_id, update)
-    if row is None:
+) -> TimeSlot:
+    updated = await slot_service.update_owned_slot(session, organizer_id, row.id, row, values)
+    if updated is None:
         raise SlotNotFound()
-    return row
+    return updated
 
 
 async def slots_list(
@@ -89,9 +82,9 @@ async def slots_list(
     organizer_id, _ = scope
     upcoming_only = upcoming is not None
 
-    rows = await slot_service.list_slots(session, organizer_id, upcoming_only)
+    rows = await slot_repo.list_by_organizer(session, organizer_id, upcoming_only)
     slots = [to_time_slot_record(row) for row in rows]
-    return json_response(200, gen.SlotsEnvelope(slots=slots)).to_starlette()
+    return json_response(200, gen.SlotsEnvelope(slots=slots))
 
 
 _create_slot_dep = decoded(decode_create_time_slot_input)
@@ -109,7 +102,7 @@ async def slots_create(
     row = await slot_service.create_slot(session, organizer_id, body.model)
     if row is None:
         raise ServiceNotFound()
-    star = json_response(201, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
+    star = json_response(201, gen.SlotEnvelope(slot=to_time_slot_record(row)))
     # A new slot appears on the organizer's page and the service page —
     # invalidate both (ADR-023).
     star.background = BackgroundTask(
@@ -127,10 +120,10 @@ async def slot_get(
     view through the parent service."""
     organizer_id, _ = scope
 
-    row = await slot_service.get_owned_slot(session, organizer_id, id)
+    row = await slot_repo.get_owned_slot(session, organizer_id, id)
     if row is None:
         raise SlotNotFound()
-    return json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
+    return json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row)))
 
 
 _update_slot_dep = decoded(decode_update_time_slot_input)
@@ -148,23 +141,21 @@ async def slot_patch(
     touch bookedCount (seats change only via the atomic reserve);
     shrinking capacity below sold seats answers 409. JSON Merge Patch
     body (RFC 7386/ADR-016): validated, merged, re-validated."""
-    row, _current, _touched = await apply_merge_patch(
+    row, _previous, _touched = await apply_merge_patch(
         session,
         body.raw,
         fetch=lambda s: _fetch_owned_slot(s, organizer_id, id),
-        writable_state=slot_writable_state,
+        fields=SLOT_FIELDS,
         # startsAt is checked against the past only when the patch
         # touched it — the merged state always carries the current
         # value, which may legitimately be past.
-        decode_merged=lambda merged, touched: decode_merged_slot_input(
-            merged, bool(touched.get("startsAt"))
-        ),
-        update_tx=lambda s, state, touched: _update_owned_slot(
-            s, organizer_id, id, touched_update(state, touched)
+        decode_merged=decode_merged_slot_input,
+        update_tx=lambda s, current, values: _update_owned_slot(
+            s, current, values, organizer_id=organizer_id
         ),
     )
 
-    star = json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row))).to_starlette()
+    star = json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row)))
     # startsAt/duration/capacity/price render on both public surfaces.
     star.background = BackgroundTask(
         trigger_revalidation, public_tags(organizer_slug=slug, service_id=row.service_id)
@@ -191,7 +182,7 @@ async def slot_delete(
     # constraint is unapplyable by pydantic-core; the id comes from the
     # DB.
     envelope = gen.DeletedSlotEnvelope.model_construct(id=deleted.id)
-    star = json_response(200, envelope).to_starlette()
+    star = json_response(200, envelope)
     star.background = BackgroundTask(
         trigger_revalidation,
         public_tags(organizer_slug=slug, service_id=deleted.service_id),

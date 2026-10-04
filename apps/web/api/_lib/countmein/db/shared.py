@@ -11,34 +11,38 @@ import base64
 import hashlib
 import secrets
 import time
-from dataclasses import dataclass
 
-from ..errors import walk_exception_chain
+from sqlalchemy.exc import IntegrityError
 
 # Postgres SQLSTATE codes the driver puts on a constraint rejection.
 UNIQUE_VIOLATION = "23505"
 FOREIGN_KEY_VIOLATION = "23503"
 
 
-def _pg_error_code(err: BaseException) -> str | None:
-    """The SQLSTATE from a psycopg error (or anything it wraps)."""
-    for current in walk_exception_chain(err):
-        code = getattr(current, "sqlstate", None) or getattr(current, "pgcode", None)
-        if code:
-            return str(code)
-    return None
+def _sqlstate(err: IntegrityError) -> str:
+    """The SQLSTATE on the wrapped psycopg error ("" when absent)."""
+    return str(getattr(err.orig, "sqlstate", "") or "")
 
 
-def unique_violation(err: BaseException) -> bool:
-    """Whether err (or anything it wraps) is a 23505."""
-    return _pg_error_code(err) == UNIQUE_VIOLATION
+def unique_violation(err: IntegrityError) -> bool:
+    """Whether err is a 23505 unique-constraint rejection."""
+    return _sqlstate(err) == UNIQUE_VIOLATION
 
 
-def is_foreign_key_violation(err: BaseException) -> bool:
-    """Whether err (or anything it wraps) is a 23503 — used as a
-    backstop on delete paths so a constraint cannot resurface as a
-    500."""
-    return _pg_error_code(err) == FOREIGN_KEY_VIOLATION
+def unique_constraint_name(err: IntegrityError) -> str | None:
+    """The constraint name behind a 23505, or None — how a unique
+    violation is told apart (slug vs messenger identity)."""
+    if _sqlstate(err) != UNIQUE_VIOLATION:
+        return None
+    diag = getattr(err.orig, "diag", None)
+    name = getattr(diag, "constraint_name", None) if diag is not None else None
+    return str(name) if name else None
+
+
+def is_foreign_key_violation(err: IntegrityError) -> bool:
+    """Whether err is a 23503 — used as a backstop on delete paths so a
+    constraint cannot resurface as a 500."""
+    return _sqlstate(err) == FOREIGN_KEY_VIOLATION
 
 
 def new_id() -> str:
@@ -65,18 +69,6 @@ def new_id() -> str:
 
 
 _NANOID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
-
-
-@dataclass(slots=True, frozen=True)
-class TouchedUpdate[StateT]:
-    """The merge-patch update contract shared by the *_tx functions:
-    merged state plus the touched-key set, so only intended columns are
-    written (absent key = keep, RFC 7386). Generic over the generated
-    input model — a typo in a touched key is a type error, not a
-    silently unwritten column."""
-
-    state: StateT
-    touched: dict[str, bool]
 
 
 def new_service_id() -> str:

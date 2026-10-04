@@ -21,7 +21,6 @@ the app-level exception handlers, so the wire bytes are unchanged.
 
 from __future__ import annotations
 
-import math
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -30,10 +29,20 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Depends
 from starlette.requests import Request
 
+from .. import redis as redis_mod
+from ..auth.internal import INTERNAL_SECRET_HEADER, verify_internal_secret
+from ..auth.session import Session
 from ..contracts.payloads import AuthTicketPayload
-from ..errors import InvalidInput, RateLimited, UnsupportedMediaType
-from .guards import read_body_or_413, require_guest_identity, require_writable_organizer
-from .ratelimit import RateLimitConfig, allow, client_ip
+from ..demo.resolve import resolve_cabinet_organizer_id
+from ..errors import InvalidInput, UnauthorizedInternal, UnsupportedMediaType
+from ..i18n.locale import detect_locale
+from .guards import (
+    current_session,
+    read_body_or_413,
+    require_guest_identity,
+    require_writable_organizer,
+)
+from .ratelimit import RateLimitConfig, client_ip, enforce
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -81,15 +90,11 @@ def get_redis(request: Request) -> Redis:
     override: Redis | None = getattr(request.app.state, "redis_client", None)
     if override is not None:
         return override
-    from .. import redis as redis_mod
-
     return redis_mod.client()
 
 
 async def locale(request: Request) -> str:
     """The caller's locale (ADR-011): cookie → Accept-Language → en."""
-    from ..i18n.locale import detect_locale
-
     return detect_locale(request.cookies, request.headers.get("accept-language", ""))
 
 
@@ -135,12 +140,10 @@ def organizer_rate_limit(prefix: str, limit: int, window: float) -> Callable[...
     id — runs after (and therefore only for) a writable organizer."""
 
     async def dep(organizer_id: str = Depends(require_writable_organizer)) -> None:
-        allowed_flag, retry_after = await allow(
+        await enforce(
             prefix + organizer_id,
             RateLimitConfig(limit=limit, window=window, label=prefix),
         )
-        if not allowed_flag:
-            raise RateLimited(math.ceil(retry_after))
 
     dep.__countmein_stage__ = _STAGE_RATE_LIMIT  # type: ignore[attr-defined]
     return dep
@@ -164,8 +167,6 @@ def ip_rate_limit(prefix: str, limit: int, window: float) -> Callable[..., Any]:
     (ADR-019)."""
 
     async def dep(request: Request) -> None:
-        from ..auth.internal import INTERNAL_SECRET_HEADER, verify_internal_secret
-
         if verify_internal_secret(request.headers.get(INTERNAL_SECRET_HEADER)):
             key, cfg = _INTERNAL_SSR_KEY, _INTERNAL_SSR_CFG
         else:
@@ -173,9 +174,7 @@ def ip_rate_limit(prefix: str, limit: int, window: float) -> Callable[..., Any]:
                 prefix + client_ip(request),
                 RateLimitConfig(limit=limit, window=window, label=prefix),
             )
-        allowed_flag, retry_after = await allow(key, cfg)
-        if not allowed_flag:
-            raise RateLimited(math.ceil(retry_after))
+        await enforce(key, cfg)
 
     dep.__countmein_stage__ = _STAGE_RATE_LIMIT  # type: ignore[attr-defined]
     return dep
@@ -245,38 +244,23 @@ def uuid_path_param(name: str = "id") -> Callable[..., Any]:
     return dep
 
 
-def cabinet_organizer(request: Request) -> tuple[str, bool]:
+def cabinet_organizer(
+    session: Session | None = Depends(current_session),
+) -> tuple[str, bool]:
     """The organizer this request may view (signed-in, or demo for
     anonymous visitors, ADR-010) — the read-side scope."""
-    from ..demo.resolve import resolve_cabinet_organizer_id
-
-    return resolve_cabinet_organizer_id(request)
+    return resolve_cabinet_organizer_id(session)
 
 
-def session_organizer(request: Request) -> str:
-    """The signed-in organizer's id, "" when anonymous (no demo
-    fallback) — for handlers that need the raw session, not the
-    write guard."""
-    from ..auth.session import session_organizer_id
-
-    return session_organizer_id(request)
-
-
-def session_slug(request: Request) -> str:
+def session_slug(session: Session | None = Depends(current_session)) -> str:
     """The signed-in organizer's slug claim, "" when anonymous — the
     public-cache tag a mutation invalidates (ADR-023). Read-only; guards
     still declare require_writable_organizer separately."""
-    from ..auth.session import session_from_request
-
-    session = session_from_request(request)
     return session.slug if session is not None else ""
 
 
 def require_internal_secret(request: Request) -> None:
     """Validate the x-internal-secret header for service-to-service calls."""
-    from ..auth.internal import INTERNAL_SECRET_HEADER, verify_internal_secret
-    from ..errors import UnauthorizedInternal
-
     secret = request.headers.get(INTERNAL_SECRET_HEADER)
     if not verify_internal_secret(secret):
         raise UnauthorizedInternal()

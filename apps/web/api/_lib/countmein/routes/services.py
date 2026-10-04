@@ -10,20 +10,16 @@ write (services/service_service.py).
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
-from ..db.rows import ServiceRow
 from ..db.serializers import to_service_record
-from ..errors import (
-    CannotCreateService,
-    ServiceNotFound,
-)
+from ..errors import ServiceNotFound
+from ..models.service import Service
+from ..repositories import service_repo
 from ..services import service_service
 from ..validation.decode import (
     decode_create_service_input,
@@ -42,29 +38,13 @@ from ..web.deps import (
 from ..web.guards import require_writable_organizer
 from ..web.revalidate import public_tags, trigger_revalidation
 from .media import cleanup_replaced_media
-from .mergepatch import apply_merge_patch, touched_update
+from .mergepatch import SERVICE_FIELDS, apply_merge_patch
 
 
-def service_writable_state(s: ServiceRow) -> dict[str, Any]:
-    """The writable fields of a service row in their wire shape — the
-    merge-patch base."""
-    return {
-        "title": s.title,
-        "description": s.description,
-        "location": s.location,
-        "contact": s.contact,
-        "defaultPrice": s.default_price,
-        "defaultCapacity": s.default_capacity,
-        "defaultDurationMinutes": s.default_duration_minutes,
-        "maxSeatsPerBooking": s.max_seats_per_booking,
-        "options": s.options,
-        "optionsSelectMode": s.options_select_mode,
-        "photoUrl": s.photo_url,
-    }
-
-
-async def _fetch_owned(session: AsyncSession, organizer_id: str, service_id: str) -> ServiceRow:
-    row = await service_service.get_owned_service_tx(session, organizer_id, service_id)
+async def _fetch_owned(session: AsyncSession, organizer_id: str, service_id: str) -> Service:
+    """The merge-patch read — under FOR UPDATE, so two concurrent
+    PATCHes serialize on the row instead of merging one snapshot."""
+    row = await service_repo.get_owned_service_for_update(session, organizer_id, service_id)
     if row is None:
         raise ServiceNotFound()
     return row
@@ -72,14 +52,13 @@ async def _fetch_owned(session: AsyncSession, organizer_id: str, service_id: str
 
 async def _update_owned(
     session: AsyncSession,
-    organizer_id: str,
-    service_id: str,
-    update: Any,
-) -> ServiceRow:
-    row = await service_service.update_owned_service_tx(session, organizer_id, service_id, update)
-    if row is None:
+    row: Service,
+    values: dict[str, object],
+) -> Service:
+    updated = await service_service.update_owned_service(session, row.organizer_id, row.id, values)
+    if updated is None:
         raise ServiceNotFound()
-    return row
+    return updated
 
 
 async def services_list(
@@ -90,9 +69,9 @@ async def services_list(
     view (signed-in, or demo for anonymous visitors, ADR-010)."""
     organizer_id, _ = scope
 
-    rows = await service_service.list_services(session, organizer_id)
+    rows = await service_repo.list_by_organizer(session, organizer_id)
     services = [to_service_record(row) for row in rows]
-    return json_response(200, gen.ServicesEnvelope(services=services)).to_starlette()
+    return json_response(200, gen.ServicesEnvelope(services=services))
 
 
 _create_service_dep = decoded(decode_create_service_input)
@@ -108,12 +87,8 @@ async def services_create(
     organizer — organizerId comes from the session, never the body. The
     cover-URL ownership check runs inside the service write."""
     row = await service_service.create_service(session, organizer_id, body.model)
-    if row is None:
-        # Structurally unreachable backstop: a silent empty
-        # INSERT … RETURNING must never 201.
-        raise CannotCreateService()
 
-    star = json_response(201, gen.ServiceEnvelope(service=to_service_record(row))).to_starlette()
+    star = json_response(201, gen.ServiceEnvelope(service=to_service_record(row)))
     # A new service appears on the organizer's page, its own page and
     # the sitemap — invalidate all three (ADR-023).
     star.background = BackgroundTask(
@@ -133,10 +108,10 @@ async def service_get(
     that a foreign id exists."""
     organizer_id, _ = scope
 
-    row = await service_service.get_owned_service(session, organizer_id, id)
+    row = await service_repo.get_owned_service(session, organizer_id, id)
     if row is None:
         raise ServiceNotFound()
-    return json_response(200, gen.ServiceEnvelope(service=to_service_record(row))).to_starlette()
+    return json_response(200, gen.ServiceEnvelope(service=to_service_record(row)))
 
 
 _update_service_dep = decoded(decode_update_service_input)
@@ -154,18 +129,16 @@ async def service_patch(
     null = clear, RFC 7386/ADR-016): the patch is validated first (a null
     on a non-nullable key is rejected before any read), then merged and
     the result re-validated."""
-    row, current, touched = await apply_merge_patch(
+    row, previous, touched = await apply_merge_patch(
         session,
         body.raw,
         fetch=lambda s: _fetch_owned(s, organizer_id, id),
-        writable_state=service_writable_state,
-        decode_merged=lambda merged, _touched: decode_merged_service_input(merged),
-        update_tx=lambda s, state, touched: _update_owned(
-            s, organizer_id, id, touched_update(state, touched)
-        ),
+        fields=SERVICE_FIELDS,
+        decode_merged=decode_merged_service_input,
+        update_tx=_update_owned,
     )
 
-    star = json_response(200, gen.ServiceEnvelope(service=to_service_record(row))).to_starlette()
+    star = json_response(200, gen.ServiceEnvelope(service=to_service_record(row)))
 
     tasks = [
         # Service fields are embedded in its page and the organizer's
@@ -176,8 +149,8 @@ async def service_patch(
     # Replaced cover removed best-effort post-commit (see
     # cleanup_replaced_media) — a storage failure must not fail the
     # committed update. Ownership was checked inside the transaction.
-    if touched.get("photoUrl"):
-        old = current.photo_url or ""
+    if "photoUrl" in touched:
+        old = str(previous["photo_url"] or "")
         new = row.photo_url or ""
         tasks.append(BackgroundTask(cleanup_replaced_media, organizer_id, old, new))
     star.background = BackgroundTasks(tasks)
@@ -197,20 +170,19 @@ async def service_delete(
     delete; photo_url rides along in DELETE … RETURNING so a concurrent
     PATCH cannot slip a new cover in between read and delete."""
     deleted = await service_service.delete_owned_service(session, organizer_id, id)
-    if deleted is None or deleted[0] == "":
+    if deleted is None:
         raise ServiceNotFound()
-    deleted_id, photo_url = deleted
 
-    star = json_response(200, gen.DeletedServiceEnvelope(id=deleted_id)).to_starlette()
+    star = json_response(200, gen.DeletedServiceEnvelope(id=deleted.id))
     star.background = BackgroundTasks(
         [
             # The service disappears from the organizer's page, its own
             # page and the sitemap.
             BackgroundTask(
                 trigger_revalidation,
-                public_tags(organizer_slug=slug, service_id=deleted_id, sitemap=True),
+                public_tags(organizer_slug=slug, service_id=deleted.id, sitemap=True),
             ),
-            BackgroundTask(cleanup_replaced_media, organizer_id, photo_url or "", ""),
+            BackgroundTask(cleanup_replaced_media, organizer_id, deleted.photo_url or "", ""),
         ]
     )
     return star

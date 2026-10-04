@@ -9,10 +9,10 @@ limit → body → decode → identity) is FastAPI dependencies
 (web/deps.py) resolved in declaration order, pinning side-effect order
 (a validation failure must not consume the guest ticket).
 
-Service functions return detached Row chains (db/rows.BookingChain);
-this module projects them to wire DTOs via db/serializers.py — the
-boundary that keeps manageToken out of organizer-facing answers by
-construction.
+Service functions return detached ORM-model chains
+(repositories.booking_repo.BookingChain); this module projects them to
+wire DTOs via db/serializers.py — the boundary that keeps manageToken
+out of organizer-facing answers by construction.
 """
 
 from __future__ import annotations
@@ -26,16 +26,19 @@ from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.responses import Response as StarletteResponse
 
 from .. import logx
+from ..contracts import domain
 from ..contracts import models_gen as gen
 from ..contracts.payloads import AuthTicketPayload
 from ..db.client import sessionmaker
-from ..db.rows import BookingChain, OutboxRow, from_model_booking
 from ..db.serializers import to_booking_record, to_guest_booking_chain
+from ..db.shared import hash_manage_token
 from ..errors import BookingNotFound
+from ..models.outbox import OutboxMessage
 from ..queue import PublishSkipped, publish_outbox
 from ..repositories import booking_repo
+from ..repositories.booking_repo import BookingChain
 from ..services import booking_service
-from ..services.outbox_service import mark_outbox_sent, mark_outbox_skipped
+from ..services.outbox_service import settle_publish
 from ..validation.decode import (
     decode_cancel_booking_by_organizer_input,
     decode_create_booking_input,
@@ -77,14 +80,13 @@ _cancel_by_organizer_dep = decoded(decode_cancel_booking_by_organizer_input)
 def _chain_tags(chain: BookingChain) -> list[str]:
     """Public-cache tags a booking mutation dirties: bookedCount changed
     on the organizer's public page and the standalone service page."""
-    _booking, _slot, service, organizer = chain
-    return public_tags(organizer_slug=organizer.slug, service_id=service.id)
+    return public_tags(organizer_slug=chain.organizer.slug, service_id=chain.service.id)
 
 
 def _attach_followups(
     star: StarletteResponse,
     chain: BookingChain,
-    outbox: list[OutboxRow],
+    outbox: list[OutboxMessage],
     trace_id: str,
 ) -> StarletteResponse:
     """Attach after-commit work to the response: QStash publish and
@@ -99,9 +101,9 @@ def _attach_followups(
     return star
 
 
-async def publish_outbox_rows(rows: list[OutboxRow], trace_id: str) -> None:
+async def publish_outbox_rows(rows: list[OutboxMessage], trace_id: str) -> None:
     """Shared after-commit publish: each outbox row is published to its
-    queue with the row id as dedup id, then marked `sent` (or `skipped`
+    queue with the row id as dedup id, then settled `sent` (or `skipped`
     on a deliberate dev skip) so the sweeper never re-publishes it.
     Publish errors are absorbed (already committed) — the row stays
     `pending` and the sweeper retries.
@@ -114,7 +116,10 @@ async def publish_outbox_rows(rows: list[OutboxRow], trace_id: str) -> None:
     try:
         async with asyncio.timeout(_PUBLISH_BUDGET_SECONDS):
             outcomes = await asyncio.gather(
-                *(publish_outbox(row.queue, row.payload, row.id, trace_id) for row in rows),
+                *(
+                    publish_outbox(row.queue, row.payload, row.id, row.trace_id or "")
+                    for row in rows
+                ),
                 return_exceptions=True,
             )
     except TimeoutError:
@@ -123,13 +128,11 @@ async def publish_outbox_rows(rows: list[OutboxRow], trace_id: str) -> None:
         logx.warn("inline publish budget exhausted", {"traceId": trace_id})
         return
     for row, outcome in zip(rows, outcomes, strict=True):
-        if outcome is None:
-            await _mark_outbox_terminal(row.id, trace_id, False)
-        elif isinstance(outcome, PublishSkipped):
-            await _mark_outbox_terminal(row.id, trace_id, True)
-        else:
+        # gather return_exceptions=True yields only BaseException|None.
+        err = outcome if isinstance(outcome, BaseException) else None
+        if err is not None and not isinstance(err, PublishSkipped):
             logx.error(
-                outcome if isinstance(outcome, BaseException) else RuntimeError(str(outcome)),
+                err,
                 {
                     "queue": row.queue,
                     "outboxId": row.id,
@@ -137,24 +140,20 @@ async def publish_outbox_rows(rows: list[OutboxRow], trace_id: str) -> None:
                     "source": "inline-publish",
                 },
             )
-            # stays pending — the sweeper retries
+            continue  # stays pending — the sweeper retries
+        await _settle_outbox_row(row.id, err, trace_id)
 
 
-async def _mark_outbox_terminal(id: str, trace_id: str, skipped: bool) -> None:
+async def _settle_outbox_row(row_id: str, outcome: BaseException | None, trace_id: str) -> None:
     """Record the inline-publish outcome on its own deadline — the
-    publish budget may already be expired. skipped = the dev-skip
-    sentinel (honest terminal state), otherwise sent. Worker context:
-    the request's session is closed, so this owns a fresh one."""
-    source = "inline-mark-skipped" if skipped else "inline-mark-sent"
+    publish budget may already be expired. Worker context: the request's
+    session is closed, so this owns a fresh one."""
     try:
         async with asyncio.timeout(_MARK_DEADLINE_SECONDS):
-            async with sessionmaker()() as session:
-                if skipped:
-                    await mark_outbox_skipped(session, id)
-                else:
-                    await mark_outbox_sent(session, id)
+            async with sessionmaker()() as session, session.begin():
+                await settle_publish(session, row_id, outcome)
     except Exception as err:
-        logx.error(err, {"outboxId": id, "traceId": trace_id, "source": source})
+        logx.error(err, {"outboxId": row_id, "traceId": trace_id, "source": "inline-settle"})
 
 
 async def bookings_list(
@@ -173,10 +172,8 @@ async def bookings_list(
         session, organizer_id, limit=limit + 1, offset=offset
     )
     has_more = len(bookings) > limit
-    records = [to_booking_record(from_model_booking(b)) for b in bookings[:limit]]
-    return json_response(
-        200, gen.BookingsEnvelope(bookings=records, hasMore=has_more)
-    ).to_starlette()
+    records = [to_booking_record(b) for b in bookings[:limit]]
+    return json_response(200, gen.BookingsEnvelope(bookings=records, hasMore=has_more))
 
 
 async def booking_create(
@@ -218,15 +215,12 @@ async def booking_create(
             trace_id=trace_id,
         ),
     )
-    booking = chain[0]
 
-    logx.info("booking created", {"traceId": trace_id, "bookingId": booking.id})
+    logx.info("booking created", {"traceId": trace_id, "bookingId": chain.booking.id})
 
     # After-commit work (ADR-012 + ADR-023): QStash publish and cache
     # invalidation as background tasks — the guest waits for neither.
-    star = json_response(
-        201, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain))
-    ).to_starlette()
+    star = json_response(201, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain)))
     return _attach_followups(star, chain, outbox, trace_id)
 
 
@@ -244,11 +238,11 @@ async def booking_lookup(
     a URL, and redeeming it mutates server state (single-use). Identity
     comes only from the ticket — a raw messengerId in the body would
     read anyone's bookings."""
-    chains = await booking_service.list_guest_bookings(
+    chains = await booking_repo.list_guest_bookings(
         session, identity.messenger, identity.messenger_id
     )
     bookings = [to_guest_booking_chain(chain) for chain in chains]
-    return json_response(200, gen.GuestBookingsEnvelope(bookings=bookings)).to_starlette()
+    return json_response(200, gen.GuestBookingsEnvelope(bookings=bookings))
 
 
 async def booking_cancel(
@@ -274,15 +268,13 @@ async def booking_cancel(
 
     logx.info(
         "booking cancelled by guest",
-        {"traceId": trace_id, "bookingId": chain[0].id},
+        {"traceId": trace_id, "bookingId": chain.booking.id},
     )
 
     # After-commit notification (ADR-012): the organizer is told by
     # QStash once the cancel is durable; publish and cache invalidation
     # are background tasks — the guest waits for neither.
-    star = json_response(
-        200, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain))
-    ).to_starlette()
+    star = json_response(200, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain)))
     return _attach_followups(star, chain, outbox, trace_id)
 
 
@@ -291,14 +283,17 @@ async def booking_manage_lookup(
     body: ValidatedBody[gen.ManageTokenInput] = Depends(_manage_token_dep),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """POST /api/bookings/manage-lookup: a guest looks up a booking by manageToken."""
-    chain = await booking_service.get_guest_booking_by_token(session, str(body.model.manageToken))
-    if chain is None:
+    """POST /api/bookings/manage-lookup: a guest looks up a booking by
+    manageToken. The credential check goes through the SHA-256 hash;
+    an expired token answers like an unknown one, so the endpoint
+    cannot probe token existence (ADR-020)."""
+    chain = await booking_repo.get_chain_by_manage_token_hash(
+        session, hash_manage_token(str(body.model.manageToken))
+    )
+    if chain is None or domain.manage_token_expired(chain.booking.manage_token_expires_at):
         raise BookingNotFound()
 
-    return json_response(
-        200, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain))
-    ).to_starlette()
+    return json_response(200, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain)))
 
 
 async def booking_cancel_by_organizer(
@@ -326,11 +321,9 @@ async def booking_cancel_by_organizer(
 
     logx.info(
         "booking cancelled by organizer",
-        {"traceId": trace_id, "bookingId": chain[0].id},
+        {"traceId": trace_id, "bookingId": chain.booking.id},
     )
 
     # The organizer's DTO drops manageToken — project the booking row.
-    star = json_response(
-        200, gen.BookingEnvelope(booking=to_booking_record(chain[0]))
-    ).to_starlette()
+    star = json_response(200, gen.BookingEnvelope(booking=to_booking_record(chain.booking)))
     return _attach_followups(star, chain, outbox, trace_id)

@@ -131,8 +131,8 @@ def test_slot_end():
     assert domain.slot_end(start, 90) == datetime(2026, 9, 13, 9, 45, tzinfo=UTC)
 
 
-# The cancel rule lives in db/rows.py can_cancel_booking and is pinned
-# there.
+# The cancel rule lives in db/serializers.py can_cancel_booking and is
+# pinned there.
 def test_parse_flex_time():
     from datetime import UTC, datetime
 

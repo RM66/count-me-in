@@ -9,11 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response as StarletteResponse
 
 from ..contracts import models_gen as gen
-from ..db.rows import (
-    from_model_organizer,
-    from_model_service,
-    from_model_slot,
-)
 from ..db.serializers import (
     to_public_organizer,
     to_service_record,
@@ -46,9 +41,9 @@ async def get_public_organizer(
         raise OrganizerNotFound()
 
     services = await service_repo.list_by_organizer(
-        session, str(organizer.id), limit=_PUBLIC_SERVICES_LIMIT
+        session, organizer.id, limit=_PUBLIC_SERVICES_LIMIT
     )
-    service_ids = [str(s.id) for s in services]
+    service_ids = [s.id for s in services]
     now = datetime.now(UTC)
     slots = (
         await slot_repo.list_upcoming_by_services(
@@ -63,11 +58,11 @@ async def get_public_organizer(
     )
 
     view = gen.PublicOrganizerViewEnvelope(
-        organizer=to_public_organizer(from_model_organizer(organizer)),
-        services=[to_service_record(from_model_service(s)) for s in services],
-        slots=[to_time_slot_record(from_model_slot(slot)) for slot in slots],
+        organizer=to_public_organizer(organizer),
+        services=[to_service_record(s) for s in services],
+        slots=[to_time_slot_record(slot) for slot in slots],
     )
-    return json_response(200, view).to_starlette()
+    return json_response(200, view)
 
 
 async def get_public_service(
@@ -80,23 +75,23 @@ async def get_public_service(
     models = await service_repo.get_service_with_organizer(session, id)
     if models is None:
         raise ServiceNotFound()
-    service_model, organizer_model = models
+    service, organizer = models
 
     now = datetime.now(UTC)
     slots = await slot_repo.list_upcoming_by_services(
         session,
-        [str(service_model.id)],
+        [service.id],
         now,
         until_time=now + SLOT_HORIZON,
         limit=_PUBLIC_SLOTS_LIMIT,
     )
 
     view = gen.PublicServiceViewEnvelope(
-        service=to_service_record(from_model_service(service_model)),
-        organizer=to_public_organizer(from_model_organizer(organizer_model)),
-        slots=[to_time_slot_record(from_model_slot(slot)) for slot in slots],
+        service=to_service_record(service),
+        organizer=to_public_organizer(organizer),
+        slots=[to_time_slot_record(slot) for slot in slots],
     )
-    return json_response(200, view).to_starlette()
+    return json_response(200, view)
 
 
 async def get_public_sitemap(
@@ -114,4 +109,4 @@ async def get_public_sitemap(
             for org_slug, srv_id in service_paths
         ],
     )
-    return json_response(200, envelope).to_starlette()
+    return json_response(200, envelope)

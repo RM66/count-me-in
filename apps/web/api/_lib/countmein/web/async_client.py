@@ -7,8 +7,8 @@ AsyncClient opens no sockets, so laziness here is about import cost,
 not network. Timeouts are set on the client so every call inherits them;
 callers may still pass a tighter per-request timeout.
 
-Tests never touch the network: they patch the transport seams in
-`queue._post` / `jobs.telegram._post`."""
+Tests never touch the network: they mock the transport with respx —
+interception happens inside httpx, so no module-level seam is needed."""
 
 from __future__ import annotations
 

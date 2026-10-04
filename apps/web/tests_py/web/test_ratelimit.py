@@ -4,7 +4,8 @@ sliding-window behavior is covered against fakeredis."""
 from __future__ import annotations
 
 import pytest
-from countmein.web.ratelimit import RateLimitConfig, allow, client_ip
+from countmein.errors import RateLimited
+from countmein.web.ratelimit import RateLimitConfig, client_ip, enforce
 
 
 @pytest.fixture()
@@ -18,8 +19,7 @@ async def test_allow_fails_open_without_redis(clean_env, monkeypatch):
     """With no REDIS_URL the limiter must let every request through (a
     limiter outage must never block traffic)."""
     monkeypatch.setenv("REDIS_URL", "")
-    allowed, _ = await allow("rl:test", RateLimitConfig(limit=1, window=60.0))
-    assert allowed, "expected fail-open when REDIS_URL is unset"
+    await enforce("rl:test", RateLimitConfig(limit=1, window=60.0))
 
 
 async def test_allow_fails_open_on_redis_error(clean_env, monkeypatch):
@@ -27,14 +27,17 @@ async def test_allow_fails_open_on_redis_error(clean_env, monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://localhost:1/0")
 
     class Boom:
-        async def eval(self, *a, **kw):
-            raise ConnectionError("redis down")
+        def register_script(self, *a, **kw):
+            class _Script:
+                async def __call__(self, *a, **kw):
+                    raise ConnectionError("redis down")
+
+            return _Script()
 
     import countmein.redis as redis_mod
 
     monkeypatch.setattr(redis_mod, "client", lambda: Boom())
-    allowed, _ = await allow("rl:test", RateLimitConfig(limit=1, window=60.0))
-    assert allowed, "expected fail-open when Redis errors"
+    await enforce("rl:test", RateLimitConfig(limit=1, window=60.0))
 
 
 def _request(headers: dict[str, str] | None = None, client_ip: str = "127.0.0.1"):
@@ -87,7 +90,6 @@ async def test_internal_secret_uses_dedicated_bucket(monkeypatch):
     import countmein.redis as redis_mod
     import fakeredis.aioredis
     from countmein.auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
-    from countmein.errors import RateLimited
     from countmein.web.deps import ip_rate_limit
 
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
@@ -116,7 +118,7 @@ async def test_internal_secret_uses_dedicated_bucket(monkeypatch):
 
 async def test_sliding_window_enforces_limit(monkeypatch):
     """The Lua script against fakeredis: limit 2 per 60s — the third hit
-    is refused with a positive retry-after."""
+    is refused with a positive Retry-After."""
     import fakeredis.aioredis
 
     fake = fakeredis.aioredis.FakeRedis()
@@ -127,11 +129,12 @@ async def test_sliding_window_enforces_limit(monkeypatch):
 
     cfg = RateLimitConfig(limit=2, window=60.0)
     key = "rl:window-test"
-    assert await allow(key, cfg) == (True, 0.0)
-    assert await allow(key, cfg) == (True, 0.0)
-    allowed, retry_after = await allow(key, cfg)
-    assert not allowed
-    assert 0 < retry_after <= 60.0
+    await enforce(key, cfg)
+    await enforce(key, cfg)
+    with pytest.raises(RateLimited) as excinfo:
+        await enforce(key, cfg)
+    retry_after = int(excinfo.value.headers["Retry-After"])
+    assert 0 < retry_after <= 60
 
     # A different key is a different bucket.
-    assert await allow("rl:other", cfg) == (True, 0.0)
+    await enforce("rl:other", cfg)

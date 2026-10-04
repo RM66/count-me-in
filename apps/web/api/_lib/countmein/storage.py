@@ -37,32 +37,26 @@ _ENV_NAMES = (
 )
 
 _cfg: dict[str, str] | None = None
-_cfg_err: Exception | None = None
 
 
 def config() -> dict[str, str]:
     """Validate lazily (raise on first use); the env list is ordered so
     the reported error is deterministic. No lock needed — a concurrent
     write stores the same env-derived data."""
-    global _cfg, _cfg_err
-    if _cfg is None and _cfg_err is None:
-        _cfg = {
-            "account_id": os.getenv("R2_ACCOUNT_ID", ""),
-            "access_key_id": os.getenv("R2_ACCESS_KEY_ID", ""),
-            "secret_access": os.getenv("R2_SECRET_ACCESS_KEY", ""),
-            "bucket": os.getenv("R2_BUCKET", ""),
-            "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", ""),
-        }
-        for name in _ENV_NAMES:
-            if os.getenv(name, "") == "":
-                _cfg_err = RuntimeError(f"{name} is not set")
-                break
-    if _cfg_err is not None:
-        raise _cfg_err
-    if _cfg is None:
-        # Unreachable by contract; a real None is a bug — a raise, not
-        # an assert, so python -O cannot strip the check.
-        raise RuntimeError("_cfg is None after its error guard")
+    global _cfg
+    if _cfg is not None:
+        return _cfg
+    cfg = {
+        "account_id": os.getenv("R2_ACCOUNT_ID", ""),
+        "access_key_id": os.getenv("R2_ACCESS_KEY_ID", ""),
+        "secret_access": os.getenv("R2_SECRET_ACCESS_KEY", ""),
+        "bucket": os.getenv("R2_BUCKET", ""),
+        "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", ""),
+    }
+    for name in _ENV_NAMES:
+        if os.getenv(name, "") == "":
+            raise RuntimeError(f"{name} is not set")
+    _cfg = cfg
     return _cfg
 
 
@@ -70,9 +64,8 @@ def reset_for_test() -> None:
     """Drop cached config AND the S3 client — the client binds the
     account id at build time, so clearing config alone would leave a
     stale endpoint under a new account."""
-    global _cfg, _cfg_err, _s3_client
+    global _cfg, _s3_client
     _cfg = None
-    _cfg_err = None
     _s3_client = None
 
 
@@ -111,10 +104,6 @@ def _client() -> S3Client:
                         retries={"total_max_attempts": 1},
                     ),
                 )
-    if _s3_client is None:
-        # Unreachable by contract; a real None is a bug — a raise, not
-        # an assert, so python -O cannot strip the check.
-        raise RuntimeError("_s3_client is None after its error guard")
     return _s3_client
 
 

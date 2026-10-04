@@ -17,7 +17,7 @@ from .links import (
     manage_booking_url,
     organizer_page_url,
 )
-from .receiver import trace_id_from_headers, verify_qstash_signature
+from .receiver import verify_qstash_signature
 from .run import (
     InvalidJobPayloadError,
     UnknownJobQueueError,
@@ -50,6 +50,5 @@ __all__ = [
     "read_env",
     "run_job",
     "send_message",
-    "trace_id_from_headers",
     "verify_qstash_signature",
 ]

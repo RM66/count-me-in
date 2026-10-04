@@ -231,14 +231,20 @@ def _order_fields(e: Errors, schema_name: str) -> None:
 
 
 def _decode[T: BaseModel](
-    model_cls: type[T], schema_name: str, m: dict[str, Any], *, merged_touched: set[str] | None
+    model_cls: type[T],
+    m: dict[str, Any],
+    *,
+    merged_touched: set[str] | None,
+    merged: bool,
 ) -> T:
-    """raw object → transforms → jsonschema → rules → DTO.
-    ``merged_touched`` is the patch's key set for merged-state decoders
-    (gates startsAtNotPast); None otherwise."""
-    meta = RULES.get(schema_name, {})
+    """raw object → transforms → jsonschema → rules → DTO — the one
+    pipeline behind both entry points. ``merged_touched`` is the patch's
+    key set for merged-state decoders (gates startsAtNotPast); ``merged``
+    adds the mergedRequired pass — keys a patch-null would silently
+    erase."""
+    meta = RULES.get(model_cls.__name__, {})
     _apply_transforms(meta.get("transforms"), m)
-    errs = _validate_spec(schema_name, m)
+    errs = _validate_spec(model_cls.__name__, m)
     e = errs or Errors()
     out = _construct(model_cls, m)
     # Rules see the value only when the schema passed — except schemas
@@ -247,36 +253,31 @@ def _decode[T: BaseModel](
     # consistency message).
     if errs is None or meta.get("refinements"):
         _run_field_rules(meta.get("fieldRules"), out, e, touched=merged_touched)
+    if merged:
+        for field_name in meta.get("mergedRequired", []):
+            if getattr(out, field_name, None) is None:
+                e.add(field_name, "Required")
+    if errs is None or meta.get("refinements"):
         _run_refinements(meta.get("refinements"), out, e)
-    _order_fields(e, schema_name)
-    return _finish(out, e)
+    _order_fields(e, model_cls.__name__)
+    if e.form or e.fields:
+        raise ValidationFailed(e)
+    return out
 
 
-def decode_input[T: BaseModel](model_cls: type[T], schema_name: str, body: bytes) -> T:
-    """Wire decode: transforms → schema → field rules → refinements → DTO."""
-    return _decode(model_cls, schema_name, _raw(body), merged_touched=None)
+def decode_input[T: BaseModel](model_cls: type[T], body: bytes) -> T:
+    """Wire decode: transforms → schema → field rules → refinements → DTO.
+    The schema name is the model class name — the generated pair never
+    drifts."""
+    return _decode(model_cls, _raw(body), merged_touched=None, merged=False)
 
 
 def decode_merged[T: BaseModel](
-    model_cls: type[T], schema_name: str, merged: bytes, touched: set[str] | None = None
+    model_cls: type[T], merged: bytes, touched: set[str] | None = None
 ) -> T:
     """Merged-state decode (RFC 7386): the update schema's rules plus
     mergedRequired — keys a patch-null would silently erase."""
-    meta = RULES.get(schema_name, {})
-    m = _raw(merged)
-    _apply_transforms(meta.get("transforms"), m)
-    errs = _validate_spec(schema_name, m)
-    e = errs or Errors()
-    out = _construct(model_cls, m)
-    if errs is None or meta.get("refinements"):
-        _run_field_rules(meta.get("fieldRules"), out, e, touched=touched)
-    for field_name in meta.get("mergedRequired", []):
-        if getattr(out, field_name, None) is None:
-            e.add(field_name, "Required")
-    if errs is None or meta.get("refinements"):
-        _run_refinements(meta.get("refinements"), out, e)
-    _order_fields(e, schema_name)
-    return _finish(out, e)
+    return _decode(model_cls, _raw(merged), merged_touched=touched, merged=True)
 
 
 def _raw(body: bytes) -> dict[str, Any]:
@@ -286,11 +287,3 @@ def _raw(body: bytes) -> dict[str, Any]:
     if e is not None:
         raise ValidationFailed(e)
     return m or {}
-
-
-def _finish[T](out: T, e: Errors) -> T:
-    """Turn the collected Errors into the raise-or-return decision."""
-    done = e.finish()
-    if done is not None:
-        raise ValidationFailed(done)
-    return out

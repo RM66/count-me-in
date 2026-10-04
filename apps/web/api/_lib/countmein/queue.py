@@ -13,9 +13,6 @@ cannot deliver the same notification twice. The caller marks the row
 from __future__ import annotations
 
 import os
-from typing import Any
-
-import httpx
 
 from . import config, logx
 from .web.async_client import client as async_client
@@ -99,7 +96,7 @@ async def _publish_body(
         headers["Upstash-Trace-Id"] = trace_id
     # A transport error propagates as httpx.HTTPError — callers leave
     # the row pending for the sweeper.
-    res = await _post(
+    res = await async_client().post(
         base + "/v2/publish/" + destination,
         content=body,
         headers=headers,
@@ -115,18 +112,3 @@ def _destination(queue_name: str) -> str:
     if app_url == "":
         raise RuntimeError("APP_URL is not set")
     return app_url + "/api/jobs/" + queue_name
-
-
-async def _default_post(url: str, **kwargs: Any) -> httpx.Response:
-    return await async_client().post(url, **kwargs)
-
-
-# Test seam: the transport — async so the caller's asyncio.timeout can
-# actually cancel it.
-_post = _default_post
-
-
-def _reset_for_test() -> None:
-    """Restore the default transport after a test patched it."""
-    global _post
-    _post = _default_post

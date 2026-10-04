@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
 from ..contracts.constants_gen import (
     DEFAULT_LOCALE,
@@ -24,7 +25,6 @@ from ..contracts.constants_gen import (
 )
 from ..services.booking_service import MANAGE_TOKEN_GRACE_PERIOD
 from .client import sessionmaker
-from .rows import BookingRow, TimeSlotRow
 from .shared import hash_manage_token, new_manage_token
 
 DEMO_TIMEZONE = "Europe/Belgrade"
@@ -588,61 +588,60 @@ DEMO_BOOKING_TEMPLATES = [
 ]
 
 
-def build_demo_slots(now: datetime) -> list[TimeSlotRow]:
-    """Resolve the templates against now. booked_count is a plain
-    number, not derived from booking rows: the demo shows realistic
-    fill levels without a booking per seat, and the read-only account
-    means the counters never drift."""
-    out: list[TimeSlotRow] = []
+def build_demo_slots(now: datetime) -> list[dict[str, Any]]:
+    """Resolve the templates against now, as insert-ready dicts.
+    booked_count is a plain number, not derived from booking rows: the
+    demo shows realistic fill levels without a booking per seat, and
+    the read-only account means the counters never drift."""
+    out: list[dict[str, Any]] = []
     for t in DEMO_SLOT_TEMPLATES:
         starts_at = datetime(
             now.year, now.month, now.day, t.hour, 0, 0, 0, tzinfo=now.tzinfo
         ) + timedelta(days=t.day_offset + 1)
         out.append(
-            TimeSlotRow(
-                id=t.id,
-                service_id=t.service_id,
-                starts_at=starts_at,
-                duration_minutes=t.duration_minutes,
-                capacity=t.capacity,
-                booked_count=t.booked_count,
-                price=t.price,
-            )
+            {
+                "id": t.id,
+                "service_id": t.service_id,
+                "starts_at": starts_at,
+                "duration_minutes": t.duration_minutes,
+                "capacity": t.capacity,
+                "booked_count": t.booked_count,
+                "price": t.price,
+            }
         )
     return out
 
 
-def build_demo_bookings(now: datetime, slots: list[TimeSlotRow]) -> list[BookingRow]:
-    """Resolve the templates against now and the built slots. Tokens
-    are random per run; every row carries manage_token_expires_at =
-    slot start + 24h (the production rule): past-slot bookings are born
-    expired, upcoming usable — no row recreates the NULL-expiry state
-    migration 0014 removed."""
-    starts_at = {s.id: s.starts_at for s in slots}
-    out: list[BookingRow] = []
+def build_demo_bookings(now: datetime, slots: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Resolve the templates against now and the built slots, as
+    insert-ready dicts. Tokens are random per run; every row carries
+    manage_token_expires_at = slot start + 24h (the production rule):
+    past-slot bookings are born expired, upcoming usable — no row
+    recreates the NULL-expiry state migration 0014 removed."""
+    starts_at = {s["id"]: s["starts_at"] for s in slots}
+    out: list[dict[str, Any]] = []
     for t in DEMO_BOOKING_TEMPLATES:
-        status = "cancelled" if t.cancelled else "confirmed"
         expires_at = now + MANAGE_TOKEN_GRACE_PERIOD
         if t.time_slot_id in starts_at:
             expires_at = starts_at[t.time_slot_id] + MANAGE_TOKEN_GRACE_PERIOD
         token = new_manage_token()
         out.append(
-            BookingRow(
-                id=t.id,
-                time_slot_id=t.time_slot_id,
-                status=status,
-                seats=t.seats,
-                guest_name=t.guest_name,
-                guest_messenger="telegram",
-                guest_messenger_id=t.guest_messenger_id,
-                guest_messenger_login=t.guest_login,
-                guest_locale=DEFAULT_LOCALE,
-                manage_token=token,
-                manage_token_hash=hash_manage_token(token),
-                selected_options=t.selected_options,
-                created_at=now - timedelta(days=t.days_ago),
-                manage_token_expires_at=expires_at,
-            )
+            {
+                "id": t.id,
+                "time_slot_id": t.time_slot_id,
+                "status": "cancelled" if t.cancelled else "confirmed",
+                "seats": t.seats,
+                "guest_name": t.guest_name,
+                "guest_messenger": "telegram",
+                "guest_messenger_id": t.guest_messenger_id,
+                "guest_messenger_login": t.guest_login,
+                "guest_locale": DEFAULT_LOCALE,
+                "manage_token": token,
+                "manage_token_hash": hash_manage_token(token),
+                "selected_options": t.selected_options,
+                "created_at": now - timedelta(days=t.days_ago),
+                "manage_token_expires_at": expires_at,
+            }
         )
     return out
 
@@ -705,44 +704,8 @@ async def seed_demo(now: datetime) -> None:
         await booking_repo.delete_bookings_for_services(session, demo_service_ids)
         await slot_repo.delete_slots_for_services(session, demo_service_ids)
 
-        await slot_repo.insert_slots(
-            session,
-            [
-                {
-                    "id": slot.id,
-                    "service_id": slot.service_id,
-                    "starts_at": slot.starts_at,
-                    "duration_minutes": slot.duration_minutes,
-                    "capacity": slot.capacity,
-                    "booked_count": slot.booked_count,
-                    "price": slot.price,
-                }
-                for slot in slots
-            ],
-        )
-
-        await booking_repo.insert_bookings(
-            session,
-            [
-                {
-                    "id": b.id,
-                    "time_slot_id": b.time_slot_id,
-                    "status": b.status,
-                    "seats": b.seats,
-                    "guest_name": b.guest_name,
-                    "guest_messenger": "telegram",
-                    "guest_messenger_id": b.guest_messenger_id,
-                    "guest_messenger_login": b.guest_messenger_login,
-                    "guest_locale": b.guest_locale,
-                    "manage_token": b.manage_token,
-                    "manage_token_hash": b.manage_token_hash,
-                    "selected_options": b.selected_options,
-                    "manage_token_expires_at": b.manage_token_expires_at,
-                    "created_at": b.created_at,
-                }
-                for b in slot_bookings
-            ],
-        )
+        await slot_repo.insert_slots(session, slots)
+        await booking_repo.insert_bookings(session, slot_bookings)
 
 
 if __name__ == "__main__":

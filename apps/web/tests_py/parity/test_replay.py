@@ -11,8 +11,8 @@ Deliberate differences, all forced by in-process replay:
 - requests go through httpx.ASGITransport instead of a TCP server, so
   `date`/`server` headers never exist and background-task publishes
   complete before the response returns;
-- the outbound sink is the app's own transport seams (queue._post,
-  jobs.telegram._post) — the recorded {path, body} shape is identical;
+- the outbound sink is respx at the httpx transport — the recorded
+  {path, body} shape is identical;
 - the demo seed is the Python port (db.seed.seed_demo) — a seed drift
   is exactly the parity break this test exists to catch.
 
@@ -38,14 +38,13 @@ from urllib.parse import urlsplit
 import httpx
 import pytest
 import redis.asyncio as aioredis
+import respx
 import yaml
-from countmein import queue as queue_mod
 from countmein import redis as redis_mod
 from countmein.app import create_app
 from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
 from countmein.db import client as db_client
 from countmein.db.seed import seed_demo
-from countmein.jobs import telegram as telegram_mod
 from httpx import ASGITransport
 from sqlalchemy import text
 
@@ -407,40 +406,41 @@ class Normalizer:
         return text
 
 
-# ── outbound sink (the app's transport seams) ─────────────────────────────────
+# ── outbound sink (respx at the httpx transport) ─────────────────────────────
 
 
 class Sink:
     """Records every outbound POST the app attempts (QStash publish,
     Telegram send) as {path, body}. Any host is accepted — a call the
     golden does not show becomes an extra entry and fails the
-    comparison."""
+    comparison.
+
+    One exception: calls back into the app itself (the revalidate
+    endpoint at APP_URL). No server listens there in replay — the
+    recorded behavior is a refused connection the caller swallows, so
+    the sink refuses it without recording."""
 
     def __init__(self) -> None:
         self.calls: list[dict[str, str]] = []
+        self._router = respx.mock(assert_all_called=False)
 
-    def _record(self, url: str, content: bytes | str) -> httpx.Response:
-        path = url.split("://", 1)[1]
-        path = "/" + path.split("/", 1)[1] if "/" in path else "/"
-        body = content if isinstance(content, str) else content.decode("utf-8", "replace")
+    async def _handle(self, request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.startswith(BASE):
+            raise httpx.ConnectError("connection refused", request=request)
+        path = request.url.path or "/"
+        body = request.content.decode("utf-8", "replace")
         self.calls.append({"path": path, "body": body})
         if "api.telegram.org" in url:
             return httpx.Response(200, json={"ok": True, "result": {"message_id": 1}})
         return httpx.Response(200, json={"messageId": "sink-recorded"})
 
-    async def qstash_post(self, url, *, content=None, headers=None, **kwargs):  # type: ignore[no-untyped-def]
-        return self._record(str(url), content or b"")
-
-    async def telegram_post(self, url, *, content=None, headers=None, **kwargs):  # type: ignore[no-untyped-def]
-        return self._record(str(url), content or b"")
-
     def install(self) -> None:
-        queue_mod._post = self.qstash_post
-        telegram_mod._post = self.telegram_post
+        self._router.route().mock(side_effect=self._handle)
+        self._router.start()
 
     def uninstall(self) -> None:
-        queue_mod._reset_for_test()
-        telegram_mod._reset_for_test()
+        self._router.stop()
 
 
 # ── scenario runner (mirrors record.py run_scenario) ───────────────────────────

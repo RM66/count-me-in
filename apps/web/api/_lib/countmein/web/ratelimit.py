@@ -4,14 +4,15 @@ The whole sliding-window check is one atomic Lua script: a pipeline
 could interleave between concurrent requests — two callers could both
 ZADD before either ZCARD runs, letting a burst slip past the limit.
 
-One enforcement path: allow() is the check, the web/deps.py dependency
-factories raise RateLimited from it — every route (healthz included)
-declares its bucket as a Depends, so there is no second hand-rolled
-rate_limited() helper to drift from.
+One enforcement path: enforce() raises RateLimited when the bucket is
+exhausted — every route (healthz included) declares its bucket as a
+Depends (web/deps.py), so there is no second hand-rolled rate_limited()
+helper to drift from.
 """
 
 from __future__ import annotations
 
+import math
 import os
 import random
 import threading
@@ -21,6 +22,7 @@ from dataclasses import dataclass
 from starlette.requests import Request
 
 from .. import config, logx
+from ..errors import RateLimited
 
 # KEYS[1] = rate key; ARGV[1] = now (ns), ARGV[2] = window (ns),
 # ARGV[3] = limit, ARGV[4] = unique member.
@@ -59,11 +61,11 @@ class RateLimitConfig:
     label: str = ""
 
 
-# The structured degradation signal (ADR-019): allow() fails open on a
+# The structured degradation signal (ADR-019): enforce() fails open on a
 # Redis outage so traffic keeps flowing, but the outage is an incident —
 # `_report_fail_open` emits a `ratelimit.fail_open` event a log drain
 # can alert on, per bucket, throttled to once per interval. The generic
-# warn_every inside allow() stays as the no-drain catch-all.
+# warn_every inside enforce() stays as the no-drain catch-all.
 _FAIL_OPEN_INTERVAL = 60.0
 _fail_open_last: dict[str, float] = {}
 _fail_open_lock = threading.Lock()
@@ -94,14 +96,14 @@ def _reset_for_test() -> None:
         _fail_open_last.clear()
 
 
-async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
-    """Check the sliding-window limit for key. Returns (allowed,
-    retry_after_seconds). Fails open on a Redis failure — a limiter
-    outage must never block traffic, and without REDIS_URL there is
-    nothing to count against (ADR-019). The outage is logged
+async def enforce(key: str, cfg: RateLimitConfig) -> None:
+    """Check the sliding-window limit for key; raise RateLimited (429 +
+    Retry-After) when exhausted. Fails open on a Redis failure — a
+    limiter outage must never block traffic, and without REDIS_URL
+    there is nothing to count against (ADR-019). The outage is logged
     (rate-limited) so a silent Redis loss does not go unnoticed."""
-    if os.getenv("REDIS_URL", "") == "":
-        return True, 0.0
+    if not config.redis_configured():
+        return
     from .. import redis as redis_mod
 
     now = time.time_ns()
@@ -120,15 +122,13 @@ async def allow(key: str, cfg: RateLimitConfig) -> tuple[bool, float]:
             {"scope": "rate-limit", "error": str(err)},
         )
         _report_fail_open(cfg.label or key, err)
-        return True, 0.0
-    if not isinstance(res, (list, tuple)) or len(res) < 2:
-        return True, 0.0
-    if int(res[0]) == 1:
-        return True, 0.0
+        return
+    if not isinstance(res, (list, tuple)) or len(res) < 2 or int(res[0]) == 1:
+        return
     retry_ns = int(res[1])
     if retry_ns <= 0:
         retry_ns = int(cfg.window * 1e9)
-    return False, retry_ns / 1e9
+    raise RateLimited(math.ceil(retry_ns / 1e9))
 
 
 def trust_proxy_headers() -> bool:

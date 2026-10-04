@@ -30,11 +30,6 @@ async def list_by_organizer(
     return list(result.scalars().all())
 
 
-async def get_by_id(session: AsyncSession, service_id: str) -> Service | None:
-    result = await session.execute(select(Service).where(Service.id == service_id))
-    return result.scalar_one_or_none()
-
-
 async def get_service_with_organizer(
     session: AsyncSession, service_id: str
 ) -> tuple[Service, Organizer] | None:
@@ -87,10 +82,7 @@ async def update_service_merge_patch(
     touched_values: dict[str, Any],
 ) -> Service | None:
     """Partial update of touched columns only — the caller maps wire
-    fields to columns and explicit-null clears to None; an empty dict
-    cannot produce `UPDATE … SET` with no assignments."""
-    if not touched_values:
-        return await get_owned_service(session, organizer_id, service_id)
+    fields to columns and explicit-null clears to None."""
     stmt = (
         update(Service)
         .where(Service.id == service_id, Service.organizer_id == organizer_id)

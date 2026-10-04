@@ -8,10 +8,11 @@ read-check-write anywhere here: the predicate is the guard.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
@@ -21,16 +22,41 @@ from ..models.organizer import Organizer
 from ..models.service import Service
 from ..models.time_slot import TimeSlot
 
-BookingChain = tuple[Booking, TimeSlot, Service, Organizer]
+
+class BookingChain(NamedTuple):
+    """A booking's full ownership chain — booking, slot, service,
+    organizer. Ownership is transitive (no organizerId on bookings), so
+    every read scopes through the parent chain. Wire reads serialize it
+    via db/serializers; notification jobs need exactly this (chat id,
+    manage token, timezone — none carried by a wire DTO)."""
+
+    booking: Booking
+    slot: TimeSlot
+    service: Service
+    organizer: Organizer
 
 
-def _chain_select() -> Select[Booking, TimeSlot, Service, Organizer]:
+_ChainSelect = Select[Booking, TimeSlot, Service, Organizer]
+
+
+def _chain_select() -> _ChainSelect:
     return (
         select(Booking, TimeSlot, Service, Organizer)
         .join(TimeSlot, Booking.time_slot_id == TimeSlot.id)
         .join(Service, TimeSlot.service_id == Service.id)
         .join(Organizer, Service.organizer_id == Organizer.id)
     )
+
+
+def _chain(row: Row[Booking, TimeSlot, Service, Organizer]) -> BookingChain:
+    """One joined result row → the named chain: entity-attribute access,
+    not positional unpacking."""
+    return BookingChain(row.Booking, row.TimeSlot, row.Service, row.Organizer)
+
+
+async def _chain_or_none(session: AsyncSession, stmt: _ChainSelect) -> BookingChain | None:
+    row = (await session.execute(stmt.limit(1))).first()
+    return _chain(row) if row is not None else None
 
 
 async def atomic_reserve_seats(session: AsyncSession, slot_id: str, seats: int) -> TimeSlot | None:
@@ -65,18 +91,6 @@ async def release_seats_returning(
     return result.scalar_one_or_none()
 
 
-async def release_seats(session: AsyncSession, slot_id: str, seats: int) -> None:
-    """Cancel-side release: decrement floor-clamped at zero — the
-    counter must never go negative even if a second cancel races the
-    first."""
-    stmt = (
-        update(TimeSlot)
-        .where(TimeSlot.id == slot_id)
-        .values(booked_count=func.greatest(0, TimeSlot.booked_count - seats))
-    )
-    await session.execute(stmt)
-
-
 async def create_booking(session: AsyncSession, values: dict[str, Any]) -> Booking:
     result = await session.execute(pg_insert(Booking).values(**values).returning(Booking))
     return result.scalar_one()
@@ -99,12 +113,7 @@ async def delete_bookings_for_services(session: AsyncSession, service_ids: list[
 
 
 async def get_booking_chain_by_id(session: AsyncSession, booking_id: str) -> BookingChain | None:
-    result = await session.execute(_chain_select().where(Booking.id == booking_id).limit(1))
-    row = result.first()
-    if row is None:
-        return None
-    booking, slot, service, organizer = row
-    return (booking, slot, service, organizer)
+    return await _chain_or_none(session, _chain_select().where(Booking.id == booking_id))
 
 
 async def get_chain_by_manage_token_hash(
@@ -112,14 +121,9 @@ async def get_chain_by_manage_token_hash(
 ) -> BookingChain | None:
     """Credential check via the SHA-256 hash (invariant 4) — the raw
     token column is never a predicate."""
-    result = await session.execute(
-        _chain_select().where(Booking.manage_token_hash == token_hash).limit(1)
+    return await _chain_or_none(
+        session, _chain_select().where(Booking.manage_token_hash == token_hash)
     )
-    row = result.first()
-    if row is None:
-        return None
-    booking, slot, service, organizer = row
-    return (booking, slot, service, organizer)
 
 
 async def list_guest_bookings(
@@ -137,16 +141,7 @@ async def list_guest_bookings(
         .order_by(Booking.created_at.desc())
         .limit(200)
     )
-    out: list[BookingChain] = []
-    for row in result.all():
-        booking, slot, service, organizer = row
-        out.append((booking, slot, service, organizer))
-    return out
-
-
-async def get_booking_by_id(session: AsyncSession, booking_id: str) -> Booking | None:
-    result = await session.execute(select(Booking).where(Booking.id == booking_id))
-    return result.scalar_one_or_none()
+    return [_chain(row) for row in result.all()]
 
 
 async def get_owned_booking_chain(
@@ -156,16 +151,10 @@ async def get_owned_booking_chain(
     id misses rather than leaks. The whole chain comes back because the
     caller (organizer cancel) needs the slot/service/organizer rows for
     post-commit work too."""
-    result = await session.execute(
-        _chain_select()
-        .where(Booking.id == booking_id, Service.organizer_id == organizer_id)
-        .limit(1)
+    return await _chain_or_none(
+        session,
+        _chain_select().where(Booking.id == booking_id, Service.organizer_id == organizer_id),
     )
-    row = result.first()
-    if row is None:
-        return None
-    booking, slot, service, organizer = row
-    return (booking, slot, service, organizer)
 
 
 async def cancel_booking_mark(session: AsyncSession, booking_id: str) -> Booking | None:

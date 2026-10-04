@@ -56,7 +56,7 @@ def _not_found_response(scope: Scope) -> StarletteResponse:
 
     request = Request(scope)
     locale = detect_locale(request.cookies, request.headers.get("accept-language", ""))
-    return not_found(locale).to_starlette()
+    return not_found(locale)
 
 
 def _query_param(scope: Scope, key: str) -> str | None:

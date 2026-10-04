@@ -19,7 +19,7 @@ from ..auth.telegram import (
 )
 from ..auth.ticket import issue_ticket
 from ..contracts import models_gen as gen
-from ..services import organizer_service
+from ..repositories import organizer_repo
 from ..web import json_response
 from ..web.deps import get_db_session, ip_rate_limit, request_body
 
@@ -45,7 +45,7 @@ async def telegram_guest(
             messengerId=identity.messenger_id,
             displayName=identity.display_name,
         ),
-    ).to_starlette()
+    )
 
 
 async def telegram_signup(
@@ -59,7 +59,7 @@ async def telegram_signup(
     organizer is not created here."""
     identity = validate_telegram_widget(body)
 
-    exists = await organizer_service.exists_organizer_by_messenger(
+    exists = await organizer_repo.exists_by_messenger(
         session, identity.messenger, identity.messenger_id
     )
     ticket = await issue_ticket(identity.to_ticket_payload(TICKET_PURPOSE_ORGANIZER))
@@ -67,4 +67,4 @@ async def telegram_signup(
     return json_response(
         200,
         gen.AuthTicketResponse(ticket=ticket, organizerExists=exists),
-    ).to_starlette()
+    )

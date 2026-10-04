@@ -46,10 +46,10 @@ async def organizer_by_messenger(
     # UUID field's pattern constraint makes the validating constructor
     # raise TypeError on a coerced UUID.
     record = gen.InternalOrganizerRecord.model_construct(
-        id=str(organizer.id),
-        name=str(organizer.name),
-        slug=str(organizer.slug),
+        id=organizer.id,
+        name=organizer.name,
+        slug=organizer.slug,
         photoUrl=organizer.photo_url,
     )
     envelope = gen.InternalOrganizerEnvelope.model_construct(organizer=record)
-    return json_response(200, envelope).to_starlette()
+    return json_response(200, envelope)

@@ -26,11 +26,14 @@ ad-hoc instead of injected.
    throttled per bucket to once per 60s. The degradation matrix lives in
    ADR-019.
 3. **`services/` application layer.** `countmein/db/` keeps only infrastructure
-   (`client.py`, `rows.py` domain snapshots, `serializers.py` wire projections,
-   `shared.py`, `seed.py`); business logic moved to `services/` returning
-   `*Row` exclusively — `to_*_record` happens in `routes/`. `Row` snapshots are
-   kept deliberately: job handlers read non-wire fields, and ORM objects can't
-   detach safely under `lazy="raise"`.
+   (`client.py`, `serializers.py` wire projections, `shared.py`, `seed.py`);
+   business logic lives in `services/`. *Amended (2026-10):* the `*Row`
+   dataclass layer was removed — `rows.py` is deleted and services/repositories
+   return ORM models directly, which are already detached snapshots under
+   `expire_on_commit=False` + `lazy="raise"` (the concern that motivated keeping
+   them). Reads with no business rule skip `services/` and go routes →
+   repositories; `services/` keeps writes with invariants (booking, slot,
+   service, organizer, outbox). `to_*_record` happens in `routes/` as before.
 4. **On-demand cache invalidation.** `POST /api/internal/revalidate` (a small
    Next.js route — `revalidateTag` is a Next.js primitive) accepts an
    allowlisted `public-*` tag set under `x-internal-secret`;

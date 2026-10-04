@@ -3,6 +3,8 @@ refusal, 404, merge-patch semantics, validation envelope."""
 
 from __future__ import annotations
 
+import json
+
 from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
 
 from ._helpers import (
@@ -174,3 +176,77 @@ async def test_expired_session_is_anonymous(client, fake_redis, db):
     headers = {k: expired for k in headers}
     r = await client.get("/api/organizers/me", headers=headers)
     assert r.status_code in (200, 404)
+
+
+async def test_me_patch_slug_revalidates_old_slug(client, fake_redis, db, monkeypatch):
+    """Pin for the identity-map trap: UPDATE … RETURNING writes the new
+    values into the same ORM object fetch returned, so the after-commit
+    old-slug tag must come from the pre-update snapshot — comparing
+    row.slug to the fetched row always answers "unchanged"."""
+    org = await register_organizer(client, fake_redis, "org-slug-01")
+    headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
+
+    from countmein.routes import organizers as org_routes
+
+    seen: list[list[str]] = []
+
+    async def fake_revalidate(tags: list[str]) -> None:
+        seen.append(tags)
+
+    monkeypatch.setattr(org_routes, "trigger_revalidation", fake_revalidate)
+
+    new_slug = f"{org['slug']}-moved"
+    r = await client.patch(
+        "/api/organizers/me",
+        headers={**headers, "content-type": "application/merge-patch+json"},
+        content=json.dumps({"slug": new_slug}).encode(),
+    )
+    assert r.status_code == 200, r.text
+    flat = [tag for tags in seen for tag in tags]
+    assert f"public-organizer:{org['slug']}" in flat
+    assert f"public-organizer:{new_slug}" in flat
+    assert "public-sitemap" in flat
+
+
+async def test_me_patch_photo_cleanup_gets_pre_update_url(client, fake_redis, db, monkeypatch):
+    """Same identity-map trap on the media path: the cleanup must delete
+    the REPLACED object, so its `old` argument is the photo_url the row
+    held before the patch — the fetched row already reads as updated."""
+    org = await register_organizer(client, fake_redis, "org-photo-01")
+    headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
+
+    from countmein import storage
+    from countmein.routes import organizers as org_routes
+
+    monkeypatch.setenv("R2_PUBLIC_BASE_URL", "https://media.example.com")
+    storage.reset_for_test()
+
+    calls: list[tuple[str, str, str]] = []
+
+    async def fake_cleanup(organizer_id: str, old_url: str, new_url: str) -> None:
+        calls.append((organizer_id, old_url, new_url))
+
+    async def _noop_revalidate(tags: list[str]) -> None:
+        return None
+
+    monkeypatch.setattr(org_routes, "cleanup_replaced_media", fake_cleanup)
+    monkeypatch.setattr(org_routes, "trigger_revalidation", _noop_revalidate)
+
+    base = f"https://media.example.com/organizers/{org['id']}"
+    patch_headers = {**headers, "content-type": "application/merge-patch+json"}
+    r = await client.patch(
+        "/api/organizers/me",
+        headers=patch_headers,
+        content=json.dumps({"photoUrl": f"{base}/first.jpg"}).encode(),
+    )
+    assert r.status_code == 200, r.text
+    r = await client.patch(
+        "/api/organizers/me",
+        headers=patch_headers,
+        content=json.dumps({"photoUrl": f"{base}/second.jpg"}).encode(),
+    )
+    assert r.status_code == 200, r.text
+    assert calls == [
+        (org["id"], "", f"{base}/first.jpg"),
+        (org["id"], f"{base}/first.jpg", f"{base}/second.jpg"),
+    ]

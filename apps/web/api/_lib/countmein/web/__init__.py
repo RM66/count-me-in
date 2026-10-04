@@ -1,5 +1,4 @@
 from .response import (
-    Response,
     empty,
     error,
     invalid_body,
@@ -7,7 +6,6 @@ from .response import (
 )
 
 __all__ = [
-    "Response",
     "empty",
     "error",
     "invalid_body",

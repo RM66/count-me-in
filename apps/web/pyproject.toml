@@ -90,6 +90,7 @@ select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "RUF"]
 # call in defaults" is the framework's own idiom.
 "api/_lib/countmein/routes/**" = ["B008"]
 "api/_lib/countmein/web/deps.py" = ["B008"]
+"api/_lib/countmein/web/guards.py" = ["B008"]
 # Notification copy embeds real Russian strings on purpose.
 "api/_lib/countmein/jobs/templates.py" = ["RUF001"]
 # The singleton reset helpers close best-effort and swallow close

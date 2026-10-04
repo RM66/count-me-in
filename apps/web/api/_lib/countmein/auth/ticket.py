@@ -38,11 +38,9 @@ async def issue_ticket(payload: AuthTicketPayload) -> str:
     return token
 
 
-async def _missing_or_broken(raw: Any, err: BaseException | None) -> AuthTicketPayload | None:
-    """Map "no payload usable" to None; a Redis failure (other than a
-    missing key) propagates as an exception."""
-    if err is not None:
-        raise err
+def _parse_ticket(raw: Any) -> AuthTicketPayload | None:
+    """Map "no payload usable" to None; a Redis failure propagates as an
+    exception from the caller's await."""
     if raw is None:
         return None
     try:
@@ -54,18 +52,16 @@ async def _missing_or_broken(raw: Any, err: BaseException | None) -> AuthTicketP
 async def peek_ticket(token: str) -> AuthTicketPayload | None:
     """Read a ticket without consuming it — the registration form is in
     flight and the Auth.js sign-in still needs the ticket."""
-    r = redis_mod.client()
-    raw = await r.get(ticket_key(token))
-    return await _missing_or_broken(raw, None)
+    raw = await redis_mod.client().get(ticket_key(token))
+    return _parse_ticket(raw)
 
 
 async def consume_ticket(token: str) -> AuthTicketPayload | None:
     """Atomically read and delete a ticket (GETDEL) — what makes it
     single-use: concurrent redemptions race on one Redis command and
     only the winner gets the payload."""
-    r = redis_mod.client()
-    raw = await r.getdel(ticket_key(token))
-    return await _missing_or_broken(raw, None)
+    raw = await redis_mod.client().getdel(ticket_key(token))
+    return _parse_ticket(raw)
 
 
 async def consume_guest_ticket(token: str) -> AuthTicketPayload:
@@ -129,7 +125,7 @@ def _is_safe_next_path(next: str) -> bool:
     return True
 
 
-async def _parse_login_link(raw: Any) -> LoginLinkPayload | None:
+def _parse_login_link(raw: Any) -> LoginLinkPayload | None:
     if raw is None:
         return None
     try:
@@ -147,11 +143,11 @@ async def peek_login_link(token: str) -> LoginLinkPayload | None:
     """Read without consuming — the landing page must inspect a token
     without spending it; link previewers fetch URLs before humans do."""
     raw = await redis_mod.client().get(login_link_key(token))
-    return await _parse_login_link(raw)
+    return _parse_login_link(raw)
 
 
 async def consume_login_link(token: str) -> LoginLinkPayload | None:
     """Atomically read and delete (GETDEL): single-use — a replayed POST
     cannot mint a second session."""
     raw = await redis_mod.client().getdel(login_link_key(token))
-    return await _parse_login_link(raw)
+    return _parse_login_link(raw)

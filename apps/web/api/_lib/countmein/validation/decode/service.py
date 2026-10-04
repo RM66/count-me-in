@@ -10,12 +10,12 @@ from .core import decode_input, decode_merged
 
 
 def decode_create_service_input(body: bytes) -> gen.CreateServiceInput:
-    return decode_input(gen.CreateServiceInput, "CreateServiceInput", body)
+    return decode_input(gen.CreateServiceInput, body)
 
 
 def decode_update_service_input(body: bytes) -> gen.UpdateServiceInput:
-    return decode_input(gen.UpdateServiceInput, "UpdateServiceInput", body)
+    return decode_input(gen.UpdateServiceInput, body)
 
 
-def decode_merged_service_input(merged: bytes) -> gen.UpdateServiceInput:
-    return decode_merged(gen.UpdateServiceInput, "UpdateServiceInput", merged)
+def decode_merged_service_input(merged: bytes, touched: frozenset[str]) -> gen.UpdateServiceInput:
+    return decode_merged(gen.UpdateServiceInput, merged)

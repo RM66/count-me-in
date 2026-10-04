@@ -82,4 +82,4 @@ async def cabinet_summary(
         serviceCounts=service_counts,
         analytics=analytics,
     )
-    return json_response(200, envelope).to_starlette()
+    return json_response(200, envelope)

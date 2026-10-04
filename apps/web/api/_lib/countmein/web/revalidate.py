@@ -18,7 +18,6 @@ singleton; nothing here opens a connection at module load.
 from __future__ import annotations
 
 import os
-from typing import Any
 
 from .. import logx
 from ..auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
@@ -68,7 +67,7 @@ async def trigger_revalidation(tags: list[str]) -> None:
     if app_url == "" or auth_secret == "":
         return  # dev without APP_URL/AUTH_SECRET: the TTL fallback covers it
     try:
-        res = await _post(
+        res = await async_client().post(
             app_url + REVALIDATE_PATH,
             json={"tags": deduped},
             headers={
@@ -87,18 +86,3 @@ async def trigger_revalidation(tags: list[str]) -> None:
             "cache revalidation failed",
             {"scope": "revalidate", "tags": deduped, "error": str(err)},
         )
-
-
-async def _default_post(url: str, **kwargs: Any) -> Any:
-    """The real transport — the lazy httpx singleton, like queue._post."""
-    return await async_client().post(url, **kwargs)
-
-
-# Test seam — mirrors queue.py's _post so tests can patch the transport
-# without a live Next.js.
-_post = _default_post
-
-
-def _reset_for_test() -> None:
-    global _post
-    _post = _default_post

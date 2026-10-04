@@ -6,7 +6,7 @@ from ..errors import (
     TelegramNotConfiguredError,
     TelegramValidationFailedError,
 )
-from .session import Session, session_from_request, session_organizer_id
+from .session import Session, session_from_request
 from .telegram import TelegramIdentity, validate_telegram_widget
 from .ticket import (
     consume_login_link,
@@ -30,6 +30,5 @@ __all__ = [
     "peek_login_link",
     "peek_ticket",
     "session_from_request",
-    "session_organizer_id",
     "validate_telegram_widget",
 ]

@@ -16,11 +16,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from countmein.contracts import domain
-from countmein.db.rows import BookingRow, OrganizerRow, ServiceRow, TimeSlotRow
 from countmein.i18n.loader import notif
 from countmein.jobs import templates
 from countmein.jobs.templates import (
-    BookingView,
     booking_cancelled_for_guest,
     booking_cancelled_for_organizer,
     booking_created_for_guest,
@@ -31,18 +29,23 @@ from countmein.jobs.templates import (
     notification_locale,
     organizer_detail_lines,
 )
+from countmein.models.booking import Booking
+from countmein.models.organizer import Organizer
+from countmein.models.service import Service
+from countmein.models.time_slot import TimeSlot
+from countmein.repositories.booking_repo import BookingChain
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "testdata" / "notifications"
 
 UPDATE_GOLDENS = "--update-goldens" in sys.argv
 
 
-def make_test_view() -> BookingView:
-    """A BookingView with every user-supplied field populated: names,
+def make_test_view() -> BookingChain:
+    """A BookingChain with every user-supplied field populated: names,
     titles, option labels, prices, location and contact all come from
     guest/organizer input and must survive escaping."""
-    return BookingView(
-        booking=BookingRow(
+    return BookingChain(
+        booking=Booking(
             id="01930000-0000-7000-8000-0000000000b1",
             time_slot_id="01930000-0000-7000-8000-0000000000s1",
             status="confirmed",
@@ -56,7 +59,7 @@ def make_test_view() -> BookingView:
             manage_token_hash="hash",
             selected_options=["Mat rental", "Towel +2€"],
         ),
-        slot=TimeSlotRow(
+        slot=TimeSlot(
             id="01930000-0000-7000-8000-0000000000s1",
             service_id="01930000-0000-7000-8000-0000000000v1",
             starts_at=datetime(2026, 7, 25, 7, 0, 0, tzinfo=ZoneInfo("Europe/Belgrade")),
@@ -65,7 +68,7 @@ def make_test_view() -> BookingView:
             booked_count=7,
             price="15 EUR",
         ),
-        service=ServiceRow(
+        service=Service(
             id="01930000-0000-7000-8000-0000000000v1",
             organizer_id="01930000-0000-7000-8000-0000000000o1",
             title="Yoga <Morning> Flow",
@@ -76,7 +79,7 @@ def make_test_view() -> BookingView:
             location="Studio 5 <Main Hall>",
             contact="+381 60 123 4567",
         ),
-        organizer=OrganizerRow(
+        organizer=Organizer(
             id="01930000-0000-7000-8000-0000000000o1",
             slug="test-org",
             name="Mira & Yoga",

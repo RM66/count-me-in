@@ -70,23 +70,7 @@ _TERMINAL_CONTENT_RE = re.compile(
 )
 
 _HTTP_TIMEOUT = 10.0
-
-# Overridable so tests can point the client at a fake Bot API server;
-# production never sets it.
-telegram_api_base = "https://api.telegram.org"
-
-
-async def _default_post(url: str, **kwargs: Any) -> httpx.Response:
-    return await async_client().post(url, **kwargs)
-
-
-# Test seam: the transport (async — the handlers run on the event loop).
-_post = _default_post
-
-
-def _reset_for_test() -> None:
-    global _post
-    _post = _default_post
+_TELEGRAM_API_BASE = "https://api.telegram.org"
 
 
 async def send_message(
@@ -112,8 +96,8 @@ async def send_message(
     raw = json.dumps(body)
 
     try:
-        res = await _post(
-            telegram_api_base + "/bot" + bot_token + "/sendMessage",
+        res = await async_client().post(
+            _TELEGRAM_API_BASE + "/bot" + bot_token + "/sendMessage",
             content=raw,
             headers={"Content-Type": "application/json"},
             timeout=_HTTP_TIMEOUT,

@@ -13,16 +13,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import countmein.jobs.demo_refresh as refresh_mod
-from countmein.db.rows import (
-    BookingRow,
-    OrganizerRow,
-    ServiceRow,
-    TimeSlotRow,
-)
 from countmein.db.serializers import (
     can_cancel_booking,
     to_guest_booking,
 )
+from countmein.models.booking import Booking
+from countmein.models.organizer import Organizer
+from countmein.models.service import Service
+from countmein.models.time_slot import TimeSlot
 
 
 async def test_demo_refresh_calls_seed_demo_with_now(monkeypatch):
@@ -40,8 +38,8 @@ async def test_demo_refresh_calls_seed_demo_with_now(monkeypatch):
     assert abs((datetime.now(UTC) - calls[0]).total_seconds()) < 60
 
 
-def _booking(expires_at: datetime | None, status: str = "confirmed") -> BookingRow:
-    return BookingRow(
+def _booking(expires_at: datetime | None, status: str = "confirmed") -> Booking:
+    return Booking(
         id="b1",
         time_slot_id="s1",
         status=status,
@@ -57,8 +55,8 @@ def _booking(expires_at: datetime | None, status: str = "confirmed") -> BookingR
     )
 
 
-def _slot() -> TimeSlotRow:
-    return TimeSlotRow(
+def _slot() -> TimeSlot:
+    return TimeSlot(
         id="s1",
         service_id="sv1",
         starts_at=datetime(2026, 9, 27, 10, 0, tzinfo=UTC),
@@ -69,8 +67,8 @@ def _slot() -> TimeSlotRow:
     )
 
 
-def _service() -> ServiceRow:
-    return ServiceRow(
+def _service() -> Service:
+    return Service(
         id="sv1",
         organizer_id="o1",
         title="Yoga",
@@ -82,8 +80,8 @@ def _service() -> ServiceRow:
     )
 
 
-def _organizer() -> OrganizerRow:
-    return OrganizerRow(
+def _organizer() -> Organizer:
+    return Organizer(
         id="o1",
         slug="org",
         name="Org",

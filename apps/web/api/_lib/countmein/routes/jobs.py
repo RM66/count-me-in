@@ -17,18 +17,14 @@ Status semantics are the queue's retry budget:
 from __future__ import annotations
 
 import hashlib
-import json
 import os
-from typing import TYPE_CHECKING
 
 from starlette.requests import Request
+from starlette.responses import Response as StarletteResponse
 
-if TYPE_CHECKING:
-    from starlette.responses import Response as StarletteResponse
-
-from .. import config, logx
-from ..errors import walk_exception_chain
-from ..jobs.receiver import trace_id_from_headers, verify_qstash_signature
+from .. import logx
+from .. import redis as redis_mod
+from ..jobs.receiver import verify_qstash_signature
 from ..jobs.run import (
     InvalidJobPayloadError,
     UnknownJobQueueError,
@@ -45,16 +41,6 @@ from ..web.guards import read_body_or_413
 REPLAY_TTL_SECONDS = 3600
 
 
-def _find_in_chain(err: BaseException, cls: type) -> BaseException | None:
-    """Walk the exception chain, not just the outermost type — a wrapped
-    error must not slip into a bare 500 (QStash would retry a delivery
-    that can never succeed)."""
-    for current in walk_exception_chain(err):
-        if isinstance(current, cls):
-            return current
-    return None
-
-
 def replay_key(signature: str) -> str:
     """Identify a delivery by the hash of its signature — the signature
     covers the exact body bytes, so equal signatures mean equal
@@ -67,19 +53,12 @@ async def seen_replay(key: str) -> bool:
     """Whether this exact delivery already succeeded. Fail-open
     (ADR-019): without Redis or on a Redis error the delivery proceeds —
     consumer idempotency is the second net."""
-    if not config.redis_configured():
-        return False
-    from .. import redis as redis_mod
-
-    try:
-        n = await redis_mod.client().exists(key)
-    except Exception as err:
-        logx.warn_every(
-            300,
-            "job replay check failed — failing open",
-            {"scope": "job-replay", "error": str(err)},
-        )
-        return False
+    n = await redis_mod.fail_open(
+        lambda r: r.exists(key),
+        0,
+        warn_msg="job replay check failed — failing open",
+        fields={"scope": "job-replay"},
+    )
     return n > 0
 
 
@@ -87,14 +66,12 @@ async def mark_replayed(key: str) -> None:
     """Record a successful delivery so a replayed signature completes
     without reprocessing. Best-effort: a failure just means the next
     replay reprocesses (still guarded by consumer idempotency)."""
-    if not config.redis_configured():
-        return
-    from .. import redis as redis_mod
-
-    try:
-        await redis_mod.client().set(key, "1", ex=REPLAY_TTL_SECONDS)
-    except Exception as err:
-        logx.warn_every(300, "job replay record failed", {"scope": "job-replay", "error": str(err)})
+    await redis_mod.fail_open(
+        lambda r: r.set(key, "1", ex=REPLAY_TTL_SECONDS),
+        None,
+        warn_msg="job replay record failed",
+        fields={"scope": "job-replay"},
+    )
 
 
 async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
@@ -104,14 +81,14 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
     current_signing_key = os.getenv("QSTASH_CURRENT_SIGNING_KEY", "")
     if current_signing_key == "":
         logx.error(RuntimeError("QSTASH_CURRENT_SIGNING_KEY is not set"), {"queue": queue})
-        return empty(500).to_starlette()
+        return empty(500)
     next_signing_key = os.getenv("QSTASH_NEXT_SIGNING_KEY", "")
 
     # The signature covers the exact body bytes — read raw, verify
     # before anything parses it.
     signature = request.headers.get("upstash-signature", "")
     if signature == "":
-        return empty(401).to_starlette()
+        return empty(401)
     body = await read_body_or_413(request)
     # Destination binding: the sub claim must name this deployment's
     # receiver URL — signing keys are account-scoped, so a delivery for
@@ -124,7 +101,7 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
         next_signing_key,
         expected_sub,
     ):
-        return empty(401).to_starlette()
+        return empty(401)
 
     # Replay suppression: a captured delivery replayed within the exp
     # window would re-run non-idempotent queues (sweep, demo-refresh).
@@ -134,31 +111,27 @@ async def jobs_receiver(request: Request, queue: str) -> StarletteResponse:
     rkey = replay_key(signature)
     if await seen_replay(rkey):
         logx.info("replayed delivery — completing without reprocessing", {"queue": queue})
-        return empty(200).to_starlette()
+        return empty(200)
 
-    # An empty body (demo-refresh sends no payload) stays None; a
-    # non-empty one must be valid JSON.
-    payload: bytes | None = None
-    if len(body) > 0:
-        try:
-            json.loads(body)
-        except ValueError:
-            return empty(400).to_starlette()
-        payload = body
+    # An empty body (demo-refresh sends no payload) stays None; payload
+    # parsing and the 400 boundary live in run_job — once.
+    payload: bytes | None = body if len(body) > 0 else None
 
-    trace_id = trace_id_from_headers(request.headers)
+    # Starlette headers compare case-insensitively; "" when the header
+    # is absent (sweeper re-publish, legacy deliveries).
+    trace_id = request.headers.get("upstash-trace-id", "")
     try:
         await run_job(queue, payload, trace_id)
+    except UnknownJobQueueError:
+        return empty(404)
+    except InvalidJobPayloadError:
+        return empty(400)
     except Exception as err:
-        if _find_in_chain(err, UnknownJobQueueError) is not None:
-            return empty(404).to_starlette()
-        if _find_in_chain(err, InvalidJobPayloadError) is not None:
-            return empty(400).to_starlette()
         # Anything else is a handler failure — 500 makes QStash retry.
         fields: dict[str, object] = {"queue": queue}
         if trace_id != "":
             fields["traceId"] = trace_id
         logx.error(err, fields)
-        return empty(500).to_starlette()
+        return empty(500)
     await mark_replayed(rkey)
-    return empty(200).to_starlette()
+    return empty(200)

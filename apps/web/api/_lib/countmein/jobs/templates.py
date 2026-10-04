@@ -19,11 +19,14 @@ from __future__ import annotations
 import zoneinfo
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from ..contracts import domain
-from ..db.rows import BookingRow, OrganizerRow, ServiceRow, TimeSlotRow
 from ..i18n.loader import notif
 from .telegram import MessageButton
+
+if TYPE_CHECKING:
+    from ..repositories.booking_repo import BookingChain
 
 
 @dataclass(frozen=True)
@@ -32,17 +35,6 @@ class Message:
 
     text: str
     button: MessageButton | None = None
-
-
-@dataclass(frozen=True)
-class BookingView:
-    """The raw rows a notification needs (two read models over one
-    chain: this one keeps manageToken, chat ids and timezones)."""
-
-    booking: BookingRow
-    slot: TimeSlotRow
-    service: ServiceRow
-    organizer: OrganizerRow
 
 
 def escape_html(value: str) -> str:
@@ -59,7 +51,7 @@ def escape_html(value: str) -> str:
     )
 
 
-def notification_locale(recipient: str, view: BookingView) -> str:
+def notification_locale(recipient: str, view: BookingChain) -> str:
     """The locale a recipient reads: the organizer's own language, the
     guest's captured booking locale."""
     stored = view.booking.guest_locale
@@ -222,7 +214,7 @@ def format_instant(t: datetime, timezone: str, locale: str) -> str:
     return out
 
 
-def booking_lines(view: BookingView, locale: str) -> list[str]:
+def booking_lines(view: BookingChain, locale: str) -> list[str]:
     """What, when, how many — shared by both audiences so a description
     change cannot land in one message and be forgotten in the other."""
     lines = [
@@ -238,7 +230,7 @@ def booking_lines(view: BookingView, locale: str) -> list[str]:
     return lines
 
 
-def guest_contact_line(view: BookingView) -> str:
+def guest_contact_line(view: BookingChain) -> str:
     """How the organizer can reach the guest, when Telegram exposes a
     handle."""
     if view.booking.guest_messenger_login is not None:
@@ -252,7 +244,7 @@ def guest_contact_line(view: BookingView) -> str:
     return "👤 " + escape_html(view.booking.guest_name)
 
 
-def organizer_detail_lines(view: BookingView) -> list[str]:
+def organizer_detail_lines(view: BookingChain) -> list[str]:
     """Where and how to reach the organizer; service value wins
     (docs/domain.md)."""
     lines: list[str] = []
@@ -269,7 +261,7 @@ def _join_lines(*parts: str) -> str:
     return "\n".join(parts)
 
 
-def booking_created_for_organizer(view: BookingView, cabinet_url: str, locale: str) -> Message:
+def booking_created_for_organizer(view: BookingChain, cabinet_url: str, locale: str) -> Message:
     """To the organizer: someone just booked. Leads with the guest
     because that is the new information; the remaining-seats line makes
     the message worth reading at a glance."""
@@ -290,7 +282,7 @@ def booking_created_for_organizer(view: BookingView, cabinet_url: str, locale: s
     return Message(text=text, button=MessageButton(text=t("button"), url=cabinet_url))
 
 
-def booking_created_for_guest(view: BookingView, manage_url: str, locale: str) -> Message:
+def booking_created_for_guest(view: BookingChain, manage_url: str, locale: str) -> Message:
     """Your booking is confirmed — and how to manage it."""
 
     def t(key: str, params: dict | None = None) -> str:  # type: ignore[type-arg]
@@ -307,7 +299,7 @@ def booking_created_for_guest(view: BookingView, manage_url: str, locale: str) -
     return Message(text=text, button=MessageButton(text=t("button"), url=manage_url))
 
 
-def booking_cancelled_for_organizer(view: BookingView, cabinet_url: str, locale: str) -> Message:
+def booking_cancelled_for_organizer(view: BookingChain, cabinet_url: str, locale: str) -> Message:
     """The guest cancelled, the seats are back."""
 
     def t(key: str, params: dict | None = None) -> str:  # type: ignore[type-arg]
@@ -324,7 +316,7 @@ def booking_cancelled_for_organizer(view: BookingView, cabinet_url: str, locale:
     return Message(text=text, button=MessageButton(text=t("button"), url=cabinet_url))
 
 
-def booking_cancelled_for_guest(view: BookingView, organizer_url: str, locale: str) -> Message:
+def booking_cancelled_for_guest(view: BookingChain, organizer_url: str, locale: str) -> Message:
     """The organizer cancelled your booking. Carries the contact and a
     link back to their page — the guest did not choose this, so the
     message explains and offers the next step. No management link."""

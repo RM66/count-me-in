@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
@@ -95,19 +96,29 @@ async def backlog(session: AsyncSession) -> tuple[int, datetime | None]:
     return pending, oldest
 
 
-async def sweep_pending(session: AsyncSession, cutoff: datetime, limit: int) -> list[OutboxMessage]:
-    """Claim pending rows past the grace period (SKIP LOCKED — two
-    concurrent sweepers never share a batch). The claim spends no retry
-    budget — attempts move per processed row only."""
+async def claim_pending(
+    session: AsyncSession, cutoff: datetime, exclude: Collection[str] = ()
+) -> OutboxMessage | None:
+    """Claim the oldest pending row past the grace period under
+    FOR UPDATE SKIP LOCKED. The caller holds the transaction open for
+    the whole publish+mark cycle, so two concurrent sweepers can never
+    process the same row — the second skips the locked row and takes
+    the next. The claim itself spends no retry budget: attempts move
+    only when the row is actually processed.
+
+    `exclude` drops rows this sweep already processed: a failed publish
+    leaves the row pending, and without the exclusion the loop would
+    re-claim it and burn the whole attempt budget in one sweep."""
     stmt = (
         select(OutboxMessage)
         .where(
             OutboxMessage.status == OutboxStatus.PENDING,
             OutboxMessage.created_at < cutoff,
+            OutboxMessage.id.notin_(exclude),
         )
         .order_by(OutboxMessage.created_at)
-        .limit(limit)
+        .limit(1)
         .with_for_update(skip_locked=True)
     )
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    return result.scalar_one_or_none()

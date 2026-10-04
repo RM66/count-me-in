@@ -23,9 +23,12 @@ import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .. import config, logx, redis
+if TYPE_CHECKING:
+    import redis.asyncio as aioredis
+
+from .. import logx, redis
 from ..contracts import models_gen as gen
 from ..contracts.constants_gen import (
     QUEUE_BOOKING_CANCELLED,
@@ -132,10 +135,17 @@ def parse_job(
     """Validate one QStash delivery body without touching the network or
     DB: UnknownJobQueueError for a foreign queue, InvalidJobPayloadError
     for a malformed payload, the DTO when the delivery may proceed, None
-    for schedule queues (any body is valid for them). Extracted so tests
-    pin the 400/404 boundary without invoking handlers (which would
-    reseed the demo DB or sweep the outbox)."""
+    for schedule queues. The single JSON-parse point — the receiver owns
+    no pre-check, so even a schedule queue's non-empty body must be
+    valid JSON here (the 400 boundary). Extracted so tests pin the
+    400/404 boundary without invoking handlers (which would reseed the
+    demo DB or sweep the outbox)."""
     if queue in _SCHEDULE_QUEUES:
+        if body:
+            try:
+                json.loads(body)
+            except ValueError:
+                raise InvalidJobPayloadError(queue) from None
         return None
     q = _PAYLOAD_QUEUES.get(queue)
     if q is None:
@@ -167,37 +177,31 @@ async def claim_delivery(outbox_id: str) -> bool:
     must not block notifications; the worst case is a rare duplicate,
     never a lost one. The lease is the claim window: an instance killed
     mid-send leaves it to expire, so the retry is processed."""
-    if not config.redis_configured():
-        return True
-    try:
-        ok = await redis.client().set(
-            _processed_key(outbox_id), "1", nx=True, ex=int(_CLAIM_LEASE.total_seconds())
+
+    async def _claim(r: aioredis.Redis) -> bool:
+        return bool(
+            await r.set(
+                _processed_key(outbox_id), "1", nx=True, ex=int(_CLAIM_LEASE.total_seconds())
+            )
         )
-    except Exception as err:
-        logx.warn_every(
-            5 * 60,
-            "job idempotency check failed — failing open",
-            {"scope": "job-idempotency", "error": str(err)},
-        )
-        return True
-    return bool(ok)
+
+    return await redis.fail_open(
+        _claim,
+        True,
+        warn_msg="job idempotency check failed — failing open",
+        fields={"scope": "job-idempotency"},
+    )
 
 
 async def finalize_delivery(outbox_id: str) -> None:
     """Extend a successful delivery's claim to the full idempotency TTL.
     Best-effort: a failure only risks a rare duplicate on a replay."""
-    if not config.redis_configured():
-        return
-    try:
-        await redis.client().expire(
-            _processed_key(outbox_id), int(_IDEMPOTENCY_TTL.total_seconds())
-        )
-    except Exception as err:
-        logx.warn_every(
-            5 * 60,
-            "job idempotency finalize failed — replays may duplicate",
-            {"scope": "job-idempotency", "outboxId": outbox_id, "error": str(err)},
-        )
+    await redis.fail_open(
+        lambda r: r.expire(_processed_key(outbox_id), int(_IDEMPOTENCY_TTL.total_seconds())),
+        None,
+        warn_msg="job idempotency finalize failed — replays may duplicate",
+        fields={"scope": "job-idempotency", "outboxId": outbox_id},
+    )
 
 
 async def release_delivery(outbox_id: str) -> None:
@@ -212,16 +216,12 @@ async def release_delivery(outbox_id: str) -> None:
 
     Best-effort: if the DEL fails the retry is skipped as a duplicate
     (at-most-once) rather than risking a double send."""
-    if not config.redis_configured():
-        return
-    try:
-        await redis.client().delete(_processed_key(outbox_id))
-    except Exception as err:
-        logx.warn_every(
-            5 * 60,
-            "job idempotency release failed — the retry will be suppressed",
-            {"scope": "job-idempotency", "outboxId": outbox_id, "error": str(err)},
-        )
+    await redis.fail_open(
+        lambda r: r.delete(_processed_key(outbox_id)),
+        None,
+        warn_msg="job idempotency release failed — the retry will be suppressed",
+        fields={"scope": "job-idempotency", "outboxId": outbox_id},
+    )
 
 
 async def run_claimed(

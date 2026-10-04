@@ -37,13 +37,6 @@ async def list_by_organizer(
     return list(result.scalars().all())
 
 
-async def list_by_service(session: AsyncSession, service_id: str) -> list[TimeSlot]:
-    result = await session.execute(
-        select(TimeSlot).where(TimeSlot.service_id == service_id).order_by(TimeSlot.starts_at)
-    )
-    return list(result.scalars().all())
-
-
 async def list_upcoming_by_services(
     session: AsyncSession,
     service_ids: list[str],
@@ -125,35 +118,6 @@ async def get_owned_slot_for_update(
     return result.scalar_one_or_none()
 
 
-async def get_booked_count_for_update(
-    session: AsyncSession, organizer_id: str, slot_id: str
-) -> int | None:
-    """Locked booked_count for the shrink-capacity precheck. None means
-    not owned — answered like unknown."""
-    owned = await get_owned_slot_for_update(session, organizer_id, slot_id)
-    if owned is None:
-        return None
-    return int(owned.booked_count)
-
-
-async def get_slot_with_parents(
-    session: AsyncSession, slot_id: str
-) -> tuple[TimeSlot, Service, Organizer] | None:
-    stmt = (
-        select(TimeSlot, Service, Organizer)
-        .join(Service, TimeSlot.service_id == Service.id)
-        .join(Organizer, Service.organizer_id == Organizer.id)
-        .where(TimeSlot.id == slot_id)
-        .limit(1)
-    )
-    result = await session.execute(stmt)
-    row = result.first()
-    if row is None:
-        return None
-    slot, service, organizer = row
-    return (slot, service, organizer)
-
-
 async def get_owned_slot(session: AsyncSession, organizer_id: str, slot_id: str) -> TimeSlot | None:
     stmt = (
         select(TimeSlot)
@@ -186,8 +150,6 @@ async def update_slot_merge_patch(
     """Partial update of touched columns only. Ownership is enforced by
     joining the parent service — a foreign slot id misses rather than
     leaks."""
-    if not touched_values:
-        return await get_owned_slot(session, organizer_id, slot_id)
     slot_ids = (
         select(TimeSlot.id)
         .join(Service, TimeSlot.service_id == Service.id)
@@ -201,12 +163,6 @@ async def update_slot_merge_patch(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
-
-
-async def booked_count_for_slot(session: AsyncSession, slot_id: str) -> int | None:
-    result = await session.execute(select(TimeSlot.booked_count).where(TimeSlot.id == slot_id))
-    value = result.scalar_one_or_none()
-    return int(value) if value is not None else None
 
 
 async def count_bookings_for_slot(session: AsyncSession, slot_id: str) -> int:

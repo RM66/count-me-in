@@ -4,6 +4,8 @@ guard, validation envelope."""
 
 from __future__ import annotations
 
+import json
+
 from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID, DEMO_READ_ONLY_CODE
 
 from ._helpers import (
@@ -108,6 +110,51 @@ async def test_service_patch_options_pair_rule(client, fake_redis, db):
         content=b'{"optionsSelectMode": "single"}',
     )
     assert r.status_code == 400
+
+
+async def test_service_patch_photo_cleanup_gets_pre_update_url(client, fake_redis, db, monkeypatch):
+    """Pin for the identity-map trap: the fetched row reads as already-
+    updated post-commit, so cleanup's `old` must come from the
+    pre-update snapshot — otherwise old == new and the replaced cover
+    leaks in R2."""
+    org, headers = await _setup(client, fake_redis, db, "svc-photo-01")
+    svc = await create_service(client, headers)
+
+    from countmein import storage
+    from countmein.routes import services as svc_routes
+
+    monkeypatch.setenv("R2_PUBLIC_BASE_URL", "https://media.example.com")
+    storage.reset_for_test()
+
+    calls: list[tuple[str, str, str]] = []
+
+    async def fake_cleanup(organizer_id: str, old_url: str, new_url: str) -> None:
+        calls.append((organizer_id, old_url, new_url))
+
+    async def _noop_revalidate(tags: list[str]) -> None:
+        return None
+
+    monkeypatch.setattr(svc_routes, "cleanup_replaced_media", fake_cleanup)
+    monkeypatch.setattr(svc_routes, "trigger_revalidation", _noop_revalidate)
+
+    base = f"https://media.example.com/organizers/{org['id']}"
+    patch_headers = {**headers, "content-type": "application/merge-patch+json"}
+    r = await client.patch(
+        f"/api/services/{svc['id']}",
+        headers=patch_headers,
+        content=json.dumps({"photoUrl": f"{base}/first.jpg"}).encode(),
+    )
+    assert r.status_code == 200, r.text
+    r = await client.patch(
+        f"/api/services/{svc['id']}",
+        headers=patch_headers,
+        content=json.dumps({"photoUrl": f"{base}/second.jpg"}).encode(),
+    )
+    assert r.status_code == 200, r.text
+    assert calls == [
+        (org["id"], "", f"{base}/first.jpg"),
+        (org["id"], f"{base}/first.jpg", f"{base}/second.jpg"),
+    ]
 
 
 async def test_service_patch_nothing_to_update(client, fake_redis, db):

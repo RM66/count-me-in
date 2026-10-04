@@ -72,12 +72,13 @@ def create_app() -> FastAPI:
 
         locale = _locale(request)
         if exc.status_code == 404:
-            return not_found(locale).to_starlette()
+            return not_found(locale)
         if exc.status_code == 405:
             resp = method_not_allowed(locale)
             if exc.headers:
-                resp.headers = {**resp.headers, **dict(exc.headers)}
-            return resp.to_starlette()
+                for k, v in exc.headers.items():
+                    resp.headers[k] = v
+            return resp
         return StarletteResponse(status_code=exc.status_code, headers=dict(exc.headers or {}))
 
     @app.exception_handler(RequestValidationError)
@@ -90,7 +91,7 @@ def create_app() -> FastAPI:
         from .web.response import error
 
         locale = _locale(request)
-        return error(400, locale, "invalidInput").to_starlette()
+        return error(400, locale, "invalidInput")
 
     from .errors import ApiError, ValidationFailed
     from .web import invalid_body
@@ -102,7 +103,7 @@ def create_app() -> FastAPI:
         locale = _locale(request)
         from .web.response import render_api_error
 
-        return render_api_error(exc, locale).to_starlette()
+        return render_api_error(exc, locale)
 
     @app.exception_handler(ValidationFailed)
     async def validation_failed_handler(
@@ -111,7 +112,7 @@ def create_app() -> FastAPI:
         # Body-shape 400s share the {error, details} envelope, so
         # handlers never catch ValidationFailed locally.
         locale = _locale(request)
-        return invalid_body(locale, exc.errors).to_starlette()
+        return invalid_body(locale, exc.errors)
 
     from .routes import register_routes
 

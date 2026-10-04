@@ -100,7 +100,7 @@ async def test_poisoned_row_reaches_failed(failing_publish):
             status, attempts = await _row_state(row_id)
             if status == "failed":
                 break
-            assert attempts > 0, "bump_outbox_attempts must commit its UPDATE"
+            assert attempts > 0, "bump_attempts must commit its UPDATE"
         status, attempts = await _row_state(row_id)
         assert status == "failed"
         assert attempts == OUTBOX_MAX_ATTEMPTS

@@ -60,11 +60,8 @@ def warn(msg: str, fields: Mapping[str, Any] | None = None) -> None:
     _emit("warn", msg, fields or {})
 
 
-def error(err: BaseException | None, fields: Mapping[str, Any] | None = None) -> None:
-    """Log a failure; None errors are dropped so callers can pass optional
-    errors straight through."""
-    if err is None:
-        return
+def error(err: BaseException, fields: Mapping[str, Any] | None = None) -> None:
+    """Log a failure."""
     _emit("error", str(err), fields or {})
 
 

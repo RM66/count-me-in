@@ -32,14 +32,14 @@ from typing import Any
 from starlette.requests import Request
 
 from .. import logx
+from .hkdf import hkdf_sha256
 
 # The HTTP header carrying the organizer-auth JWT.
 ORGANIZER_AUTH_HEADER = "x-organizer-auth"
 
-# HKDF derivation parameters — must match organizer-token.ts exactly.
-HKDF_SALT = "countmein"
+# HKDF derivation parameter — must match organizer-token.ts exactly
+# (salt and length are shared with the internal service key, hkdf.py).
 HKDF_INFO = "CountMeIn Organizer API Token Key v1"
-HKDF_LEN = 32
 
 # warn_every, not warn-once: on a warmed instance a once-per-process
 # line makes a persistent misconfiguration nearly invisible.
@@ -64,13 +64,8 @@ def _b64decode(s: str) -> bytes:
 
 def derived_signing_key(secret: str) -> bytes:
     """Derive the HMAC-SHA256 signing key from AUTH_SECRET via
-    HKDF-SHA256 (RFC 5869), extract-then-expand. Mirrors Node's
-    crypto.hkdfSync('sha256', secret, salt, info, 32) — parity pinned by
-    the golden vector in the session tests."""
-    # Extract: PRK = HMAC-SHA256(salt, IKM).
-    prk = hmac.new(HKDF_SALT.encode(), secret.encode(), hashlib.sha256).digest()
-    # Expand: T(1) = HMAC-SHA256(PRK, info || 0x01); 32 bytes = one block.
-    return hmac.new(prk, HKDF_INFO.encode() + b"\x01", hashlib.sha256).digest()[:HKDF_LEN]
+    HKDF-SHA256 (RFC 5869)."""
+    return hkdf_sha256(secret, HKDF_INFO)
 
 
 def verify_organizer_auth(token: str, secret: str) -> dict[str, Any] | None:
@@ -139,11 +134,3 @@ def session_from_request(request: Request) -> Session | None:
         )
         return None
     return Session(organizer_id=claims["sub"], slug=claims.get("slug", ""))
-
-
-def session_organizer_id(request: Request) -> str:
-    """The organizer id behind the request, or "" when anonymous."""
-    s = session_from_request(request)
-    if s is not None:
-        return s.organizer_id
-    return ""

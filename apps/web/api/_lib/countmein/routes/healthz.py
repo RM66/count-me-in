@@ -68,6 +68,23 @@ def _encoder_body(checks: dict[str, str]) -> bytes:
     return (dumps_compact(checks) + "\n").encode("utf-8")
 
 
+def _panic_response(error: str) -> Response:
+    """The 503 body for a probe that could not run at all — both
+    dependencies reported failed plus the missing-env fact list."""
+    return Response(
+        content=_encoder_body(
+            {
+                "postgres": "fail",
+                "redis": "fail",
+                "error": f"dependency probe panicked: {error}",
+                "missingEnv": _missing_healthz_env(),  # type: ignore[dict-item]
+            }
+        ),
+        status_code=503,
+        headers={"Content-Type": "application/json"},
+    )
+
+
 async def handle_healthz() -> Response:
     try:
         # A missing POSTGRES_URL is the probe's panic path: the answer
@@ -82,18 +99,7 @@ async def handle_healthz() -> Response:
                 RuntimeError(f"healthz panic: {panicking} is not set"),
                 {"scope": "healthz"},
             )
-            return Response(
-                content=_encoder_body(
-                    {
-                        "postgres": "fail",
-                        "redis": "fail",
-                        "error": f"dependency probe panicked: {panicking} is not set",
-                        "missingEnv": _missing_healthz_env(),  # type: ignore[dict-item]
-                    }
-                ),
-                status_code=503,
-                headers={"Content-Type": "application/json"},
-            )
+            return _panic_response(f"{panicking} is not set")
 
         checks: dict[str, str] = {"postgres": "ok", "redis": "ok"}
         status = 200
@@ -118,18 +124,7 @@ async def handle_healthz() -> Response:
     except Exception as rec:
         stack = "".join(traceback.format_exc())[-_MAX_STACK:]
         logx.error(RuntimeError(f"healthz panic: {rec}"), {"scope": "healthz", "stack": stack})
-        return Response(
-            content=_encoder_body(
-                {
-                    "postgres": "fail",
-                    "redis": "fail",
-                    "error": f"dependency probe panicked: {rec}",
-                    "missingEnv": _missing_healthz_env(),  # type: ignore[dict-item]
-                }
-            ),
-            status_code=503,
-            headers={"Content-Type": "application/json"},
-        )
+        return _panic_response(str(rec))
 
 
 def register_healthz(app: FastAPI) -> None:

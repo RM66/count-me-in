@@ -1,12 +1,12 @@
 """The Telegram error-classification tests — the retry budget
-(ADR-012). The fake Bot API is an async transport seam instead of an
-httptest server."""
+(ADR-012). The Bot API is mocked at the httpx transport with respx."""
 
 import json
 
 import countmein.jobs.telegram as telegram
 import httpx
 import pytest
+import respx
 from countmein.jobs.telegram import (
     SendMessageError,
     TelegramTerminalError,
@@ -14,15 +14,20 @@ from countmein.jobs.telegram import (
     TelegramUnreachableError,
 )
 
+_SEND_URL = "https://api.telegram.org/bottok/sendMessage"
+
 
 class FakeTelegram:
+    """A respx side_effect that records the request body and answers
+    with a canned Bot API status."""
+
     def __init__(self):
         self.calls: list[dict] = []
         self.status = 0
         self.desc = ""
 
-    async def __call__(self, url, content=None, headers=None, **kwargs):
-        body = json.loads(content or b"{}")
+    async def __call__(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content or b"{}")
         markup = body.get("reply_markup")
         button = ""
         if markup and markup.get("inline_keyboard"):
@@ -38,11 +43,11 @@ class FakeTelegram:
 
 
 @pytest.fixture()
-def fake(monkeypatch):
+def fake():
     ft = FakeTelegram()
-    monkeypatch.setattr(telegram, "_post", ft)
-    yield ft
-    telegram._reset_for_test()
+    with respx.mock:
+        respx.post(_SEND_URL).mock(side_effect=ft)
+        yield ft
 
 
 async def test_send_message_unreachable_is_terminal(fake):

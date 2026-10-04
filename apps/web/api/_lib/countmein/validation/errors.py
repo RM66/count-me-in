@@ -21,15 +21,6 @@ class Errors:
     def add_form(self, msg: str) -> None:
         self.form.append(msg)
 
-    def empty(self) -> bool:
-        return len(self.form) == 0 and len(self.fields) == 0
-
-    def finish(self) -> Errors | None:
-        """Return self, or None when no issue was collected."""
-        if self.empty():
-            return None
-        return self
-
 
 def form_errors(msg: str) -> Errors:
     e = Errors()

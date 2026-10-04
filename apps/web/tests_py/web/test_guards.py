@@ -23,6 +23,7 @@ from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
 from countmein.contracts.payloads import AuthTicketPayload
 from countmein.errors import DemoReadOnly, PayloadTooLarge, RateLimited, TicketExpired
 from countmein.web.guards import (
+    current_session,
     read_body_or_413,
     require_guest_identity,
     require_writable_organizer,
@@ -104,16 +105,23 @@ def guard_request(headers: Mapping[str, str] | None = None):
 # ── require_writable_organizer ────────────────────────────────────────────────
 
 
+async def _writable(headers: Mapping[str, str] | None = None) -> str:
+    """The guard as FastAPI calls it: current_session resolves the
+    header, the guard enforces the write rules."""
+    req = guard_request(headers)
+    return await require_writable_organizer(req, current_session(req))
+
+
 async def test_require_writable_organizer_anonymous(fake_redis):
     with pytest.raises(DemoReadOnly) as exc_info:
-        await require_writable_organizer(guard_request())
+        await _writable()
     assert exc_info.value.status == 403, "anonymous request must be refused as demo read-only"
 
 
 async def test_require_writable_organizer_demo_session(fake_redis):
     token = mint_test_token(TEST_SECRET, DEMO_ORGANIZER_ID, "demo", int(time.time()) + 60)
     with pytest.raises(DemoReadOnly) as exc_info:
-        await require_writable_organizer(guard_request({ORGANIZER_AUTH_HEADER: token}))
+        await _writable({ORGANIZER_AUTH_HEADER: token})
     assert exc_info.value.status == 403, "demo session must be refused as demo read-only"
 
 
@@ -122,7 +130,7 @@ async def test_require_writable_organizer_signed_in(fake_redis):
     # lives in the shared fakeredis for the whole run.
     own_id = "01930000-0000-7000-8000-0000000000a1"
     token = mint_test_token(TEST_SECRET, own_id, "studio", int(time.time()) + 60)
-    organizer_id = await require_writable_organizer(guard_request({ORGANIZER_AUTH_HEADER: token}))
+    organizer_id = await _writable({ORGANIZER_AUTH_HEADER: token})
     assert organizer_id == own_id
 
 
@@ -132,14 +140,12 @@ async def test_require_writable_organizer_rate_limit(fake_redis):
 
     # 60/min: the first 60 requests pass, the 61st is a 429.
     for i in range(60):
-        organizer_id = await require_writable_organizer(
-            guard_request({ORGANIZER_AUTH_HEADER: minted})
-        )
+        organizer_id = await _writable({ORGANIZER_AUTH_HEADER: minted})
         assert organizer_id == own_id, f"request {i + 1} within the limit must pass"
     with pytest.raises(RateLimited) as exc_info:
-        await require_writable_organizer(guard_request({ORGANIZER_AUTH_HEADER: minted}))
+        await _writable({ORGANIZER_AUTH_HEADER: minted})
     assert exc_info.value.status == 429, "request 61 must be a 429"
-    assert exc_info.value.headers()["Retry-After"] != "", "429 must carry a Retry-After header"
+    assert exc_info.value.headers["Retry-After"] != "", "429 must carry a Retry-After header"
 
 
 # ── require_guest_identity ────────────────────────────────────────────────────

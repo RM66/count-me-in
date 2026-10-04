@@ -1,53 +1,40 @@
-"""The RFC 7386 merge and the touched-key set the DB layer writes
-columns from."""
+"""The RFC 7386 merge, the field tables the touched set is derived
+from, and the merge base a row projects."""
 
 import json
+from datetime import UTC, datetime
 
 import countmein.routes.mergepatch as mp
 from countmein.contracts import models_gen as gen
-from countmein.db.rows import TimeSlotRow
-from countmein.routes.slots import slot_writable_state
+from countmein.models.organizer import Organizer
+from countmein.models.service import Service
+from countmein.models.time_slot import TimeSlot
 
 
-def test_writable_state_pins_the_update_schema():
-    """ADR-024: the merge-patch base must expose exactly the update
-    schema's fields — a row attribute the wire forgot (or a wire field
-    the projection forgot) makes a patch silently unwritable."""
-    import dataclasses
-
-    from countmein.db.rows import OrganizerRow, ServiceRow
-    from countmein.routes.organizers import organizer_writable_state
-    from countmein.routes.services import service_writable_state
-
-    def blank_row(cls):
-        # Writable-state projections read plain attributes; a stub with
-        # every field set to a sentinel exercises all of them. Datetime
-        # columns need a real value (iso_date formats starts_at).
-        from datetime import UTC, datetime
-
-        fields = {
-            f.name: (datetime(2026, 1, 1, tzinfo=UTC) if "datetime" in str(f.type) else "x")
-            for f in dataclasses.fields(cls)
-        }
-        return cls(**fields)
-
+def test_field_tables_pin_the_update_schemas():
+    """ADR-024: the merge-patch field table must expose exactly the
+    update schema's fields — a wire key the table forgot (or a schema
+    field the table missed) makes a patch silently unwritable, and a
+    table column that names no model attribute must not exist."""
     cases = [
-        (service_writable_state, ServiceRow, gen.UpdateServiceInput),
-        (organizer_writable_state, OrganizerRow, gen.UpdateOrganizerProfileInput),
-        (slot_writable_state, TimeSlotRow, gen.UpdateTimeSlotInput),
+        (mp.SERVICE_FIELDS, Service, gen.UpdateServiceInput),
+        (mp.ORGANIZER_FIELDS, Organizer, gen.UpdateOrganizerProfileInput),
+        (mp.SLOT_FIELDS, TimeSlot, gen.UpdateTimeSlotInput),
     ]
-    for project, row_cls, model in cases:
-        state = project(blank_row(row_cls))
-        assert set(state) == set(model.model_fields), (
-            f"{project.__name__} fields {sorted(state)} != "
-            f"{model.__name__} fields {sorted(model.model_fields)}"
+    for fields, model_cls, schema in cases:
+        assert set(fields) == set(schema.model_fields), (
+            f"{schema.__name__} fields {sorted(schema.model_fields)} != "
+            f"field table {sorted(fields)}"
         )
+        for key, f in fields.items():
+            assert f.column in model_cls.__table__.columns, (
+                f"{key}: column {f.column} missing on {model_cls.__tablename__}"
+            )
 
 
 def service_state_fixture() -> dict:
-    """The merge-patch base for a service, mirroring
-    service_writable_state's shape (the same field set the DB row
-    renders)."""
+    """The merge-patch base for a service, mirroring the field table's
+    wire projection (the same field set the DB row renders)."""
     return {
         "title": "Yoga",
         "description": "Morning flow",
@@ -127,8 +114,7 @@ def test_patch_keys():
         assert (got is not None) == (name == "no keys"), name
 
     keys = mp.patch_keys(b'{"title":"Yoga","options":null}')
-    assert keys is not None
-    assert keys.get("title") and keys.get("options") and len(keys) == 2
+    assert keys == {"title", "options"}
 
 
 def test_merge_patch_preserves_null_options():
@@ -147,9 +133,7 @@ def test_merge_patch_slot_starts_at():
     """The slot merge base renders startsAt as an ISO string; a patch
     may replace it (string or epoch) but the untouched value must
     survive."""
-    from datetime import UTC, datetime
-
-    row = TimeSlotRow(
+    row = TimeSlot(
         id="01930000-0000-7000-8000-000000000001",
         service_id="svc-abcdefghij123456",
         starts_at=datetime(2026, 1, 1, 9, 0, tzinfo=UTC),
@@ -159,6 +143,8 @@ def test_merge_patch_slot_starts_at():
         price="10",
         created_at=None,
     )
-    merged = mp.merge_patch(slot_writable_state(row), b'{"capacity":12}')
+    base = {key: f.to_wire(getattr(row, f.column)) for key, f in mp.SLOT_FIELDS.items()}
+    merged = mp.merge_patch(base, b'{"capacity":12}')
     out = json.loads(merged)
     assert "startsAt" in out, "startsAt must survive an unrelated patch"
+    assert out["capacity"] == 12

@@ -1,9 +1,11 @@
 """The response-writing plumbing.
 
-Response.to_starlette's branches, the invalid-body/issue renderers, and
-the default-header middleware + panic→500. These are the seams every
-route handler sits on, so their contracts are pinned here.
+The helpers return ready Starlette responses — the invalid-body/issue
+renderers, and the default-header middleware + panic→500. These are the
+seams every route handler sits on, so their contracts are pinned here.
 """
+
+import json
 
 import httpx
 from countmein.contracts.constants_gen import LOCALES
@@ -18,21 +20,19 @@ from countmein.web.response import (
 
 
 def test_response_write_nil_body_writes_only_status():
-    resp = empty(204).to_starlette()
+    resp = empty(204)
     assert resp.status_code == 204
     assert resp.body == b""
 
 
 def test_response_write_headers_before_status():
-    resp = error(429, "en", "tooManyRequests")
-    resp.headers = {"Retry-After": "30"}
-    star = resp.to_starlette()
-    assert star.status_code == 429
-    assert star.headers["Retry-After"] == "30"
+    resp = json_response(429, {"error": "slow down"}, headers={"Retry-After": "30"})
+    assert resp.status_code == 429
+    assert resp.headers["Retry-After"] == "30"
 
 
 def test_response_write_body_sets_content_type_and_length():
-    star = json_response(418, {"a": "b"}).to_starlette()
+    star = json_response(418, {"a": "b"})
     assert star.status_code == 418
     assert star.headers["Content-Type"] == "application/json"
     assert star.headers["Content-Length"] == str(len(star.body))
@@ -42,8 +42,7 @@ def test_response_write_body_sets_content_type_and_length():
 def test_response_marshal_failure_answers_500():
     # An unencodable value drives the encode-failure branch.
     resp = json_response(200, {"bad": object()})
-    star = resp.to_starlette()
-    assert star.status_code == 500
+    assert resp.status_code == 500
 
 
 def test_jsonenc_keeps_text_verbatim():
@@ -58,20 +57,21 @@ def test_jsonenc_compact_separators():
 def test_invalid_body_renderers():
     # nil errors still render an empty details shape
     resp = invalid_body("en", None)
-    assert resp.status == 400
+    assert resp.status_code == 400
     # details carry form and field errors
     errs = Errors()
     errs.add("name", "required")
     resp = invalid_body("en", errs)
-    assert resp.status == 400
-    body = resp.body.model_dump()
+    assert resp.status_code == 400
+    body = json.loads(resp.body)
     assert body["details"]["fieldErrors"] == {"name": ["required"]}
 
 
 def test_error_body_localized_for_every_locale():
     for locale in LOCALES:
         resp = error(404, locale, "bookingNotFound")
-        assert resp.body.error, f"{locale}: localized error copy must not be empty"
+        body = json.loads(resp.body)
+        assert body["error"], f"{locale}: localized error copy must not be empty"
 
 
 def _client(app) -> httpx.AsyncClient:

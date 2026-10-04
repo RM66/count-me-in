@@ -24,8 +24,6 @@ Key handling rules (the security-critical part):
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 # Clock tolerance on exp/nbf: the function clock may lag seconds behind
 # the signer.
 _QSTASH_EXP_SKEW = 60
@@ -85,13 +83,3 @@ def verify_qstash_signature(
             # burns the retry budget.
             continue
     return False
-
-
-def trace_id_from_headers(headers: Mapping[str, str]) -> str:
-    """Read the trace-id header QStash forwarded (the publisher sets
-    Upstash-Trace-Id; Upstash-* headers reach the destination).
-    "" when absent (sweeper re-publish, legacy)."""
-    for name, value in headers.items():
-        if name.lower() == "upstash-trace-id":
-            return value
-    return ""

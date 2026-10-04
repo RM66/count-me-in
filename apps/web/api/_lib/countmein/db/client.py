@@ -12,10 +12,6 @@ Dual-runtime pooling (backend-refactoring-plan Phase 6):
   connections across requests, with server-side prepared statements
   enabled (direct Postgres, no transaction-mode pooler in front).
 
-A failed initialization is cached and re-raised on every call, so a
-bad URL does not leave the engine None for the instance's lifetime —
-every request gets "POSTGRES_URL is not set" instead of a None-deref
-500.
 """
 
 from __future__ import annotations
@@ -34,7 +30,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 
 _engine: AsyncEngine | None = None
-_init_err: Exception | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 _sessionmaker_engine: AsyncEngine | None = None
 
@@ -101,43 +96,36 @@ def _connect_args(base: dict[str, Any], url: str) -> dict[str, Any]:
 def engine() -> AsyncEngine:
     """Lazily open the shared engine. No lock: no await in the body, so
     it is atomic w.r.t. the event loop."""
-    global _engine, _init_err
-    if _engine is None and _init_err is None:
+    global _engine
+    if _engine is None:
         url = os.getenv("POSTGRES_URL", "")
         if url == "":
-            _init_err = RuntimeError("POSTGRES_URL is not set")
+            raise RuntimeError("POSTGRES_URL is not set")
+        if url.startswith("postgres://"):
+            url = "postgresql+psycopg://" + url[len("postgres://") :]
+        elif url.startswith("postgresql://"):
+            url = "postgresql+psycopg://" + url[len("postgresql://") :]
+        url = _sanitize_query(url)
+        if is_serverless():
+            # NullPool explicitly: the default QueuePool would hold
+            # connections open across frozen serverless instances.
+            _engine = create_async_engine(
+                url,
+                poolclass=NullPool,
+                connect_args=_connect_args(_SERVERLESS_CONNECT_ARGS, url),
+            )
         else:
-            if url.startswith("postgres://"):
-                url = "postgresql+psycopg://" + url[len("postgres://") :]
-            elif url.startswith("postgresql://"):
-                url = "postgresql+psycopg://" + url[len("postgresql://") :]
-            url = _sanitize_query(url)
-            if is_serverless():
-                # NullPool explicitly: the default QueuePool would hold
-                # connections open across frozen serverless instances.
-                _engine = create_async_engine(
-                    url,
-                    poolclass=NullPool,
-                    connect_args=_connect_args(_SERVERLESS_CONNECT_ARGS, url),
-                )
-            else:
-                # Long-running container: pooled connections; prepared
-                # statements at the psycopg threshold (direct Postgres,
-                # no transaction-mode pooler in front).
-                _engine = create_async_engine(
-                    url,
-                    poolclass=AsyncAdaptedQueuePool,
-                    pool_size=5,
-                    max_overflow=10,
-                    pool_pre_ping=True,
-                    connect_args=_connect_args(_CONTAINER_CONNECT_ARGS, url),
-                )
-    if _init_err is not None:
-        raise _init_err
-    if _engine is None:
-        # Unreachable by contract; a real None is a bug — a raise, not
-        # an assert, so python -O cannot strip the check.
-        raise RuntimeError("_engine is None after its error guard")
+            # Long-running container: pooled connections; prepared
+            # statements at the psycopg threshold (direct Postgres,
+            # no transaction-mode pooler in front).
+            _engine = create_async_engine(
+                url,
+                poolclass=AsyncAdaptedQueuePool,
+                pool_size=5,
+                max_overflow=10,
+                pool_pre_ping=True,
+                connect_args=_connect_args(_CONTAINER_CONNECT_ARGS, url),
+            )
     return _engine
 
 
@@ -176,11 +164,10 @@ async def dispose() -> None:
     the next engine() re-reads POSTGRES_URL. The lifespan shutdown is
     the only production caller; a disposal failure is the caller's to
     absorb (it must not mask a sent response)."""
-    global _engine, _init_err
+    global _engine
     if _engine is not None:
         await _engine.dispose()
     _engine = None
-    _init_err = None
 
 
 def reset_for_test() -> None:
@@ -188,8 +175,7 @@ def reset_for_test() -> None:
     (and VERCEL for the pool policy). Test-only; disposal is dispose()'s
     job — a cached NullPool engine holds no connections (tests never
     open pooled ones — they assert pool policy only)."""
-    global _engine, _init_err, _sessionmaker, _sessionmaker_engine
+    global _engine, _sessionmaker, _sessionmaker_engine
     _engine = None
-    _init_err = None
     _sessionmaker = None
     _sessionmaker_engine = None
