@@ -8,7 +8,7 @@ vi.mock('next/headers', () => ({ headers: vi.fn() }))
 
 vi.mock('@/server/api-origin', () => ({
   resolveApiOrigin: vi.fn(async () => 'http://api.test'),
-  deploymentBypassHeaders: vi.fn(() => ({})),
+  deploymentBypassHeaders: vi.fn(async () => ({})),
 }))
 
 /**

@@ -93,7 +93,7 @@ export async function getInternalOrganizer(lookup: {
     headers: {
       'Content-Type': 'application/json',
       ...internalSecretHeaders(),
-      ...deploymentBypassHeaders(),
+      ...(await deploymentBypassHeaders()),
     },
     body: JSON.stringify(parsed.data),
     // Service-to-service credential lookup: never cacheable.

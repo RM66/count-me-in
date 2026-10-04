@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers'
+
 import 'server-only'
 
 function trimSlash(value: string | undefined): string | undefined {
@@ -29,26 +31,6 @@ function trimSlash(value: string | undefined): string | undefined {
  * rather than guess an origin to send credentials to. In dev, fall back
  * to the local API default port.
  */
-/**
- * Vercel Deployment Protection bypass for server-side fetches.
- *
- * When a preview deployment is gated (Vercel Authentication / Standard
- * Protection), browser requests pass on the user's bypass cookie, but a
- * server-side fetch carries no cookies: the edge redirects it to the
- * SSO login page, fetch follows the redirect, and the API read comes
- * back `200 text/html` — which surfaces as a Zod "contract violation".
- *
- * `VERCEL_AUTOMATION_BYPASS_SECRET` is injected by Vercel once
- * "Protection Bypass for Automation" is enabled in project settings;
- * elsewhere the var is absent and no header is sent. Like
- * `x-internal-secret`, the header goes only to the configured API
- * origin — never to a request-derived host.
- */
-export function deploymentBypassHeaders(): Record<string, string> {
-  const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-  return secret ? { 'x-vercel-protection-bypass': secret } : {}
-}
-
 export async function resolveApiOrigin(): Promise<string> {
   const apiUrl = trimSlash(process.env.API_URL)
   if (apiUrl) {
@@ -69,4 +51,46 @@ export async function resolveApiOrigin(): Promise<string> {
     )
   }
   return 'http://127.0.0.1:3001'
+}
+
+const VERCEL_BYPASS_COOKIE = '_vercel_jwt'
+
+/**
+ * Vercel Deployment Protection bypass for server-side fetches.
+ *
+ * When a preview deployment is gated (Vercel Authentication / Standard
+ * Protection), browser requests pass on the user's bypass cookie, but a
+ * server-side fetch carries no cookies: the edge redirects it to the
+ * SSO login page, fetch follows the redirect, and the API read comes
+ * back `200 text/html` — which surfaces as a Zod "contract violation".
+ *
+ * Two credentials, in order:
+ * 1. `VERCEL_AUTOMATION_BYPASS_SECRET` as `x-vercel-protection-bypass` —
+ *    injected by Vercel once "Protection Bypass for Automation" is on in
+ *    project settings; also covers non-request fetches (ISR, callbacks).
+ * 2. The viewer's own `_vercel_jwt` cookie, forwarded — anyone who can
+ *    open a gated preview already carries it, so request-scoped reads
+ *    pass without any project configuration.
+ *
+ * The cookie path is preview-only: production and unprotected previews
+ * need no bypass, and reading request cookies in production would
+ * needlessly mark public reads dynamic. Like `x-internal-secret`, both
+ * go only to the configured API origin — never to a request-derived
+ * host.
+ */
+export async function deploymentBypassHeaders(): Promise<Record<string, string>> {
+  const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  if (secret) {
+    return { 'x-vercel-protection-bypass': secret }
+  }
+  if (process.env.VERCEL_ENV !== 'preview') {
+    return {}
+  }
+  try {
+    const jwt = (await cookies()).get(VERCEL_BYPASS_COOKIE)?.value
+    return jwt ? { cookie: `${VERCEL_BYPASS_COOKIE}=${jwt}` } : {}
+  } catch {
+    // No request scope (build-time prerender, ISR revalidation): nothing to forward.
+    return {}
+  }
 }

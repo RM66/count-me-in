@@ -56,7 +56,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   // fetches, so the distinction is "trusted caller", not "which edge".
   withInternalHeaders(reqHeaders)
 
-  for (const [key, value] of Object.entries(deploymentBypassHeaders())) {
+  for (const [key, value] of Object.entries(await deploymentBypassHeaders())) {
     reqHeaders.set(key, value)
   }
 
