@@ -9,9 +9,10 @@ session.
 
 from __future__ import annotations
 
-from typing import Literal
+from datetime import datetime
+from typing import Annotated, Literal
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 from starlette.responses import Response as StarletteResponse
@@ -20,7 +21,7 @@ from ..contracts import models_gen as gen
 from ..db.serializers import to_time_slot_record
 from ..errors import ServiceNotFound, SlotNotFound
 from ..models.time_slot import TimeSlot
-from ..repositories import slot_repo
+from ..repositories import organizer_repo, slot_repo
 from ..services import slot_service
 from ..validation.decode import (
     decode_create_time_slot_input,
@@ -74,17 +75,38 @@ async def slots_list(
     scope: tuple[str, bool] = Depends(cabinet_organizer),
     session: AsyncSession = Depends(get_db_session),
     upcoming: Literal["1"] | None = None,
+    from_: Annotated[datetime | None, Query(alias="from")] = None,
+    to: Annotated[datetime | None, Query()] = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    include: Literal["days"] | None = None,
 ) -> StarletteResponse:
     """GET /api/slots: slots across every service of the organizer this
     request may view (signed-in, or demo for anonymous, ADR-010).
-    ?upcoming=1 drops started slots; the enum is the contract, so any
-    other value answers 400."""
+    ?upcoming=1 drops started slots; ?from=/?to= bound the start range
+    (the week calendar's window); ?limit caps the earliest-first order
+    for "next N" previews. Bounds are declared Query params — out-of-range
+    values answer 400. ?include=days opts into the full set of session
+    day keys (the DISTINCT scan it costs); independent of the range."""
     organizer_id, _ = scope
     upcoming_only = upcoming is not None
 
-    rows = await slot_repo.list_by_organizer(session, organizer_id, upcoming_only)
-    slots = [to_time_slot_record(row) for row in rows]
-    return json_response(200, gen.SlotsEnvelope(slots=slots))
+    rows = await slot_repo.list_by_organizer(
+        session,
+        organizer_id,
+        upcoming_only,
+        from_time=from_,
+        until_time=to,
+        limit=limit,
+    )
+    # Each row carries its booking-existence flag — see list_by_organizer.
+    slots = [to_time_slot_record(row, has_bookings=has_bookings) for row, has_bookings in rows]
+    days: list[str] | None = None
+    if include == "days":
+        # The marks are calendar days "as the organizer sees them".
+        organizer = await organizer_repo.get_by_id(session, organizer_id)
+        timezone = organizer.timezone if organizer is not None else "UTC"
+        days = await slot_repo.list_day_keys(session, organizer_id, timezone)
+    return json_response(200, gen.SlotsEnvelope(slots=slots, days=days))
 
 
 _create_slot_dep = decoded(decode_create_time_slot_input)

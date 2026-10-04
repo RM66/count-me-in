@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { dateToDayKey } from '@/app/cabinet/_components/day-filter'
+import { dateToDayKey } from '@/helpers/day-key'
 import { IntlTestProvider } from '@/i18n/test-provider'
 import { useSlotsTable } from './use-slots-table'
 
@@ -16,8 +16,12 @@ const TZ = 'Europe/Belgrade'
 const NOW = '2030-06-15T12:00:00.000Z'
 
 const mockRefresh = vi.fn()
+const mockReplace = vi.fn()
+let searchParamsString = ''
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: mockRefresh }),
+  useRouter: () => ({ refresh: mockRefresh, replace: mockReplace }),
+  usePathname: () => '/cabinet/slots',
+  useSearchParams: () => new URLSearchParams(searchParamsString),
 }))
 
 const mockToastSuccess = vi.fn()
@@ -31,6 +35,8 @@ vi.mock('sonner', () => ({
 
 const deleteMutate = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   useDeleteSlot: () => ({ mutate: deleteMutate, isPending: false }),
 }))
 
@@ -79,6 +85,7 @@ function renderTable(overrides: Partial<Parameters<typeof useSlotsTable>[0]> = {
 
 afterEach(() => {
   vi.clearAllMocks()
+  searchParamsString = ''
 })
 
 describe('useSlotsTable', () => {
@@ -88,10 +95,20 @@ describe('useSlotsTable', () => {
     expect(result.current.past.map((s) => s.id).sort()).toEqual(['s2', 's4'])
     // Past stays behind the toggle, not dropped.
     expect(result.current.visible.map((s) => s.id).sort()).toEqual(['s1', 's3'])
+    const { result: pastView } = renderTable({ showPast: true })
+    expect(pastView.current.visible.map((s) => s.id).sort()).toEqual(['s2', 's4'])
+  })
+
+  it('the upcoming/past toggle writes ?past= to the URL', () => {
+    const { result } = renderTable()
     act(() => {
       result.current.setShowPast(true)
     })
-    expect(result.current.visible.map((s) => s.id).sort()).toEqual(['s2', 's4'])
+    expect(mockReplace).toHaveBeenCalledWith('/cabinet/slots?past=1', { scroll: false })
+    act(() => {
+      result.current.setShowPast(false)
+    })
+    expect(mockReplace).toHaveBeenCalledWith('/cabinet/slots', { scroll: false })
   })
 
   it('scopes everything by the active service', () => {
@@ -128,25 +145,34 @@ describe('useSlotsTable', () => {
     expect(pastKeys).toHaveLength(0)
   })
 
-  it('selecting a past-only day flips to the Past tab', () => {
+  it('selecting a past-only day navigates to the Past tab', () => {
     const { result } = renderTable()
     const pastKey = dateToDayKey(new Date('2030-06-14T12:00:00.000Z'))
     act(() => {
       result.current.selectDay(pastKey)
     })
-    expect(result.current.showPast).toBe(true)
+    expect(mockReplace).toHaveBeenCalledWith(`/cabinet/slots?day=${pastKey}&past=1`, {
+      scroll: false,
+    })
   })
 
-  it('selecting an upcoming day flips back to Upcoming', () => {
-    const { result } = renderTable()
+  it('selecting an upcoming day navigates back to Upcoming', () => {
+    const upcomingKey = dateToDayKey(new Date('2030-06-16T12:00:00.000Z'))
+    const { result } = renderTable({ showPast: true })
     act(() => {
-      result.current.selectDay(dateToDayKey(new Date('2030-06-14T12:00:00.000Z')))
+      result.current.selectDay(upcomingKey)
     })
-    expect(result.current.showPast).toBe(true)
-    act(() => {
-      result.current.selectDay(dateToDayKey(new Date('2030-06-16T12:00:00.000Z')))
+    expect(mockReplace).toHaveBeenCalledWith(`/cabinet/slots?day=${upcomingKey}`, {
+      scroll: false,
     })
-    expect(result.current.showPast).toBe(false)
+  })
+
+  it('a selected day scopes the visible rows and labels the chip', () => {
+    const upcomingKey = dateToDayKey(new Date('2030-06-16T12:00:00.000Z'))
+    const { result } = renderTable({ day: upcomingKey })
+    expect(result.current.day).toBe(upcomingKey)
+    expect(result.current.dayLabel).not.toBe('')
+    expect(result.current.visible.map((s) => s.id).sort()).toEqual(['s1', 's3'])
   })
 
   it('defaultMonth opens on the next session, not the oldest past one', () => {

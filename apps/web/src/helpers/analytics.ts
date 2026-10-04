@@ -24,16 +24,18 @@ export interface AnalyticsServicePoint {
  */
 export function toChartTrend(
   trend: Array<{ day: string; bookings: number; seats: number }>,
+  locale: string,
   nowMs: number = Date.now(),
 ): AnalyticsTrendPoint[] {
   const byDay = new Map(trend.map((row) => [row.day, row]))
   const DAY_MS = 24 * 60 * 60 * 1000
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(nowMs - (6 - i) * DAY_MS)
+    // UTC day keys match the API's `date_trunc('day', created_at)` buckets.
     const key = date.toISOString().slice(0, 10)
     const row = byDay.get(key)
     return {
-      day: date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
+      day: date.toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' }),
       bookings: row?.bookings ?? 0,
       seats: row?.seats ?? 0,
     }

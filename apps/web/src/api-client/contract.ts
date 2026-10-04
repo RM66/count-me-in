@@ -1,4 +1,4 @@
-/** Contract-violation reporting for api-client responses (stage 5, D7). */
+/** Contract-violation reporting for api-client responses (ADR-024). */
 
 import { metaOfSchema } from '@repo/contracts/wire'
 import * as Sentry from '@sentry/nextjs'

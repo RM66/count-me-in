@@ -26,7 +26,7 @@ from ..repositories.booking_repo import BookingChain
 # (TypeError on every construct), and DB rows are already canonical.
 
 
-def to_time_slot_record(s: TimeSlot) -> gen.TimeSlotRecord:
+def to_time_slot_record(s: TimeSlot, *, has_bookings: bool | None = None) -> gen.TimeSlotRecord:
     return gen.TimeSlotRecord.model_construct(
         id=s.id,
         serviceId=s.service_id,
@@ -34,6 +34,10 @@ def to_time_slot_record(s: TimeSlot) -> gen.TimeSlotRecord:
         durationMinutes=s.duration_minutes,
         capacity=s.capacity,
         bookedCount=s.booked_count,
+        # None = "not computed" — only the cabinet slot list resolves it,
+        # since it backs the delete affordance; cancelled bookings do not
+        # count into booked_count but still block deletion.
+        hasBookings=has_bookings,
         price=s.price,
         createdAt=domain.iso_date(s.created_at),
     )

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 
 import { useIsDemo } from '@/api-client'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -23,15 +24,17 @@ export function DemoBanner() {
 
   return (
     <div className="px-4 pt-4 md:px-6">
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-muted/50 px-4 py-3">
-        <EyeIcon className="size-4 shrink-0 text-muted-foreground" />
-        <p className="flex-1 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{t('readOnly')}</span> {t('text')}
-        </p>
-        <Button size="sm" asChild>
-          <Link href="/signup">{t('createOwn')}</Link>
-        </Button>
-      </div>
+      <Alert className="border-dashed bg-muted/50">
+        <EyeIcon className="text-muted-foreground" />
+        <AlertDescription className="flex flex-wrap items-center gap-3">
+          <span className="flex-1">
+            <span className="font-medium text-foreground">{t('readOnly')}</span> {t('text')}
+          </span>
+          <Button size="sm" asChild>
+            <Link href="/signup">{t('createOwn')}</Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
     </div>
   )
 }

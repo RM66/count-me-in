@@ -326,7 +326,8 @@
       "contact": "Kontakt",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Einfache Online-Buchungen für Gruppenkurse, Veranstaltungen und Ausflüge."
+    "ogDescription": "Einfache Online-Buchungen für Gruppenkurse, Veranstaltungen und Ausflüge.",
+    "metaTitle": "CountMeIn — Online-Buchungen für Gruppenveranstaltungen"
   },
   "Legal": {
     "lastUpdated": "Zuletzt aktualisiert am {date}",
@@ -374,7 +375,8 @@
       "createAccount": "Konto erstellen",
       "noAccountFound": "Kein Konto gefunden. Erstelle bitte zuerst ein Konto.",
       "sameAccount": "Verwende dasselbe Telegram-Konto wie bei deiner Registrierung.",
-      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support."
+      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support.",
+      "signInFailed": "Du konntest nicht angemeldet werden — authentifiziere dich erneut mit Telegram"
     },
     "signup": {
       "title": "Konto erstellen",
@@ -401,8 +403,10 @@
     },
     "loginLink": {
       "opening": "Einen Moment, wir öffnen deinen Veranstalterbereich.",
-      "continue": "Weiter zum Veranstalterbereich"
-    }
+      "continue": "Weiter zum Veranstalterbereich",
+      "title": "Dein Veranstalterbereich wird geöffnet…"
+    },
+    "metaTitle": "Kontozugang"
   },
   "NotFound": {
     "title": "Seite nicht gefunden",
@@ -465,7 +469,8 @@
       "cancel": "Abbrechen",
       "saving": "Wird gespeichert...",
       "close": "Schließen",
-      "full": "Ausgebucht"
+      "full": "Ausgebucht",
+      "clearFilter": "Filter zurücksetzen"
     },
     "sidebar": {
       "subtitle": "Veranstalter",
@@ -524,7 +529,9 @@
       "changeDay": "Nach {day} gefiltert. Tag ändern",
       "filterByDay": "{entity} nach Tag filtern",
       "showEveryBooking": "Alle Buchungen anzeigen",
-      "showEveryService": "Alle Angebote anzeigen"
+      "showEveryService": "Alle Angebote anzeigen",
+      "entityBookings": "Buchungen",
+      "entitySlots": "Termine"
     },
     "demoBanner": {
       "readOnly": "Schreibgeschützte Demo.",
@@ -587,14 +594,14 @@
       "editSlot": "Termin bearbeiten",
       "viewBookings": "Buchungen ansehen",
       "duplicate": "Duplizieren",
-      "cancelSlot": "Termin absagen",
-      "cancelTitle": "Diesen Termin absagen?",
-      "cancelDescriptionWithBookings": "Dieser Termin hat {count} {count, plural, =1 {gebuchten Platz} other {gebuchte Plätze}}. Wenn du ihn absagst, werden der Termin und alle zugehörigen Buchungen gelöscht. Dies kann nicht rückgängig gemacht werden.",
-      "cancelDescriptionPlain": "Der Termin wird entfernt und ist für Gäste nicht mehr sichtbar. Dies kann nicht rückgängig gemacht werden.",
+      "deleteSlot": "Termin löschen",
+      "deleteBlocked": "Termine mit Buchungen können nicht gelöscht werden.",
+      "deleteTitle": "Diesen Termin löschen?",
+      "deleteDescription": "Der Termin wird entfernt und ist für Gäste nicht mehr sichtbar. Dies kann nicht rückgängig gemacht werden.",
       "keepSlot": "Termin behalten",
-      "cancellingDialog": "Wird abgesagt...",
-      "cancelledToast": "Termin abgesagt",
-      "cancelFailed": "Der Termin konnte nicht abgesagt werden",
+      "deletingDialog": "Wird gelöscht...",
+      "deletedToast": "Termin gelöscht",
+      "deleteFailed": "Der Termin konnte nicht gelöscht werden",
       "dialogCreateTitle": "Termin hinzufügen",
       "dialogCreateDescription": "Plane einen neuen Termin. Die Standardwerte werden aus dem Angebot übernommen.",
       "dialogEditTitle": "Termin bearbeiten",
@@ -663,7 +670,7 @@
       "deleteService": "Angebot löschen",
       "deleting": "Wird gelöscht...",
       "deleteTitle": "Dieses Angebot löschen?",
-      "deleteDescription": "{title} und alle zugehörigen Termine und Buchungen werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "deleteDescription": "{title} und alle zugehörigen Termine werden gelöscht. Liegen Buchungen für diese Leistung vor, wird das Löschen abgelehnt.",
       "keepService": "Angebot behalten",
       "delete": "Löschen",
       "coverPhoto": "Titelbild",
@@ -711,7 +718,8 @@
       "noChanges": "Keine Änderungen zu speichern",
       "updatedToast": "Profil aktualisiert",
       "updateFailed": "Das Profil konnte nicht aktualisiert werden",
-      "loadFailed": "Dein Profil konnte nicht geladen werden — aktualisiere die Seite, um es erneut zu versuchen."
+      "loadFailed": "Dein Profil konnte nicht geladen werden — aktualisiere die Seite, um es erneut zu versuchen.",
+      "copyFailed": "Der Link konnte nicht kopiert werden"
     },
     "bookings": {
       "title": "Buchungen",

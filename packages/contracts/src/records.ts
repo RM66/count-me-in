@@ -25,6 +25,27 @@ export const serviceCountsRecord = z.object({
 })
 export type ServiceCountsRecord = z.infer<typeof serviceCountsRecord>
 
+/**
+ * The cabinet overview's stat cards, computed server-side — a 50-row
+ * booking page could never answer these (they are all-time / all-upcoming
+ * aggregates, not page projections).
+ */
+export const cabinetOverviewRecord = z.object({
+  /** Confirmed bookings across every service, all time. */
+  confirmedBookings: z.number().int(),
+  /** Confirmed bookings created in the last 7 days. */
+  confirmedLast7Days: z.number().int(),
+  /** Sessions that have not started yet. */
+  upcomingSlots: z.number().int(),
+  /** Upcoming sessions starting within the next 7 days. */
+  upcomingSlotsNext7Days: z.number().int(),
+  /** Seats reserved on upcoming sessions (sum of bookedCount). */
+  upcomingSeatsBooked: z.number().int(),
+  /** Seats offered on upcoming sessions (sum of capacity). */
+  upcomingSeatsOffered: z.number().int(),
+})
+export type CabinetOverviewRecord = z.infer<typeof cabinetOverviewRecord>
+
 export const analyticsTrendDay = z.object({
   day: z.string(),
   bookings: z.number().int(),

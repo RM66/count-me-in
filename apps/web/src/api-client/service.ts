@@ -1,28 +1,19 @@
 'use client'
 
 import type { CreateServiceInput, UpdateServiceInput } from '@repo/contracts'
-import { deletedServiceEnvelope, imageUploadTarget, serviceEnvelope } from '@repo/contracts'
+import { deletedServiceEnvelope, serviceEnvelope } from '@repo/contracts'
 import { SERVICE_PHOTO_UPLOAD_MAX_BYTES } from '@repo/contracts'
 import { useMutation } from '@tanstack/react-query'
 
 import { del, patch, post } from './client'
-import { ApiError } from './error'
-import { resizeServicePhoto } from './image'
-
-/**
- * Last-resort fallbacks for upload failures: api-client has no locale, so the
- * display site (use-image-upload) translates by status. Named constants rather
- * than inline literals — intentional, documented fallback, not stray copy.
- */
-const COMPRESS_ERROR_FALLBACK = 'Could not compress that image enough — try another one'
-const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
+import { resizeServicePhoto, uploadImage } from './image'
 
 /**
  * Client-side API for the **Service** entity — writes plus the cover upload
  * flow. Cabinet pages read services on the server (`server/api-client.ts`),
  * so there is no list/detail query here. The mutations return the created or
  * updated record; the caller follows with `router.refresh()` to re-render the
- * server component (Phase 2.3 — no client cache to invalidate).
+ * server component — there is no client cache to invalidate.
  */
 
 /** Create a service owned by the signed-in organizer. */
@@ -33,18 +24,18 @@ export function useCreateService() {
 }
 
 /** Update one service. Only the fields present in `input` are written. */
-export function useUpdateService(serviceId: string) {
+export function useUpdateService() {
   return useMutation({
-    mutationFn: (input: UpdateServiceInput) =>
-      patch(`/api/services/${serviceId}`, input, serviceEnvelope, 'application/merge-patch+json'),
+    mutationFn: ({ id, input }: { id: string; input: UpdateServiceInput }) =>
+      patch(`/api/services/${id}`, input, serviceEnvelope, 'application/merge-patch+json'),
   })
 }
 
 /** Delete one service. Slots cascade server-side; a service whose
  * sessions were ever booked answers 409 and is not deleted. */
-export function useDeleteService(serviceId: string) {
+export function useDeleteService() {
   return useMutation({
-    mutationFn: () => del(`/api/services/${serviceId}`, deletedServiceEnvelope),
+    mutationFn: (id: string) => del(`/api/services/${id}`, deletedServiceEnvelope),
   })
 }
 
@@ -59,33 +50,12 @@ export function useDeleteService(serviceId: string) {
  */
 export function useUploadServicePhoto() {
   return useMutation({
-    mutationFn: async (file: File): Promise<string> => {
-      const image = await resizeServicePhoto(file)
-
-      if (image.size > SERVICE_PHOTO_UPLOAD_MAX_BYTES) {
-        throw new ApiError(COMPRESS_ERROR_FALLBACK, 413)
-      }
-
-      const target = await post(
-        '/api/organizers/me/service-photo',
-        {
-          contentType: image.type,
-          size: image.size,
-        },
-        imageUploadTarget,
-      )
-
-      const r2Response = await fetch(target.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': image.type },
-        body: image,
-      })
-
-      if (!r2Response.ok) {
-        throw new ApiError(UPLOAD_ERROR_FALLBACK, r2Response.status)
-      }
-
-      return target.publicUrl
-    },
+    mutationFn: (file: File): Promise<string> =>
+      uploadImage({
+        file,
+        resize: resizeServicePhoto,
+        maxBytes: SERVICE_PHOTO_UPLOAD_MAX_BYTES,
+        endpoint: '/api/organizers/me/service-photo',
+      }),
   })
 }

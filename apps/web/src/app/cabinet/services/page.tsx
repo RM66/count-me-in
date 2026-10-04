@@ -15,19 +15,21 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { serviceCountsById } from '@/helpers/analytics'
-import { getCabinetSummary, listServices } from '@/server/api-client'
-import { resolveCabinetOrganizerId } from '@/server/demo'
+import { getCabinetSummary, getOrganizerProfile, listServices } from '@/server/api-client'
 
 export default async function ServicesPage() {
-  // Anonymous visitors get the read-only demo organizer (ADR-010).
-  const { isDemo: isReadOnly } = await resolveCabinetOrganizerId()
-
-  const t = await getTranslations('Cabinet.services')
-  const tc = await getTranslations('Cabinet.common')
-  const tcrumbs = await getTranslations('Cabinet.crumbs')
-  const tslots = await getTranslations('Cabinet.slots')
-
-  const [services, summary] = await Promise.all([listServices(), getCabinetSummary()])
+  const [t, tc, tcrumbs, tslots, organizer, services, summary] = await Promise.all([
+    getTranslations('Cabinet.services'),
+    getTranslations('Cabinet.common'),
+    getTranslations('Cabinet.crumbs'),
+    getTranslations('Cabinet.slots'),
+    getOrganizerProfile(),
+    listServices(),
+    getCabinetSummary(),
+  ])
+  // Anonymous visitors get the read-only demo profile from the API itself
+  // (ADR-010) — `isDemo` is the single source of truth, not the session.
+  const isReadOnly = organizer?.isDemo ?? true
   const countsById = serviceCountsById(summary.serviceCounts)
 
   return (

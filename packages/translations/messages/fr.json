@@ -326,7 +326,8 @@
       "contact": "Contact",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Réservation en ligne simple pour les cours collectifs, les événements et les sorties."
+    "ogDescription": "Réservation en ligne simple pour les cours collectifs, les événements et les sorties.",
+    "metaTitle": "CountMeIn — réservation en ligne pour les activités de groupe"
   },
   "Legal": {
     "lastUpdated": "Dernière mise à jour le {date}",
@@ -374,7 +375,8 @@
       "createAccount": "Créer un compte",
       "noAccountFound": "Aucun compte trouvé. Crée d’abord un compte.",
       "sameAccount": "Utilise le même compte Telegram que lors de ton inscription.",
-      "notConfigured": "La connexion avec Telegram n’est pas configurée. Contacte l’assistance."
+      "notConfigured": "La connexion avec Telegram n’est pas configurée. Contacte l’assistance.",
+      "signInFailed": "Impossible de te connecter — authentifie-toi de nouveau avec Telegram"
     },
     "signup": {
       "title": "Crée ton compte",
@@ -401,8 +403,10 @@
     },
     "loginLink": {
       "opening": "Un instant, nous ouvrons ton espace organisateur.",
-      "continue": "Accéder à ton espace organisateur"
-    }
+      "continue": "Accéder à ton espace organisateur",
+      "title": "Ouverture de ton espace organisateur…"
+    },
+    "metaTitle": "Accès au compte"
   },
   "NotFound": {
     "title": "Page introuvable",
@@ -465,7 +469,8 @@
       "cancel": "Annuler",
       "saving": "Enregistrement...",
       "close": "Fermer",
-      "full": "Complet"
+      "full": "Complet",
+      "clearFilter": "Effacer le filtre"
     },
     "sidebar": {
       "subtitle": "Organisateur",
@@ -524,7 +529,9 @@
       "changeDay": "Filtré sur {day}. Changer de jour",
       "filterByDay": "Filtrer {entity} par jour",
       "showEveryBooking": "Afficher toutes les réservations",
-      "showEveryService": "Afficher toutes les activités"
+      "showEveryService": "Afficher toutes les activités",
+      "entityBookings": "réservations",
+      "entitySlots": "créneaux"
     },
     "demoBanner": {
       "readOnly": "Démo en lecture seule.",
@@ -587,14 +594,14 @@
       "editSlot": "Modifier le créneau",
       "viewBookings": "Voir les réservations",
       "duplicate": "Dupliquer",
-      "cancelSlot": "Annuler le créneau",
-      "cancelTitle": "Annuler ce créneau ?",
-      "cancelDescriptionWithBookings": "Cette séance compte {count} {count, plural, =1 {place réservée} other {places réservées}}. L’annulation supprime le créneau et toutes ses réservations. Cette action est irréversible.",
-      "cancelDescriptionPlain": "Le créneau sera supprimé et ne sera plus visible par les participants. Cette action est irréversible.",
+      "deleteSlot": "Supprimer le créneau",
+      "deleteBlocked": "Les créneaux réservés ne peuvent pas être supprimés.",
+      "deleteTitle": "Supprimer ce créneau ?",
+      "deleteDescription": "Le créneau sera supprimé et ne sera plus visible par les participants. Cette action est irréversible.",
       "keepSlot": "Garder le créneau",
-      "cancellingDialog": "Annulation...",
-      "cancelledToast": "Créneau annulé",
-      "cancelFailed": "Impossible d’annuler le créneau",
+      "deletingDialog": "Suppression...",
+      "deletedToast": "Créneau supprimé",
+      "deleteFailed": "Impossible de supprimer le créneau",
       "dialogCreateTitle": "Ajouter un créneau horaire",
       "dialogCreateDescription": "Planifie une nouvelle séance. Les valeurs par défaut viennent de l’activité.",
       "dialogEditTitle": "Modifier le créneau horaire",
@@ -663,7 +670,7 @@
       "deleteService": "Supprimer l’activité",
       "deleting": "Suppression...",
       "deleteTitle": "Supprimer cette activité ?",
-      "deleteDescription": "{title}, tous ses créneaux et toutes ses réservations seront supprimés. Cette action est irréversible.",
+      "deleteDescription": "{title} et tous ses créneaux seront supprimés. Si le service a déjà des réservations, la suppression sera refusée.",
       "keepService": "Garder l’activité",
       "delete": "Supprimer",
       "coverPhoto": "Photo de couverture",
@@ -711,7 +718,8 @@
       "noChanges": "Aucune modification à enregistrer",
       "updatedToast": "Profil mis à jour",
       "updateFailed": "Impossible de mettre à jour le profil",
-      "loadFailed": "Impossible de charger ton profil — actualise la page pour réessayer."
+      "loadFailed": "Impossible de charger ton profil — actualise la page pour réessayer.",
+      "copyFailed": "Impossible de copier le lien"
     },
     "bookings": {
       "title": "Réservations",

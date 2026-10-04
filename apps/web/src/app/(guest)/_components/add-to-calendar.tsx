@@ -11,12 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-function toCalDate(iso: string): string {
-  return iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-}
+import { buildIcs, icsFilename, toIcsDate } from '@/helpers/calendar'
 
 export function AddToCalendar({
+  uid,
   title,
   startsAt,
   endsAt,
@@ -24,6 +22,8 @@ export function AddToCalendar({
   variant = 'outline',
   className,
 }: {
+  /** Stable event id (the booking id) — RFC 5545 requires UID. */
+  uid: string
   title: string
   startsAt: string
   endsAt: string
@@ -31,8 +31,8 @@ export function AddToCalendar({
   variant?: 'outline' | 'default' | 'secondary'
   className?: string
 }) {
-  const start = toCalDate(startsAt)
-  const end = toCalDate(endsAt)
+  const start = toIcsDate(new Date(startsAt))
+  const end = toIcsDate(new Date(endsAt))
   const t = useTranslations('AddToCalendar')
 
   const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
@@ -40,28 +40,16 @@ export function AddToCalendar({
   )}&dates=${start}/${end}${location ? `&location=${encodeURIComponent(location)}` : ''}`
 
   const downloadIcs = () => {
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//CountMeIn//EN',
-      'BEGIN:VEVENT',
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
-      `SUMMARY:${title}`,
-      location ? `LOCATION:${location}` : '',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ]
-      .filter(Boolean)
-      .join('\r\n')
-
+    const ics = buildIcs({ uid, title, startsAt, endsAt, location })
     const blob = new Blob([ics], { type: 'text/calendar' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${title.replace(/\s+/g, '-').toLowerCase()}.ics`
+    a.download = icsFilename(title)
     a.click()
-    URL.revokeObjectURL(url)
+    // Revoke on the next task — a synchronous revoke can abort the
+    // download in Firefox/Safari before the browser reads the blob.
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
   return (

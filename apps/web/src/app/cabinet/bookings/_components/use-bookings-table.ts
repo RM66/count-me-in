@@ -1,172 +1,182 @@
 'use client'
 
-import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
-import { useState } from 'react'
+import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useLocale } from 'next-intl'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { useDayFilter } from '@/app/cabinet/_components/day-filter'
-import { dayKeyToDate } from '@/app/cabinet/_components/day-filter'
+import { dayKeyToDate, formatDayLabel } from '@/helpers/day-key'
 
 const SORT_KEYS = ['guest', 'service', 'when', 'seats', 'status'] as const
 export type SortKey = (typeof SORT_KEYS)[number]
-
-/** Active column sort, or `null` for the server's default order (newest first). */
-export type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null
+export type BookingSort = SortKey
 
 export { SORT_KEYS }
 
+export type BookingStatusFilter = 'all' | 'confirmed' | 'cancelled'
+
+/** Delay before the search box lands in `?q=` — one fetch per pause, not per keystroke. */
+const SEARCH_DEBOUNCE_MS = 300
+
 type UseBookingsTableOptions = {
-  bookings: BookingRecord[]
   slots: TimeSlotRecord[]
   services: ServiceRecord[]
   timezone: string
   activeServiceId?: string
-  activeSlotId?: string
+  /** URL-derived filter state — the page parsed and validated each value. */
+  status?: Exclude<BookingStatusFilter, 'all'>
+  query?: string
+  day?: string
+  sort?: SortKey
+  dir?: 'asc' | 'desc'
+  /** Scoped day keys from the API — the picker's marks. */
+  bookedDays: string[]
 }
 
 /**
- * The filtering, scoping, sorting and day-marking logic behind the bookings
- * table — everything that is *not* rendering.
+ * The bookings table's filter plumbing — everything that is *not* rendering.
  *
- * Extracted from [`BookingsTable`](bookings-table.tsx) so the component is left
- * with the table markup and this hook can be tested in isolation.
- *
- * A booking reaches its service transitively (Booking → TimeSlot → Service) —
- * there is no `Booking.serviceId` column, so the join happens here.
+ * Filter state lives in the URL (`?service=`, `?slot=`, `?status=`, `?q=`,
+ * `?day=`, `?sort=`, `?dir=`, `?page=`): the API answers exactly the view the
+ * URL describes, so the page of 50 rows arrives already filtered, sorted and
+ * paginated. This hook only *writes* that state — every control is a
+ * navigation — and derives display props (marks, labels, hrefs) from it.
+ * What remains ephemeral: the search box's uncommitted text and the details
+ * sheet's open row.
  */
 export function useBookingsTable({
-  bookings,
   slots,
   services,
   timezone,
   activeServiceId,
-  activeSlotId,
+  status,
+  query,
+  day,
+  sort,
+  dir,
+  bookedDays,
 }: UseBookingsTableOptions) {
-  const [filter, setFilter] = useState<'all' | 'confirmed' | 'cancelled'>('all')
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<SortState>(null)
-  const { day, setDay, dayLabel, dayKeyOf } = useDayFilter(timezone)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const locale = useLocale()
 
   const slotsById = new Map(slots.map((slot) => [slot.id, slot]))
   const servicesById = new Map(services.map((service) => [service.id, service]))
+  const activeService = activeServiceId ? servicesById.get(activeServiceId) : undefined
 
-  const serviceOf = (booking: BookingRecord): ServiceRecord | undefined => {
+  /** The service a booking's slot belongs to — Booking has no serviceId. */
+  const serviceOf = (booking: { timeSlotId: string }): ServiceRecord | undefined => {
     const slot = slotsById.get(booking.timeSlotId)
     return slot ? servicesById.get(slot.serviceId) : undefined
   }
 
-  const activeService = activeServiceId ? servicesById.get(activeServiceId) : undefined
-
   /**
-   * The calendar day a booking's session falls on, via its slot. `null` when
-   * the slot is gone — such a booking never matches a day filter.
+   * Write filter changes back to the URL — navigation is how a control
+   * commits. `replace` keeps back/forward meaningful at page level instead
+   * of recording every chip click, and `scroll: false` holds the table in
+   * place. Any change except pagination itself resets `?page`.
    */
-  const bookingDayOf = (booking: BookingRecord): string | null => {
-    const slot = slotsById.get(booking.timeSlotId)
-    return slot ? dayKeyOf(slot.startsAt) : null
-  }
-
-  // URL scope first: a slot filter pins one session (the narrower filter), a
-  // service filter follows the booking's slot to its serviceId — there is no
-  // Booking.serviceId. The calendar's marks follow this scope, so while
-  // filtered the picker answers "when is *this* booked".
-  const scoped = activeSlotId
-    ? bookings.filter((b) => b.timeSlotId === activeSlotId)
-    : activeServiceId
-      ? bookings.filter((b) => slotsById.get(b.timeSlotId)?.serviceId === activeServiceId)
-      : bookings
-
-  const filtered = scoped.filter((b) => {
-    const matchesFilter = filter === 'all' || b.status === filter
-    const matchesDay = day === '' || bookingDayOf(b) === day
-    const needle = query.trim().toLowerCase()
-    const matchesQuery =
-      needle === '' ||
-      b.guestName.toLowerCase().includes(needle) ||
-      (b.guestMessengerLogin ?? '').toLowerCase().includes(needle) ||
-      b.guestMessengerId.toLowerCase().includes(needle) ||
-      (serviceOf(b)?.title ?? '').toLowerCase().includes(needle)
-    return matchesFilter && matchesDay && matchesQuery
-  })
-
-  /**
-   * Which days to mark in the picker — the reason it exists rather than the
-   * native control, which cannot say anything about a day's contents. A day is
-   * marked when at least one scoped booking's session falls on it.
-   */
-  const bookedKeys = [
-    ...new Set(scoped.map(bookingDayOf).filter((key): key is string => key !== null)),
-  ]
-  const bookedDates = bookedKeys.map(dayKeyToDate)
-
-  /**
-   * Which month to open on: the next booked session, else the most recent one,
-   * else today. (A selected day wins — the picker handles that itself.) The
-   * popover mounts only after a click, so reading the client clock here cannot
-   * cause a hydration mismatch.
-   */
-  const sortedBookedDates = [...bookedDates].sort((a, b) => a.getTime() - b.getTime())
-  const nextBooked = sortedBookedDates.find((date) => date.getTime() >= Date.now())
-  const defaultMonth = nextBooked ?? sortedBookedDates.at(-1) ?? new Date()
-
-  /**
-   * The comparable value behind each column. "When" and "Service" sort by the
-   * *joined* slot/service, and a booking whose slot is gone (deleted service)
-   * yields `null` — those rows always sink to the end, whatever the direction,
-   * so a dangling reference cannot masquerade as the earliest session.
-   */
-  const sortValue = (booking: BookingRecord, key: SortKey): string | number | null => {
-    switch (key) {
-      case 'guest':
-        return booking.guestName.toLowerCase()
-      case 'service':
-        return serviceOf(booking)?.title.toLowerCase() ?? null
-      case 'when':
-        // ISO 8601 instants compare correctly as strings.
-        return slotsById.get(booking.timeSlotId)?.startsAt ?? null
-      case 'seats':
-        return booking.seats
-      case 'status':
-        return booking.status
+  const navigate = (updates: Record<string, string | undefined>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) params.set(key, value)
+      else params.delete(key)
     }
+    if (!('page' in updates)) params.delete('page')
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
 
-  // `null` sort keeps the server order (newest booking first).
-  const rows = sort
-    ? [...filtered].sort((a, b) => {
-        const left = sortValue(a, sort.key)
-        const right = sortValue(b, sort.key)
-        if (left === right) return 0
-        if (left === null) return 1
-        if (right === null) return -1
-        const cmp = left < right ? -1 : 1
-        return sort.dir === 'asc' ? cmp : -cmp
-      })
-    : filtered
+  // ── Status filter ──────────────────────────────────────────────────────
+  const filter: BookingStatusFilter = status ?? 'all'
+  const setFilter = (next: BookingStatusFilter) =>
+    navigate({ status: next === 'all' ? undefined : next })
+
+  // ── Day filter ─────────────────────────────────────────────────────────
+  const dayValue = day ?? ''
+  const dayLabel = dayValue ? formatDayLabel(dayValue, timezone, locale) : ''
+  const setDay = (next: string) => navigate({ day: next || undefined })
+
+  /**
+   * Which days the picker marks — the API computed them over the scoped
+   * bookings (a truncated page could never answer "which days have
+   * bookings").
+   */
+  const bookedDates = useMemo(() => bookedDays.map(dayKeyToDate), [bookedDays])
+
+  /**
+   * Which month to open on: the next booked session, else the most recent
+   * one, else today. The popover mounts only after a click, so reading the
+   * client clock here cannot cause a hydration mismatch.
+   */
+  const defaultMonth = useMemo(() => {
+    const sorted = [...bookedDates].sort((a, b) => a.getTime() - b.getTime())
+    return sorted.find((date) => date.getTime() >= Date.now()) ?? sorted.at(-1) ?? new Date()
+  }, [bookedDates])
+
+  // ── Search ─────────────────────────────────────────────────────────────
+  /**
+   * The input keeps its own uncommitted text; the debounce writes `?q=` on a
+   * pause. `submittedQueryRef` records what we sent, so the sync below only
+   * overwrites the box when the URL changed *externally* (back/forward or a
+   * filter-chip clear) — a navigation answering our own debounce must not
+   * clobber what the user typed since.
+   */
+  const [search, setSearch] = useState(query ?? '')
+  const submittedQueryRef = useRef(query ?? '')
+  useEffect(() => {
+    const next = query ?? ''
+    if (next === submittedQueryRef.current) return
+    submittedQueryRef.current = next
+    setSearch(next)
+  }, [query])
+  useEffect(() => {
+    const value = search.trim()
+    if (value === (query ?? '')) return
+    const timer = setTimeout(() => {
+      submittedQueryRef.current = value
+      navigateRef.current({ q: value || undefined })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [search, query])
+
+  // ── Column sort ────────────────────────────────────────────────────────
+  /** Active column sort (missing `dir` reads as asc), or `null` for server order. */
+  const sortState = sort ? ({ key: sort, dir: dir ?? 'asc' } as const) : null
 
   /** Cycle a column: unsorted → ascending → descending → unsorted. */
   const toggleSort = (key: SortKey) => {
-    setSort((current) => {
-      if (current?.key !== key) return { key, dir: 'asc' }
-      if (current.dir === 'asc') return { key, dir: 'desc' }
-      return null
-    })
+    if (sort !== key) navigate({ sort: key, dir: 'asc' })
+    else if (dir === 'desc') navigate({ sort: undefined, dir: undefined })
+    else navigate({ dir: 'desc' })
+  }
+
+  // ── Pagination ─────────────────────────────────────────────────────────
+  /** Page links preserve every active filter — a page turn resets nothing. */
+  const pageHref = (target: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (target > 1) params.set('page', String(target))
+    else params.delete('page')
+    const qs = params.toString()
+    return qs ? `${pathname}?${qs}` : pathname
   }
 
   return {
     filter,
     setFilter,
-    query,
-    setQuery,
-    sort,
+    search,
+    setSearch,
+    sortState,
     toggleSort,
-    day,
+    day: dayValue,
     setDay,
     dayLabel,
-    scoped,
-    filtered,
-    rows,
     bookedDates,
     defaultMonth,
+    pageHref,
     slotsById,
     servicesById,
     serviceOf,

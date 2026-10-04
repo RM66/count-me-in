@@ -22,13 +22,14 @@ import {
 import { cache } from 'react'
 import type { z } from 'zod'
 
-import { apiFetch, resolveApiOrigin } from '@/server/api'
-import { internalSecretHeaders } from '@/server/internal-api'
+import { apiFetch } from '@/server/api'
+import { resolveApiOrigin } from '@/server/api-origin'
+import { withInternalHeaders } from '@/server/internal-api'
 
 import 'server-only'
 
 /**
- * Server-side API client for the Python API (Phase 5.1).
+ * Server-side API client for the Python API (ADR-021).
  *
  * Every Next.js server read goes through here instead of `@repo/db`:
  * the Python API is the single owner of Postgres, Next.js fetches
@@ -41,7 +42,7 @@ import 'server-only'
  *   the Auth.js session when present; anonymous callers get the demo
  *   scope server-side (ADR-010).
  * - the Auth.js provider lookup lives in `internal-api.ts` (kept
- *   separate so it never imports `apiFetch`/`auth()` — review fix 1.1).
+ *   separate so it never imports `apiFetch`/`auth()` — ADR-022).
  */
 
 /** The shared tail of every envelope fetch: 404 → null, other
@@ -69,11 +70,10 @@ async function fetchEnvelope<S extends z.ZodType>(
   init: RequestInit = {},
 ): Promise<z.infer<S> | null> {
   // Cabinet reads are per-organizer private data minted from the
-  // request's Auth.js session: never cache them in the shared Next
-  // Data Cache (a cached `cabinet-services` could serve organizer A's
-  // rows to B). `cache: 'no-store'` keeps the per-request fetch while
-  // still allowing React dedup within the render.
-  const res = await apiFetch(path, { ...init, cache: 'no-store' })
+  // request's Auth.js session: `apiFetch` already forces no-store, so
+  // they never land in the shared Next Data Cache (a cached response
+  // could serve organizer A's rows to B).
+  const res = await apiFetch(path, init)
   return parseEnvelopeResponse(res, path, schema)
 }
 
@@ -81,25 +81,19 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
   path: string,
   schema: S,
   tags: string[],
-  options: { revalidateSeconds?: number } & RequestInit = {},
+  init: RequestInit = {},
 ): Promise<z.infer<S> | null> {
-  const { revalidateSeconds = 60, ...init } = options
   const origin = await resolveApiOrigin()
   // Public catalog reads are unauthenticated and shared: cache them for
   // a short window so generateMetadata + page + OG image share one
   // origin fetch instead of three. Tags allow on-demand invalidation
-  // when an organizer mutates public content. The internal-secret
-  // header marks this as a trusted SSR call, so it counts against the
-  // dedicated server-side rate-limit bucket rather than the shared
-  // public egress-IP one (ADR-023 Phase 1).
+  // when an organizer mutates public content.
   const headers = new Headers(init.headers)
-  for (const [key, value] of Object.entries(internalSecretHeaders())) {
-    headers.set(key, value)
-  }
+  withInternalHeaders(headers)
   const res = await fetch(`${origin}${path}`, {
     ...init,
     headers,
-    next: { tags, revalidate: revalidateSeconds },
+    next: { tags, revalidate: 60 },
   })
   return parseEnvelopeResponse(res, path, schema)
 }
@@ -152,9 +146,11 @@ export async function getPublicSitemap(): Promise<PublicSitemapEnvelope> {
  */
 export async function getGuestBooking(manageToken: string): Promise<GuestBooking | null> {
   const origin = await resolveApiOrigin()
+  const headers = new Headers({ 'Content-Type': 'application/json' })
+  withInternalHeaders(headers)
   const res = await fetch(`${origin}/api/bookings/manage-lookup`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...internalSecretHeaders() },
+    headers,
     body: JSON.stringify({ manageToken }),
     cache: 'no-store',
   })
@@ -168,11 +164,15 @@ export async function getGuestBooking(manageToken: string): Promise<GuestBooking
   return envelope?.booking ?? null
 }
 
-/** Organizer profile this request may view (demo for anonymous, null when unseeded). */
-export async function getOrganizerProfile(): Promise<OrganizerProfile | null> {
+/**
+ * Organizer profile this request may view (demo for anonymous, null when
+ * unseeded). Wrapped in `cache()`: the cabinet layout and every cabinet page
+ * need it — one HTTP fetch per render pass, not one per consumer.
+ */
+export const getOrganizerProfile = cache(async (): Promise<OrganizerProfile | null> => {
   const envelope = await fetchEnvelope('/api/organizers/me', organizerEnvelope)
   return envelope?.organizer ?? null
-}
+})
 
 /** Services of the organizer this request may view, oldest first. */
 export async function listServices(): Promise<ServiceRecord[]> {
@@ -189,25 +189,93 @@ export async function getOwnedService(serviceId: string): Promise<ServiceRecord 
   return envelope?.service ?? null
 }
 
-/** Slots across the viewer's services, earliest first. */
-export async function listSlots(
-  options: { upcomingOnly?: boolean } = {},
-): Promise<TimeSlotRecord[]> {
-  const path = options.upcomingOnly ? '/api/slots?upcoming=1' : '/api/slots'
-  const envelope = await fetchEnvelope(path, slotsEnvelope)
-  return envelope?.slots ?? []
+type ListSlotsOptions = {
+  /** Drop sessions that have already started. */
+  upcomingOnly?: boolean
+  /** Range bounds on `startsAt` — RFC 3339 instants (calendar-week reads). */
+  from?: string
+  to?: string
+  /** Cap the earliest-first order — the "next N sessions" previews. */
+  limit?: number
+  /** Also return the full day-key set — `?include=days`, a DISTINCT scan the API only runs on request. */
+  includeDays?: boolean
 }
 
-/** Bookings of the viewer, newest first, paginated (default 50).
- * `hasMore` comes from the server — it fetched one row past the page. */
-export async function listBookings(
-  options: { limit?: number; offset?: number } = {},
-): Promise<{ bookings: BookingRecord[]; hasMore: boolean }> {
-  const limit = options.limit ?? 50
-  const offset = options.offset ?? 0
-  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+/**
+ * Slots across the viewer's services, earliest first. Callers that only
+ * need a window pass `from`/`to`/`limit` — the unbounded read is for the
+ * schedule manager itself. `days` is the full set of session day keys,
+ * independent of the range (the calendar picker's marks), and only when
+ * `includeDays` asks for it.
+ */
+export async function listSlots(
+  options: ListSlotsOptions = {},
+): Promise<{ slots: TimeSlotRecord[]; days: string[] }> {
+  const params = new URLSearchParams()
+  if (options.upcomingOnly) params.set('upcoming', '1')
+  if (options.from) params.set('from', options.from)
+  if (options.to) params.set('to', options.to)
+  if (options.limit) params.set('limit', String(options.limit))
+  if (options.includeDays) params.set('include', 'days')
+  const query = params.toString()
+  const envelope = await fetchEnvelope(`/api/slots${query ? `?${query}` : ''}`, slotsEnvelope)
+  return { slots: envelope?.slots ?? [], days: envelope?.days ?? [] }
+}
+
+/** Sort columns `?sort=` accepts — the bookings table's column keys. */
+type BookingSort = 'guest' | 'service' | 'when' | 'seats' | 'status'
+
+type ListBookingsOptions = {
+  limit?: number
+  offset?: number
+  /** Only bookings whose slot belongs to this service. */
+  serviceId?: string
+  /** Only bookings on this session — the narrower scope. */
+  slotId?: string
+  status?: 'confirmed' | 'cancelled'
+  /** Case-insensitive substring across guest fields and the service title. */
+  q?: string
+  /** `YYYY-MM-DD` in the organizer's timezone — the session's start day. */
+  day?: string
+  sort?: BookingSort
+  dir?: 'asc' | 'desc'
+  /** Also return the scoped booked-day keys — `?include=days` (picker marks). */
+  includeDays?: boolean
+}
+
+/**
+ * Bookings of the viewer, paginated (default 50) and filtered server-side —
+ * the cabinet's URL state maps onto the query params 1:1, so a page is
+ * already the filtered view. `hasMore` comes from the server (it fetched
+ * one row past the page); `bookedDays` marks the scoped days for the picker;
+ * `slots` carries the session rows the page references (plus the owned
+ * `slotId` filter session) so row labels need no whole-schedule fetch.
+ */
+export async function listBookings(options: ListBookingsOptions = {}): Promise<{
+  bookings: BookingRecord[]
+  hasMore: boolean
+  slots: TimeSlotRecord[]
+  bookedDays: string[]
+}> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 50),
+    offset: String(options.offset ?? 0),
+  })
+  if (options.serviceId) params.set('serviceId', options.serviceId)
+  if (options.slotId) params.set('slotId', options.slotId)
+  if (options.status) params.set('status', options.status)
+  if (options.q) params.set('q', options.q)
+  if (options.day) params.set('day', options.day)
+  if (options.sort) params.set('sort', options.sort)
+  if (options.dir) params.set('dir', options.dir)
+  if (options.includeDays) params.set('include', 'days')
   const envelope = await fetchEnvelope(`/api/bookings?${params.toString()}`, bookingsEnvelope)
-  return { bookings: envelope?.bookings ?? [], hasMore: envelope?.hasMore ?? false }
+  return {
+    bookings: envelope?.bookings ?? [],
+    hasMore: envelope?.hasMore ?? false,
+    slots: envelope?.slots ?? [],
+    bookedDays: envelope?.bookedDays ?? [],
+  }
 }
 
 /**

@@ -33,6 +33,7 @@ describe('apiFetch', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
 
@@ -46,13 +47,34 @@ describe('apiFetch', () => {
     )
   })
 
-  it('derives the origin from the Host header in production', async () => {
+  it('ignores the Host header — a spoofed Host must not steer the origin', async () => {
+    // The mock above returns host: evil.example-like input; the origin is
+    // configuration-only, or x-internal-secret would be exfiltrated.
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('API_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://countmein.group')
     const { apiFetch } = await import('@/server/api')
     await apiFetch('/api/services')
     const [url] = fetchMock.mock.calls[0]!
     expect(String(url)).toBe('https://countmein.group/api/services')
+  })
+
+  it('uses VERCEL_URL for the same-origin rewrite when no API_URL is set', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_URL', '')
+    vi.stubEnv('VERCEL_URL', 'countmein-web-abc123.vercel.app')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
+    const [url] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('https://countmein-web-abc123.vercel.app/api/services')
+  })
+
+  it('fails closed in production when no origin is configured', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('API_URL', '')
+    const { apiFetch } = await import('@/server/api')
+    await expect(apiFetch('/api/services')).rejects.toThrow('API origin')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('prefers an explicit API_URL in production (container twin)', async () => {

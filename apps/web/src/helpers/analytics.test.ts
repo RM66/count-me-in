@@ -31,6 +31,7 @@ describe('toChartTrend', () => {
         { day: '2026-08-04', bookings: 2, seats: 5 },
         { day: DAY, bookings: 3, seats: 7 },
       ],
+      'en-US',
       NOW,
     )
     expect(trend).toHaveLength(7)
@@ -41,7 +42,7 @@ describe('toChartTrend', () => {
   })
 
   it('zero-fills days with no rows, including a fully empty trend', () => {
-    const trend = toChartTrend([], NOW)
+    const trend = toChartTrend([], 'en-US', NOW)
     expect(trend).toHaveLength(7)
     expect(trend.every((point) => point.bookings === 0 && point.seats === 0)).toBe(true)
     expect(trend.map((point) => point.day)).toEqual([
@@ -61,6 +62,7 @@ describe('toChartTrend', () => {
         { day: '2026-07-01', bookings: 99, seats: 99 },
         { day: DAY, bookings: 1, seats: 2 },
       ],
+      'en-US',
       NOW,
     )
     expect(trend[6]).toEqual({ day: 'Mon', bookings: 1, seats: 2 })

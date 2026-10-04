@@ -33,7 +33,7 @@ export function CookieConsentBanner() {
           {t('text')} {t('essential')}{' '}
           <Link
             href="/privacy"
-            className="font-medium underline underline-offset-4 decoration-[rgba(127,127,127,0.33)] hover:text-foreground"
+            className="font-medium underline underline-offset-4 decoration-muted-foreground/40 hover:text-foreground"
           >
             {t('privacyPolicy')}
           </Link>

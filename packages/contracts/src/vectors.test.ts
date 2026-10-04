@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
-import { loginLinkKey } from './auth'
+import { authTicketKey, loginLinkKey } from './auth'
 import { isDemoOrganizerId } from './demo'
 import { matchLocale } from './i18n'
 import { API_ROUTES } from './routes'
@@ -160,6 +160,10 @@ describe('domain vectors', () => {
             }
             case 'loginLinkKey': {
               expect(loginLinkKey(c.token as string), name).toBe(c.expected)
+              break
+            }
+            case 'authTicketKey': {
+              expect(authTicketKey(c.token as string), name).toBe(c.expected)
               break
             }
             case 'isDemoOrganizerId': {

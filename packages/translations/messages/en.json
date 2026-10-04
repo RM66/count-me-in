@@ -326,7 +326,8 @@
       "contact": "Contact",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Simple online booking for group classes, events, and outings."
+    "ogDescription": "Simple online booking for group classes, events, and outings.",
+    "metaTitle": "CountMeIn — online booking for group events"
   },
   "Legal": {
     "lastUpdated": "Last updated {date}",
@@ -374,7 +375,8 @@
       "createAccount": "Create an account",
       "noAccountFound": "No account found. Please create an account first.",
       "sameAccount": "Use the same Telegram account you signed up with.",
-      "notConfigured": "Telegram login is not configured. Please contact support."
+      "notConfigured": "Telegram login is not configured. Please contact support.",
+      "signInFailed": "Could not sign you in — authenticate with Telegram again"
     },
     "signup": {
       "title": "Create your account",
@@ -401,8 +403,10 @@
     },
     "loginLink": {
       "opening": "One moment while we open your cabinet.",
-      "continue": "Continue to your cabinet"
-    }
+      "continue": "Continue to your cabinet",
+      "title": "Opening your cabinet…"
+    },
+    "metaTitle": "Account access"
   },
   "NotFound": {
     "title": "Page not found",
@@ -465,7 +469,8 @@
       "cancel": "Cancel",
       "saving": "Saving...",
       "close": "Close",
-      "full": "Full"
+      "full": "Full",
+      "clearFilter": "Clear filter"
     },
     "sidebar": {
       "subtitle": "Organizer",
@@ -524,7 +529,9 @@
       "changeDay": "Filtering by {day}. Change day",
       "filterByDay": "Filter {entity} by day",
       "showEveryBooking": "Show every booking",
-      "showEveryService": "Show every service"
+      "showEveryService": "Show every service",
+      "entityBookings": "bookings",
+      "entitySlots": "slots"
     },
     "demoBanner": {
       "readOnly": "Read-only demo.",
@@ -587,14 +594,14 @@
       "editSlot": "Edit slot",
       "viewBookings": "View bookings",
       "duplicate": "Duplicate",
-      "cancelSlot": "Cancel slot",
-      "cancelTitle": "Cancel this slot?",
-      "cancelDescriptionWithBookings": "This session has {count} booked {count, plural, =1 {seat} other {seats}}. Cancelling removes the slot and every booking on it. This cannot be undone.",
-      "cancelDescriptionPlain": "The slot will be removed and guests will no longer see it. This cannot be undone.",
+      "deleteSlot": "Delete slot",
+      "deleteBlocked": "Slots with bookings cannot be deleted.",
+      "deleteTitle": "Delete this slot?",
+      "deleteDescription": "The slot will be removed and guests will no longer see it. This cannot be undone.",
       "keepSlot": "Keep slot",
-      "cancellingDialog": "Cancelling...",
-      "cancelledToast": "Slot cancelled",
-      "cancelFailed": "Failed to cancel the slot",
+      "deletingDialog": "Deleting...",
+      "deletedToast": "Slot deleted",
+      "deleteFailed": "Failed to delete the slot",
       "dialogCreateTitle": "Add time slot",
       "dialogCreateDescription": "Schedule a new session. Defaults come from the service.",
       "dialogEditTitle": "Edit time slot",
@@ -663,7 +670,7 @@
       "deleteService": "Delete service",
       "deleting": "Deleting...",
       "deleteTitle": "Delete this service?",
-      "deleteDescription": "{title} and all of its time slots and bookings will be removed. This cannot be undone.",
+      "deleteDescription": "{title} and all of its time slots will be removed. If the service has any booking history, deletion will be refused.",
       "keepService": "Keep service",
       "delete": "Delete",
       "coverPhoto": "Cover photo",
@@ -711,7 +718,8 @@
       "noChanges": "No changes to save",
       "updatedToast": "Profile updated",
       "updateFailed": "Failed to update profile",
-      "loadFailed": "Could not load your profile — refresh the page to try again."
+      "loadFailed": "Could not load your profile — refresh the page to try again.",
+      "copyFailed": "Could not copy the link"
     },
     "bookings": {
       "title": "Bookings",

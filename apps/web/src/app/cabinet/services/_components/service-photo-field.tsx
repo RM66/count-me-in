@@ -33,7 +33,6 @@ export function ServicePhotoField({
   const upload = useImageUpload({
     contentType: imageContentType,
     maxBytes: SERVICE_PHOTO_MAX_BYTES,
-    maxBytesLabel: '10 MB',
     mutation: useUploadServicePhoto(),
     onUploaded: (url) => {
       // `shouldDirty` is what enables Save — without it an upload alone would
@@ -69,7 +68,7 @@ export function ServicePhotoField({
         <input
           ref={upload.inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={imageContentType.options.join(',')}
           className="hidden"
           onChange={upload.onFileChange}
         />

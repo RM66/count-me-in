@@ -84,11 +84,12 @@
             "durationMinutes": 60,
             "capacity": 5,
             "bookedCount": 0,
+            "hasBookings": null,
             "price": null,
             "createdAt": "<ts:3>"
           }
         },
-        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":0,\"hasBookings\":null,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -137,6 +138,7 @@
               "durationMinutes": 60,
               "capacity": 5,
               "bookedCount": 1,
+              "hasBookings": null,
               "price": null,
               "createdAt": "<ts:3>"
             },
@@ -169,7 +171,7 @@
             }
           }
         },
-        "body_raw": "{\"booking\":{\"id\":\"<uuid:3>\",\"status\":\"confirmed\",\"seats\":1,\"guestName\":\"Expired Lookup Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":true,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":1,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Expired Lookup Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}}",
+        "body_raw": "{\"booking\":{\"id\":\"<uuid:3>\",\"status\":\"confirmed\",\"seats\":1,\"guestName\":\"Expired Lookup Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":true,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":1,\"hasBookings\":null,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Expired Lookup Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -232,6 +234,7 @@
                 "durationMinutes": 60,
                 "capacity": 5,
                 "bookedCount": 1,
+                "hasBookings": null,
                 "price": null,
                 "createdAt": "<ts:3>"
               },
@@ -265,7 +268,7 @@
             }
           ]
         },
-        "body_raw": "{\"bookings\":[{\"id\":\"<uuid:3>\",\"status\":\"confirmed\",\"seats\":1,\"guestName\":\"Expired Lookup Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":false,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":1,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Expired Lookup Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}]}",
+        "body_raw": "{\"bookings\":[{\"id\":\"<uuid:3>\",\"status\":\"confirmed\",\"seats\":1,\"guestName\":\"Expired Lookup Guest\",\"selectedOptions\":null,\"createdAt\":\"<ts:5>\",\"manageToken\":\"<token>\",\"canCancel\":false,\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":5,\"bookedCount\":1,\"hasBookings\":null,\"price\":null,\"createdAt\":\"<ts:3>\"},\"service\":{\"id\":\"<sid:1>\",\"organizerId\":\"<uuid:1>\",\"title\":\"Expired Lookup Host\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"defaultPrice\":\"20.00\",\"defaultCapacity\":5,\"defaultDurationMinutes\":60,\"maxSeatsPerBooking\":4,\"options\":null,\"optionsSelectMode\":null,\"createdAt\":\"<ts:1>\"},\"organizer\":{\"id\":\"<uuid:1>\",\"slug\":\"parity-org\",\"name\":\"Parity Organizer\",\"timezone\":\"Europe/Belgrade\",\"description\":null,\"photoUrl\":null,\"location\":null,\"contact\":null,\"isDemo\":false}}]}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

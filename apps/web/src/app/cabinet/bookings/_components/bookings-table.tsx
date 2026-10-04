@@ -3,31 +3,24 @@
 import type { BookingRecord, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 import { BookingDetailsSheet } from '@/app/cabinet/_components/booking-details-sheet'
-import { DAY_MARK, DayFilterChip, DayFilterPicker } from '@/app/cabinet/_components/day-filter'
-import { FilterChip } from '@/app/cabinet/_components/filter-chip'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { BookingRow } from './booking-row'
+import { BookingsFilterBar } from './bookings-filter-bar'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { formatDateTime } from '@/helpers/date'
-import { initials } from '@/helpers/name'
-import { SORT_KEYS, type SortKey, useBookingsTable } from './use-bookings-table'
+  type BookingSort,
+  type BookingStatusFilter,
+  SORT_KEYS,
+  useBookingsTable,
+} from './use-bookings-table'
 
 type BookingsTableProps = {
+  /** The current page of the filtered view — the API already applied every filter. */
   bookings: BookingRecord[]
   /** Slots + services let a row resolve Booking → TimeSlot → Service (docs/domain.md). */
   slots: TimeSlotRecord[]
@@ -36,10 +29,16 @@ type BookingsTableProps = {
   timezone: string
   /** Show only this service's bookings. Comes from `?service=` — already validated by the page. */
   activeServiceId?: string
-  /** Show only this slot's bookings. Comes from `?slot=` — already validated by the page. */
-  activeSlotId?: string
   /** Human name for the active slot ("Service · Tue, Jul 22 · 09:00") for the chip. */
   activeSlotLabel?: string
+  /** URL-derived filter state — the page parsed and validated each value. */
+  status?: Exclude<BookingStatusFilter, 'all'>
+  query?: string
+  day?: string
+  sort?: BookingSort
+  dir?: 'asc' | 'desc'
+  /** Scoped day keys from the API — the day picker's marks. */
+  bookedDays: string[]
   /** Read-only demo account (ADR-010). */
   isReadOnly: boolean
   /** Current page (1-based) for the pagination controls. */
@@ -49,12 +48,13 @@ type BookingsTableProps = {
 }
 
 /**
- * The cabinet bookings list: a filterable table plus a details sheet.
+ * The cabinet bookings list: a server-filtered table plus a details sheet.
  *
- * A client component because filtering and the sheet are interactive, but the
- * **data is passed in** — the page is a server component that reads Postgres
- * directly, the same split the slots and services pages use. The filtering,
- * sorting and scoping logic lives in [`useBookingsTable`](use-bookings-table.ts).
+ * A client component because the filter controls and the sheet are
+ * interactive — but every control only *navigates*: the filter state is the
+ * URL and the API answers exactly the view it describes, so no filtering or
+ * sorting happens here. [`useBookingsTable`](use-bookings-table.ts) holds
+ * the URL plumbing.
  */
 export function BookingsTable({
   bookings,
@@ -62,8 +62,13 @@ export function BookingsTable({
   services,
   timezone,
   activeServiceId,
-  activeSlotId,
   activeSlotLabel,
+  status,
+  query,
+  day,
+  sort,
+  dir,
+  bookedDays,
   isReadOnly,
   page,
   hasMore,
@@ -71,19 +76,21 @@ export function BookingsTable({
   const [selected, setSelected] = useState<BookingRecord | null>(null)
   const t = useTranslations('Cabinet.bookings')
   const td = useTranslations('Cabinet.dayFilter')
-  const tc = useTranslations('Cabinet.common')
-  const locale = useLocale()
 
   const state = useBookingsTable({
-    bookings,
     slots,
     services,
     timezone,
     activeServiceId,
-    activeSlotId,
+    status,
+    query,
+    day,
+    sort,
+    dir,
+    bookedDays,
   })
 
-  const HEADER_LABELS: Record<SortKey, string> = {
+  const HEADER_LABELS: Record<BookingSort, string> = {
     guest: t('colGuest'),
     service: t('colService'),
     when: t('colWhen'),
@@ -91,13 +98,13 @@ export function BookingsTable({
     status: t('colStatus'),
   }
 
-  const sortableHead = (key: SortKey) => {
-    const sort = state.sort
-    const active = sort?.key === key
+  const sortableHead = (key: BookingSort) => {
+    const sortState = state.sortState
+    const active = sortState?.key === key
     return (
       <TableHead
         key={key}
-        aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+        aria-sort={active ? (sortState.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
       >
         <Button
           variant="ghost"
@@ -107,7 +114,7 @@ export function BookingsTable({
         >
           {HEADER_LABELS[key]}
           {active ? (
-            sort.dir === 'asc' ? (
+            sortState.dir === 'asc' ? (
               <ArrowUpIcon data-icon="inline-end" />
             ) : (
               <ArrowDownIcon data-icon="inline-end" />
@@ -123,71 +130,15 @@ export function BookingsTable({
   const selectedService = selected ? state.serviceOf(selected) : undefined
   const selectedSlot = selected ? state.slotsById.get(selected.timeSlotId) : undefined
 
+  // The page arrived filtered, so an empty one needs no secondary set to
+  // pick a copy — the active filters decide which emptiness to explain.
+  const hasNarrowingFilter = !!(status || query || day)
+
   return (
     <>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <ToggleGroup
-            type="single"
-            value={state.filter}
-            onValueChange={(v) => v && state.setFilter(v as typeof state.filter)}
-            variant="outline"
-          >
-            <ToggleGroupItem value="all">{t('all')}</ToggleGroupItem>
-            <ToggleGroupItem value="confirmed">{t('confirmed')}</ToggleGroupItem>
-            <ToggleGroupItem value="cancelled">{t('cancelled')}</ToggleGroupItem>
-          </ToggleGroup>
+      <BookingsFilterBar activeSlotLabel={activeSlotLabel} state={state} />
 
-          {/*
-            These filters are in the URL, so clearing one is a link back to the
-            unfiltered page rather than local state — back/forward keep working.
-          */}
-          {activeSlotLabel ? (
-            <FilterChip
-              label={activeSlotLabel}
-              clearHref="/cabinet/bookings"
-              ariaLabel={td('showEveryBooking')}
-            />
-          ) : (
-            state.activeService && (
-              <FilterChip
-                label={state.activeService.title}
-                clearHref="/cabinet/bookings"
-                ariaLabel={td('showEveryService')}
-              />
-            )
-          )}
-
-          {state.day && (
-            <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.setDay('')} />
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <DayFilterPicker
-            day={state.day}
-            dayLabel={state.dayLabel}
-            onSelect={state.setDay}
-            defaultMonth={state.defaultMonth}
-            entityLabel="bookings"
-            // The whole point: days whose sessions have bookings are marked.
-            modifiers={{ hasBookings: state.bookedDates }}
-            modifiersClassNames={{ hasBookings: DAY_MARK.strong.calendarCell }}
-          />
-
-          <div className="relative w-full sm:w-64">
-            <SearchIcon className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={state.query}
-              onChange={(e) => state.setQuery(e.target.value)}
-              placeholder={t('searchPlaceholder')}
-              className="ps-9"
-            />
-          </div>
-        </div>
-      </div>
-
-      {state.filtered.length === 0 ? (
+      {bookings.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -195,19 +146,19 @@ export function BookingsTable({
             </EmptyMedia>
             <EmptyTitle>{t('noBookingsFound')}</EmptyTitle>
             <EmptyDescription>
-              {state.scoped.length === 0
-                ? activeSlotLabel
-                  ? t('noBookingsForSlot', { label: activeSlotLabel })
-                  : state.activeService
-                    ? t('noBookingsForService', { service: state.activeService.title })
-                    : t('bookingsAppear')
-                : state.day
-                  ? `${t('noBookingsOnDay', { day: state.dayLabel })}${
-                      state.activeService
-                        ? t('forServiceSuffix', { service: state.activeService.title })
-                        : ''
-                    }.`
-                  : t('tryFilters')}
+              {state.day
+                ? `${t('noBookingsOnDay', { day: state.dayLabel })}${
+                    state.activeService
+                      ? t('forServiceSuffix', { service: state.activeService.title })
+                      : ''
+                  }.`
+                : hasNarrowingFilter
+                  ? t('tryFilters')
+                  : activeSlotLabel
+                    ? t('noBookingsForSlot', { label: activeSlotLabel })
+                    : state.activeService
+                      ? t('noBookingsForService', { service: state.activeService.title })
+                      : t('bookingsAppear')}
             </EmptyDescription>
             {state.day && (
               <Button variant="outline" size="sm" onClick={() => state.setDay('')}>
@@ -223,37 +174,16 @@ export function BookingsTable({
               <TableRow>{SORT_KEYS.map(sortableHead)}</TableRow>
             </TableHeader>
             <TableBody>
-              {state.rows.map((b) => {
-                const svc = state.serviceOf(b)
-                const slot = state.slotsById.get(b.timeSlotId)
-                return (
-                  <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelected(b)}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarFallback>{initials(b.guestName)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{b.guestName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {b.guestMessengerLogin ?? b.guestMessengerId}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{svc?.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {slot ? formatDateTime(slot.startsAt, timezone, locale) : '—'}
-                    </TableCell>
-                    <TableCell>{b.seats}</TableCell>
-                    <TableCell>
-                      <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>
-                        {b.status === 'confirmed' ? tc('confirmed') : tc('cancelled')}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+              {bookings.map((booking) => (
+                <BookingRow
+                  key={booking.id}
+                  booking={booking}
+                  service={state.serviceOf(booking)}
+                  slot={state.slotsById.get(booking.timeSlotId)}
+                  timezone={timezone}
+                  onSelect={setSelected}
+                />
+              ))}
             </TableBody>
           </Table>
         </div>
@@ -268,19 +198,19 @@ export function BookingsTable({
         onOpenChange={(open) => !open && setSelected(null)}
       />
 
-      {/* Pagination (Phase 2.2): the page number lives in the URL so back/forward
+      {/* Pagination: the page number lives in the URL so back/forward
           and deep links keep working. "Next" is enabled by the server's hasMore —
           it fetched one row past the page, so a full last page no longer links
           to an empty one. */}
       {bookings.length > 0 && (
         <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" asChild disabled={page <= 1}>
-            <Link href={pageHref(page - 1, activeServiceId, activeSlotId)}>{t('prevPage')}</Link>
-          </Button>
+          <PageButton href={state.pageHref(page - 1)} disabled={page <= 1}>
+            {t('prevPage')}
+          </PageButton>
           <span className="text-sm text-muted-foreground">{t('pageLabel', { page })}</span>
-          <Button variant="outline" size="sm" asChild disabled={!hasMore}>
-            <Link href={pageHref(page + 1, activeServiceId, activeSlotId)}>{t('nextPage')}</Link>
-          </Button>
+          <PageButton href={state.pageHref(page + 1)} disabled={!hasMore}>
+            {t('nextPage')}
+          </PageButton>
         </div>
       )}
     </>
@@ -288,14 +218,28 @@ export function BookingsTable({
 }
 
 /**
- * Build the bookings URL for a given page, preserving the active filters
- * (`?service=` / `?slot=`) — pagination must not silently reset them.
+ * Page turn as a button-looking link — `asChild` + `disabled` cannot coexist
+ * (a Link swallows `disabled`), so the disabled state renders a real button.
  */
-function pageHref(page: number, serviceId?: string, slotId?: string): string {
-  const params = new URLSearchParams()
-  if (serviceId) params.set('service', serviceId)
-  if (slotId) params.set('slot', slotId)
-  if (page > 1) params.set('page', String(page))
-  const qs = params.toString()
-  return qs ? `/cabinet/bookings?${qs}` : '/cabinet/bookings'
+function PageButton({
+  href,
+  disabled,
+  children,
+}: {
+  href: string
+  disabled: boolean
+  children: React.ReactNode
+}) {
+  if (disabled) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        {children}
+      </Button>
+    )
+  }
+  return (
+    <Button variant="outline" size="sm" asChild>
+      <Link href={href}>{children}</Link>
+    </Button>
+  )
 }

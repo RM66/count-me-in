@@ -37,7 +37,7 @@ async function readJson(res: Response): Promise<unknown> {
   return res.json().catch(() => ({}))
 }
 
-// D7: a mismatch is reported (throws in tests, logs in dev, Sentry in prod) and
+// A mismatch is reported (throws in tests, logs in dev, Sentry in prod) and
 // the raw body is handed back, so a contract drift degrades the type rather
 // than the page. The return type is therefore the *input* side of the schema:
 // the value is what the server sent, not what a successful parse would produce.

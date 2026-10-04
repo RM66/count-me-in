@@ -4,7 +4,7 @@ import { SITE_URL } from '@/constants/site'
 import { getPublicSitemap } from '@/server/api-client'
 
 // Dynamic rather than prerendered: a static sitemap would make every
-// `next build` query Postgres, breaking builds without database access.
+// `next build` hit the API, breaking builds without a reachable backend.
 // Crawlers fetch it rarely, so two catalog reads per request are fine.
 export const dynamic = 'force-dynamic'
 

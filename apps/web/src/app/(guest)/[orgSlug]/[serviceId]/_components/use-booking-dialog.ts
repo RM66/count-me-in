@@ -1,18 +1,25 @@
 'use client'
 
-import type { GuestBooking, GuestTicketResponse, ServiceRecord } from '@repo/contracts'
-import { DEFAULT_LOCALE, isAppLocale } from '@repo/contracts'
+import type {
+  GuestBooking,
+  GuestTicketResponse,
+  ServiceRecord,
+  TimeSlotRecord,
+} from '@repo/contracts'
+import { DEFAULT_LOCALE, isAppLocale, seatsLeft } from '@repo/contracts'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 
 import { useCreateBooking } from '@/api-client'
-import { ApiError } from '@/api-client/error'
+import { ApiError, errorMessage } from '@/api-client/error'
 
 export type BookingStep = 'slot' | 'options' | 'details' | 'verify' | 'success'
 
 type UseBookingDialogOptions = {
   service: ServiceRecord
+  /** The bookable slots — the seat ceiling is clamped against the picked one. */
+  slots?: TimeSlotRecord[]
   preselectedSlotId?: string
 }
 
@@ -35,7 +42,7 @@ type UseBookingDialogOptions = {
  */
 function localizedError(t: ReturnType<typeof useTranslations<'Booking'>>, err: unknown): string {
   if (!(err instanceof ApiError)) {
-    return err instanceof Error ? err.message : t('errorFallback')
+    return errorMessage(err, t('errorFallback'))
   }
 
   if (err.code === 'duplicate_booking') return t('errDuplicate')
@@ -52,10 +59,14 @@ function localizedError(t: ReturnType<typeof useTranslations<'Booking'>>, err: u
   }
   if (err.status === 404) return t('errGone')
 
-  return err.message || t('errorFallback')
+  return errorMessage(err, t('errorFallback'))
 }
 
-export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialogOptions) {
+export function useBookingDialog({
+  service,
+  slots = [],
+  preselectedSlotId,
+}: UseBookingDialogOptions) {
   const router = useRouter()
   const createBooking = useCreateBooking()
   const t = useTranslations('Booking')
@@ -63,10 +74,10 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
 
   const hasOptions = !!service.options?.length
   const [step, setStep] = useState<BookingStep>('slot')
-  const [slotId, setSlotId] = useState<string | undefined>(preselectedSlotId)
+  const [slotId, setSlotIdRaw] = useState<string | undefined>(preselectedSlotId)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [name, setName] = useState('')
-  /** Party size. Capped on the details step; the server re-validates it. */
+  /** Party size, clamped to `seatCeiling` whenever the slot or submit moves. */
   const [seats, setSeats] = useState(1)
   /** The completed booking — the only source for the success screen. */
   const [booking, setBooking] = useState<GuestBooking | null>(null)
@@ -88,9 +99,32 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
    */
   const inFlightCount = useRef(0)
 
+  /**
+   * The most a party may claim on a slot: the organizer's per-booking cap,
+   * but never more than the seats actually left. Before a slot is picked the
+   * service cap stands in — the details step is only reached with one.
+   */
+  const seatCeiling = (slot: string | undefined) => {
+    const picked = slot ? slots.find((s) => s.id === slot) : undefined
+    return Math.max(
+      1,
+      picked ? Math.min(service.maxSeatsPerBooking, seatsLeft(picked)) : service.maxSeatsPerBooking,
+    )
+  }
+  const maxSeats = seatCeiling(slotId)
+
+  const clampSeats = (value: number, slot: string | undefined) =>
+    Math.min(Math.max(1, value), seatCeiling(slot))
+
+  /** Pick a slot and re-clamp the party size against its remaining seats. */
+  function setSlotId(next: string | undefined) {
+    setSlotIdRaw(next)
+    setSeats((prev) => clampSeats(prev, next))
+  }
+
   function reset() {
     setStep('slot')
-    setSlotId(preselectedSlotId)
+    setSlotIdRaw(preselectedSlotId)
     setSelectedOptions([])
     setName('')
     setSeats(1)
@@ -129,10 +163,12 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
 
     inFlightCount.current++
     try {
+      // Clamp at submit too — the slot may have lost seats between steps.
+      const seatCount = clampSeats(seats, slotId)
       const result = await createBooking.mutateAsync({
         serviceId: service.id,
         timeSlotId: slotId,
-        seats,
+        seats: seatCount,
         guestName: name.trim() || ticket.displayName,
         guestTicket: ticket.ticket,
         selectedOptions: selectedOptions.length > 0 ? selectedOptions : undefined,
@@ -157,6 +193,16 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     }
   }
 
+  /**
+   * Widget-side failure (fetch error, missing ticket) — no ticket was issued,
+   * so nothing is consumed and the guest may tap again. Surface the error in
+   * the same slot as booking failures without marking `attempted`.
+   */
+  function handleTicketError(err: unknown) {
+    setError(localizedError(t, err))
+    setIsDuplicate(false)
+  }
+
   return {
     step,
     setStep,
@@ -168,6 +214,7 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     setName,
     seats,
     setSeats,
+    maxSeats,
     booking,
     error,
     isDuplicate,
@@ -176,6 +223,7 @@ export function useBookingDialog({ service, preselectedSlotId }: UseBookingDialo
     goFromSlot,
     toggleOption,
     handleTicket,
+    handleTicketError,
     isCreating: createBooking.isPending,
   }
 }

@@ -72,8 +72,11 @@ import {
   optionLabel,
   organizerDescription,
   priceText,
+  queryDayKey,
+  queryInstant,
   queryLimit,
   queryOffset,
+  querySearch,
   seats,
   serviceDescription,
   serviceId,
@@ -86,6 +89,7 @@ import {
   analyticsServiceCount,
   analyticsSummaryRecord,
   analyticsTrendDay,
+  cabinetOverviewRecord,
   internalOrganizerRecord,
   serviceCountsRecord,
   sitemapOrganizerEntry,
@@ -291,6 +295,9 @@ register(messengerId, { id: 'MessengerID' })
 register(authTicket, { id: 'AuthTicket' })
 register(queryLimit, { id: 'QueryLimit' })
 register(queryOffset, { id: 'QueryOffset' })
+register(querySearch, { id: 'QuerySearch' })
+register(queryDayKey, { id: 'QueryDayKey' })
+register(queryInstant, { id: 'QueryInstant' })
 register(seats, { id: 'Seats' })
 register(capacity, { id: 'Capacity' })
 register(durationMinutes, { id: 'DurationMinutes' })
@@ -401,6 +408,7 @@ register(sitemapOrganizerEntry, { id: 'SitemapOrganizerEntry' })
 register(sitemapServiceEntry, { id: 'SitemapServiceEntry' })
 register(publicSitemapEnvelope, { id: 'PublicSitemapEnvelope' })
 register(serviceCountsRecord, { id: 'ServiceCountsRecord' })
+register(cabinetOverviewRecord, { id: 'CabinetOverviewRecord' })
 register(analyticsTrendDay, { id: 'AnalyticsTrendDay' })
 register(analyticsServiceCount, { id: 'AnalyticsServiceCount' })
 register(analyticsSummaryRecord, { id: 'AnalyticsSummaryRecord' })

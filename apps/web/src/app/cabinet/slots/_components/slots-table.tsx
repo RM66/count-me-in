@@ -1,47 +1,19 @@
 'use client'
 
-import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/contracts'
-import { fillLabel, seatsLeft, slotPrice } from '@repo/contracts'
-import { CalendarPlusIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
+import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { CalendarPlusIcon, PlusIcon } from 'lucide-react'
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 
-import { DayFilterChip, DayFilterPicker } from '@/app/cabinet/_components/day-filter'
-import { FilterChip } from '@/app/cabinet/_components/filter-chip'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Progress } from '@/components/ui/progress'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { formatDate, formatTime } from '@/helpers/date'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DeleteSlotDialog } from './delete-slot-dialog'
 import { SlotDialog } from './slot-dialog'
-import { DAY_MARK, useSlotsTable } from './use-slots-table'
+import { SlotRow } from './slot-row'
+import { SlotsToolbar } from './slots-toolbar'
+import { useSlotsTable } from './use-slots-table'
 
 type SlotsTableProps = {
   slots: TimeSlotRecord[]
@@ -52,6 +24,9 @@ type SlotsTableProps = {
   nowIso: string
   /** Show only this service's slots. Comes from `?service=` — already validated by the page. */
   activeServiceId?: string
+  /** URL-derived filter state — the page parsed and validated each value. */
+  day?: string
+  showPast?: boolean
   /** Read-only demo account (ADR-010). */
   isReadOnly: boolean
 }
@@ -61,7 +36,7 @@ type SlotsTableProps = {
  * delete affordances.
  *
  * A client component because every action here is interactive, but the **data
- * is passed in** — the page is a server component that reads Postgres directly,
+ * is passed in** — the page is a server component that reads through the API,
  * the same split the services list uses. Writes go through the mutation hooks
  * and finish with `router.refresh()`, so the server render is the single source
  * of truth for what the table shows. The filtering, day-selection and delete
@@ -73,14 +48,22 @@ export function SlotsTable({
   timezone,
   nowIso,
   activeServiceId,
+  day,
+  showPast,
   isReadOnly,
 }: SlotsTableProps) {
-  const state = useSlotsTable({ slots, services, timezone, nowIso, activeServiceId })
+  const state = useSlotsTable({
+    slots,
+    services,
+    timezone,
+    nowIso,
+    activeServiceId,
+    day,
+    showPast,
+  })
   const t = useTranslations('Cabinet.slots')
   const td = useTranslations('Cabinet.dayFilter')
-  const tc = useTranslations('Cabinet.common')
   const tsv = useTranslations('Cabinet.services')
-  const locale = useLocale()
 
   // Nothing to hang a slot on yet — point at the service editor rather than
   // opening a dialog whose service picker would be empty.
@@ -105,15 +88,6 @@ export function SlotsTable({
     )
   }
 
-  const FILL_BADGE: Record<
-    SlotFill,
-    { label: string; variant: 'secondary' | 'outline' | 'default' }
-  > = {
-    open: { label: t('open'), variant: 'outline' },
-    filling: { label: t('fillingUp'), variant: 'default' },
-    full: { label: t('full'), variant: 'secondary' },
-  }
-
   const visibleCountLabel = state.showPast
     ? t('pastCount', { count: state.visible.length })
     : t('upcomingCount', { count: state.visible.length })
@@ -124,65 +98,7 @@ export function SlotsTable({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <ToggleGroup
-            type="single"
-            value={state.showPast ? 'past' : 'upcoming'}
-            onValueChange={(value) => value && state.setShowPast(value === 'past')}
-            variant="outline"
-          >
-            <ToggleGroupItem value="upcoming">
-              {t('upcoming', { count: state.upcoming.length })}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="past">
-              {t('past', { count: state.past.length })}
-            </ToggleGroupItem>
-          </ToggleGroup>
-
-          {/*
-            The filter is in the URL, so clearing it is a link back to the
-            unfiltered page rather than local state — back/forward keep working.
-          */}
-          {state.activeService && (
-            <FilterChip
-              label={state.activeService.title}
-              clearHref="/cabinet/slots"
-              ariaLabel={td('showEveryService')}
-            />
-          )}
-
-          {state.day && (
-            <DayFilterChip dayLabel={state.dayLabel} onClear={() => state.selectDay('')} />
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <DayFilterPicker
-            day={state.day}
-            dayLabel={state.dayLabel}
-            onSelect={state.selectDay}
-            defaultMonth={state.defaultMonth}
-            entityLabel="slots"
-            // The whole point: days that have sessions are marked, and the
-            // marking distinguishes "still to come" from "already ran".
-            modifiers={{ hasUpcoming: state.upcomingDates, hasPast: state.pastDates }}
-            modifiersClassNames={{
-              hasUpcoming: DAY_MARK.strong.calendarCell,
-              hasPast: DAY_MARK.muted.calendarCell,
-            }}
-          />
-
-          <Button
-            size="sm"
-            disabled={isReadOnly}
-            onClick={() => state.setDialog({ mode: 'create' })}
-          >
-            <PlusIcon data-icon="inline-start" />
-            {t('addSlot')}
-          </Button>
-        </div>
-      </div>
+      <SlotsToolbar state={state} isReadOnly={isReadOnly} />
 
       <Card>
         <CardHeader>
@@ -242,78 +158,18 @@ export function SlotsTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {state.visible.map((slot) => {
-                  const service = state.servicesById.get(slot.serviceId)
-                  const left = seatsLeft(slot)
-                  const pct = Math.round((slot.bookedCount / slot.capacity) * 100)
-                  const fill = FILL_BADGE[fillLabel(slot)]
-
-                  return (
-                    <TableRow key={slot.id}>
-                      <TableCell className="font-medium">{service?.title}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <div className="flex flex-col">
-                          <span>{formatDate(slot.startsAt, timezone, locale)}</span>
-                          <span className="text-xs">
-                            {formatTime(slot.startsAt, timezone, locale)} ·{' '}
-                            {tc('min', { minutes: slot.durationMinutes })}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex w-32 flex-col gap-1">
-                          <span className="text-xs text-muted-foreground">
-                            {slot.bookedCount}/{slot.capacity} · {t('left', { count: left })}
-                          </span>
-                          <Progress value={pct} />
-                        </div>
-                      </TableCell>
-                      <TableCell>{slotPrice(slot, service)}</TableCell>
-                      <TableCell>
-                        <Badge variant={fill.variant}>{fill.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontalIcon />
-                              <span className="sr-only">{t('slotActions')}</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuGroup>
-                              <DropdownMenuItem
-                                disabled={isReadOnly}
-                                onSelect={() => state.setDialog({ mode: 'edit', slot })}
-                              >
-                                {t('editSlot')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                {/* Deep link into the bookings page filtered to this session. */}
-                                <Link href={`/cabinet/bookings?slot=${slot.id}`}>
-                                  {t('viewBookings')}
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={isReadOnly}
-                                onSelect={() => state.setDialog({ mode: 'duplicate', slot })}
-                              >
-                                {t('duplicate')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                disabled={isReadOnly}
-                                onSelect={() => state.setPendingDelete(slot)}
-                              >
-                                {t('cancelSlot')}
-                              </DropdownMenuItem>
-                            </DropdownMenuGroup>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {state.visible.map((slot) => (
+                  <SlotRow
+                    key={slot.id}
+                    slot={slot}
+                    service={state.servicesById.get(slot.serviceId)}
+                    timezone={timezone}
+                    isReadOnly={isReadOnly}
+                    onEdit={(s) => state.setDialog({ mode: 'edit', slot: s })}
+                    onDuplicate={(s) => state.setDialog({ mode: 'duplicate', slot: s })}
+                    onDelete={state.setPendingDelete}
+                  />
+                ))}
               </TableBody>
             </Table>
           )}
@@ -338,39 +194,12 @@ export function SlotsTable({
         />
       )}
 
-      <AlertDialog
-        open={Boolean(state.pendingDelete)}
-        onOpenChange={(open) => !open && state.setPendingDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('cancelTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {state.pendingDelete?.bookedCount
-                ? t('cancelDescriptionWithBookings', {
-                    count: state.pendingDelete.bookedCount,
-                  })
-                : t('cancelDescriptionPlain')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={state.deleteSlot.isPending}>
-              {t('keepSlot')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(event) => {
-                // Keep the dialog up while the request is in flight; it closes
-                // in `onSuccess`, so a failure leaves the confirm recoverable.
-                event.preventDefault()
-                state.confirmDelete()
-              }}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {state.deleteSlot.isPending ? t('cancellingDialog') : t('cancelSlot')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteSlotDialog
+        slot={state.pendingDelete}
+        isPending={state.deleteSlot.isPending}
+        onConfirm={state.confirmDelete}
+        onClose={() => state.setPendingDelete(null)}
+      />
     </>
   )
 }

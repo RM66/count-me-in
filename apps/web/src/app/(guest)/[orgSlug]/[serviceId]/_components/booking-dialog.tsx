@@ -1,18 +1,14 @@
 'use client'
 
 import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
-import { seatsLeft } from '@repo/contracts'
 import { useTranslations } from 'next-intl'
-import { type ComponentProps, useState } from 'react'
 
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { DetailsStep } from './booking-steps/details-step'
 import { OptionsStep } from './booking-steps/options-step'
@@ -26,54 +22,33 @@ import { type BookingStep, useBookingDialog } from './use-booking-dialog'
  * → confirmation, as a stepper inside one dialog rather than separate routes.
  *
  * The state machine lives in [`useBookingDialog`](use-booking-dialog.ts) and
- * each step renders its own component — this shell only wires them together and
- * owns the dialog's open/close + reset lifecycle.
+ * each step renders its own component — this shell only wires them together.
+ * Controlled by [`BookingFlow`](booking-flow.tsx): exactly one instance per
+ * service page, opened by the slot rows' `BookButton`s — and **remounted on
+ * every open** (`key={openCount}`), so the hook's initial state always sees
+ * the slot the guest just tapped.
  */
-
 export function BookingDialog({
   organizer,
   service,
   slots,
   preselectedSlotId,
-  triggerLabel,
-  triggerDisabled = false,
-  triggerVariant,
-  triggerSize,
-  triggerClassName,
+  open,
+  onOpenChange,
 }: {
   organizer: PublicOrganizer
   service: ServiceRecord
   slots: TimeSlotRecord[]
+  /** The session to open on — the tapped row's slot, or none for the picker. */
   preselectedSlotId?: string
-  /**
-   * Trigger content/props, not a pre-built element. The `Button` must be
-   * rendered here (client side) rather than assembled in the server-rendered
-   * page and passed down as a `trigger` prop — `DialogTrigger asChild` +
-   * `Slot` fails to merge props onto an element built across the
-   * Server → Client Component boundary (radix-ui/primitives#3780).
-   */
-  triggerLabel: React.ReactNode
-  triggerDisabled?: boolean
-  triggerVariant?: ComponentProps<typeof Button>['variant']
-  triggerSize?: ComponentProps<typeof Button>['size']
-  triggerClassName?: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const booking = useBookingDialog({ service, preselectedSlotId })
+  const booking = useBookingDialog({ service, slots, preselectedSlotId })
   const t = useTranslations('Booking')
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
-
-  // The seat ceiling for the chosen slot: the organizer's per-booking cap, but
-  // never more than the seats actually left. Falls back to the service cap
-  // before a slot is picked (the details step is only reached with one).
-  const selectedSlot = booking.slotId ? slots.find((s) => s.id === booking.slotId) : undefined
-  const maxSeats = Math.max(
-    1,
-    selectedSlot
-      ? Math.min(service.maxSeatsPerBooking, seatsLeft(selectedSlot))
-      : service.maxSeatsPerBooking,
-  )
+  const maxSeats = booking.maxSeats
 
   const stepTitles: Record<BookingStep, string> = {
     slot: t('pickTime'),
@@ -84,23 +59,7 @@ export function BookingDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o)
-        if (!o) setTimeout(booking.reset, 200)
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button
-          variant={triggerVariant}
-          size={triggerSize}
-          className={triggerClassName}
-          disabled={triggerDisabled}
-        >
-          {triggerLabel}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{stepTitles[booking.step]}</DialogTitle>
@@ -149,6 +108,7 @@ export function BookingDialog({
             attempted={booking.attempted}
             botUsername={botUsername}
             onTicket={booking.handleTicket}
+            onTicketError={booking.handleTicketError}
             onBack={() => booking.setStep('details')}
           />
         )}

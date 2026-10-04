@@ -2,17 +2,29 @@ import {
   AVATAR_TARGET_SIZE,
   AVATAR_WEBP_QUALITY,
   IMAGE_OUTPUT_CONTENT_TYPE,
+  imageUploadTarget,
   SERVICE_PHOTO_TARGET_SIZE,
   SERVICE_PHOTO_WEBP_QUALITY,
 } from '@repo/contracts'
 
+import { post } from './client'
+import { ApiError } from './error'
+
 /**
- * Browser-side image downscaling for uploads.
- * Runs before the signed upload URL is requested: the URL commits to an exact
- * Content-Type and Content-Length, so the bytes must be final by then.
+ * Browser-side image downscaling and the signed-URL upload pipeline.
+ * Resizing runs before the signed upload URL is requested: the URL commits to
+ * an exact Content-Type and Content-Length, so the bytes must be final by then.
  * Keeps stored objects ~50–100× smaller than raw phone photos (see ADR-007).
  * Client-only — depends on canvas / createImageBitmap.
  */
+
+/**
+ * Last-resort fallbacks for upload failures: api-client has no locale, so the
+ * display site (use-image-upload) translates by status. Named constants rather
+ * than inline literals — intentional, documented fallback, not stray copy.
+ */
+const COMPRESS_ERROR_FALLBACK = 'Could not compress that image enough — try another one'
+const UPLOAD_ERROR_FALLBACK = 'Upload failed — try again'
 
 type Canvas = OffscreenCanvas | HTMLCanvasElement
 
@@ -154,4 +166,52 @@ export async function resizeServicePhoto(file: File | Blob): Promise<Blob> {
   } finally {
     bitmap.close()
   }
+}
+
+/**
+ * The shared upload pipeline behind every image mutation:
+ * resize in-browser → refuse if still over `maxBytes` → request a signed
+ * upload URL from `endpoint` → PUT the bytes to R2 → resolve to the public
+ * URL. Persisting that URL is the caller's choice — the avatar PATCHes the
+ * profile while the service photo stays in form state.
+ */
+export async function uploadImage({
+  file,
+  resize,
+  maxBytes,
+  endpoint,
+}: {
+  file: File
+  /** One of the resizers above — commits the pipeline to that variant's shape. */
+  resize: (file: File | Blob) => Promise<Blob>
+  maxBytes: number
+  /** The API route that mints the signed upload URL. */
+  endpoint: string
+}): Promise<string> {
+  const image = await resize(file)
+
+  if (image.size > maxBytes) {
+    throw new ApiError(COMPRESS_ERROR_FALLBACK, 413)
+  }
+
+  const target = await post(
+    endpoint,
+    {
+      contentType: image.type,
+      size: image.size,
+    },
+    imageUploadTarget,
+  )
+
+  const r2Response = await fetch(target.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': image.type },
+    body: image,
+  })
+
+  if (!r2Response.ok) {
+    throw new ApiError(UPLOAD_ERROR_FALLBACK, r2Response.status)
+  }
+
+  return target.publicUrl
 }

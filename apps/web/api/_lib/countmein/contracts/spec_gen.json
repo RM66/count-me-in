@@ -3,7 +3,7 @@
   "info": {
     "title": "CountMeIn API",
     "description": "API for group booking, organizer cabinet management, and notifications.",
-    "version": "1.0.0+86094f1673f4"
+    "version": "1.0.0+111351c7f692"
   },
   "servers": [
     {
@@ -1009,6 +1009,45 @@
               ]
             },
             "description": "When \"1\", slots that have already started are omitted."
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueryInstant"
+            },
+            "description": "Only sessions starting at or after this instant — range reads (calendar week)."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueryInstant"
+            },
+            "description": "Only sessions starting before this instant."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueryLimit"
+            },
+            "description": "Maximum slots to return (earliest first), e.g. the \"next N sessions\" preview."
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "days"
+              ]
+            },
+            "description": "Optional side-data; \"days\" adds the full set of session day keys (calendar marks)."
           }
         ],
         "responses": {
@@ -1360,6 +1399,96 @@
               "$ref": "#/components/schemas/QueryOffset"
             },
             "description": "Number of bookings to skip (default 0)."
+          },
+          {
+            "name": "serviceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ServiceID"
+            },
+            "description": "Only bookings whose slot belongs to this service."
+          },
+          {
+            "name": "slotId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "description": "Only bookings on this session — the narrower scope."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "confirmed",
+                "cancelled"
+              ]
+            },
+            "description": "Only bookings in this status; absent lists both."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QuerySearch"
+            },
+            "description": "Case-insensitive substring match on guest name, messenger login, messenger id and service title."
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/QueryDayKey"
+            },
+            "description": "Only bookings whose session starts on this calendar day in the organizer timezone."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "guest",
+                "service",
+                "when",
+                "seats",
+                "status"
+              ]
+            },
+            "description": "Sort column; absent keeps the default order (newest booking first)."
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            },
+            "description": "Sort direction (default asc); ignored without `sort`."
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "days"
+              ]
+            },
+            "description": "Optional side-data; \"days\" adds the scoped booked-day keys (picker marks)."
           }
         ],
         "responses": {
@@ -2238,16 +2367,83 @@
           },
           "hasMore": {
             "type": "boolean"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeSlotRecord"
+            }
+          },
+          "bookedDays": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "bookings",
-          "hasMore"
+          "hasMore",
+          "slots",
+          "bookedDays"
+        ]
+      },
+      "CabinetOverviewRecord": {
+        "type": "object",
+        "properties": {
+          "confirmedBookings": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "confirmedLast7Days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "upcomingSlots": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "upcomingSlotsNext7Days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "upcomingSeatsBooked": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "upcomingSeatsOffered": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "confirmedBookings",
+          "confirmedLast7Days",
+          "upcomingSlots",
+          "upcomingSlotsNext7Days",
+          "upcomingSeatsBooked",
+          "upcomingSeatsOffered"
         ]
       },
       "CabinetSummaryEnvelope": {
         "type": "object",
         "properties": {
+          "overview": {
+            "$ref": "#/components/schemas/CabinetOverviewRecord"
+          },
           "serviceCounts": {
             "type": "array",
             "items": {
@@ -2259,6 +2455,7 @@
           }
         },
         "required": [
+          "overview",
           "serviceCounts",
           "analytics"
         ]
@@ -2998,6 +3195,15 @@
           "services"
         ]
       },
+      "QueryDayKey": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "QueryInstant": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
       "QueryLimit": {
         "type": "integer",
         "minimum": 1,
@@ -3007,6 +3213,11 @@
         "type": "integer",
         "minimum": 0,
         "maximum": 9007199254740991
+      },
+      "QuerySearch": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
       },
       "RegisterOrganizerInput": {
         "type": "object",
@@ -3288,10 +3499,24 @@
             "items": {
               "$ref": "#/components/schemas/TimeSlotRecord"
             }
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "slots"
+          "slots",
+          "days"
         ]
       },
       "Slug": {
@@ -3382,6 +3607,12 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
+          "hasBookings": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "price": {
             "type": [
               "string",
@@ -3399,6 +3630,7 @@
           "durationMinutes",
           "capacity",
           "bookedCount",
+          "hasBookings",
           "price",
           "createdAt"
         ]

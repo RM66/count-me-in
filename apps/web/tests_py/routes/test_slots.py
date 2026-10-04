@@ -31,6 +31,56 @@ async def test_slot_create_and_list(client, fake_redis, db):
     assert slot["id"] in ids
 
 
+async def test_slot_list_range_and_limit(client, fake_redis, db):
+    _, headers = await _setup(client, fake_redis, db, "slot-range-01")
+    svc = await create_service(client, headers)
+    s1 = await create_slot(client, headers, svc["id"], "2031-06-01T10:00:00Z")
+    s2 = await create_slot(client, headers, svc["id"], "2031-06-02T10:00:00Z")
+    s3 = await create_slot(client, headers, svc["id"], "2031-06-08T10:00:00Z")
+
+    r = await client.get("/api/slots?from=2031-06-02T00:00:00Z", headers=headers)
+    assert [s["id"] for s in r.json()["slots"]] == [s2["id"], s3["id"]]
+
+    # `to` is exclusive — a session starting exactly at the bound belongs
+    # to the next range, so adjacent week windows never share a row.
+    r = await client.get(
+        "/api/slots?from=2031-06-01T00:00:00Z&to=2031-06-02T10:00:00Z", headers=headers
+    )
+    assert [s["id"] for s in r.json()["slots"]] == [s1["id"]]
+
+    r = await client.get("/api/slots?limit=2", headers=headers)
+    assert [s["id"] for s in r.json()["slots"]] == [s1["id"], s2["id"]]
+
+
+async def test_slot_list_days_are_opt_in_and_ignore_the_range(client, fake_redis, db):
+    # `days` is the picker's mark set — the full schedule, even when
+    # `from`/`to` narrow the row payload to nothing — and only present
+    # when `?include=days` asks for the DISTINCT scan.
+    _, headers = await _setup(client, fake_redis, db, "slot-days-01")
+    svc = await create_service(client, headers)
+    await create_slot(client, headers, svc["id"], "2031-06-01T10:00:00Z")
+    await create_slot(client, headers, svc["id"], "2031-06-10T10:00:00Z")
+
+    r = await client.get("/api/slots", headers=headers)
+    assert r.json()["days"] is None
+
+    r = await client.get(
+        "/api/slots?from=2031-06-05T00:00:00Z&to=2031-06-06T00:00:00Z&include=days",
+        headers=headers,
+    )
+    body = r.json()
+    assert body["slots"] == []
+    # Europe/Belgrade days (UTC+2 in June) — the organizer's wall clock.
+    assert body["days"] == ["2031-06-01", "2031-06-10"]
+
+
+async def test_slot_list_rejects_malformed_params(client, fake_redis, db):
+    _, headers = await _setup(client, fake_redis, db, "slot-param-01")
+    for qs in ("limit=0", "limit=101", "limit=x", "from=not-a-date", "upcoming=yes"):
+        r = await client.get(f"/api/slots?{qs}", headers=headers)
+        assert r.status_code == 400, f"{qs} answered {r.status_code}"
+
+
 async def test_slot_create_foreign_service_404(client, fake_redis, db):
     # Ownership comes from the session: a serviceId belonging to
     # someone else answers 404, never a cross-tenant write.

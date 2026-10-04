@@ -29,8 +29,8 @@ type BookingPreviewListProps = {
  * A compact, clickable list of bookings for the cabinet overview.
  *
  * A client component because a row opens the details panel, but the **data is
- * passed in** — the overview is a server component that reads Postgres
- * directly, the same split the bookings table uses. The panel itself is
+ * passed in** — the overview is a server component that reads through
+ * the API, the same split the bookings table uses. The panel itself is
  * {@link BookingDetailsSheet}, shared with that table so a booking looks the
  * same wherever it is opened from.
  */

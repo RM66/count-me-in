@@ -573,3 +573,310 @@ async def test_booking_cancel_unknown_token_is_404(client):
         assert r.status_code == 404, r.text
     finally:
         await _cleanup_route_fixture(fixture)
+
+
+# ── GET /api/bookings — server-side filters ──────────────────────────────────
+#
+# The cabinet's URL state maps onto the query params: a page of 50 rows is
+# already the filtered view, and `bookedDays` marks the scoped calendar days
+# (in the organizer's timezone) for the day picker.
+
+
+def _org_headers(fixture) -> dict:
+    return {
+        ORGANIZER_AUTH_HEADER: mint_test_token(
+            TEST_SECRET, fixture.organizer_id, "rt", int(time.time()) + 3600
+        )
+    }
+
+
+async def _seed_bookings(fixture, rows) -> list[str]:
+    """Insert booking rows directly — the list endpoint is a read, so the
+    guest-ticket flow would be unnecessary ceremony."""
+    import secrets
+    import uuid
+
+    from countmein.db.client import engine
+    from sqlalchemy import text
+
+    ids = []
+    async with engine().begin() as conn:
+        for i, row in enumerate(rows):
+            booking_id = str(uuid.uuid4())
+            token = secrets.token_hex(32)
+            await conn.execute(
+                text(
+                    "INSERT INTO bookings (id, time_slot_id, status, seats, guest_name, "
+                    "guest_messenger, guest_messenger_id, guest_messenger_login, "
+                    "manage_token, manage_token_hash, created_at) "
+                    "VALUES (:id, :slot, :status, :seats, :name, 'telegram', :mid, :login, "
+                    ":token, :hash, COALESCE(CAST(:created_at AS timestamptz), now()))"
+                ),
+                {
+                    "id": booking_id,
+                    "slot": row.get("slot_id", fixture.slot_id),
+                    "status": row.get("status", "confirmed"),
+                    "seats": row.get("seats", 1),
+                    "name": row["name"],
+                    # ISO instant — rows seeded in one transaction share
+                    # created_at otherwise, and ordering tests need a
+                    # deterministic "newest first".
+                    "created_at": row.get("created_at"),
+                    # Distinct per row: the one-active-per-guest-per-slot index
+                    # would otherwise reject a second confirmed booking.
+                    "mid": row.get("mid", f"rt-mid-{i}"),
+                    "login": row.get("login"),
+                    "token": token,
+                    # Opaque to these tests — only uniqueness matters.
+                    "hash": token,
+                },
+            )
+            ids.append(booking_id)
+    fixture.booking_ids.extend(ids)
+    return ids
+
+
+async def _seed_service_and_slot(fixture) -> tuple[str, str]:
+    """A second service + slot for the fixture organizer — scope filters
+    need more than one of each to be meaningful."""
+    import secrets
+    import uuid
+
+    from countmein.db.client import engine
+    from sqlalchemy import text
+
+    service_id = "rtest-" + secrets.token_hex(8)
+    slot_id = str(uuid.uuid4())
+    async with engine().begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO services (id, organizer_id, title, default_price, "
+                "default_capacity, default_duration_minutes, max_seats_per_booking) "
+                "VALUES (:id, :org_id, 'Route Pottery', '20 EUR', 8, 90, 1)"
+            ),
+            {"id": service_id, "org_id": fixture.organizer_id},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, "
+                "capacity, booked_count) "
+                "VALUES (:id, :sid, now() + interval '72 hours', 90, 8, 0)"
+            ),
+            {"id": slot_id, "sid": service_id},
+        )
+    return service_id, slot_id
+
+
+def _fixture_slot_day() -> str:
+    """The fixture slot starts now()+48h — its calendar day *in the
+    organizer's timezone* (Europe/Belgrade), not UTC."""
+    from datetime import UTC, datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    return (
+        (datetime.now(UTC) + timedelta(hours=48))
+        .astimezone(ZoneInfo("Europe/Belgrade"))
+        .strftime("%Y-%m-%d")
+    )
+
+
+async def test_bookings_list_returns_scoped_day_marks(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        await _seed_bookings(fixture, [{"name": "Ann Smith"}])
+        day = _fixture_slot_day()
+
+        # The marks are opt-in — a bare page does not pay the DISTINCT scan.
+        r = await client.get("/api/bookings", headers=_org_headers(fixture))
+        assert r.status_code == 200, r.text
+        envelope = r.json()
+        assert [b["guestName"] for b in envelope["bookings"]] == ["Ann Smith"]
+        assert envelope["bookedDays"] is None
+
+        r = await client.get("/api/bookings?include=days", headers=_org_headers(fixture))
+        assert r.json()["bookedDays"] == [day]
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_status_filter_keeps_the_marks(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        await _seed_bookings(
+            fixture,
+            [
+                {"name": "Ann Smith", "status": "confirmed"},
+                {"name": "Bob Jones", "status": "cancelled"},
+            ],
+        )
+        headers = _org_headers(fixture)
+
+        r = await client.get("/api/bookings?status=confirmed&include=days", headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Ann Smith"]
+        # Marks answer "when is anything booked" — the status filter does
+        # not narrow them.
+        assert r.json()["bookedDays"] == [_fixture_slot_day()]
+
+        r = await client.get("/api/bookings?status=cancelled", headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Bob Jones"]
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_scopes_by_slot_and_service(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        service2, slot2 = await _seed_service_and_slot(fixture)
+        await _seed_bookings(
+            fixture,
+            [
+                {"name": "Ann Smith"},
+                {"name": "Bob Jones", "slot_id": slot2},
+            ],
+        )
+        headers = _org_headers(fixture)
+
+        r = await client.get(f"/api/bookings?slotId={fixture.slot_id}", headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Ann Smith"]
+
+        # The service scope follows the transitive join — there is no
+        # Booking.serviceId.
+        r = await client.get(f"/api/bookings?serviceId={service2}", headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Bob Jones"]
+
+        # A foreign slot scopes to an empty page, not a leak.
+        import uuid
+
+        r = await client.get(f"/api/bookings?slotId={uuid.uuid4()}", headers=headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["bookings"] == []
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_search_matches_guest_and_service(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        await _seed_bookings(
+            fixture,
+            [
+                {"name": "Ann Smith", "login": "annsmith"},
+                {"name": "Bob Jones", "login": "bobbyj"},
+            ],
+        )
+        headers = _org_headers(fixture)
+
+        # Guest name and messenger login, both case-insensitive.
+        r = await client.get("/api/bookings", params={"q": "smith"}, headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Ann Smith"]
+        r = await client.get("/api/bookings", params={"q": "BOBBYJ"}, headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Bob Jones"]
+
+        # The service title matches too — the fixture service is
+        # 'Route Test Service'.
+        r = await client.get("/api/bookings", params={"q": "route test"}, headers=headers)
+        assert len(r.json()["bookings"]) == 2
+
+        # Wildcard characters are literal — '%' must not widen the match.
+        r = await client.get("/api/bookings", params={"q": "%"}, headers=headers)
+        assert r.json()["bookings"] == []
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_day_filter_uses_organizer_timezone(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        await _seed_bookings(fixture, [{"name": "Ann Smith"}])
+        headers = _org_headers(fixture)
+        day = _fixture_slot_day()
+
+        r = await client.get("/api/bookings", params={"day": day}, headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Ann Smith"]
+
+        r = await client.get("/api/bookings", params={"day": "1999-01-01"}, headers=headers)
+        assert r.json()["bookings"] == []
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_sorts_server_side(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        await _seed_bookings(
+            fixture,
+            [
+                {"name": "Charlie", "seats": 3, "created_at": "2026-07-01T10:00:00Z"},
+                {"name": "ann", "seats": 1, "created_at": "2026-07-02T10:00:00Z"},
+                {"name": "Bob", "seats": 2, "created_at": "2026-07-03T10:00:00Z"},
+            ],
+        )
+        headers = _org_headers(fixture)
+
+        r = await client.get("/api/bookings?sort=seats&dir=desc", headers=headers)
+        assert [b["seats"] for b in r.json()["bookings"]] == [3, 2, 1]
+
+        # Guest names sort case-insensitively, like the old client sort.
+        r = await client.get("/api/bookings?sort=guest&dir=asc", headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["ann", "Bob", "Charlie"]
+
+        # No sort → the default newest-first order.
+        r = await client.get("/api/bookings", headers=headers)
+        assert [b["guestName"] for b in r.json()["bookings"]] == ["Bob", "ann", "Charlie"]
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_rejects_malformed_params(client):
+    fixture = await new_route_fixture(10, 0)
+    try:
+        headers = _org_headers(fixture)
+        for qs in (
+            "status=unknown",
+            "sort=evil",
+            "dir=sideways",
+            "day=2026-13-40",
+            "day=2026-02-30",  # real format, impossible date — the route's 400
+            "slotId=not-a-uuid",
+            "serviceId=bad",
+            "limit=0",
+        ):
+            r = await client.get(f"/api/bookings?{qs}", headers=headers)
+            assert r.status_code == 400, f"{qs} answered {r.status_code}"
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_bookings_list_carries_referenced_slots(client):
+    """The envelope embeds the page's sessions — row labels must not
+    require a second whole-schedule fetch (the filter session rides
+    along too, so the chip can name it)."""
+    fixture = await new_route_fixture(10, 0)
+    try:
+        _service2, slot2 = await _seed_service_and_slot(fixture)
+        await _seed_bookings(
+            fixture,
+            [{"name": "Ann Smith"}, {"name": "Bob Jones", "slot_id": slot2}],
+        )
+        headers = _org_headers(fixture)
+
+        r = await client.get("/api/bookings", headers=headers)
+        assert {s["id"] for s in r.json()["slots"]} == {fixture.slot_id, slot2}
+
+        # Scoped to one session: only that session travels back.
+        r = await client.get(f"/api/bookings?slotId={fixture.slot_id}", headers=headers)
+        assert [s["id"] for s in r.json()["slots"]] == [fixture.slot_id]
+
+        # An owned but unbooked filter session is still named; a foreign
+        # one resolves to nothing — never a leak.
+        import uuid
+
+        _service3, slot3 = await _seed_service_and_slot(fixture)
+        r = await client.get(f"/api/bookings?slotId={slot3}", headers=headers)
+        assert r.json()["bookings"] == []
+        assert [s["id"] for s in r.json()["slots"]] == [slot3]
+
+        r = await client.get(f"/api/bookings?slotId={uuid.uuid4()}", headers=headers)
+        assert r.json()["slots"] == []
+    finally:
+        await _cleanup_route_fixture(fixture)

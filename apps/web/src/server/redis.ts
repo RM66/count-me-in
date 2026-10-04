@@ -8,12 +8,9 @@ import 'server-only'
  * Redis backs the server-side auth machinery — guest identity tickets,
  * one-time login links, rate limits — so the connection lives beside the
  * code that uses it, in `src/server/`. The Python API owns its own client
- * (`countmein/redis.py`); key names and payload shapes shared across the
- * two runtimes live in `@repo/contracts` (see `loginLinkKey`).
- *
- * What is *not* here: key names and payload shapes. Those are contracts
- * between the TS server layer and the Python API and live in
- * `@repo/contracts` (see `loginLinkKey`).
+ * (`countmein/redis.py`); the key names and payload shapes shared across
+ * the two runtimes are contracts and live in `@repo/contracts`
+ * (see `loginLinkKey`), not here.
  */
 
 const globalForRedis = globalThis as unknown as { redis?: Redis }

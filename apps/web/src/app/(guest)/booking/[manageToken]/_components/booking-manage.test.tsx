@@ -24,6 +24,8 @@ vi.mock('sonner', () => ({
 
 const mockMutateAsync = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   useCancelBooking: () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
@@ -54,6 +56,7 @@ function makeBooking(overrides: Partial<GuestBooking> = {}): GuestBooking {
       durationMinutes: 60,
       capacity: 10,
       bookedCount: 3,
+      hasBookings: null,
       price: null,
       createdAt: '2025-01-01T10:00:00.000Z',
     },

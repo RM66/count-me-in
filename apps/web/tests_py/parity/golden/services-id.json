@@ -395,11 +395,12 @@
             "durationMinutes": 60,
             "capacity": 2,
             "bookedCount": 0,
+            "hasBookings": null,
             "price": null,
             "createdAt": "<ts:3>"
           }
         },
-        "body_raw": "{\"slot\":{\"id\":\"<uuid:3>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":2,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:3>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":2,\"bookedCount\":0,\"hasBookings\":null,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

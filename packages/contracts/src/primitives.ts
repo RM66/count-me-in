@@ -160,3 +160,14 @@ export const queryLimit = z.number().int().min(1).max(100)
 
 /** Pagination: number of records to skip (non-negative). */
 export const queryOffset = z.number().int().min(0)
+
+/** `?q=` list-search needles: a substring, not a pattern. */
+export const querySearch = z.string().trim().min(1).max(200)
+
+/** `?day=` calendar-day scope keys — `YYYY-MM-DD` in the organizer's timezone. */
+export const queryDayKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+/** `?from=`/`?to=` range bounds on list endpoints — RFC 3339 instants with
+ * an explicit offset (a bare `YYYY-MM-DD` would be ambiguous about the zone
+ * it means midnight in). */
+export const queryInstant = z.iso.datetime({ offset: true })

@@ -25,6 +25,21 @@ class AuthTicketResponse(BaseModel):
     organizerExists: bool
 
 
+class CabinetOverviewRecord(BaseModel):
+    confirmedBookings: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    confirmedLast7Days: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    upcomingSlots: Annotated[int, Field(ge=-9007199254740991, le=9007199254740991)]
+    upcomingSlotsNext7Days: Annotated[
+        int, Field(ge=-9007199254740991, le=9007199254740991)
+    ]
+    upcomingSeatsBooked: Annotated[
+        int, Field(ge=-9007199254740991, le=9007199254740991)
+    ]
+    upcomingSeatsOffered: Annotated[
+        int, Field(ge=-9007199254740991, le=9007199254740991)
+    ]
+
+
 type Contact = Annotated[str, Field(max_length=300, min_length=1)]
 
 
@@ -74,10 +89,24 @@ type OrganizerDescription = Annotated[str, Field(max_length=4000)]
 type PriceText = Annotated[str, Field(max_length=50, min_length=1)]
 
 
+type QueryDayKey = Annotated[str, Field(pattern='^\\d{4}-\\d{2}-\\d{2}$')]
+
+
+type QueryInstant = Annotated[
+    AwareDatetime,
+    Field(
+        pattern='^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$'
+    ),
+]
+
+
 type QueryLimit = Annotated[int, Field(ge=1, le=100)]
 
 
 type QueryOffset = Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
+type QuerySearch = Annotated[str, Field(max_length=200, min_length=1)]
 
 
 type ServiceDescription = Annotated[str, Field(max_length=2000)]
@@ -189,11 +218,6 @@ class BookingRecord(BaseModel):
     guestMessengerLogin: str | None
     selectedOptions: list[str] | None
     createdAt: str
-
-
-class BookingsEnvelope(BaseModel):
-    bookings: list[BookingRecord]
-    hasMore: bool
 
 
 class CancelBookingByOrganizerInput(BaseModel):
@@ -445,6 +469,7 @@ class TimeSlotRecord(BaseModel):
     durationMinutes: Annotated[int, Field(ge=1, le=1440)]
     capacity: Annotated[int, Field(ge=1, le=100000)]
     bookedCount: Annotated[int, Field(ge=0, le=9007199254740991)]
+    hasBookings: bool | None
     price: str | None
     createdAt: str
 
@@ -466,7 +491,15 @@ class BookingEnvelope(BaseModel):
     booking: BookingRecord
 
 
+class BookingsEnvelope(BaseModel):
+    bookings: list[BookingRecord]
+    hasMore: bool
+    slots: list[TimeSlotRecord]
+    bookedDays: list[str] | None
+
+
 class CabinetSummaryEnvelope(BaseModel):
+    overview: CabinetOverviewRecord
     serviceCounts: list[ServiceCountsRecord]
     analytics: AnalyticsSummaryRecord
 
@@ -544,3 +577,4 @@ class SlotEnvelope(BaseModel):
 
 class SlotsEnvelope(BaseModel):
     slots: list[TimeSlotRecord]
+    days: list[str] | None

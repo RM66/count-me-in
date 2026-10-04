@@ -3,6 +3,7 @@
 import type { ServiceRecord } from '@repo/contracts'
 import { ArrowLeft } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useId } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -31,6 +32,9 @@ export function OptionsStep({
   onContinue: () => void
 }) {
   const t = useTranslations('Booking')
+  // DOM ids come from useId + index — option text is organizer input and can
+  // contain spaces or duplicates across dialogs mounted at once.
+  const idBase = useId()
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,16 +44,16 @@ export function OptionsStep({
           onValueChange={(v) => onToggleOption(v)}
           className="gap-2"
         >
-          {service.options?.map((opt) => (
+          {service.options?.map((opt, i) => (
             <label
               key={opt}
-              htmlFor={`opt-${opt}`}
+              htmlFor={`${idBase}-${i}`}
               className={cn(
                 'flex cursor-pointer items-center gap-3 rounded-lg border p-3',
                 selectedOptions[0] === opt && 'border-primary bg-accent',
               )}
             >
-              <RadioGroupItem id={`opt-${opt}`} value={opt} />
+              <RadioGroupItem id={`${idBase}-${i}`} value={opt} />
               <span className="text-sm font-medium">{opt}</span>
             </label>
           ))}
@@ -58,17 +62,17 @@ export function OptionsStep({
         <FieldSet>
           <FieldLegend className="sr-only">{t('optionsLegend')}</FieldLegend>
           <div className="flex flex-col gap-2">
-            {service.options?.map((opt) => (
+            {service.options?.map((opt, i) => (
               <label
                 key={opt}
-                htmlFor={`opt-${opt}`}
+                htmlFor={`${idBase}-${i}`}
                 className={cn(
                   'flex cursor-pointer items-center gap-3 rounded-lg border p-3',
                   selectedOptions.includes(opt) && 'border-primary bg-accent',
                 )}
               >
                 <Checkbox
-                  id={`opt-${opt}`}
+                  id={`${idBase}-${i}`}
                   checked={selectedOptions.includes(opt)}
                   onCheckedChange={() => onToggleOption(opt)}
                 />

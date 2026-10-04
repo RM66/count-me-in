@@ -38,7 +38,7 @@ export default [
     },
   },
   {
-    // Architectural guard (backend refactoring, plan 022): app code has
+    // Architectural guard (ADR-021/022): app code has
     // ZERO direct Postgres access — every server read goes through
     // src/server/api-client.ts over HTTP to the Python API. Forbid DB
     // driver imports so the seam cannot silently re-open. The single

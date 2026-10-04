@@ -4,8 +4,10 @@ import { CabinetHeader } from '@/app/cabinet/_components/cabinet-header'
 import { SettingsForm } from '@/app/cabinet/settings/_components/settings-form'
 
 export default async function SettingsPage() {
-  const t = await getTranslations('Cabinet.settings')
-  const tcrumbs = await getTranslations('Cabinet.crumbs')
+  const [t, tcrumbs] = await Promise.all([
+    getTranslations('Cabinet.settings'),
+    getTranslations('Cabinet.crumbs'),
+  ])
 
   return (
     <>

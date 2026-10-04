@@ -1,15 +1,14 @@
 'use client'
 
 import type { OrganizerProfile } from '@repo/contracts'
-import { CopyIcon, ImageIcon, PencilIcon } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useController } from 'react-hook-form'
-import { toast } from 'sonner'
 
 import { useCurrentOrganizer } from '@/api-client'
 import { FieldShell } from '@/components/field-shell'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { FormTextField } from '@/components/form-field'
+import { MarkdownEditor } from '@/components/markdown/markdown-editor'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -20,14 +19,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { FieldGroup } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from '@/components/ui/input-group'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import {
   Select,
   SelectContent,
@@ -37,10 +28,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SITE_DOMAIN, SITE_URL } from '@/constants/site'
-import { TIMEZONES } from '@/constants/timezones'
-import { initials } from '@/helpers/name'
-import type { ProfileFormControl, ProfileTextFieldName } from './use-profile-form'
+import { timezoneLabel, TIMEZONES } from '@/constants/timezones'
+import { AvatarField } from './avatar-field'
+import { SlugField } from './slug-field'
 import { useProfileForm } from './use-profile-form'
 
 export function SettingsForm() {
@@ -80,6 +70,14 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
   const slug = useController({ control: form.control, name: 'slug' })
   const description = useController({ control: form.control, name: 'description' })
   const timezone = useController({ control: form.control, name: 'timezone' })
+  const locale = useLocale()
+
+  // A stored zone missing from the curated list still needs an option or
+  // the Select renders blank.
+  const timezoneOptions =
+    timezone.field.value && !TIMEZONES.includes(timezone.field.value)
+      ? [timezone.field.value, ...TIMEZONES]
+      : TIMEZONES
 
   // Read-only demo account (ADR-010). Copy / navigation stay enabled — only
   // controls that would write are locked. The API rejects demo writes anyway.
@@ -93,83 +91,29 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
           <CardDescription>{t('profileDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-16">
-              {organizer.photoUrl ? (
-                <AvatarImage src={organizer.photoUrl} sizes="4rem" alt={organizer.name} />
-              ) : null}
-              <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
-            </Avatar>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={triggerAvatarUpload}
-              disabled={isUploadingAvatar || isReadOnly}
-            >
-              <ImageIcon data-icon="inline-start" />
-              {isUploadingAvatar ? t('uploading') : t('changePhoto')}
-            </Button>
-          </div>
+          <AvatarField
+            organizer={organizer}
+            fileInputRef={fileInputRef}
+            isUploading={isUploadingAvatar}
+            isReadOnly={isReadOnly}
+            onTriggerUpload={triggerAvatarUpload}
+            onAvatarChange={handleAvatarChange}
+          />
           <FieldGroup>
-            <SettingsTextField
+            <FormTextField
               control={form.control}
               name="name"
               label={t('displayName')}
               disabled={isReadOnly}
             />
-            <FieldShell
-              htmlFor="slug"
-              label={t('publicPageUrl')}
-              description={
-                isReadOnly ? t('slugFixed') : !isSlugEditable ? t('slugEditable') : t('slugWarning')
-              }
+            <SlugField
+              field={slug.field}
               invalid={slug.fieldState.invalid}
               error={slug.fieldState.error}
-            >
-              <InputGroup>
-                <InputGroupAddon>
-                  <InputGroupText>{SITE_DOMAIN}/</InputGroupText>
-                </InputGroupAddon>
-                <InputGroupInput
-                  {...slug.field}
-                  id="slug"
-                  disabled={!isSlugEditable || isReadOnly}
-                  aria-invalid={slug.fieldState.invalid || undefined}
-                />
-                <InputGroupAddon align="inline-end" className="max-sm:gap-0">
-                  {!isSlugEditable && !isReadOnly && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsSlugEditable(true)}
-                    >
-                      <PencilIcon data-icon="inline-start" />
-                      <span className="max-sm:hidden">{t('edit')}</span>
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${SITE_URL}/${slug.field.value}`)
-                      toast.success(t('linkCopied'))
-                    }}
-                  >
-                    <CopyIcon data-icon="inline-start" />
-                    <span className="max-sm:hidden">{t('copy')}</span>
-                  </Button>
-                </InputGroupAddon>
-              </InputGroup>
-            </FieldShell>
+              isEditable={isSlugEditable}
+              onEdit={() => setIsSlugEditable(true)}
+              isReadOnly={isReadOnly}
+            />
             <FieldShell
               htmlFor="bio"
               label={t('bio')}
@@ -185,7 +129,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
               />
             </FieldShell>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <SettingsTextField
+              <FormTextField
                 control={form.control}
                 name="contact"
                 label={t('contact')}
@@ -209,9 +153,9 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {TIMEZONES.map((tz) => (
-                        <SelectItem key={tz.value} value={tz.value}>
-                          {tz.label}
+                      {timezoneOptions.map((tz) => (
+                        <SelectItem key={tz} value={tz}>
+                          {timezoneLabel(tz, locale)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -219,7 +163,7 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
                 </Select>
               </FieldShell>
             </div>
-            <SettingsTextField
+            <FormTextField
               control={form.control}
               name="location"
               label={t('location')}
@@ -238,42 +182,5 @@ function SettingsFormInner({ organizer }: { organizer: OrganizerProfile }) {
 
       {/* TODO: Notifications tab ('@/components/ui/tabs') */}
     </form>
-  )
-}
-
-/** Single-line text field — the plain inputs share the invalid-state plumbing. */
-function SettingsTextField({
-  control,
-  name,
-  label,
-  description,
-  placeholder,
-  disabled,
-}: {
-  control: ProfileFormControl
-  name: ProfileTextFieldName
-  label: string
-  description?: string
-  placeholder?: string
-  disabled?: boolean
-}) {
-  const { field, fieldState } = useController({ control, name })
-
-  return (
-    <FieldShell
-      htmlFor={name}
-      label={label}
-      description={description}
-      invalid={fieldState.invalid}
-      error={fieldState.error}
-    >
-      <Input
-        {...field}
-        id={name}
-        placeholder={placeholder}
-        disabled={disabled}
-        aria-invalid={fieldState.invalid || undefined}
-      />
-    </FieldShell>
   )
 }

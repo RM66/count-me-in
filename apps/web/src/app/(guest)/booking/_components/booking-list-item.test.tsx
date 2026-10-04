@@ -27,6 +27,7 @@ function makeBooking(overrides: Partial<GuestBooking> = {}): GuestBooking {
       durationMinutes: 60,
       capacity: 10,
       bookedCount: 3,
+      hasBookings: null,
       price: null,
       createdAt: '2025-01-01T10:00:00.000Z',
     },

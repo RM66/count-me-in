@@ -326,7 +326,8 @@
       "contact": "Contato",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "Reservas online simples para aulas, eventos e passeios em grupo."
+    "ogDescription": "Reservas online simples para aulas, eventos e passeios em grupo.",
+    "metaTitle": "CountMeIn — reservas online para eventos em grupo"
   },
   "Legal": {
     "lastUpdated": "Última atualização: {date}",
@@ -374,7 +375,8 @@
       "createAccount": "Criar uma conta",
       "noAccountFound": "Nenhuma conta encontrada. Primeiro, crie uma conta.",
       "sameAccount": "Use a mesma conta do Telegram com que você se cadastrou.",
-      "notConfigured": "O login com o Telegram não está configurado. Entre em contato com o suporte."
+      "notConfigured": "O login com o Telegram não está configurado. Entre em contato com o suporte.",
+      "signInFailed": "Não foi possível entrar — autentique-se novamente com o Telegram"
     },
     "signup": {
       "title": "Crie sua conta",
@@ -401,8 +403,10 @@
     },
     "loginLink": {
       "opening": "Aguarde enquanto abrimos seu painel.",
-      "continue": "Continuar para o painel"
-    }
+      "continue": "Continuar para o painel",
+      "title": "Abrindo seu painel…"
+    },
+    "metaTitle": "Acesso à conta"
   },
   "NotFound": {
     "title": "Página não encontrada",
@@ -465,7 +469,8 @@
       "cancel": "Cancelar",
       "saving": "Salvando...",
       "close": "Fechar",
-      "full": "Lotado"
+      "full": "Lotado",
+      "clearFilter": "Limpar filtro"
     },
     "sidebar": {
       "subtitle": "Organizador",
@@ -524,7 +529,9 @@
       "changeDay": "Filtrando por {day}. Alterar dia",
       "filterByDay": "Filtrar {entity} por dia",
       "showEveryBooking": "Mostrar todas as reservas",
-      "showEveryService": "Mostrar todos os serviços"
+      "showEveryService": "Mostrar todos os serviços",
+      "entityBookings": "reservas",
+      "entitySlots": "horários"
     },
     "demoBanner": {
       "readOnly": "Demonstração somente para visualização.",
@@ -587,14 +594,14 @@
       "editSlot": "Editar horário",
       "viewBookings": "Ver reservas",
       "duplicate": "Duplicar",
-      "cancelSlot": "Cancelar horário",
-      "cancelTitle": "Cancelar este horário?",
-      "cancelDescriptionWithBookings": "Esta sessão tem {count} {count, plural, =1 {vaga reservada} other {vagas reservadas}}. O cancelamento remove o horário e todas as reservas dele. Esta ação não pode ser desfeita.",
-      "cancelDescriptionPlain": "O horário será removido e os participantes não poderão mais vê-lo. Esta ação não pode ser desfeita.",
+      "deleteSlot": "Excluir horário",
+      "deleteBlocked": "Horários com reservas não podem ser excluídos.",
+      "deleteTitle": "Excluir este horário?",
+      "deleteDescription": "O horário será removido e os participantes não poderão mais vê-lo. Esta ação não pode ser desfeita.",
       "keepSlot": "Manter horário",
-      "cancellingDialog": "Cancelando...",
-      "cancelledToast": "Horário cancelado",
-      "cancelFailed": "Falha ao cancelar o horário",
+      "deletingDialog": "Excluindo...",
+      "deletedToast": "Horário excluído",
+      "deleteFailed": "Falha ao excluir o horário",
       "dialogCreateTitle": "Adicionar horário",
       "dialogCreateDescription": "Agende uma nova sessão. Os valores padrão vêm do serviço.",
       "dialogEditTitle": "Editar horário",
@@ -663,7 +670,7 @@
       "deleteService": "Excluir serviço",
       "deleting": "Excluindo...",
       "deleteTitle": "Excluir este serviço?",
-      "deleteDescription": "{title} e todos os seus horários e reservas serão removidos. Esta ação não pode ser desfeita.",
+      "deleteDescription": "{title} e todos os seus horários serão removidos. Se o serviço tiver reservas, a exclusão será recusada.",
       "keepService": "Manter serviço",
       "delete": "Excluir",
       "coverPhoto": "Foto de capa",
@@ -711,7 +718,8 @@
       "noChanges": "Nenhuma alteração para salvar",
       "updatedToast": "Perfil atualizado",
       "updateFailed": "Falha ao atualizar o perfil",
-      "loadFailed": "Não foi possível carregar seu perfil — atualize a página para tentar novamente."
+      "loadFailed": "Não foi possível carregar seu perfil — atualize a página para tentar novamente.",
+      "copyFailed": "Não foi possível copiar o link"
     },
     "bookings": {
       "title": "Reservas",

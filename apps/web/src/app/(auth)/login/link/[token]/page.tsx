@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { AuthShell } from '@/app/(auth)/_components/auth-shell'
 import { auth, signIn } from '@/server/auth'
@@ -31,7 +32,11 @@ export const metadata: Metadata = {
 export default async function LoginLinkPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  const payload = await peekLoginLink(token)
+  const [payload, session, t] = await Promise.all([
+    peekLoginLink(token),
+    auth(),
+    getTranslations('Auth.loginLink'),
+  ])
   if (!payload) {
     redirect('/login')
   }
@@ -39,7 +44,6 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
   const next = payload.next
 
   // Already signed in as this organizer? Then the link has nothing left to do.
-  const session = await auth()
   if (session?.user?.id === payload.organizerId) {
     redirect(next)
   }
@@ -76,7 +80,7 @@ export default async function LoginLinkPage({ params }: { params: Promise<{ toke
   }
 
   return (
-    <AuthShell title="Opening your cabinet…" description="Signing you in from your Telegram link.">
+    <AuthShell title={t('title')} description={t('opening')}>
       <LoginLinkForm action={consume} />
     </AuthShell>
   )

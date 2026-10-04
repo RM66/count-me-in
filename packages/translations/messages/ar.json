@@ -326,7 +326,8 @@
       "contact": "التواصل",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "حجز إلكتروني بسيط للصفوف والفعاليات والرحلات الجماعية."
+    "ogDescription": "حجز إلكتروني بسيط للصفوف والفعاليات والرحلات الجماعية.",
+    "metaTitle": "CountMeIn — حجز إلكتروني للفعاليات الجماعية"
   },
   "Legal": {
     "lastUpdated": "آخر تحديث: {date}",
@@ -374,7 +375,8 @@
       "createAccount": "إنشاء حساب",
       "noAccountFound": "لم يُعثر على حساب. أنشئ حسابًا أولًا.",
       "sameAccount": "استخدم حساب Telegram نفسه الذي سجلت به.",
-      "notConfigured": "تسجيل الدخول عبر Telegram غير مُعدّ. تواصل مع الدعم."
+      "notConfigured": "تسجيل الدخول عبر Telegram غير مُعدّ. تواصل مع الدعم.",
+      "signInFailed": "تعذّر تسجيل دخولك — تحقق من هويتك عبر Telegram مجددًا"
     },
     "signup": {
       "title": "أنشئ حسابك",
@@ -401,8 +403,10 @@
     },
     "loginLink": {
       "opening": "لحظة من فضلك بينما نفتح لوحة تحكمك.",
-      "continue": "المتابعة إلى لوحة التحكم"
-    }
+      "continue": "المتابعة إلى لوحة التحكم",
+      "title": "جارٍ فتح لوحة تحكمك…"
+    },
+    "metaTitle": "الوصول إلى الحساب"
   },
   "NotFound": {
     "title": "الصفحة غير موجودة",
@@ -465,7 +469,8 @@
       "cancel": "إلغاء",
       "saving": "جارٍ الحفظ...",
       "close": "إغلاق",
-      "full": "ممتلئ"
+      "full": "ممتلئ",
+      "clearFilter": "مسح الفلتر"
     },
     "sidebar": {
       "subtitle": "المنظّم",
@@ -524,7 +529,9 @@
       "changeDay": "التصفية حسب {day}. تغيير اليوم",
       "filterByDay": "تصفية {entity} حسب اليوم",
       "showEveryBooking": "عرض كل الحجوزات",
-      "showEveryService": "عرض كل الخدمات"
+      "showEveryService": "عرض كل الخدمات",
+      "entityBookings": "الحجوزات",
+      "entitySlots": "المواعيد"
     },
     "demoBanner": {
       "readOnly": "نسخة تجريبية للعرض فقط.",
@@ -587,14 +594,14 @@
       "editSlot": "تعديل الموعد",
       "viewBookings": "عرض الحجوزات",
       "duplicate": "تكرار",
-      "cancelSlot": "إلغاء الموعد",
-      "cancelTitle": "هل تريد إلغاء هذا الموعد؟",
-      "cancelDescriptionWithBookings": "في هذه الجلسة {count, plural, zero {لا توجد أماكن محجوزة} one {مكان واحد محجوز} two {مكانان محجوزان} few {# أماكن محجوزة} many {# مكانًا محجوزًا} other {# مكان محجوز}}. سيؤدي الإلغاء إلى حذف الموعد وجميع حجوزاته. لا يمكن التراجع عن ذلك.",
-      "cancelDescriptionPlain": "سيُحذف الموعد ولن يراه الضيوف بعد الآن. لا يمكن التراجع عن ذلك.",
+      "deleteSlot": "حذف الموعد",
+      "deleteBlocked": "لا يمكن حذف المواعيد التي عليها حجوزات.",
+      "deleteTitle": "هل تريد حذف هذا الموعد؟",
+      "deleteDescription": "سيُحذف الموعد ولن يراه الضيوف بعد الآن. لا يمكن التراجع عن ذلك.",
       "keepSlot": "الاحتفاظ بالموعد",
-      "cancellingDialog": "جارٍ الإلغاء...",
-      "cancelledToast": "أُلغي الموعد",
-      "cancelFailed": "فشل إلغاء الموعد",
+      "deletingDialog": "جارٍ الحذف...",
+      "deletedToast": "حُذف الموعد",
+      "deleteFailed": "فشل حذف الموعد",
       "dialogCreateTitle": "إضافة موعد",
       "dialogCreateDescription": "جدوِل جلسة جديدة. تُستخدم الإعدادات الافتراضية للخدمة.",
       "dialogEditTitle": "تعديل الموعد",
@@ -663,7 +670,7 @@
       "deleteService": "حذف الخدمة",
       "deleting": "جارٍ الحذف...",
       "deleteTitle": "هل تريد حذف هذه الخدمة؟",
-      "deleteDescription": "سيُحذف {title} وجميع مواعيده وحجوزاته. لا يمكن التراجع عن ذلك.",
+      "deleteDescription": "سيُحذف {title} وجميع مواعيده. إذا كانت للخدمة حجوزات سابقة، سيُرفض الحذف.",
       "keepService": "الاحتفاظ بالخدمة",
       "delete": "حذف",
       "coverPhoto": "صورة الغلاف",
@@ -711,7 +718,8 @@
       "noChanges": "لا توجد تغييرات لحفظها",
       "updatedToast": "حُدّث الملف الشخصي",
       "updateFailed": "فشل تحديث الملف الشخصي",
-      "loadFailed": "تعذّر تحميل ملفك الشخصي — حدّث الصفحة للمحاولة مجددًا."
+      "loadFailed": "تعذّر تحميل ملفك الشخصي — حدّث الصفحة للمحاولة مجددًا.",
+      "copyFailed": "تعذّر نسخ الرابط"
     },
     "bookings": {
       "title": "الحجوزات",

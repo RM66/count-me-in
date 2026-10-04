@@ -23,6 +23,7 @@ import {
   ORGANIZER_AUTH_AUD,
   ORGANIZER_AUTH_ISS,
 } from '@repo/contracts'
+import { AUTH_TICKET_KEY_PREFIX, AUTH_TICKET_TTL_S } from '@repo/contracts'
 import { LOGIN_LINK_KEY_PREFIX, LOGIN_LINK_TTL_S } from '@repo/contracts'
 import { DEFAULT_LOCALE, LOCALES } from '@repo/contracts'
 import { SLOT_START_IN_PAST_MESSAGE, SLOT_START_TOLERANCE_MS } from '@repo/contracts'
@@ -62,6 +63,11 @@ DEMO_SERVICE_BREATHWORK = ${pyString(DEMO_SERVICE_IDS.breathwork)}
 # QStash queues (ADR-012) — one constant per JOB_QUEUES entry, so a queue
 # added to the manifest lands here without a second edit.
 ${queueConstants}
+
+# Auth tickets (ADR-008). Generated for the same reason as the login-link
+# pair: the Python writer and the TS reader share one Redis namespace.
+AUTH_TICKET_TTL_SECONDS = ${String(AUTH_TICKET_TTL_S)}
+AUTH_TICKET_KEY_PREFIX = ${pyString(AUTH_TICKET_KEY_PREFIX)}
 
 # One-time login links. The prefix is generated from the TS constant, so the
 # Python writer and the TS reader cannot disagree on the Redis key.

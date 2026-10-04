@@ -16,7 +16,10 @@ steps:
         }
     note: seed service; capture <serviceId>
   - request: { method: GET, path: /api/slots, headers: { X-Organizer-Auth: <session> } }
-    note: empty slot list
+    note: empty slot list — bare read carries no `days`
+  - request:
+      { method: GET, path: '/api/slots?include=days', headers: { X-Organizer-Auth: <session> } }
+    note: empty list with marks — days is opt-in
   - request:
       method: POST
       path: /api/slots
@@ -29,8 +32,9 @@ steps:
           capacity: 3,
         }
     note: create happy path → 201; capture <slotId>
-  - request: { method: GET, path: /api/slots, headers: { X-Organizer-Auth: <session> } }
-    note: list shows the slot
+  - request:
+      { method: GET, path: '/api/slots?include=days', headers: { X-Organizer-Auth: <session> } }
+    note: list shows the slot and its day key in `days`
   - request:
       { method: GET, path: '/api/slots?upcoming=1', headers: { X-Organizer-Auth: <session> } }
     note: upcoming filter

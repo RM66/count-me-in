@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Unit tests for the organizer-auth JWT mint (architecture review fix #1).
+ * Unit tests for the organizer-auth JWT mint (ADR-021).
  *
  * The token is the credential the API verifies (HS256, HKDF-derived key);
  * the derivation parameters are pinned by a golden vector on the API side
@@ -43,7 +43,7 @@ describe('mintOrganizerAuth', () => {
     expect(decodedHeader).toEqual({ alg: 'HS256', typ: 'JWT' })
 
     const decoded = JSON.parse(atob(payload!.replace(/-/g, '+').replace(/_/g, '/')))
-    // ADR-024: the API refuses a token without this iss/aud pair.
+    // ADR-021: the API refuses a token without this iss/aud pair.
     expect(decoded.iss).toBe('countmein-web')
     expect(decoded.aud).toBe('countmein-api')
     expect(decoded.sub).toBe('01930000-0000-7000-8000-0000000000de')

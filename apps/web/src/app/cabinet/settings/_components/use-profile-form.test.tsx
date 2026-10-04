@@ -23,6 +23,8 @@ vi.mock('sonner', () => ({
 
 const updateMutate = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   useUpdateOrganizerProfile: () => ({ mutate: updateMutate, isPending: false }),
   useUploadAvatar: () => ({ mutate: vi.fn(), isPending: false }),
 }))

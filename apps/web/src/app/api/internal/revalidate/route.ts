@@ -6,7 +6,7 @@ import { derivedInternalSecret, INTERNAL_SECRET_HEADER } from '@/server/internal
 
 /**
  * POST /api/internal/revalidate — on-demand Data Cache invalidation
- * (ADR-023 Phase 3).
+ * (ADR-023).
  *
  * Public SSR reads are cached in the Next.js Data Cache under
  * `public-organizer:{slug}`, `public-service:{id}` and `public-sitemap`

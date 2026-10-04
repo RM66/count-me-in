@@ -3,13 +3,14 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { IntlTestProvider } from '@/i18n/test-provider'
-import { detectLanguage, detectTimezone, useSignupForm } from './use-signup-form'
+import { detectLanguage, detectTimezone, SIGNUP_TICKET_KEY, useSignupForm } from './use-signup-form'
 
 // The signup state machine: Telegram auth → profile creation → cabinet.
 // Load-bearing rules: the notification language follows the UI locale
 // (ADR-011), an expired ticket restarts auth instead of stranding the
-// visitor on step 1, and an unknown browser timezone falls back to a
-// listed one rather than blanking the Select.
+// visitor on step 1, and a browser zone missing from the curated list still
+// pre-selects — the page adds it to the options rather than blanking the
+// Select.
 
 const mockPush = vi.fn()
 const mockRefresh = vi.fn()
@@ -27,6 +28,8 @@ vi.mock('sonner', () => ({
 const registerMutateAsync = vi.fn()
 const signInMutateAsync = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   ApiError: class extends Error {
     status: number
     constructor(message: string, status: number) {
@@ -42,35 +45,30 @@ function wrapper({ children }: { children: ReactNode }) {
   return <IntlTestProvider>{children}</IntlTestProvider>
 }
 
-function fakeEvent() {
-  return { preventDefault: vi.fn() } as unknown as React.FormEvent
-}
-
 afterEach(() => {
   vi.clearAllMocks()
   mockGet.mockImplementation((): string | null => null)
+  sessionStorage.clear()
 })
 
 describe('detectTimezone', () => {
-  it('keeps the browser zone when listed', () => {
+  it('returns the browser zone verbatim, even when unlisted', () => {
     vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
-      timeZone: 'Europe/Belgrade',
+      timeZone: 'Pacific/Auckland',
     } as Intl.ResolvedDateTimeFormatOptions)
     try {
-      expect(detectTimezone([{ value: 'Europe/Belgrade' }, { value: 'UTC' }])).toBe(
-        'Europe/Belgrade',
-      )
+      expect(detectTimezone()).toBe('Pacific/Auckland')
     } finally {
       vi.restoreAllMocks()
     }
   })
 
-  it('falls back to a listed zone when the browser zone is unlisted', () => {
+  it('falls back to UTC when the browser reports no zone', () => {
     vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
-      timeZone: 'Mars/Olympus',
-    } as Intl.ResolvedDateTimeFormatOptions)
+      timeZone: undefined,
+    } as unknown as Intl.ResolvedDateTimeFormatOptions)
     try {
-      expect(detectTimezone([{ value: 'UTC' }])).toBe('Europe/Belgrade')
+      expect(detectTimezone()).toBe('UTC')
     } finally {
       vi.restoreAllMocks()
     }
@@ -100,6 +98,16 @@ describe('useSignupForm', () => {
     expect(result.current.ticket).toBe('t-123')
   })
 
+  it('skips to step 1 with a stored ticket and consumes it on read', () => {
+    // The login page hands the ticket off through sessionStorage — a
+    // one-time credential must not travel in the URL.
+    sessionStorage.setItem(SIGNUP_TICKET_KEY, 't-stored')
+    const { result } = renderHook(() => useSignupForm(), { wrapper })
+    expect(result.current.step).toBe(1)
+    expect(result.current.ticket).toBe('t-stored')
+    expect(sessionStorage.getItem(SIGNUP_TICKET_KEY)).toBeNull()
+  })
+
   it('successful registration signs in and lands in settings', async () => {
     registerMutateAsync.mockResolvedValue({})
     signInMutateAsync.mockResolvedValue({})
@@ -107,11 +115,12 @@ describe('useSignupForm', () => {
 
     act(() => {
       result.current.setTicket('t-1')
-      result.current.setSlug('my-studio')
-      result.current.setName('Ann')
+      result.current.form.setValue('slug', 'my-studio')
+      result.current.form.setValue('name', 'Ann')
+      result.current.form.setValue('timezone', 'Europe/Belgrade')
     })
     await act(async () => {
-      await result.current.handleCreateAccount(fakeEvent(), 'Europe/Belgrade')
+      await result.current.submit()
     })
 
     expect(registerMutateAsync).toHaveBeenCalledWith(
@@ -127,6 +136,30 @@ describe('useSignupForm', () => {
     expect(mockRefresh).toHaveBeenCalledTimes(1)
   })
 
+  it('invalid values never reach the API — the contract schema is the client gate', async () => {
+    // `formState` is React-state-backed: the React Query subject only emits
+    // `errors` updates for keys read during render, so the test subscribes
+    // the same way the page does by reading `formState.errors`.
+    const { result } = renderHook(
+      () => {
+        const signup = useSignupForm()
+        void signup.form.formState.errors
+        return signup
+      },
+      { wrapper },
+    )
+    act(() => {
+      result.current.setTicket('t-1')
+      result.current.form.setValue('slug', 'demo') // a reserved slug
+      result.current.form.setValue('name', 'Ann')
+    })
+    await act(async () => {
+      await result.current.submit()
+    })
+    expect(registerMutateAsync).not.toHaveBeenCalled()
+    expect(result.current.form.formState.errors.slug?.message).toBeTruthy()
+  })
+
   it('an expired ticket (401) restarts Telegram auth', async () => {
     const { ApiError } = await import('@/api-client')
     registerMutateAsync.mockRejectedValue(new ApiError('expired', 401))
@@ -135,9 +168,11 @@ describe('useSignupForm', () => {
     act(() => {
       result.current.setTicket('t-stale')
       result.current.setStep(1)
+      result.current.form.setValue('slug', 'my-studio')
+      result.current.form.setValue('name', 'Ann')
     })
     await act(async () => {
-      await result.current.handleCreateAccount(fakeEvent(), 'Europe/Belgrade')
+      await result.current.submit()
     })
 
     expect(mockToastError).toHaveBeenCalledTimes(1)
@@ -153,9 +188,11 @@ describe('useSignupForm', () => {
     act(() => {
       result.current.setTicket('t-1')
       result.current.setStep(1)
+      result.current.form.setValue('slug', 'my-studio')
+      result.current.form.setValue('name', 'Ann')
     })
     await act(async () => {
-      await result.current.handleCreateAccount(fakeEvent(), 'Europe/Belgrade')
+      await result.current.submit()
     })
     expect(mockToastError).toHaveBeenCalledTimes(1)
     expect(result.current.step).toBe(1)

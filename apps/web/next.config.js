@@ -32,7 +32,7 @@ function buildRemotePatterns() {
 
 const nextConfig = {
   transpilePackages: ['@repo/contracts', '@repo/translations'],
-  // Container twin (Phase 6): the web image runs the standalone server
+  // Container twin: the web image runs the standalone server
   // (Dockerfile.web). No effect on Vercel — it ignores this mode.
   output: 'standalone',
   images: {
@@ -145,10 +145,9 @@ const nextConfig = {
       }
       return ` ${posthogOrigin}`
     })()
-    // Sentry ingest region. instrumentation-client.ts reads
-    // NEXT_PUBLIC_SENTRY_DSN ?? SENTRY_DSN, so the CSP must allow
-    // whichever one is set.
-    const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN
+    // Sentry ingest region; instrumentation-client.ts reads
+    // NEXT_PUBLIC_SENTRY_DSN (the only var bundled into the browser).
+    const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN
     const sentryOrigin = sentryDsn
       ? originOf(sentryDsn, 'https://o0.ingest.sentry.io')
       : 'https://o0.ingest.sentry.io'
@@ -157,7 +156,7 @@ const nextConfig = {
       "default-src 'self'",
       // Next.js injects inline/bootstrap scripts; nonces are not wired
       // through the App Router here, so script-src allows 'unsafe-inline'
-      // for now — the JSON-LD XSS fix (P0-3) escapes payloads, and CSP is
+      // for now — JsonLd escapes payloads (`escapeJsonForHtml`), and CSP is
       // the compensating control to tighten later with nonces.
       // telegram.org hosts the login widget script (ADR-008) — the only
       // auth mechanism, so it must load.
@@ -171,9 +170,12 @@ const nextConfig = {
       // /_vercel/* endpoints already covered by connect-src 'self'.
       `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}`,
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${r2UploadOrigin} ${posthogWildcard}${posthogExtra}`,
+      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${posthogWildcard}${posthogExtra}`,
       "font-src 'self' data:",
-      `connect-src 'self' https://*.upstash.io ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}`,
+      // r2UploadOrigin is in connect-src (the signed PUT goes straight from
+      // the browser to R2) but not img-src — rendered media always comes
+      // from mediaOrigin. No upstash.io: the browser never talks to Upstash.
+      `connect-src 'self' ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}`,
       // Session replay runs its recorder in a blob: worker — without an
       // explicit worker-src it falls back to default-src 'self' and replay
       // silently never starts.

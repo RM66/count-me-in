@@ -38,10 +38,14 @@ vi.mock('next-auth/react', () => ({
 // branches (size cap, signed PUT, profile write) are what get exercised.
 const mockResizeAvatar = vi.fn()
 const mockResizeServicePhoto = vi.fn()
-vi.mock('./image', () => ({
-  resizeAvatar: (...args: unknown[]) => mockResizeAvatar(...args),
-  resizeServicePhoto: (...args: unknown[]) => mockResizeServicePhoto(...args),
-}))
+vi.mock('./image', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./image')>()
+  return {
+    ...actual,
+    resizeAvatar: (...args: unknown[]) => mockResizeAvatar(...args),
+    resizeServicePhoto: (...args: unknown[]) => mockResizeServicePhoto(...args),
+  }
+})
 
 function mockResponse(body: unknown, ok: boolean, status: number) {
   return {
@@ -86,6 +90,7 @@ const slotFixture = {
   durationMinutes: 60,
   capacity: 10,
   bookedCount: 3,
+  hasBookings: null,
   price: null,
   createdAt: '2026-01-01T00:00:00.000Z',
 } as unknown as TimeSlotRecord
@@ -153,11 +158,11 @@ describe('useUpdateService', () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ service: serviceFixture }, true, 200))
 
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useUpdateService('svc-abc123xyz'), { wrapper: Wrapper })
+    const { result } = renderHook(() => useUpdateService(), { wrapper: Wrapper })
     // The options pair must always travel together (AGENTS.md).
     const input = { options: ['Mat', 'Towel'], optionsSelectMode: 'multi' as const }
     await act(async () => {
-      await result.current.mutateAsync(input)
+      await result.current.mutateAsync({ id: 'svc-abc123xyz', input })
     })
 
     expect(fetch).toHaveBeenCalledWith(
@@ -176,9 +181,9 @@ describe('useDeleteService', () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ id: 'svc-abc123xyz' }, true, 200))
 
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useDeleteService('svc-abc123xyz'), { wrapper: Wrapper })
+    const { result } = renderHook(() => useDeleteService(), { wrapper: Wrapper })
     await act(async () => {
-      await result.current.mutateAsync()
+      await result.current.mutateAsync('svc-abc123xyz')
     })
 
     expect(fetch).toHaveBeenCalledWith('/api/services/svc-abc123xyz', { method: 'DELETE' })
@@ -219,12 +224,10 @@ describe('useUpdateSlot', () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ slot: slotFixture }, true, 200))
 
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useUpdateSlot('01930000-0000-7000-8000-0000000000a1'), {
-      wrapper: Wrapper,
-    })
+    const { result } = renderHook(() => useUpdateSlot(), { wrapper: Wrapper })
     const input = { capacity: 12 }
     await act(async () => {
-      await result.current.mutateAsync(input)
+      await result.current.mutateAsync({ id: '01930000-0000-7000-8000-0000000000a1', input })
     })
 
     expect(fetch).toHaveBeenCalledWith(
@@ -245,13 +248,11 @@ describe('useDeleteSlot', () => {
     )
 
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useDeleteSlot('01930000-0000-7000-8000-0000000000a1'), {
-      wrapper: Wrapper,
-    })
+    const { result } = renderHook(() => useDeleteSlot(), { wrapper: Wrapper })
     let caught: unknown
     await act(async () => {
       try {
-        await result.current.mutateAsync()
+        await result.current.mutateAsync('01930000-0000-7000-8000-0000000000a1')
       } catch (e) {
         caught = e
       }

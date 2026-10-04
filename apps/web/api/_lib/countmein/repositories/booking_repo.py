@@ -10,11 +10,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, NamedTuple
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import Select
+from sqlalchemy.sql.elements import ColumnElement
 
 from ..models.base import BookingStatus, MessengerKind
 from ..models.booking import Booking
@@ -173,26 +175,130 @@ async def cancel_booking_mark(session: AsyncSession, booking_id: str) -> Booking
     return result.scalar_one_or_none()
 
 
+# Column behind each `?sort=` key — the same joined values the cabinet
+# table sorts by; text columns sort case-insensitively like the old
+# client-side comparator did.
+_SORT_COLUMNS: dict[str, ColumnElement[Any] | InstrumentedAttribute[Any]] = {
+    "guest": func.lower(Booking.guest_name),
+    "service": func.lower(Service.title),
+    "when": TimeSlot.starts_at,
+    "seats": Booking.seats,
+    "status": Booking.status,
+}
+
+
+def _ilike_needle(q: str) -> str:
+    """User text → a literal ILIKE needle: escape the wildcards first so
+    a '%' in the search box cannot widen the match."""
+    return f"%{q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
+
+
 async def list_by_organizer(
     session: AsyncSession,
     organizer_id: str,
     *,
     limit: int = 50,
     offset: int = 0,
+    service_id: str | None = None,
+    slot_id: str | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    day_range: tuple[datetime, datetime] | None = None,
+    sort: str | None = None,
+    sort_desc: bool = False,
 ) -> list[Booking]:
-    """Every booking across the organizer's services, newest first —
-    cancelled included (the cabinet filters client-side)."""
+    """Bookings across the organizer's services — cancelled included
+    (they are history, not noise). The filters mirror the cabinet's URL
+    state: the scope narrows through the transitive join (a slot pins
+    one session, a service follows Booking → TimeSlot → Service — there
+    is no Booking.service_id), `day_range` is the caller's timezone
+    conversion of a calendar day, `q` is a case-insensitive substring
+    across the guest fields and the service title."""
     stmt = (
         select(Booking)
         .join(TimeSlot, Booking.time_slot_id == TimeSlot.id)
         .join(Service, TimeSlot.service_id == Service.id)
         .where(Service.organizer_id == organizer_id)
-        .order_by(Booking.created_at.desc())
-        .limit(limit)
-        .offset(offset)
     )
+    if slot_id is not None:
+        stmt = stmt.where(Booking.time_slot_id == slot_id)
+    if service_id is not None:
+        stmt = stmt.where(TimeSlot.service_id == service_id)
+    if status is not None:
+        stmt = stmt.where(Booking.status == BookingStatus(status))
+    if day_range is not None:
+        day_from, day_to = day_range
+        stmt = stmt.where(TimeSlot.starts_at >= day_from, TimeSlot.starts_at < day_to)
+    if q is not None:
+        needle = _ilike_needle(q)
+        stmt = stmt.where(
+            or_(
+                Booking.guest_name.ilike(needle, escape="\\"),
+                Booking.guest_messenger_login.ilike(needle, escape="\\"),
+                Booking.guest_messenger_id.ilike(needle, escape="\\"),
+                Service.title.ilike(needle, escape="\\"),
+            )
+        )
+    column = _SORT_COLUMNS[sort] if sort is not None else None
+    if column is not None:
+        stmt = stmt.order_by(column.desc() if sort_desc else column.asc())
+    else:
+        stmt = stmt.order_by(Booking.created_at.desc())
+    # Pagination needs a stable order: same-second created_at ties (and
+    # equal sort keys) must not flip rows between pages.
+    stmt = stmt.order_by(Booking.id).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def list_scoped_day_keys(
+    session: AsyncSession,
+    organizer_id: str,
+    timezone: str,
+    *,
+    service_id: str | None = None,
+    slot_id: str | None = None,
+) -> list[str]:
+    """`YYYY-MM-DD` day keys — in the organizer's timezone — whose
+    sessions carry a booking inside the scope. Only the scope filters
+    apply: the marks answer "when is anything booked", so status, day,
+    search and sort deliberately do not narrow them."""
+    day_expr = func.to_char(func.timezone(timezone, TimeSlot.starts_at), "YYYY-MM-DD")
+    stmt = (
+        select(day_expr)
+        .select_from(Booking)
+        .join(TimeSlot, Booking.time_slot_id == TimeSlot.id)
+        .join(Service, TimeSlot.service_id == Service.id)
+        .where(Service.organizer_id == organizer_id)
+        .distinct()
+        .order_by(day_expr)
+    )
+    if slot_id is not None:
+        stmt = stmt.where(Booking.time_slot_id == slot_id)
+    if service_id is not None:
+        stmt = stmt.where(TimeSlot.service_id == service_id)
+    result = await session.execute(stmt)
+    return [str(row[0]) for row in result.all()]
+
+
+async def overview_confirmed_counts(
+    session: AsyncSession, organizer_id: str, *, recent_since: datetime
+) -> tuple[int, int]:
+    """(confirmed all-time, confirmed created since `recent_since`) —
+    the overview's "confirmed bookings" card in one pass."""
+    confirmed = Booking.status == BookingStatus.CONFIRMED
+    stmt = (
+        select(
+            func.count().filter(confirmed),
+            func.count().filter(confirmed & (Booking.created_at >= recent_since)),
+        )
+        .select_from(Booking)
+        .join(TimeSlot, Booking.time_slot_id == TimeSlot.id)
+        .join(Service, TimeSlot.service_id == Service.id)
+        .where(Service.organizer_id == organizer_id)
+    )
+    total, recent = (await session.execute(stmt)).one()
+    return int(total), int(recent)
 
 
 async def count_confirmed_by_services(

@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { useLookupBookings } from '@/api-client'
+import { errorMessage, useLookupBookings } from '@/api-client'
 import { TelegramLoginButton } from '@/components/telegram-login-button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -37,7 +37,7 @@ export function FindBooking() {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
   return (
-    <div className="mx-auto w-full max-w-xl px-4 py-12 md:py-20">
+    <div className="mx-auto w-full max-w-xl py-6 md:py-14">
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">
           {t('title')}
@@ -60,21 +60,12 @@ export function FindBooking() {
                 mode="guest"
                 onGuestTicket={async (ticket) => {
                   try {
-                    setFound(
-                      await lookupBookings.mutateAsync({
-                        ticket: ticket.ticket,
-                        messenger: ticket.messenger,
-                        messengerId: ticket.messengerId,
-                      }),
-                    )
+                    setFound(await lookupBookings.mutateAsync(ticket.ticket))
                   } catch (error) {
-                    toast.error(
-                      error instanceof Error
-                        ? error.message || t('lookupFailed')
-                        : t('lookupFailed'),
-                    )
+                    toast.error(errorMessage(error, t('lookupFailed')))
                   }
                 }}
+                onError={(error) => toast.error(errorMessage(error, t('lookupFailed')))}
               />
             ) : (
               <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>

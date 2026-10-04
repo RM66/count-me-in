@@ -110,6 +110,11 @@ ENV_REMOVED = ("NODE_ENV", "VERCEL_ENV", "STRICT_ENV", "TRUST_PROXY_HEADERS", "V
 
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 ISO_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})")
+# Bare `YYYY-MM-DD` day keys (slots `days`, bookings `bookedDays`) — the
+# same drift problem as instants, minus the time part, so they get their
+# own placeholder class. Only normalized under the keys that mint them.
+DAY_KEY_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+DAY_LIST_KEYS = {"days", "bookedDays"}
 TOKEN_KEYS = {"manageToken", "ticket", "guestTicket", "token"}
 SID_KEYS = {"id", "serviceId"}
 RL_WINDOWS = {
@@ -327,6 +332,7 @@ class Normalizer:
         self.uuid_n = 0
         self.sid_n = 0
         self.ts_n = 0
+        self.day_n = 0
         self.ts_values: dict[str, str] = {}
 
     def text(self, s: str) -> str:
@@ -369,6 +375,12 @@ class Normalizer:
         self.ts_values[self.seen[v]] = v
         return self.seen[v]
 
+    def day_for(self, v: str) -> str:
+        if v not in self.seen:
+            self.day_n += 1
+            self.seen[v] = f"<day:{self.day_n}>"
+        return self.seen[v]
+
     def json(self, obj: object, key: str | None = None) -> object:
         if isinstance(obj, int) and key == "auth_date":
             return "<epoch>"
@@ -383,6 +395,11 @@ class Normalizer:
                 return self.sid_for(obj)
             return self.text(obj)
         if isinstance(obj, list):
+            if key in DAY_LIST_KEYS:
+                return [
+                    self.day_for(x) if isinstance(x, str) and DAY_KEY_RE.fullmatch(x) else x
+                    for x in obj
+                ]
             return [self.json(x) for x in obj]
         if isinstance(obj, dict):
             return {k: self.json(v, k) for k, v in obj.items()}
@@ -393,6 +410,11 @@ class Normalizer:
         tokens by key name, service ids by key position. Targeted
         regexes — free text must not be mangled."""
         text = self.text(text)
+        text = re.sub(
+            r'("(?:days|bookedDays)":\[)([^\]]*)',
+            lambda m: m.group(1) + DAY_KEY_RE.sub(lambda mm: self.day_for(mm.group(0)), m.group(2)),
+            text,
+        )
         text = re.sub(
             r'("(?:ticket|manageToken|guestToken)"):("[^"]{20,}")',
             lambda m: f'{m.group(1)}:"<token>"',

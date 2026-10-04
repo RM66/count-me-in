@@ -14,22 +14,13 @@ import type { Control } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { useCreateService, useDeleteService, useUpdateService } from '@/api-client'
+import { errorMessage, useCreateService, useDeleteService, useUpdateService } from '@/api-client'
 
 /**
  * Field components take `control` rather than the whole form instance, so each
  * subscribes only to the field it renders.
  */
 export type ServiceFormControl = Control<ServiceFormValues, unknown, ServiceFormOutput>
-
-/**
- * Fields backed by a plain text control. Excluding the non-text fields keeps
- * `<ServiceTextField name="options" />` from type-checking.
- */
-export type ServiceTextFieldName = Exclude<
-  keyof ServiceFormValues,
-  'options' | 'optionsSelectMode' | 'photoUrl'
->
 
 /**
  * Wires the cabinet service form to the API. Validation lives in
@@ -50,10 +41,8 @@ export function useServiceForm(service?: ServiceRecord) {
   })
 
   const createService = useCreateService()
-  // Hooks are unconditional: the id is only used by the mutation function, so a
-  // create-mode placeholder is never requested.
-  const updateService = useUpdateService(service?.id ?? '')
-  const deleteService = useDeleteService(service?.id ?? '')
+  const updateService = useUpdateService()
+  const deleteService = useDeleteService()
 
   /** Every write leaves for the list; `refresh` re-runs the server render. */
   const leaveToList = (message: string) => {
@@ -66,7 +55,7 @@ export function useServiceForm(service?: ServiceRecord) {
     if (!service) {
       createService.mutate(toCreateServiceInput(values), {
         onSuccess: () => leaveToList(t('createdToast')),
-        onError: (error) => toast.error(error.message || t('createFailed')),
+        onError: (error) => toast.error(errorMessage(error, t('createFailed'))),
       })
       return
     }
@@ -80,16 +69,20 @@ export function useServiceForm(service?: ServiceRecord) {
       leaveToList(t('updatedToast'))
       return
     }
-    updateService.mutate(patch, {
-      onSuccess: () => leaveToList(t('updatedToast')),
-      onError: (error) => toast.error(error.message || t('updateFailed')),
-    })
+    updateService.mutate(
+      { id: service.id, input: patch },
+      {
+        onSuccess: () => leaveToList(t('updatedToast')),
+        onError: (error) => toast.error(errorMessage(error, t('updateFailed'))),
+      },
+    )
   })
 
   const remove = () => {
-    deleteService.mutate(undefined, {
+    if (!service) return
+    deleteService.mutate(service.id, {
       onSuccess: () => leaveToList(t('deletedToast')),
-      onError: (error) => toast.error(error.message || t('deleteFailed')),
+      onError: (error) => toast.error(errorMessage(error, t('deleteFailed'))),
     })
   }
 

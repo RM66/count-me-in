@@ -21,23 +21,32 @@ maybeDescribe('auth tickets and login links (integration, real Redis)', () => {
 
   afterAll(async () => {
     if (!hasRedis || mintedTickets.length === 0) return
+    const { authTicketKey } = await import('@repo/contracts')
     const { getRedis } = await import('@/server/redis')
     const redis = getRedis()
-    await redis.del(...mintedTickets.map((token) => `auth:ticket:${token}`))
+    await redis.del(...mintedTickets.map(authTicketKey))
   })
 
-  describe('issueTicket / consumeTicket', () => {
+  describe('consumeTicket', () => {
+    // Tickets are minted by the Python API — the test writes the payload
+    // the way `countmein/auth/ticket.py` does and only exercises the
+    // redemption half this module owns.
+    const putTicket = async (token: string, payload: Record<string, unknown>) => {
+      const { authTicketKey } = await import('@repo/contracts')
+      const { getRedis } = await import('@/server/redis')
+      await getRedis().set(authTicketKey(token), JSON.stringify(payload), 'EX', 60)
+      mintedTickets.push(token)
+    }
+
     it('round-trips the payload and is single-use', async () => {
-      const { issueTicket, consumeTicket, TICKET_BASE64URL_LENGTH } =
-        await import('@/server/auth/ticket')
-      const token = await issueTicket({
+      const { consumeTicket } = await import('@/server/auth/ticket')
+      const token = 'test-ticket-roundtrip'
+      await putTicket(token, {
         messenger: 'telegram',
         messengerId: '12345',
         displayName: 'Test Guest',
         purpose: 'guest',
       })
-      mintedTickets.push(token)
-      expect(token).toHaveLength(TICKET_BASE64URL_LENGTH)
 
       const first = await consumeTicket(token)
       expect(first).toMatchObject({
@@ -55,15 +64,30 @@ maybeDescribe('auth tickets and login links (integration, real Redis)', () => {
       expect(await consumeTicket('no-such-ticket-token')).toBeNull()
     })
 
+    it('returns null for garbage and for a schema-mismatched payload', async () => {
+      const { authTicketKey } = await import('@repo/contracts')
+      const { consumeTicket } = await import('@/server/auth/ticket')
+      const { getRedis } = await import('@/server/redis')
+
+      const garbage = 'test-ticket-garbage'
+      await getRedis().set(authTicketKey(garbage), 'not-json{', 'EX', 60)
+      mintedTickets.push(garbage)
+      expect(await consumeTicket(garbage)).toBeNull()
+
+      const wrongShape = 'test-ticket-wrong-shape'
+      await putTicket(wrongShape, { wrong: 'shape' })
+      expect(await consumeTicket(wrongShape)).toBeNull()
+    })
+
     it('keeps organizer and guest purposes distinct in the payload', async () => {
-      const { issueTicket, consumeTicket } = await import('@/server/auth/ticket')
-      const organizerToken = await issueTicket({
+      const { consumeTicket } = await import('@/server/auth/ticket')
+      const organizerToken = 'test-ticket-organizer'
+      await putTicket(organizerToken, {
         messenger: 'telegram',
         messengerId: 'o-1',
         displayName: 'Org',
         purpose: 'organizer',
       })
-      mintedTickets.push(organizerToken)
       const payload = await consumeTicket(organizerToken)
       expect(payload?.purpose).toBe('organizer')
     })

@@ -1,90 +1,82 @@
 'use client'
 
-import type { ServiceRecord, SlotFill, TimeSlotRecord } from '@repo/contracts'
-import { fillLabel, instantToWallClockInputs, seatsLeft, slotEnd } from '@repo/contracts'
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import Link from 'next/link'
+import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import { instantToWallClockInputs } from '@repo/contracts'
+import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { dateToDayKey, dayKeyToDate } from '@/helpers/day-key'
+import { useWeekStartsOn } from '@/hooks/use-week-starts-on'
+import { WeekGrid } from './week-grid'
 import {
-  dateToDayKey,
-  DAY_MARK,
-  dayKeyToDate,
-  useWeekStartsOn,
-} from '@/app/cabinet/_components/day-filter'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
-import { addDays, assignColumns, MINUTES_PER_DAY, startOfWeek, timeToMinutes } from './week-layout'
-
-/** Pixels per hour row. The grid is a fixed 24 h tall and scrolls. */
-const HOUR_HEIGHT = 48
-const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
-
-/**
- * Event tint by fill status, so a full week reads at a glance: open sessions
- * sit quiet, filling ones lean on the brand colour, full ones grey out. The
- * left rule is the status marker (see day calendars generally), not decoration.
- */
-const FILL_STYLES: Record<SlotFill, string> = {
-  open: 'border-s-primary/50 bg-primary/10 text-foreground hover:bg-primary/15',
-  filling: 'border-s-primary bg-primary/20 text-foreground hover:bg-primary/30',
-  full: 'border-s-muted-foreground/40 bg-muted text-muted-foreground hover:bg-muted/70',
-}
+  addDays,
+  assignColumns,
+  HOUR_HEIGHT,
+  MINUTES_PER_DAY,
+  startOfWeek,
+  timeToMinutes,
+} from './week-layout'
+import { WeekToolbar } from './week-toolbar'
 
 type WeekCalendarProps = {
+  /** Sessions inside the displayed week only — the page bounds the fetch. */
   slots: TimeSlotRecord[]
+  /** Every day in the schedule that holds a session — the picker's marks. */
+  slotDays: string[]
   services: ServiceRecord[]
   /** Organizer timezone — slots are instants, placed on the wall clock. */
   timezone: string
   /** "Now" as the server saw it, so today and the time line match on hydration. */
   nowIso: string
+  /**
+   * The day the displayed week contains — URL state (`?day=`), so back/forward
+   * and shared links work like the other cabinet filters.
+   */
+  dayKey: string
 }
 
 /**
- * The cabinet's Google-Calendar-style week view: a full-height time grid of the
- * current week beside a small month calendar for jumping between weeks.
+ * The cabinet's Google-Calendar-style week view: a full-height time grid of
+ * the week containing `dayKey`, with a toolbar carrying navigation, legend,
+ * and a month-picker popover.
  *
- * A client component because navigating weeks and scrolling the grid is all
- * interactive, but the **data is passed in** — the page reads Postgres and this
- * only lays it out. Slots are positioned purely by their wall-clock time in the
- * organizer's timezone, so the same evening session never drifts a column for a
- * viewer in another zone.
+ * A client component because scrolling the grid is interactive, but **data and
+ * the displayed week come from the page** — navigating pushes `?day=` and the
+ * server refetches that week's sessions, so the schedule's history never has
+ * to ship to the browser. Slots are positioned purely by their wall-clock time
+ * in the organizer's timezone, so the same evening session never drifts a
+ * column for a viewer in another zone.
  */
-export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendarProps) {
+export function WeekCalendar({
+  slots,
+  slotDays,
+  services,
+  timezone,
+  nowIso,
+  dayKey,
+}: WeekCalendarProps) {
   const t = useTranslations('Cabinet.calendar')
-  const tc = useTranslations('Cabinet.common')
   const locale = useLocale()
+  const router = useRouter()
 
   const servicesById = useMemo(
     () => new Map(services.map((service) => [service.id, service])),
     [services],
   )
 
-  const FILL_LEGEND: { fill: SlotFill; label: string }[] = [
-    { fill: 'open', label: t('open') },
-    { fill: 'filling', label: t('fillingUp') },
-    { fill: 'full', label: t('full') },
-  ]
-
   // Where "today" and "now" fall on the organizer's wall clock — the anchors
-  // for the initial week, the highlighted column and the time line.
+  // for the highlighted column and the time line.
   const nowWall = useMemo(() => instantToWallClockInputs(nowIso, timezone), [nowIso, timezone])
   const todayKey = nowWall.date
   const nowMinutes = timeToMinutes(nowWall.time)
 
-  // The day the mini calendar and week both hang off. Starts on today.
-  const [selectedDate, setSelectedDate] = useState(() => dayKeyToDate(todayKey))
-  const [month, setMonth] = useState(() => dayKeyToDate(todayKey))
-  // The month picker now lives in a popover (like the "Any day" filter), so we
-  // track its own open state and close it once a day is chosen.
-  const [isPickerOpen, setPickerOpen] = useState(false)
+  // The displayed week hangs off the URL's day, not local state: navigation
+  // is a `?day=` push and the page answers with that week's sessions.
+  const selectedDate = dayKeyToDate(dayKey)
 
-  const goToDate = (date: Date) => {
-    setSelectedDate(date)
-    setMonth(date)
+  const goToDay = (day: string) => {
+    router.push(`/cabinet/calendar?day=${day}`)
   }
 
   // Day columns register themselves here so picking a date can scroll the grid
@@ -95,8 +87,9 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
   const [pendingScrollDay, setPendingScrollDay] = useState<string | null>(null)
 
   const jumpToDate = (date: Date) => {
-    goToDate(date)
-    setPendingScrollDay(dateToDayKey(date))
+    const key = dateToDayKey(date)
+    goToDay(key)
+    setPendingScrollDay(key)
   }
 
   // Locale-driven first day of the week, shared with the mini picker so both
@@ -129,13 +122,14 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
       raw.set(startWall.date, bucket)
     }
 
-    for (const [dayKey, events] of raw) byDay.set(dayKey, assignColumns(events))
+    for (const [day, events] of raw) byDay.set(day, assignColumns(events))
     return byDay
   }, [slots, timezone])
 
   // Days anywhere in the schedule that hold a session — marked in the mini
-  // calendar so empty weeks are obvious before you navigate to them.
-  const slotDates = useMemo(() => [...eventsByDay.keys()].map(dayKeyToDate), [eventsByDay])
+  // calendar so empty weeks are obvious before you navigate to them. Comes
+  // from the API: the fetched `slots` only cover the displayed week.
+  const slotDates = useMemo(() => slotDays.map(dayKeyToDate), [slotDays])
 
   // Scroll the grid to the first session of the week (or the working morning)
   // whenever the week changes, so the interesting rows are in view without a
@@ -169,8 +163,6 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
     setPendingScrollDay(null)
   }, [pendingScrollDay])
 
-  const rangeLabel = formatRange(weekStart, addDays(weekStart, 6), locale)
-
   return (
     <div className="flex h-[calc(100svh-4rem)] flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-col gap-1">
@@ -179,225 +171,34 @@ export function WeekCalendar({ slots, services, timezone, nowIso }: WeekCalendar
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* The week grid, now full width — the month picker is tucked into the
-            toolbar popover instead of a permanent side rail. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => jumpToDate(dayKeyToDate(todayKey))}
-              >
-                {t('today')}
-              </Button>
-              <div className="flex items-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => goToDate(addDays(weekStart, -7))}
-                  aria-label={t('previousWeek')}
-                >
-                  <ChevronLeftIcon />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => goToDate(addDays(weekStart, 7))}
-                  aria-label={t('nextWeek')}
-                >
-                  <ChevronRightIcon />
-                </Button>
-              </div>
-              <span className="text-sm font-medium">{rangeLabel}</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Legend, quiet on the right so a full week still reads at a glance. */}
-              <dl className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
-                {FILL_LEGEND.map(({ fill, label }) => (
-                  <div key={fill} className="flex items-center gap-1.5">
-                    <span
-                      className={cn('size-3 shrink-0 rounded-sm border-s-2', FILL_STYLES[fill])}
-                      aria-hidden
-                    />
-                    <dt>{label}</dt>
-                  </div>
-                ))}
-              </dl>
-
-              {/* Month picker behind a button, mirroring the "Any day" filter. */}
-              <Popover open={isPickerOpen} onOpenChange={setPickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="outline" size="sm" aria-label={t('jumpToWeek')}>
-                    <CalendarIcon data-icon="inline-start" />
-                    {t('jumpToDate')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    weekStartsOn={weekStartsOn}
-                    selected={selectedDate}
-                    month={month}
-                    onMonthChange={setMonth}
-                    onSelect={(date) => {
-                      if (!date) return
-                      jumpToDate(date)
-                      setPickerOpen(false)
-                    }}
-                    modifiers={{ hasSlots: slotDates, activeWeek: weekDays }}
-                    modifiersClassNames={{
-                      hasSlots: DAY_MARK.strong.calendarCell,
-                      // Tint the whole selected week so the picker echoes the grid.
-                      activeWeek: 'rounded-none bg-accent/60',
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {/* One horizontal scroll owner so day headers and the time grid stay
-              aligned when the week is wider than the panel on small screens. */}
-          <div className="min-h-0 flex-1 overflow-auto" ref={scrollRef}>
-            <div className="min-w-306 md:min-w-160">
-              {/* Day headers, sticky so they survive the vertical scroll. */}
-              <div className="sticky top-0 z-20 flex border-b bg-background">
-                <div className="w-14 shrink-0" />
-                {weekDays.map((day) => {
-                  const dayKey = dateToDayKey(day)
-                  const isToday = dayKey === todayKey
-                  return (
-                    <button
-                      key={dayKey}
-                      type="button"
-                      onClick={() => goToDate(day)}
-                      className="flex flex-1 flex-col items-center gap-0.5 py-2 text-center hover:bg-muted/50"
-                    >
-                      <span className="text-xs text-muted-foreground uppercase">
-                        {day.toLocaleDateString(locale, { weekday: 'short' })}
-                      </span>
-                      <span
-                        className={cn(
-                          'flex size-7 items-center justify-center rounded-full text-sm font-medium',
-                          isToday && 'bg-primary text-primary-foreground',
-                        )}
-                      >
-                        {day.getDate()}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Time gutter + seven day columns, all the same fixed height. */}
-              <div className="flex" style={{ height: 24 * HOUR_HEIGHT }}>
-                <div className="w-14 shrink-0">
-                  {HOURS.map((hour) => (
-                    <div key={hour} className="relative" style={{ height: HOUR_HEIGHT }}>
-                      {hour > 0 && (
-                        <span className="absolute -top-2 end-2 text-xs text-muted-foreground tabular-nums">
-                          {String(hour).padStart(2, '0')}:00
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {weekDays.map((day) => {
-                  const dayKey = dateToDayKey(day)
-                  const events = eventsByDay.get(dayKey) ?? []
-                  const isToday = dayKey === todayKey
-                  return (
-                    <div
-                      key={dayKey}
-                      ref={(el) => {
-                        dayColumnRefs.current.set(dayKey, el)
-                      }}
-                      className="relative flex-1 border-l"
-                    >
-                      {/* Hour lines. */}
-                      {HOURS.map((hour) => (
-                        <div
-                          key={hour}
-                          className="border-b border-border/60"
-                          style={{ height: HOUR_HEIGHT }}
-                        />
-                      ))}
-
-                      {/* Current-time line, only in today's column. */}
-                      {isToday && (
-                        <div
-                          className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
-                          style={{ top: (nowMinutes / 60) * HOUR_HEIGHT }}
-                        >
-                          <span className="size-2 shrink-0 rounded-full bg-destructive" />
-                          <span className="h-px flex-1 bg-destructive" />
-                        </div>
-                      )}
-
-                      {/* Sessions. */}
-                      {events.map((event) => {
-                        const slot = event.item
-                        const service = servicesById.get(slot.serviceId)
-                        const fill = fillLabel(slot)
-                        const top = (event.startMin / 60) * HOUR_HEIGHT
-                        const height = Math.max(
-                          ((event.endMin - event.startMin) / 60) * HOUR_HEIGHT - 2,
-                          18,
-                        )
-                        return (
-                          <Link
-                            key={slot.id}
-                            href={`/cabinet/bookings?slot=${slot.id}`}
-                            className={cn(
-                              'absolute z-10 overflow-hidden rounded-sm border-s-2 px-1.5 py-1 text-xs transition-colors',
-                              FILL_STYLES[fill],
-                            )}
-                            style={{
-                              top,
-                              height,
-                              left: `calc(${(event.col / event.cols) * 100}% + 2px)`,
-                              width: `calc(${100 / event.cols}% - 4px)`,
-                            }}
-                          >
-                            <span className="block font-medium truncate">
-                              {service?.title ?? tc('session')}
-                            </span>
-                            {height > 30 && (
-                              <span className="block truncate text-[0.7rem] opacity-80">
-                                {instantToWallClockInputs(slot.startsAt, timezone).time}–
-                                {instantToWallClockInputs(slotEnd(slot), timezone).time} ·{' '}
-                                {t('left', { count: seatsLeft(slot) })}
-                              </span>
-                            )}
-                          </Link>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
+          <WeekToolbar
+            weekStart={weekStart}
+            weekDays={weekDays}
+            todayKey={todayKey}
+            slotDates={slotDates}
+            dayKey={dayKey}
+            weekStartsOn={weekStartsOn}
+            locale={locale}
+            onGoToDay={goToDay}
+            onJumpToDate={jumpToDate}
+          />
+          <WeekGrid
+            weekDays={weekDays}
+            todayKey={todayKey}
+            nowMinutes={nowMinutes}
+            eventsByDay={eventsByDay}
+            servicesById={servicesById}
+            timezone={timezone}
+            locale={locale}
+            onGoToDay={goToDay}
+            scrollRef={scrollRef}
+            columnRef={(day, el) => {
+              dayColumnRefs.current.set(day, el)
+            }}
+          />
         </div>
       </div>
     </div>
   )
-}
-
-/** Week range label, e.g. "Jul 21 – 27, 2026" or "Jul 28 – Aug 3, 2026". */
-function formatRange(start: Date, end: Date, locale: string): string {
-  const sameMonth = start.getMonth() === end.getMonth()
-  const startLabel = start.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
-  const endLabel = end.toLocaleDateString(
-    locale,
-    sameMonth
-      ? { day: 'numeric', year: 'numeric' }
-      : { month: 'short', day: 'numeric', year: 'numeric' },
-  )
-  return `${startLabel} – ${endLabel}`
 }

@@ -20,6 +20,14 @@
     ],
     "windowBookings": 15
   },
+  "overview": {
+    "confirmedBookings": 12,
+    "confirmedLast7Days": 3,
+    "upcomingSeatsBooked": 9,
+    "upcomingSeatsOffered": 40,
+    "upcomingSlots": 5,
+    "upcomingSlotsNext7Days": 2
+  },
   "serviceCounts": [
     {
       "confirmedBookingsCount": 12,

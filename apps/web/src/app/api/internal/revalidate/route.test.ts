@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * Unit tests for the Python→Next.js cache-invalidation endpoint
- * (ADR-023 Phase 3): the internal-secret auth, the payload contract,
+ * (ADR-023): the internal-secret auth, the payload contract,
  * and the tag allowlist. `revalidateTag` is mocked — what matters is
  * which tags reach it, not Next's cache internals.
  */

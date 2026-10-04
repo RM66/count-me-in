@@ -4,6 +4,7 @@ import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { instantToWallClockInputs } from '@repo/contracts'
 import { useTranslations } from 'next-intl'
 
+import { FormTextField } from '@/components/form-field'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
-import { SlotServiceField, SlotTextField } from './slot-fields'
+import { SlotServiceField } from './slot-fields'
 import { useSlotForm } from './use-slot-form'
 
 export type SlotDialogMode = 'create' | 'edit' | 'duplicate'
@@ -110,7 +111,8 @@ export function SlotDialog({
               disabled={mode === 'edit'}
             />
             <div className="grid grid-cols-2 gap-4">
-              <SlotTextField
+              <FormTextField
+                idPrefix="slot-"
                 control={control}
                 name="date"
                 label={t('fieldDate')}
@@ -119,10 +121,17 @@ export function SlotDialog({
                 // start, since `min` says nothing about the time of day.
                 min={today}
               />
-              <SlotTextField control={control} name="time" label={t('fieldTime')} type="time" />
+              <FormTextField
+                idPrefix="slot-"
+                control={control}
+                name="time"
+                label={t('fieldTime')}
+                type="time"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <SlotTextField
+              <FormTextField
+                idPrefix="slot-"
                 control={control}
                 name="durationMinutes"
                 label={t('fieldDuration')}
@@ -130,7 +139,8 @@ export function SlotDialog({
                 min={1}
                 inputMode="numeric"
               />
-              <SlotTextField
+              <FormTextField
+                idPrefix="slot-"
                 control={control}
                 name="capacity"
                 label={t('fieldCapacity')}
@@ -139,7 +149,8 @@ export function SlotDialog({
                 inputMode="numeric"
               />
             </div>
-            <SlotTextField
+            <FormTextField
+              idPrefix="slot-"
               control={control}
               name="price"
               label={t('fieldPrice')}

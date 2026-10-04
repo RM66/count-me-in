@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .constants_gen import (
+    AUTH_TICKET_KEY_PREFIX,
     DEFAULT_LOCALE,
     DEMO_ORGANIZER_ID,
     LOCALES,
@@ -42,6 +43,10 @@ def cancel_notification_recipient(by: str) -> str:
     if by == "guest":
         return RECIPIENT_ORGANIZER
     return RECIPIENT_GUEST
+
+
+def auth_ticket_key(token: str) -> str:
+    return AUTH_TICKET_KEY_PREFIX + token
 
 
 def login_link_key(token: str) -> str:

@@ -17,6 +17,11 @@ QUEUE_BOOKING_CANCELLED = "booking.cancelled"
 QUEUE_DEMO_REFRESH = "demo.refresh"
 QUEUE_NOTIFICATION_OUTBOX_SWEEP = "notification.outbox.sweep"
 
+# Auth tickets (ADR-008). Generated for the same reason as the login-link
+# pair: the Python writer and the TS reader share one Redis namespace.
+AUTH_TICKET_TTL_SECONDS = 600
+AUTH_TICKET_KEY_PREFIX = "auth:ticket:"
+
 # One-time login links. The prefix is generated from the TS constant, so the
 # Python writer and the TS reader cannot disagree on the Redis key.
 LOGIN_LINK_TTL_SECONDS = 2592000

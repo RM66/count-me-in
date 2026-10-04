@@ -108,6 +108,25 @@ describe('proxy — API header minting', () => {
     expect(mockMint).not.toHaveBeenCalled()
   })
 
+  it('treats /api/auth/telegram-* as Python routes despite the auth prefix', async () => {
+    // The widget→ticket endpoints live under /api/auth/ but belong to the
+    // Python API — in the container twin they must be rewritten to API_URL
+    // like every other API route, or Auth.js answers "unknown action".
+    vi.stubEnv('API_URL', 'http://api:3001')
+    mockAuth.mockResolvedValueOnce(null)
+
+    const guest = await proxy(makeRequest('/api/auth/telegram-guest'))
+    expect(guest!.headers.get('x-middleware-rewrite')).toBe(
+      'http://api:3001/api/auth/telegram-guest',
+    )
+
+    mockAuth.mockResolvedValueOnce(null)
+    const signup = await proxy(makeRequest('/api/auth/telegram-signup'))
+    expect(signup!.headers.get('x-middleware-rewrite')).toBe(
+      'http://api:3001/api/auth/telegram-signup',
+    )
+  })
+
   it('a failed mint degrades to anonymous (no header, no crash)', async () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'org-1', slug: 'yoga' } })
     mockMint.mockResolvedValueOnce(null) // e.g. AUTH_SECRET missing

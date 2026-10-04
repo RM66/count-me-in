@@ -129,6 +129,7 @@ def sample_time_slot_record() -> dict[str, Any]:
         "durationMinutes": 60,
         "capacity": 10,
         "bookedCount": 3,
+        "hasBookings": True,
         "price": "15",
         "createdAt": GOLDEN_TIME,
     }
@@ -178,7 +179,7 @@ def golden_samples() -> dict[str, Any]:
     }
 
     slot = sample_time_slot_record()
-    slot_nulls = {**slot, "price": None}
+    slot_nulls = {**slot, "price": None, "hasBookings": None}
 
     booking = sample_booking_record()
     booking_nulls = {**booking, "guestMessengerLogin": None, "selectedOptions": None}
@@ -290,10 +291,15 @@ def golden_samples() -> dict[str, Any]:
         "ServiceEnvelope": {"service": service},
         "ServicesEnvelope": {"services": [service]},
         "SlotEnvelope": {"slot": slot},
-        "SlotsEnvelope": {"slots": [slot]},
+        "SlotsEnvelope": {"slots": [slot], "days": ["2026-01-02"]},
         "GuestBookingEnvelope": {"booking": guest},
         "BookingEnvelope": {"booking": booking},
-        "BookingsEnvelope": {"bookings": [booking], "hasMore": False},
+        "BookingsEnvelope": {
+            "bookings": [booking],
+            "hasMore": False,
+            "slots": [slot],
+            "bookedDays": ["2026-07-20"],
+        },
         "GuestBookingsEnvelope": {"bookings": [guest]},
         "OrganizerEnvelope": {"organizer": organizer},
         "OrganizerEnvelope.demo": {"organizer": demo_profile},
@@ -312,6 +318,14 @@ def golden_samples() -> dict[str, Any]:
             "services": [{"orgSlug": "my-studio", "serviceId": "demo-yoga"}],
         },
         "CabinetSummaryEnvelope": {
+            "overview": {
+                "confirmedBookings": 12,
+                "confirmedLast7Days": 3,
+                "upcomingSlots": 5,
+                "upcomingSlotsNext7Days": 2,
+                "upcomingSeatsBooked": 9,
+                "upcomingSeatsOffered": 40,
+            },
             "serviceCounts": [
                 {
                     "serviceId": "demo-yoga",

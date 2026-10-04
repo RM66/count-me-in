@@ -49,7 +49,16 @@ import {
   updateOrganizerLanguageInput,
   updateOrganizerProfileInput,
 } from './organizer'
-import { queryLimit, queryOffset, serviceId, slugShape, uuid } from './primitives'
+import {
+  queryDayKey,
+  queryInstant,
+  queryLimit,
+  queryOffset,
+  querySearch,
+  serviceId,
+  slugShape,
+  uuid,
+} from './primitives'
 import { createServiceInput, updateServiceInput } from './service'
 import {
   createAvatarUploadInput,
@@ -438,6 +447,37 @@ export const API_ROUTES: readonly ApiRoute[] = [
         schema: { enum: ['1'] },
         description: 'When "1", slots that have already started are omitted.',
       },
+      {
+        name: 'from',
+        in: 'query',
+        required: false,
+        schema: queryInstant,
+        description:
+          'Only sessions starting at or after this instant — range reads (calendar week).',
+      },
+      {
+        name: 'to',
+        in: 'query',
+        required: false,
+        schema: queryInstant,
+        description: 'Only sessions starting before this instant.',
+      },
+      {
+        name: 'limit',
+        in: 'query',
+        required: false,
+        schema: queryLimit,
+        description:
+          'Maximum slots to return (earliest first), e.g. the "next N sessions" preview.',
+      },
+      {
+        name: 'include',
+        in: 'query',
+        required: false,
+        schema: { enum: ['days'] },
+        description:
+          'Optional side-data; "days" adds the full set of session day keys (calendar marks).',
+      },
     ],
     responses: [
       { status: 200, description: 'Slots', body: slotsEnvelope },
@@ -533,6 +573,64 @@ export const API_ROUTES: readonly ApiRoute[] = [
         required: false,
         schema: queryOffset,
         description: 'Number of bookings to skip (default 0).',
+      },
+      {
+        name: 'serviceId',
+        in: 'query',
+        required: false,
+        schema: serviceId,
+        description: 'Only bookings whose slot belongs to this service.',
+      },
+      {
+        name: 'slotId',
+        in: 'query',
+        required: false,
+        schema: uuid,
+        description: 'Only bookings on this session — the narrower scope.',
+      },
+      {
+        name: 'status',
+        in: 'query',
+        required: false,
+        schema: { enum: ['confirmed', 'cancelled'] },
+        description: 'Only bookings in this status; absent lists both.',
+      },
+      {
+        name: 'q',
+        in: 'query',
+        required: false,
+        schema: querySearch,
+        description:
+          'Case-insensitive substring match on guest name, messenger login, messenger id and service title.',
+      },
+      {
+        name: 'day',
+        in: 'query',
+        required: false,
+        schema: queryDayKey,
+        description:
+          'Only bookings whose session starts on this calendar day in the organizer timezone.',
+      },
+      {
+        name: 'sort',
+        in: 'query',
+        required: false,
+        schema: { enum: ['guest', 'service', 'when', 'seats', 'status'] },
+        description: 'Sort column; absent keeps the default order (newest booking first).',
+      },
+      {
+        name: 'dir',
+        in: 'query',
+        required: false,
+        schema: { enum: ['asc', 'desc'] },
+        description: 'Sort direction (default asc); ignored without `sort`.',
+      },
+      {
+        name: 'include',
+        in: 'query',
+        required: false,
+        schema: { enum: ['days'] },
+        description: 'Optional side-data; "days" adds the scoped booked-day keys (picker marks).',
       },
     ],
     responses: [

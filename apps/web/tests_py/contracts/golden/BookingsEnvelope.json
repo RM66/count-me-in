@@ -1,4 +1,7 @@
 {
+  "bookedDays": [
+    "2026-07-20"
+  ],
   "bookings": [
     {
       "createdAt": "2026-01-02T03:04:05.000Z",
@@ -15,5 +18,18 @@
       "timeSlotId": "01930000-0000-7000-8000-000000000002"
     }
   ],
-  "hasMore": false
+  "hasMore": false,
+  "slots": [
+    {
+      "bookedCount": 3,
+      "capacity": 10,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "durationMinutes": 60,
+      "hasBookings": true,
+      "id": "01930000-0000-7000-8000-000000000002",
+      "price": "15",
+      "serviceId": "demo-yoga",
+      "startsAt": "2026-01-02T03:04:05.000Z"
+    }
+  ]
 }

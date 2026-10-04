@@ -19,7 +19,6 @@
         "@repo/translations": "workspace:*",
         "@sentry/nextjs": "^11.4.0",
         "@tanstack/react-query": "^5.104.1",
-        "@telegram-auth/server": "^1.0.5",
         "@uiw/react-markdown-editor": "^6.1.4",
         "@upstash/qstash": "^2.12.0",
         "@vercel/analytics": "^2.0.1",
@@ -1021,8 +1020,6 @@
     "@tanstack/react-query": ["@tanstack/react-query@5.104.1", "", { "dependencies": { "@tanstack/query-core": "5.104.1" }, "peerDependencies": { "react": "^18 || ^19" } }, "sha512-Zz70EgjahNI7aCz8BZxM3vUGU44ycxEAzMuCUjLeA7SVhhOkg3ZgPjPJPvHjs6Rmky/dtmnu1WzjGHNHmhCoZQ=="],
 
     "@tanstack/react-query-devtools": ["@tanstack/react-query-devtools@5.104.1", "", { "dependencies": { "@tanstack/query-devtools": "5.104.1" }, "peerDependencies": { "@tanstack/react-query": "^5.104.1", "@types/react": "^18 || ^19", "react": "^18 || ^19" } }, "sha512-0GoLxe08PVxnkbrHFwO+7fkgbc07xEcoBfdYvbTv63e6Fe7uz7PGyOxKeQTOXKGMmTfoniaISOqkjDzKC/66Ng=="],
-
-    "@telegram-auth/server": ["@telegram-auth/server@1.0.5", "", {}, "sha512-Sk19z9o/PdknSpvNixac/AQXLbXFfrt5Y6HwpPWf6PNVQXyJUhi3m0SnR9zfr8QuSxprUHpO2ntCxn6rWUtBWg=="],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.2", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q=="],
 

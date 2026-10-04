@@ -5,6 +5,7 @@ import { organizerProfile, publicOrganizer, registeredOrganizer } from './organi
 import { serviceId, uuid } from './primitives'
 import {
   analyticsSummaryRecord,
+  cabinetOverviewRecord,
   internalOrganizerRecord,
   serviceCountsRecord,
   sitemapOrganizerEntry,
@@ -47,7 +48,16 @@ export type ServicesEnvelope = z.infer<typeof servicesEnvelope>
 export const slotEnvelope = z.object({ slot: timeSlotRecord })
 export type SlotEnvelope = z.infer<typeof slotEnvelope>
 
-export const slotsEnvelope = z.object({ slots: z.array(timeSlotRecord) })
+export const slotsEnvelope = z.object({
+  slots: z.array(timeSlotRecord),
+  /**
+   * `YYYY-MM-DD` day keys in the organizer's timezone that hold any
+   * session — the calendar picker's marks. Always the full set: a
+   * `from`/`to` range narrows `slots`, never `days`. `null` unless
+   * requested with `?include=days` — the DISTINCT scan is not free.
+   */
+  days: z.array(z.string()).nullable(),
+})
 export type SlotsEnvelope = z.infer<typeof slotsEnvelope>
 
 export const guestBookingEnvelope = z.object({ booking: guestBooking })
@@ -60,6 +70,19 @@ export const bookingsEnvelope = z.object({
   bookings: z.array(bookingRecord),
   /** Whether another page exists past `offset + bookings.length`. */
   hasMore: z.boolean(),
+  /**
+   * The slots the page's bookings reference, plus the `slotId` filter
+   * session when it is the viewer's — resolving a row's service/start time
+   * must not require fetching the whole schedule.
+   */
+  slots: z.array(timeSlotRecord),
+  /**
+   * `YYYY-MM-DD` day keys in the organizer's timezone whose sessions carry a
+   * booking inside the active service/slot scope — the day picker's marks.
+   * Only the scope narrows it: status/day/search/sort never do. `null`
+   * unless requested with `?include=days` — the DISTINCT scan is not free.
+   */
+  bookedDays: z.array(z.string()).nullable(),
 })
 export type BookingsEnvelope = z.infer<typeof bookingsEnvelope>
 
@@ -82,6 +105,7 @@ export const deletedSlotEnvelope = z.object({ id: uuid })
 export type DeletedSlotEnvelope = z.infer<typeof deletedSlotEnvelope>
 
 export const cabinetSummaryEnvelope = z.object({
+  overview: cabinetOverviewRecord,
   serviceCounts: z.array(serviceCountsRecord),
   analytics: analyticsSummaryRecord,
 })

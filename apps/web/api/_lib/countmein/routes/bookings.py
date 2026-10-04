@@ -18,7 +18,10 @@ out of organizer-facing answers by construction.
 from __future__ import annotations
 
 import asyncio
-from typing import Annotated
+from datetime import datetime, timedelta
+from typing import Annotated, Literal
+from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,12 +33,12 @@ from ..contracts import domain
 from ..contracts import models_gen as gen
 from ..contracts.payloads import AuthTicketPayload
 from ..db.client import sessionmaker
-from ..db.serializers import to_booking_record, to_guest_booking_chain
+from ..db.serializers import to_booking_record, to_guest_booking_chain, to_time_slot_record
 from ..db.shared import hash_manage_token
-from ..errors import BookingNotFound
+from ..errors import BookingNotFound, InvalidInput
 from ..models.outbox import OutboxMessage
 from ..queue import PublishSkipped, publish_outbox
-from ..repositories import booking_repo
+from ..repositories import booking_repo, organizer_repo, slot_repo
 from ..repositories.booking_repo import BookingChain
 from ..services import booking_service
 from ..services.outbox_service import settle_publish
@@ -161,19 +164,97 @@ async def bookings_list(
     session: AsyncSession = Depends(get_db_session),
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    service_id: Annotated[
+        str | None, Query(alias="serviceId", pattern=r"^[A-Za-z0-9_-]{6,32}$")
+    ] = None,
+    slot_id: Annotated[UUID | None, Query(alias="slotId")] = None,
+    status: Literal["confirmed", "cancelled"] | None = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+    day: Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,
+    sort: Literal["guest", "service", "when", "seats", "status"] | None = None,
+    direction: Annotated[Literal["asc", "desc"] | None, Query(alias="dir")] = None,
+    include: Literal["days"] | None = None,
 ) -> StarletteResponse:
-    """GET /api/bookings: list the organizer's bookings. Bounds are the
-    declared Query params — FastAPI refuses out-of-range values with a
-    400."""
+    """GET /api/bookings: list the organizer's bookings, filtered
+    server-side — the URL state of the cabinet table maps 1:1 onto the
+    query params, so a page of 50 rows is already the filtered view.
+    Bounds are the declared Query params — FastAPI refuses out-of-range
+    values with a 400."""
     organizer_id, _is_demo = scope
+
+    # `day` is a wall-clock key "as the organizer sees it", so the range
+    # comes from the organizer's own timezone — never the requester's.
+    # The row is only read when something needs the zone (?day or
+    # ?include=days) — a plain page does not pay for it.
+    timezone = "UTC"
+    if day is not None or include == "days":
+        organizer = await organizer_repo.get_by_id(session, organizer_id)
+        if organizer is not None:
+            timezone = organizer.timezone
+
+    day_range: tuple[datetime, datetime] | None = None
+    if day is not None:
+        try:
+            day_start = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(timezone))
+        except (ValueError, ZoneInfoNotFoundError):
+            # strptime pins the pattern down to a real calendar date — a
+            # 2026-02-30 that slipped past the regex answers 400 like the
+            # other malformed params.
+            raise InvalidInput() from None
+        day_range = (day_start, day_start + timedelta(days=1))
+
+    scoped_service = service_id
+    scoped_slot = str(slot_id) if slot_id is not None else None
 
     # Fetch one row past the page so hasMore needs no separate COUNT.
     bookings = await booking_repo.list_by_organizer(
-        session, organizer_id, limit=limit + 1, offset=offset
+        session,
+        organizer_id,
+        limit=limit + 1,
+        offset=offset,
+        service_id=scoped_service,
+        slot_id=scoped_slot,
+        status=status,
+        q=q.strip() if q else None,
+        day_range=day_range,
+        sort=sort,
+        sort_desc=direction == "desc",
     )
     has_more = len(bookings) > limit
     records = [to_booking_record(b) for b in bookings[:limit]]
-    return json_response(200, gen.BookingsEnvelope(bookings=records, hasMore=has_more))
+
+    # Row labels resolve Booking → TimeSlot → Service, so the page's
+    # referenced slots ride along — no whole-schedule fetch just to name
+    # a session. The `slotId` filter session is included when owned, so
+    # the filter chip can name it even on an empty page.
+    slot_ids = {str(b.time_slot_id) for b in bookings[:limit]}
+    if scoped_slot is not None:
+        slot_ids.add(scoped_slot)
+    slot_rows = await slot_repo.list_by_ids_for_organizer(session, organizer_id, sorted(slot_ids))
+
+    # The day picker's marks follow the scope only — a filtered-away day
+    # still tells the organizer "something is booked here". The DISTINCT
+    # scan is opt-in (?include=days): "next N" previews never ask for it.
+    booked_days = (
+        await booking_repo.list_scoped_day_keys(
+            session,
+            organizer_id,
+            timezone,
+            service_id=scoped_service,
+            slot_id=scoped_slot,
+        )
+        if include == "days"
+        else None
+    )
+    return json_response(
+        200,
+        gen.BookingsEnvelope(
+            bookings=records,
+            hasMore=has_more,
+            slots=[to_time_slot_record(s) for s in slot_rows],
+            bookedDays=booked_days,
+        ),
+    )
 
 
 async def booking_create(

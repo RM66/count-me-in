@@ -29,6 +29,8 @@ vi.mock('sonner', () => ({
 const createMutate = vi.fn()
 const updateMutate = vi.fn()
 vi.mock('@/api-client', () => ({
+  errorMessage: (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback,
   useCreateSlot: () => ({ mutate: createMutate, isPending: false }),
   useUpdateSlot: () => ({ mutate: updateMutate, isPending: false }),
 }))
@@ -101,10 +103,11 @@ describe('useSlotForm', () => {
     // Re-sending the unchanged (past) startsAt would re-run the
     // not-in-the-past rule server-side and answer 400.
     expect(updateMutate).toHaveBeenCalledTimes(1)
-    const payload = updateMutate.mock.calls[0]![0] as Record<string, unknown>
-    expect(payload).toEqual({ capacity: 12 })
-    expect(payload).not.toHaveProperty('startsAt')
-    expect(payload).not.toHaveProperty('serviceId')
+    const call = updateMutate.mock.calls[0]![0] as { id: string; input: Record<string, unknown> }
+    expect(call.id).toBe(makeSlot().id)
+    expect(call.input).toEqual({ capacity: 12 })
+    expect(call.input).not.toHaveProperty('startsAt')
+    expect(call.input).not.toHaveProperty('serviceId')
     expect(createMutate).not.toHaveBeenCalled()
   })
 

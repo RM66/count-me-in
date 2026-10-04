@@ -21,9 +21,27 @@ async def cabinet_summary(
     """GET /api/cabinet/summary: aggregated counts and 30-day analytics."""
     organizer_id, _is_demo = scope
     now = datetime.now(UTC)
+    week_ahead = now + timedelta(days=7)
     window_start = now - timedelta(days=30)
     prev_window_start = window_start - timedelta(days=30)
     trend_start = now - timedelta(days=14)
+
+    # The overview's stat cards are real aggregates — a 50-row booking
+    # page could only ever approximate them.
+    confirmed_total, confirmed_week = await booking_repo.overview_confirmed_counts(
+        session, organizer_id, recent_since=now - timedelta(days=7)
+    )
+    upcoming_total, upcoming_week, seats_booked, seats_offered = await slot_repo.upcoming_totals(
+        session, organizer_id, now=now, week_end=week_ahead
+    )
+    overview = gen.CabinetOverviewRecord(
+        confirmedBookings=confirmed_total,
+        confirmedLast7Days=confirmed_week,
+        upcomingSlots=upcoming_total,
+        upcomingSlotsNext7Days=upcoming_week,
+        upcomingSeatsBooked=seats_booked,
+        upcomingSeatsOffered=seats_offered,
+    )
 
     services = await service_repo.list_by_organizer(session, organizer_id)
     service_ids = [str(s.id) for s in services]
@@ -79,6 +97,7 @@ async def cabinet_summary(
     )
 
     envelope = gen.CabinetSummaryEnvelope(
+        overview=overview,
         serviceCounts=service_counts,
         analytics=analytics,
     )

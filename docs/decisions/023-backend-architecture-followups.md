@@ -27,7 +27,7 @@ ad-hoc instead of injected.
    ADR-019.
 3. **`services/` application layer.** `countmein/db/` keeps only infrastructure
    (`client.py`, `serializers.py` wire projections, `shared.py`, `seed.py`);
-   business logic lives in `services/`. *Amended (2026-10):* the `*Row`
+   business logic lives in `services/`. _Amended (2026-10):_ the `*Row`
    dataclass layer was removed — `rows.py` is deleted and services/repositories
    return ORM models directly, which are already detached snapshots under
    `expire_on_commit=False` + `lazy="raise"` (the concern that motivated keeping

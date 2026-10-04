@@ -27,14 +27,14 @@ import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organize
  * 2. **API routes** (`/api/*`, except the Auth.js routes that stay on
  *    Next.js): mint a short-lived HS256 JWT into the `X-Organizer-Auth`
  *    header so the Python API can identify the signed-in organizer **without
- *    decrypting the Auth.js session cookie** (architecture review fix #1).
- *    The Python API used to hand-roll `@auth/core`'s internal JWE format — a
- *    coupling that a minor Auth.js upgrade could break silently. This
- *    middleware already runs on every matched request and already reads
- *    Auth.js sessions, so it is the natural place to translate the
- *    session into a stable, self-controlled token.
+ *    decrypting the Auth.js session cookie**. The Python API used to
+ *    hand-roll `@auth/core`'s internal JWE format — a coupling that a
+ *    minor Auth.js upgrade could break silently. This middleware already
+ *    runs on every matched request and already reads Auth.js sessions,
+ *    so it is the natural place to translate the session into a stable,
+ *    self-controlled token.
  *
- *    In the container twin (Phase 6: standalone `next start` behind
+ *    In the container twin (standalone `next start` behind
  *    `docker compose`, `API_URL` set, no Vercel Edge Router) the API does
  *    not live at this origin — the request is rewritten to `API_URL`
  *    (browser TanStack Query calls hit `:3000/api/*` and would 404
@@ -45,8 +45,9 @@ import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organize
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
  * there would decode the session on every request just to allow it.
- * Cabinet pages read the session themselves via `auth()` /
- * `resolveCabinetOrganizerId()`, and writes are guarded in the API layer.
+ * Cabinet reads are scoped by the API itself via the organizer-auth
+ * header (anonymous callers get demo scope, `profile.isDemo` is the
+ * read-only signal), and writes are guarded in the API layer.
  */
 export async function proxy(request: NextRequest): Promise<NextResponse | void> {
   const { pathname } = request.nextUrl
@@ -66,7 +67,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   // response (as this code once did) never reaches the handler, and
   // every browser-side organizer write arrived anonymous (403
   // DEMO_READ_ONLY).
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
+  //
+  // `/api/auth/telegram-*` are Python endpoints despite the prefix — they
+  // exchange widget payloads for tickets and must be rewritten to API_URL
+  // in the container twin like every other API route. Only the Auth.js
+  // subtree (`/api/auth/*` minus `telegram-*`) stays on Next.js.
+  const isAuthjsRoute =
+    pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/auth/telegram-')
+  if (pathname.startsWith('/api/') && !isAuthjsRoute) {
     const requestHeaders = new Headers(request.headers)
     // The organizer-auth header is a middleware-minted credential and
     // nothing else: strip any client-supplied value before minting, so
@@ -81,7 +89,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
         requestHeaders.set(ORGANIZER_AUTH_HEADER, token)
       }
     }
-    // Container twin (Phase 6): no Vercel Edge Router serves the API at
+    // Container twin: no Vercel Edge Router serves the API at
     // this origin, so rewrite browser /api/* calls to the separate API
     // origin. The minted header travels with the rewritten request.
     const apiOrigin = process.env.API_URL?.replace(/\/$/, '')
@@ -97,20 +105,29 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
 
 /**
  * Match the auth pages (redirect) and the API-owned routes (header
- * minting). Two /api subtrees stay on Next.js and are excluded:
+ * minting + container rewrite). Two /api subtrees stay on Next.js and are
+ * excluded:
  *
  * - `/api/auth/*` — the Auth.js routes need no organizer-auth header.
+ *   Exception: `/api/auth/telegram-*` are Python endpoints (widget →
+ *   ticket) and *must* match, or the container twin would leave them on
+ *   Next.js where Auth.js answers "unknown action".
  * - `/api/internal/revalidate` — the Python→Next.js cache-invalidation
- *   route (ADR-023 Phase 3). The middleware would rewrite it to API_URL
- *   in the container twin (a Python 404 loop) and mint an organizer
- *   header it must not carry; it authenticates by x-internal-secret.
+ *   route. The middleware would rewrite it to API_URL in the container
+ *   twin (a Python 404 loop) and mint an organizer header it must not
+ *   carry; it authenticates by x-internal-secret.
  *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
  * there would decode the session on every request just to allow it.
- * Cabinet pages read the session themselves via `auth()` /
- * `resolveCabinetOrganizerId()`, and writes are guarded in the API layer.
+ * Cabinet reads are scoped by the API itself via the organizer-auth
+ * header (anonymous callers get demo scope), and writes are guarded in
+ * the API layer.
  */
 export const config = {
-  matcher: ['/login', '/signup', '/api/((?!auth/|internal/revalidate).*)'],
+  matcher: [
+    '/login',
+    '/signup',
+    '/api/((?!auth/(?!telegram-(?:guest|signup))|internal/revalidate).*)',
+  ],
 }

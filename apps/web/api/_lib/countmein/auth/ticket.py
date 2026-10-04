@@ -12,15 +12,12 @@ from datetime import timedelta
 from typing import Any
 
 from .. import redis as redis_mod
+from ..contracts.constants_gen import AUTH_TICKET_TTL_SECONDS
+from ..contracts.domain import auth_ticket_key as ticket_key
 from ..contracts.payloads import AuthTicketPayload, LoginLinkPayload
 
-TICKET_TTL = timedelta(minutes=10)
-TICKET_KEY_PREFIX = "auth:ticket:"
+TICKET_TTL = timedelta(seconds=AUTH_TICKET_TTL_SECONDS)
 _TICKET_BYTES = 32
-
-
-def ticket_key(token: str) -> str:
-    return TICKET_KEY_PREFIX + token
 
 
 def new_secret_token() -> str:

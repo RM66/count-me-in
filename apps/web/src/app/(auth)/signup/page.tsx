@@ -1,15 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { Suspense, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
+import { Suspense } from 'react'
+import { useController } from 'react-hook-form'
 import { toast } from 'sonner'
 
+import { errorMessage } from '@/api-client'
 import { AuthShell } from '@/app/(auth)/_components/auth-shell'
-import { detectTimezone, useSignupForm } from '@/app/(auth)/signup/_components/use-signup-form'
+import { useSignupForm } from '@/app/(auth)/signup/_components/use-signup-form'
 import { TelegramLoginButton } from '@/components/telegram-login-button'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
   InputGroup,
@@ -26,14 +28,28 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { SITE_DOMAIN } from '@/constants/site'
-import { TIMEZONES } from '@/constants/timezones'
+import { timezoneLabel, TIMEZONES } from '@/constants/timezones'
 import { cn } from '@/lib/utils'
 
 function SignupPageInner() {
   const t = useTranslations('Auth.signup')
+  const locale = useLocale()
   const form = useSignupForm()
-  // Lazy initialiser: `Intl` is read once on mount, not on every render.
-  const [timezone, setTimezone] = useState(() => detectTimezone(TIMEZONES))
+
+  // Field state lives in the RHF instance (signupFormSchema); controllers are
+  // for the controls that transform on input (slug) or are not plain inputs
+  // (timezone Select).
+  const slugField = useController({ control: form.form.control, name: 'slug' })
+  const timezoneField = useController({ control: form.form.control, name: 'timezone' })
+  const { errors } = form.form.formState
+
+  // A detected zone missing from the curated list is still pre-selected —
+  // offer it alongside so the Select is never blank (detectTimezone). `''`
+  // (before the mount effect fills the browser zone) is not a SelectItem —
+  // Radix forbids an empty option value.
+  const timezone = timezoneField.field.value
+  const timezoneOptions =
+    timezone && !TIMEZONES.includes(timezone) ? [timezone, ...TIMEZONES] : TIMEZONES
 
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
@@ -89,15 +105,21 @@ function SignupPageInner() {
                 onTicketIssued={(ticketValue, organizerExists) => {
                   if (organizerExists) {
                     toast.info(t('accountExists'))
-                    form.signIn.mutateAsync(ticketValue).then(() => {
-                      form.router.push('/cabinet')
-                      form.router.refresh()
-                    })
+                    form.signIn
+                      .mutateAsync(ticketValue)
+                      .then(() => {
+                        form.router.push('/cabinet')
+                        form.router.refresh()
+                      })
+                      .catch((error: unknown) =>
+                        toast.error(errorMessage(error, t('signInFailed'))),
+                      )
                     return
                   }
                   form.setTicket(ticketValue)
                   form.setStep(1)
                 }}
+                onError={() => toast.error(t('signInFailed'))}
               />
               <p className="text-center text-sm text-muted-foreground">{t('authenticate')}</p>
             </>
@@ -108,19 +130,19 @@ function SignupPageInner() {
       )}
 
       {form.step === 1 && (
-        <form onSubmit={(e) => form.handleCreateAccount(e, timezone)}>
+        <form onSubmit={form.submit} noValidate>
           <FieldGroup>
-            <Field>
+            <Field data-invalid={errors.name ? true : undefined}>
               <FieldLabel htmlFor="name">{t('displayName')}</FieldLabel>
               <Input
                 id="name"
                 placeholder={t('namePlaceholder')}
-                value={form.name}
-                onChange={(e) => form.setName(e.target.value)}
-                required
+                {...form.form.register('name')}
+                aria-invalid={errors.name ? true : undefined}
               />
+              <FieldError errors={errors.name ? [errors.name] : undefined} />
             </Field>
-            <Field>
+            <Field data-invalid={errors.slug ? true : undefined}>
               <FieldLabel htmlFor="slug">{t('publicHandle')}</FieldLabel>
               <InputGroup>
                 <InputGroupAddon>
@@ -129,24 +151,30 @@ function SignupPageInner() {
                 <InputGroupInput
                   id="slug"
                   placeholder={t('slugPlaceholder')}
-                  value={form.slug}
-                  onChange={(e) => form.setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                  required
+                  {...slugField.field}
+                  onChange={(e) =>
+                    slugField.field.onChange(e.target.value.toLowerCase().replace(/\s+/g, '-'))
+                  }
+                  aria-invalid={errors.slug ? true : undefined}
                 />
               </InputGroup>
               <FieldDescription>{t('slugHint')}</FieldDescription>
+              <FieldError errors={errors.slug ? [errors.slug] : undefined} />
             </Field>
             <Field>
               <FieldLabel htmlFor="timezone">{t('timezone')}</FieldLabel>
-              <Select value={timezone} onValueChange={setTimezone}>
+              <Select
+                value={timezoneField.field.value}
+                onValueChange={timezoneField.field.onChange}
+              >
                 <SelectTrigger id="timezone" className="w-full">
                   <SelectValue placeholder={t('selectTimezone')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {TIMEZONES.map((tz) => (
-                      <SelectItem key={tz.value} value={tz.value}>
-                        {tz.label}
+                    {timezoneOptions.map((tz) => (
+                      <SelectItem key={tz} value={tz}>
+                        {timezoneLabel(tz, locale)}
                       </SelectItem>
                     ))}
                   </SelectGroup>

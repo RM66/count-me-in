@@ -326,7 +326,8 @@
       "contact": "お問い合わせ",
       "copyright": "© 2026 CountMeIn"
     },
-    "ogDescription": "グループクラス、イベント、ツアー向けのシンプルなオンライン予約。"
+    "ogDescription": "グループクラス、イベント、ツアー向けのシンプルなオンライン予約。",
+    "metaTitle": "CountMeIn — グループイベント向けオンライン予約"
   },
   "Legal": {
     "lastUpdated": "最終更新日：{date}",
@@ -374,7 +375,8 @@
       "createAccount": "アカウントを作成",
       "noAccountFound": "アカウントが見つかりません。先にアカウントを作成してください。",
       "sameAccount": "登録時と同じTelegramアカウントを使用してください。",
-      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。"
+      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。",
+      "signInFailed": "ログインできませんでした。もう一度Telegramで認証してください"
     },
     "signup": {
       "title": "アカウントを作成",
@@ -401,8 +403,10 @@
     },
     "loginLink": {
       "opening": "管理画面を開いています。少々お待ちください。",
-      "continue": "管理画面へ進む"
-    }
+      "continue": "管理画面へ進む",
+      "title": "管理画面を開いています…"
+    },
+    "metaTitle": "アカウントへのアクセス"
   },
   "NotFound": {
     "title": "ページが見つかりません",
@@ -465,7 +469,8 @@
       "cancel": "キャンセル",
       "saving": "保存しています...",
       "close": "閉じる",
-      "full": "満席"
+      "full": "満席",
+      "clearFilter": "フィルターを解除"
     },
     "sidebar": {
       "subtitle": "主催者",
@@ -524,7 +529,9 @@
       "changeDay": "{day}で絞り込み中。日付を変更",
       "filterByDay": "{entity}を日付で絞り込む",
       "showEveryBooking": "すべての予約を表示",
-      "showEveryService": "すべてのサービスを表示"
+      "showEveryService": "すべてのサービスを表示",
+      "entityBookings": "予約",
+      "entitySlots": "開催枠"
     },
     "demoBanner": {
       "readOnly": "閲覧専用デモです。",
@@ -587,14 +594,14 @@
       "editSlot": "開催枠を編集",
       "viewBookings": "予約を表示",
       "duplicate": "複製",
-      "cancelSlot": "開催枠をキャンセル",
-      "cancelTitle": "この開催枠をキャンセルしますか？",
-      "cancelDescriptionWithBookings": "この回には{count}名分の予約があります。キャンセルすると、開催枠と紐づくすべての予約が削除されます。この操作は取り消せません。",
-      "cancelDescriptionPlain": "開催枠が削除され、参加者には表示されなくなります。この操作は取り消せません。",
+      "deleteSlot": "開催枠を削除",
+      "deleteBlocked": "予約のある開催枠は削除できません。",
+      "deleteTitle": "この開催枠を削除しますか？",
+      "deleteDescription": "開催枠が削除され、参加者には表示されなくなります。この操作は取り消せません。",
       "keepSlot": "開催枠を維持",
-      "cancellingDialog": "キャンセルしています...",
-      "cancelledToast": "開催枠をキャンセルしました",
-      "cancelFailed": "開催枠をキャンセルできませんでした",
+      "deletingDialog": "削除しています...",
+      "deletedToast": "開催枠を削除しました",
+      "deleteFailed": "開催枠を削除できませんでした",
       "dialogCreateTitle": "開催枠を追加",
       "dialogCreateDescription": "新しい開催日時を設定します。初期値にはサービスの設定が使用されます。",
       "dialogEditTitle": "開催枠を編集",
@@ -663,7 +670,7 @@
       "deleteService": "サービスを削除",
       "deleting": "削除しています...",
       "deleteTitle": "このサービスを削除しますか？",
-      "deleteDescription": "「{title}」と、そのすべての開催枠および予約が削除されます。この操作は取り消せません。",
+      "deleteDescription": "「{title}」とそのすべての開催枠が削除されます。予約履歴がある場合、削除は拒否されます。",
       "keepService": "サービスを維持",
       "delete": "削除",
       "coverPhoto": "カバー画像",
@@ -711,7 +718,8 @@
       "noChanges": "保存する変更はありません",
       "updatedToast": "プロフィールを更新しました",
       "updateFailed": "プロフィールを更新できませんでした",
-      "loadFailed": "プロフィールを読み込めませんでした。ページを再読み込みして、もう一度お試しください。"
+      "loadFailed": "プロフィールを読み込めませんでした。ページを再読み込みして、もう一度お試しください。",
+      "copyFailed": "リンクをコピーできませんでした"
     },
     "bookings": {
       "title": "予約",

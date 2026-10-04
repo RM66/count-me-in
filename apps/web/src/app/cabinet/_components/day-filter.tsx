@@ -1,83 +1,24 @@
 'use client'
 
-import { instantToWallClockInputs, wallClockToInstant } from '@repo/contracts'
-import { CalendarIcon, XIcon } from 'lucide-react'
+import { CalendarIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { formatDate } from '@/helpers/date'
+import { dateToDayKey, dayKeyToDate } from '@/helpers/day-key'
+import { useWeekStartsOn } from '@/hooks/use-week-starts-on'
 
 /**
- * Shared "filter by day" control for cabinet tables (slots, bookings).
+ * Shared "filter by day" controls for cabinet tables (slots, bookings).
  *
  * Each table decides *what a day contains* — which days get marked, and what
  * the legend says — while everything a day *is* lives here: the `YYYY-MM-DD`
- * key in the organizer's timezone, its conversion to the picker's local
- * `Date`s, the human label, the chip, and the popover shell.
+ * key in the organizer's timezone and the popover shell. The pure date/key
+ * conversions are in [`helpers/day-key`](../../../helpers/day-key.ts); the
+ * active-day chip is the shared [`FilterChip`](./filter-chip.tsx).
  */
-
-/**
- * Bridge between the two date worlds around the picker.
- *
- * A day key is a *label* in the organizer's timezone; `DayPicker` works in
- * plain local `Date`s. Converting a key with `new Date(key)` would parse it as
- * UTC midnight and shift the highlight a day west of Greenwich, so the parts
- * are handed to the local constructor instead — the calendar square for "the
- * 2nd" is the same square whatever the browser's zone.
- */
-export function dayKeyToDate(key: string): Date {
-  return new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, Number(key.slice(8, 10)))
-}
-
-/** Local calendar `Date` → `YYYY-MM-DD` day key. Inverse of {@link dayKeyToDate}. */
-export function dateToDayKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate(),
-  ).padStart(2, '0')}`
-}
-
-/** `weekStartsOn` values as react-day-picker (and our week grid) expect them. */
-export type WeekStartsOn = 0 | 1 | 2 | 3 | 4 | 5 | 6
-
-/**
- * The viewer's first day of the week, in react-day-picker's `weekStartsOn`
- * convention (0 = Sunday … 6 = Saturday), read from their locale.
- *
- * `Intl.Locale.getWeekInfo()` reports `firstDay` in ISO form (1 = Monday …
- * 7 = Sunday — older engines exposed it as the `weekInfo` property), so Sunday
- * folds `7 → 0`. Falls back to Monday when the API or `navigator` is missing
- * (SSR, older browsers), which also matches the project's European default.
- */
-export function localeWeekStartsOn(): WeekStartsOn {
-  if (typeof navigator === 'undefined') return 1
-  try {
-    const locale = new Intl.Locale(navigator.language) as Intl.Locale & {
-      getWeekInfo?: () => { firstDay: number }
-      weekInfo?: { firstDay: number }
-    }
-    const firstDay = (locale.getWeekInfo?.() ?? locale.weekInfo)?.firstDay
-    if (typeof firstDay === 'number') return (firstDay % 7) as WeekStartsOn
-  } catch {
-    // Fall through to the Monday default below.
-  }
-  return 1
-}
-
-/**
- * `localeWeekStartsOn` as a hook that is SSR-safe: renders Monday first (the
- * server has no `navigator`, and this is the app's default), then settles to
- * the viewer's real locale after mount. Every cabinet calendar shares it so
- * the mini pickers and the week grid always start the week on the same day.
- */
-export function useWeekStartsOn(): WeekStartsOn {
-  const [weekStartsOn, setWeekStartsOn] = useState<WeekStartsOn>(1)
-  useEffect(() => setWeekStartsOn(localeWeekStartsOn()), [])
-  return weekStartsOn
-}
 
 /**
  * Day-mark styling, shared so every cabinet calendar speaks the same visual
@@ -106,73 +47,10 @@ export const DAY_MARK = {
   },
 } as const
 
-/**
- * The day-filter state: the selected `YYYY-MM-DD` key (or `''` for "any day"),
- * its display label, and the timezone-correct way to derive a day key from a
- * slot instant.
- */
-export function useDayFilter(timezone: string) {
-  /** `YYYY-MM-DD` in the organizer's timezone, or `''` for "any day". */
-  const [day, setDay] = useState('')
-
-  /**
-   * The calendar day an instant falls on, **as the organizer sees it**.
-   *
-   * The instant is an ISO string, so slicing it would group by UTC day and
-   * misfile every evening session for an organizer east of Greenwich.
-   */
-  const dayKeyOf = (startsAtIso: string): string =>
-    instantToWallClockInputs(startsAtIso, timezone).date
-
-  /** Label for the active-day chip: "Tue, Jul 22" rather than the raw value. */
-  const dayLabel = day
-    ? formatDate(
-        wallClockToInstant(
-          {
-            year: Number(day.slice(0, 4)),
-            month: Number(day.slice(5, 7)),
-            day: Number(day.slice(8, 10)),
-            hour: 12, // Midday — never lands on a DST gap.
-            minute: 0,
-          },
-          timezone,
-        ).toISOString(),
-        timezone,
-      )
-    : ''
-
-  return { day, setDay, dayLabel, dayKeyOf }
-}
-
-type DayFilterChipProps = {
-  dayLabel: string
-  onClear: () => void
-}
-
-/** The active-day chip shown next to the other filters; ✕ clears the day. */
-export function DayFilterChip({ dayLabel, onClear }: DayFilterChipProps) {
-  const t = useTranslations('Cabinet.dayFilter')
-
-  return (
-    <Badge variant="secondary" className="h-6 gap-1 py-1 pe-1 ps-2.5 text-sm text-primary">
-      {dayLabel}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-5 hover:bg-transparent"
-        onClick={onClear}
-        aria-label={t('showEveryDay')}
-      >
-        <XIcon className="size-3.5" />
-      </Button>
-    </Badge>
-  )
-}
-
 type DayFilterPickerProps = {
   /** Selected day key, `''` for "any day". */
   day: string
-  /** Human label for the selected day (from {@link useDayFilter}). */
+  /** Human label for the selected day (see `formatDayLabel` in helpers/day-key). */
   dayLabel: string
   /** Called with the picked day key, or `''` to clear. */
   onSelect: (dayKey: string) => void

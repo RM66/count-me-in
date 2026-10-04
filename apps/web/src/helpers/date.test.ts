@@ -34,11 +34,10 @@ describe('formatTime', () => {
     expect(formatTime(iso, 'Europe/Belgrade')).toBe('16:30')
   })
 
-  it('handles midnight', () => {
+  it('renders midnight as 00:00, never 24:00 (h23 cycle)', () => {
     const iso = '2026-08-05T00:00:00.000Z'
-    // Some ICU environments render midnight as 24:00 with hour12:false
-    const result = formatTime(iso, 'UTC')
-    expect(result === '00:00' || result === '24:00').toBe(true)
+    expect(formatTime(iso, 'UTC')).toBe('00:00')
+    expect(formatTime(iso, 'UTC', 'en-US')).toBe('00:00')
   })
 })
 

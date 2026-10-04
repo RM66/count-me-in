@@ -8,7 +8,7 @@ declare module 'next-auth' {
 
   interface Session {
     user: DefaultSession['user'] & {
-      /** Organizer id (= Auth.js user id, ADR-005). */
+      /** Organizer id (= Auth.js user id, ADR-008). */
       id: string
       slug?: string
     }

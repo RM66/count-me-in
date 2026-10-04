@@ -8,24 +8,11 @@ import {
   toOrganizerProfilePatch,
 } from '@repo/contracts'
 import { useTranslations } from 'next-intl'
-import type { Control } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
-import { useUpdateOrganizerProfile, useUploadAvatar } from '@/api-client'
+import { errorMessage, useUpdateOrganizerProfile, useUploadAvatar } from '@/api-client'
 import { useImageUpload } from '@/hooks/use-image-upload'
-
-/**
- * Field components take `control` rather than the whole form instance, so each
- * subscribes only to the field it renders.
- */
-export type ProfileFormControl = Control<OrganizerFormValues, unknown, OrganizerFormOutput>
-
-/**
- * Fields backed by a plain text input — slug, timezone and description have
- * custom controls and are wired in the form itself.
- */
-export type ProfileTextFieldName = 'name' | 'contact' | 'location'
 
 /**
  * Wires the settings profile form to the API. Validation lives in
@@ -49,7 +36,6 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
   const avatar = useImageUpload({
     contentType: imageContentType,
     maxBytes: AVATAR_MAX_BYTES,
-    maxBytesLabel: '5 MB',
     mutation: useUploadAvatar(),
     // The avatar mutation persists the URL itself and updates the cache.
     onUploaded: () => toast.success(t('photoUpdated')),
@@ -70,7 +56,7 @@ export function useProfileForm(organizer: OrganizerProfile, onSaveSuccess?: () =
         onSaveSuccess?.()
       },
       onError: (error) => {
-        toast.error(error.message || t('updateFailed'))
+        toast.error(errorMessage(error, t('updateFailed')))
       },
     })
   })

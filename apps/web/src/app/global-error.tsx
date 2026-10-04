@@ -4,53 +4,10 @@
 import { type AppLocale, DEFAULT_LOCALE, localeDirection, matchLocale } from '@repo/contracts'
 import { WEB_MESSAGES } from '@repo/translations'
 import * as Sentry from '@sentry/nextjs'
-import { HomeIcon, RotateCwIcon, TriangleAlertIcon } from 'lucide-react'
-import Link from 'next/link'
 import { NextIntlClientProvider } from 'next-intl'
-import { useTranslations } from 'next-intl'
 import { useEffect, useMemo } from 'react'
 
-import { Button } from '@/components/ui/button'
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty'
-
-function GlobalErrorContent({ reset }: { reset: () => void }) {
-  const t = useTranslations('GlobalError')
-
-  return (
-    <div className="flex min-h-[80vh] items-center justify-center p-6">
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <TriangleAlertIcon />
-          </EmptyMedia>
-          <EmptyTitle>{t('title')}</EmptyTitle>
-          <EmptyDescription>{t('description')}</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={reset}>
-              <RotateCwIcon data-icon="inline-start" />
-              {t('tryAgain')}
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/">
-                <HomeIcon data-icon="inline-start" />
-                {t('backHome')}
-              </Link>
-            </Button>
-          </div>
-        </EmptyContent>
-      </Empty>
-    </div>
-  )
-}
+import { ErrorState } from '@/components/error-state'
 
 export default function GlobalError({
   error,
@@ -64,18 +21,26 @@ export default function GlobalError({
   }, [error])
 
   // This boundary renders its own <html>, so the root provider is not above
-  // it. Detect the locale from the browser — the same Accept-Language matcher
-  // the server uses — and mount a self-contained intl provider.
-  const locale: AppLocale = useMemo(
-    () => matchLocale(navigator.languages.join(',')) ?? DEFAULT_LOCALE,
-    [],
-  )
+  // it. Resolve the locale client-side — NEXT_LOCALE cookie first (the same
+  // precedence the server uses, ADR-011), then Accept-Language — and mount a
+  // self-contained intl provider. Guard `navigator`/`document`: if this
+  // boundary is ever server-rendered, browser globals must not exist for it
+  // to crash inside the last-resort boundary.
+  const locale: AppLocale = useMemo(() => {
+    const cookie =
+      typeof document === 'undefined'
+        ? undefined
+        : document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/)?.[1]
+    const browserLangs =
+      typeof navigator === 'undefined' ? undefined : navigator.languages.join(',')
+    return matchLocale(cookie) ?? matchLocale(browserLangs) ?? DEFAULT_LOCALE
+  }, [])
 
   return (
     <html lang={locale} dir={localeDirection(locale)}>
       <body className="font-sans antialiased text-foreground">
         <NextIntlClientProvider locale={locale} messages={WEB_MESSAGES[locale]}>
-          <GlobalErrorContent reset={reset} />
+          <ErrorState onRetry={reset} />
         </NextIntlClientProvider>
       </body>
     </html>

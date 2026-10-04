@@ -52,7 +52,7 @@
       "sink": []
     },
     {
-      "note": "empty slot list",
+      "note": "empty slot list — bare read carries no `days`",
       "request": {
         "method": "GET",
         "path": "/api/slots",
@@ -72,9 +72,40 @@
           "strict-transport-security": "max-age=31536000; includeSubDomains"
         },
         "body": {
-          "slots": []
+          "slots": [],
+          "days": null
         },
-        "body_raw": "{\"slots\":[]}",
+        "body_raw": "{\"slots\":[],\"days\":null}",
+        "contentLengthMatchesBody": true,
+        "transferEncodingChunked": false
+      },
+      "sink": []
+    },
+    {
+      "note": "empty list with marks — days is opt-in",
+      "request": {
+        "method": "GET",
+        "path": "/api/slots?include=days",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "vary": "Accept-Language",
+          "x-robots-tag": "noindex",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "strict-transport-security": "max-age=31536000; includeSubDomains"
+        },
+        "body": {
+          "slots": [],
+          "days": []
+        },
+        "body_raw": "{\"slots\":[],\"days\":[]}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -113,21 +144,22 @@
             "durationMinutes": 60,
             "capacity": 3,
             "bookedCount": 0,
+            "hasBookings": null,
             "price": null,
             "createdAt": "<ts:3>"
           }
         },
-        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
+        "body_raw": "{\"slot\":{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"hasBookings\":null,\"price\":null,\"createdAt\":\"<ts:3>\"}}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
       "sink": []
     },
     {
-      "note": "list shows the slot",
+      "note": "list shows the slot and its day key in `days`",
       "request": {
         "method": "GET",
-        "path": "/api/slots",
+        "path": "/api/slots?include=days",
         "body": null
       },
       "response": {
@@ -152,12 +184,16 @@
               "durationMinutes": 60,
               "capacity": 3,
               "bookedCount": 0,
+              "hasBookings": false,
               "price": null,
               "createdAt": "<ts:3>"
             }
+          ],
+          "days": [
+            "<day:1>"
           ]
         },
-        "body_raw": "{\"slots\":[{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}]}",
+        "body_raw": "{\"slots\":[{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"hasBookings\":false,\"price\":null,\"createdAt\":\"<ts:3>\"}],\"days\":[\"<day:1>\"]}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },
@@ -192,12 +228,14 @@
               "durationMinutes": 60,
               "capacity": 3,
               "bookedCount": 0,
+              "hasBookings": false,
               "price": null,
               "createdAt": "<ts:3>"
             }
-          ]
+          ],
+          "days": null
         },
-        "body_raw": "{\"slots\":[{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"price\":null,\"createdAt\":\"<ts:3>\"}]}",
+        "body_raw": "{\"slots\":[{\"id\":\"<uuid:2>\",\"serviceId\":\"<sid:1>\",\"startsAt\":\"<ts:2>\",\"durationMinutes\":60,\"capacity\":3,\"bookedCount\":0,\"hasBookings\":false,\"price\":null,\"createdAt\":\"<ts:3>\"}],\"days\":null}",
         "contentLengthMatchesBody": true,
         "transferEncodingChunked": false
       },

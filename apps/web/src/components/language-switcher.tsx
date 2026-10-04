@@ -65,7 +65,7 @@ export function LanguageSwitcher({
             aria-label={t('ariaLabel')}
             disabled={isPending}
           >
-            <GlobeIcon className="size-4" />
+            <GlobeIcon data-icon="inline-start" />
             <span>{active.code.toUpperCase()}</span>
           </Button>
         )}

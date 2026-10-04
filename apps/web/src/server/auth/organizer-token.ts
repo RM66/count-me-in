@@ -1,6 +1,6 @@
 /**
  * Mints a short-lived HS256 JWT that the Python API verifies to identify the
- * signed-in organizer (architecture review fix #1).
+ * signed-in organizer (ADR-021).
  *
  * The Python API used to decrypt the Auth.js session cookie by hand — a
  * reverse-engineering of `@auth/core`'s internal JWE format that a minor
@@ -51,8 +51,13 @@ function base64url(bytes: ArrayBuffer | Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
+/**
+ * base64url a UTF-8 string. `btoa(str)` throws on any code point past
+ * Latin-1, so strings go through `TextEncoder` — a non-ASCII slug or a
+ * future claim must not take the mint down.
+ */
 function base64urlStr(input: string): string {
-  return btoa(input).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return base64url(new TextEncoder().encode(input))
 }
 
 /**
@@ -60,22 +65,35 @@ function base64urlStr(input: string): string {
  * Purpose-bound key separation: the raw secret never signs anything
  * directly, so this token format and Auth.js's session format cannot
  * interfere with each other.
+ *
+ * The derivation is memoized per secret: a cabinet page mints the header
+ * for several parallel reads, and HKDF is pure key schedule — same input,
+ * same output — so one derivation per process per secret is enough.
  */
-async function derivedSigningKey(secret: string): Promise<ArrayBuffer> {
+const signingKeyCache = new Map<string, Promise<ArrayBuffer>>()
+
+function derivedSigningKey(secret: string): Promise<ArrayBuffer> {
+  const cached = signingKeyCache.get(secret)
+  if (cached) return cached
   const enc = new TextEncoder()
-  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(secret), 'HKDF', false, [
-    'deriveBits',
-  ])
-  return crypto.subtle.deriveBits(
-    {
-      name: 'HKDF',
-      hash: 'SHA-256',
-      salt: enc.encode(HKDF_SALT),
-      info: enc.encode(HKDF_INFO),
-    },
-    keyMaterial,
-    HKDF_LENGTH_BYTES * 8,
-  )
+  const derived = crypto.subtle
+    .importKey('raw', enc.encode(secret), 'HKDF', false, ['deriveBits'])
+    .then((keyMaterial) =>
+      crypto.subtle.deriveBits(
+        {
+          name: 'HKDF',
+          hash: 'SHA-256',
+          salt: enc.encode(HKDF_SALT),
+          info: enc.encode(HKDF_INFO),
+        },
+        keyMaterial,
+        HKDF_LENGTH_BYTES * 8,
+      ),
+    )
+  signingKeyCache.set(secret, derived)
+  // A rejected derivation must not poison the cache — the next mint retries.
+  derived.catch(() => signingKeyCache.delete(secret))
+  return derived
 }
 
 /**

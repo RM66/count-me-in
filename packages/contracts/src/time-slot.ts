@@ -88,6 +88,15 @@ export const timeSlotRecord = z.object({
   durationMinutes,
   capacity,
   bookedCount: z.number().int().min(0),
+  /**
+   * Whether any booking row references the slot — confirmed or cancelled.
+   * Deletion is refused on either, and `bookedCount` alone cannot see a
+   * cancelled row (it counts seats, which a cancellation releases). `null`
+   * on surfaces that do not compute it (public lists, single-slot reads);
+   * the cabinet slot list resolves it as the delete affordance's source
+   * of truth.
+   */
+  hasBookings: z.boolean().nullable(),
   price: z.string().nullable(),
   createdAt: z.string(),
 })

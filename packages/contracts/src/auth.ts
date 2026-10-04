@@ -84,6 +84,25 @@ export const authTicketPayload = z.object({
 export type AuthTicketPayload = z.infer<typeof authTicketPayload>
 
 /**
+ * How long an auth ticket stays valid (10 minutes) — long enough to finish
+ * the signup/booking it was minted for, short enough that a leaked ticket
+ * is useless quickly.
+ */
+export const AUTH_TICKET_TTL_S = 10 * 60
+
+/**
+ * Redis key prefix for auth tickets. Exported separately from
+ * {@link authTicketKey} because the Python API is code-generated from this
+ * file: the generator interpolates the prefix into
+ * `contracts.AUTH_TICKET_KEY_PREFIX`, so the two sides cannot drift.
+ */
+export const AUTH_TICKET_KEY_PREFIX = 'auth:ticket:'
+
+export function authTicketKey(token: string): string {
+  return `${AUTH_TICKET_KEY_PREFIX}${token}`
+}
+
+/**
  * POST /api/auth/telegram-guest — same widget validation but issues a guest
  * ticket for the booking flow instead of an organizer session.
  */

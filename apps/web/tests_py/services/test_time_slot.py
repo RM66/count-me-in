@@ -95,9 +95,9 @@ async def test_list_slots_scopes_to_owner_and_orders(fx):
     other_org, _, _ = await _fixture()
     try:
         rows = await svc(slot_repo.list_by_organizer, org_id, False)
-        assert [r.id for r in rows] == [slot_id], "only the owner's slots, earliest first"
+        assert [s.id for s, _ in rows] == [slot_id], "only the owner's slots, earliest first"
         assert not any(
-            r.id == slot_id for r in await svc(slot_repo.list_by_organizer, other_org, False)
+            s.id == slot_id for s, _ in await svc(slot_repo.list_by_organizer, other_org, False)
         )
     finally:
         await _cleanup(other_org)
@@ -121,7 +121,7 @@ async def test_list_slots_upcoming_only_drops_past(fx):
             },
         )
     rows = await svc(slot_repo.list_by_organizer, org_id, True)
-    assert [r.id for r in rows] == [slot_id], "the past slot is dropped"
+    assert [s.id for s, _ in rows] == [slot_id], "the past slot is dropped"
 
 
 async def test_public_slots_bounded_by_horizon():
@@ -153,7 +153,7 @@ async def test_public_slots_bounded_by_horizon():
 
         # Cabinet list: both slots — the organizer sees the whole schedule.
         rows = await svc(slot_repo.list_by_organizer, org_id, False)
-        assert {r.id for r in rows} == {slot_id, far_id}
+        assert {s.id for s, _ in rows} == {slot_id, far_id}
 
         # The public read (same query the public routes run): the +120d
         # slot is beyond the horizon, the +48h one is listed.

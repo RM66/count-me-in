@@ -91,6 +91,8 @@ def test_domain_vectors(fn, c):
         assert domain.cancel_notification_recipient(c["cancelledBy"]) == c["expected"]
     elif fn == "loginLinkKey":
         assert domain.login_link_key(c["token"]) == c["expected"]
+    elif fn == "authTicketKey":
+        assert domain.auth_ticket_key(c["token"]) == c["expected"]
     elif fn == "isDemoOrganizerId":
         assert domain.is_demo_organizer_id(c.get("organizerId", "")) == c["expected"]
     elif fn == "hashManageToken":

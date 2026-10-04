@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 
-import { useCancelBookingByOrganizer } from '@/api-client'
+import { errorMessage, useCancelBookingByOrganizer } from '@/api-client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -91,11 +91,11 @@ export function BookingDetailsSheet({
       // booking in state, so the copy behind this sheet still says `confirmed`
       // until their server data arrives. Closing avoids showing that stale row.
       onOpenChange(false)
-      // Cabinet pages are server components — this is what re-reads Postgres and
-      // repaints the released seat in the lists and slot counts.
+      // Cabinet pages are server components — this is what re-reads the API
+      // and repaints the released seat in the lists and slot counts.
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('cancelFailed'))
+      toast.error(errorMessage(error, t('cancelFailed')))
     }
   }
 
@@ -161,7 +161,8 @@ export function BookingDetailsSheet({
               {booking.guestMessengerLogin && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground capitalize">{booking.guestMessenger}</dt>
-                  <dd className="text-right font-medium capitalize">
+                  {/* No capitalize: messenger logins are case-sensitive handles. */}
+                  <dd className="text-right font-medium">
                     {
                       booking.guestMessenger === 'telegram' ? (
                         <a
@@ -213,7 +214,7 @@ export function BookingDetailsSheet({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t('keepBooking')}</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleCancel(booking)}>
+                  <AlertDialogAction variant="destructive" onClick={() => handleCancel(booking)}>
                     {t('yesCancel')}
                   </AlertDialogAction>
                 </AlertDialogFooter>

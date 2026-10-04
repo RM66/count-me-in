@@ -99,3 +99,44 @@ async def test_cabinet_summary_with_booking_trend_bucket(client, fake_redis, db,
     assert analytics["trend"][0]["bookings"] == 1
     assert analytics["trend"][0]["seats"] == 2
     assert analytics["byService"] == [{"service": svc["title"], "bookings": 1}]
+
+    overview = envelope["overview"]
+    assert overview["confirmedBookings"] == 1
+    assert overview["confirmedLast7Days"] == 1
+    # The helper slot (now+48h) is upcoming and inside the next week.
+    assert overview["upcomingSlots"] == 1
+    assert overview["upcomingSlotsNext7Days"] == 1
+    assert overview["upcomingSeatsBooked"] == 2  # the atomic reserve bumped it
+    assert overview["upcomingSeatsOffered"] == 3  # the helper slot's capacity
+
+
+async def test_cabinet_summary_overview_excludes_past_slots(client, fake_redis, db):
+    """Upcoming aggregates ignore sessions that already started — the
+    overview's numbers describe the schedule ahead, not history."""
+    org = await register_organizer(client, fake_redis, "cab-sum-past")
+    headers = {**auth_headers(sub=org["id"], slug=org["slug"])}
+    svc = await create_service(client, headers)
+
+    # The API refuses a past startsAt, so the history row goes straight in.
+    import uuid
+
+    from countmein.db.client import engine
+    from sqlalchemy import text
+
+    async with engine().begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO time_slots (id, service_id, starts_at, duration_minutes, "
+                "capacity, booked_count) "
+                "VALUES (:id, :sid, now() - interval '48 hours', 90, 8, 4)"
+            ),
+            {"id": str(uuid.uuid4()), "sid": svc["id"]},
+        )
+
+    r = await client.get("/api/cabinet/summary", headers=headers)
+    assert r.status_code == 200, r.text
+    overview = r.json()["overview"]
+    assert overview["upcomingSlots"] == 0
+    assert overview["upcomingSlotsNext7Days"] == 0
+    assert overview["upcomingSeatsBooked"] == 0
+    assert overview["upcomingSeatsOffered"] == 0

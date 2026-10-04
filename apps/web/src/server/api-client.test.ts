@@ -23,11 +23,15 @@ const fetchMock = vi.fn()
 
 vi.mock('@/server/api', () => ({
   apiFetch: apiFetchMock,
+}))
+
+vi.mock('@/server/api-origin', () => ({
   resolveApiOrigin: vi.fn(async () => 'http://api.test'),
 }))
 
 vi.mock('@/server/internal-api', () => ({
   internalSecretHeaders: vi.fn(() => ({ 'x-internal-secret': 'test-secret' })),
+  withInternalHeaders: vi.fn((headers: Headers) => headers.set('x-internal-secret', 'test-secret')),
 }))
 
 const organizerId = '11111111-1111-4111-8111-111111111111'
@@ -76,6 +80,7 @@ const timeSlotRecord: TimeSlotRecord = {
   durationMinutes: 60,
   capacity: 10,
   bookedCount: 2,
+  hasBookings: null,
   price: null,
   createdAt: '2026-01-01T00:00:00.000Z',
 }
@@ -230,9 +235,8 @@ describe('getGuestBooking', () => {
       manageToken: 'manage-token-0123456789',
     })
     expect((init as RequestInit).cache).toBe('no-store')
-    expect(((init as RequestInit).headers as Record<string, string>)['x-internal-secret']).toBe(
-      'test-secret',
-    )
+    expect((init as RequestInit).headers).toBeInstanceOf(Headers)
+    expect(((init as RequestInit).headers as Headers).get('x-internal-secret')).toBe('test-secret')
   })
 
   it('maps a 400 lookup refusal to null', async () => {
@@ -255,13 +259,12 @@ describe('cabinet reads', () => {
     apiFetchMock.mockResolvedValue(jsonResponse({}))
   })
 
-  it('goes through apiFetch with no-store (never the shared cache)', async () => {
+  it('goes through apiFetch (which forces no-store, never the shared cache)', async () => {
     apiFetchMock.mockResolvedValue(jsonResponse({ organizer: organizerProfile }))
     const { getOrganizerProfile } = await import('@/server/api-client')
     await getOrganizerProfile()
-    const [path, init] = apiFetchMock.mock.calls[0]!
+    const [path] = apiFetchMock.mock.calls[0]!
     expect(path).toBe('/api/organizers/me')
-    expect((init as RequestInit).cache).toBe('no-store')
   })
 
   it('unwraps the organizer profile envelope', async () => {
@@ -294,36 +297,85 @@ describe('cabinet reads', () => {
     expect(await getOwnedService('svc_foreign')).toBeNull()
   })
 
-  it('adds the upcoming filter to the slots query', async () => {
+  it('adds the upcoming and range filters to the slots query', async () => {
     // mockImplementation, not mockResolvedValue: a Response body is
     // consumed on read, so a reused instance fails the second call.
-    apiFetchMock.mockImplementation(async () => jsonResponse({ slots: [timeSlotRecord] }))
+    apiFetchMock.mockImplementation(async () =>
+      jsonResponse({ slots: [timeSlotRecord], days: ['2026-07-20'] }),
+    )
     const { listSlots } = await import('@/server/api-client')
-    expect(await listSlots()).toHaveLength(1)
+    const page = await listSlots()
+    expect(page.slots).toHaveLength(1)
+    expect(page.days).toEqual(['2026-07-20'])
     expect(apiFetchMock.mock.calls[0]![0]).toBe('/api/slots')
-    await listSlots({ upcomingOnly: true })
-    expect(apiFetchMock.mock.calls[1]![0]).toBe('/api/slots?upcoming=1')
+    await listSlots({
+      upcomingOnly: true,
+      from: '2026-07-20T00:00:00+00:00',
+      to: '2026-07-27T00:00:00+00:00',
+      limit: 5,
+    })
+    expect(apiFetchMock.mock.calls[1]![0]).toBe(
+      '/api/slots?upcoming=1&from=2026-07-20T00%3A00%3A00%2B00%3A00&to=2026-07-27T00%3A00%3A00%2B00%3A00&limit=5',
+    )
   })
 
   it('paginates bookings and reports hasMore', async () => {
-    apiFetchMock.mockResolvedValue(jsonResponse({ bookings: [bookingRecord], hasMore: true }))
+    apiFetchMock.mockResolvedValue(
+      jsonResponse({
+        bookings: [bookingRecord],
+        hasMore: true,
+        slots: [timeSlotRecord],
+        bookedDays: ['2026-07-20'],
+      }),
+    )
     const { listBookings } = await import('@/server/api-client')
     const page = await listBookings({ limit: 10, offset: 20 })
     expect(page.bookings).toHaveLength(1)
     expect(page.hasMore).toBe(true)
+    expect(page.slots).toHaveLength(1)
+    expect(page.bookedDays).toEqual(['2026-07-20'])
     expect(apiFetchMock.mock.calls[0]![0]).toBe('/api/bookings?limit=10&offset=20')
   })
 
+  it('forwards the cabinet filters to the bookings query', async () => {
+    apiFetchMock.mockResolvedValue(
+      jsonResponse({ bookings: [], hasMore: false, slots: [], bookedDays: [] }),
+    )
+    const { listBookings } = await import('@/server/api-client')
+    await listBookings({
+      serviceId: 'svc-1',
+      slotId: 'slot-9',
+      status: 'confirmed',
+      q: 'ann',
+      day: '2026-07-22',
+      sort: 'when',
+      dir: 'desc',
+    })
+    expect(apiFetchMock.mock.calls[0]![0]).toBe(
+      '/api/bookings?limit=50&offset=0&serviceId=svc-1&slotId=slot-9&status=confirmed&q=ann&day=2026-07-22&sort=when&dir=desc',
+    )
+  })
+
   it('uses the default page size when none is given', async () => {
-    apiFetchMock.mockResolvedValue(jsonResponse({ bookings: [], hasMore: false }))
+    apiFetchMock.mockResolvedValue(
+      jsonResponse({ bookings: [], hasMore: false, slots: [], bookedDays: [] }),
+    )
     const { listBookings } = await import('@/server/api-client')
     const page = await listBookings()
-    expect(page).toEqual({ bookings: [], hasMore: false })
+    expect(page).toEqual({ bookings: [], hasMore: false, slots: [], bookedDays: [] })
     expect(apiFetchMock.mock.calls[0]![0]).toBe('/api/bookings?limit=50&offset=0')
   })
 
   it('returns the cabinet summary and throws when it 404s', async () => {
     const summary = {
+      overview: {
+        confirmedBookings: 12,
+        confirmedLast7Days: 3,
+        upcomingSlots: 4,
+        upcomingSlotsNext7Days: 2,
+        upcomingSeatsBooked: 9,
+        upcomingSeatsOffered: 40,
+      },
       serviceCounts: [
         { serviceId: serviceRecord.id, upcomingSlotsCount: 3, confirmedBookingsCount: 7 },
       ],
