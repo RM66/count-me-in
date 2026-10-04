@@ -42,8 +42,7 @@ export async function resolveApiOrigin(): Promise<string> {
   if (apiUrl) {
     return apiUrl
   }
-  const toHttps = (host: string) =>
-    `https://${host.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
+  const toHttps = (host: string) => `https://${host.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
   if (process.env.VERCEL_ENV === 'production') {
     const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL
     if (prodHost) {
