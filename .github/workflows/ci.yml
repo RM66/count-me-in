@@ -70,7 +70,7 @@ jobs:
       # need the CI Postgres migrated, and db:migrate:py shells out to uv.
       - name: Set up uv
         if: matrix.task == 'test'
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
           enable-cache: true
@@ -172,7 +172,7 @@ jobs:
           bun-version: 1.3.14
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
           enable-cache: true
@@ -299,7 +299,7 @@ jobs:
       - name: Set up uv
         # The API side of the dev topology is the Python app
         # (dev:api:py) — playwright.config.ts boots uvicorn.
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
           enable-cache: true
@@ -367,7 +367,7 @@ jobs:
 
       - name: Set up uv
         if: steps.changes.outputs.migrations == 'true'
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
           enable-cache: true
