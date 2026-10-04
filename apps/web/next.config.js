@@ -151,6 +151,16 @@ const nextConfig = {
     const sentryOrigin = sentryDsn
       ? originOf(sentryDsn, 'https://o0.ingest.sentry.io')
       : 'https://o0.ingest.sentry.io'
+    // The Vercel toolbar (comments / live feedback) is injected by the
+    // platform into preview deployments — its script and iframe come
+    // from vercel.live, live updates over a Pusher websocket. Allowed
+    // only on previews so the production policy stays tight; origins per
+    // https://vercel.com/docs/vercel-toolbar/managing-toolbar
+    const isPreview = process.env.VERCEL_ENV === 'preview'
+    const vercelLive = isPreview ? ' https://vercel.live' : ''
+    const vercelLiveConnect = isPreview ? `${vercelLive} wss://*.pusher.com` : ''
+    const vercelLiveImg = isPreview ? `${vercelLive} https://vercel.com` : ''
+    const vercelLiveFont = isPreview ? `${vercelLive} https://assets.vercel.com` : ''
 
     const csp = [
       "default-src 'self'",
@@ -168,14 +178,14 @@ const nextConfig = {
       // va.vercel-scripts.com hosts the <Analytics/> and <SpeedInsights/>
       // loader scripts (providers.tsx); their beacons post to same-origin
       // /_vercel/* endpoints already covered by connect-src 'self'.
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}`,
-      "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${posthogWildcard}${posthogExtra}`,
-      "font-src 'self' data:",
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}${vercelLive}`,
+      `style-src 'self' 'unsafe-inline'${vercelLive}`,
+      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${posthogWildcard}${posthogExtra}${vercelLiveImg}`,
+      `font-src 'self' data:${vercelLiveFont}`,
       // r2UploadOrigin is in connect-src (the signed PUT goes straight from
       // the browser to R2) but not img-src — rendered media always comes
       // from mediaOrigin. No upstash.io: the browser never talks to Upstash.
-      `connect-src 'self' ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}`,
+      `connect-src 'self' ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}${vercelLiveConnect}`,
       // Session replay runs its recorder in a blob: worker — without an
       // explicit worker-src it falls back to default-src 'self' and replay
       // silently never starts.
@@ -183,7 +193,7 @@ const nextConfig = {
       // The Telegram login widget renders in an iframe from
       // oauth.telegram.org — without frame-src it falls back to
       // default-src 'self' and the widget never appears.
-      'frame-src https://oauth.telegram.org',
+      `frame-src https://oauth.telegram.org${vercelLive}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
