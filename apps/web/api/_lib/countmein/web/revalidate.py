@@ -66,14 +66,21 @@ async def trigger_revalidation(tags: list[str]) -> None:
     auth_secret = os.getenv("AUTH_SECRET", "")
     if app_url == "" or auth_secret == "":
         return  # dev without APP_URL/AUTH_SECRET: the TTL fallback covers it
+    headers = {
+        "Content-Type": "application/json",
+        INTERNAL_SECRET_HEADER: derived_internal_secret(auth_secret),
+    }
+    # A gated preview deployment (Vercel Authentication) answers every
+    # server-side call with the SSO login page unless the automation
+    # bypass header rides along; absent locally and unprotected prod.
+    bypass = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "")
+    if bypass:
+        headers["x-vercel-protection-bypass"] = bypass
     try:
         res = await async_client().post(
             app_url + REVALIDATE_PATH,
             json={"tags": deduped},
-            headers={
-                "Content-Type": "application/json",
-                INTERNAL_SECRET_HEADER: derived_internal_secret(auth_secret),
-            },
+            headers=headers,
             timeout=_HTTP_TIMEOUT,
         )
         if res.status_code != 200:

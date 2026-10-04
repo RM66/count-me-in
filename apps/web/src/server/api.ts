@@ -1,6 +1,6 @@
 import { cache } from 'react'
 
-import { resolveApiOrigin } from '@/server/api-origin'
+import { deploymentBypassHeaders, resolveApiOrigin } from '@/server/api-origin'
 import { auth } from '@/server/auth'
 import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
 import { withInternalHeaders } from '@/server/internal-api'
@@ -55,6 +55,10 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   // (ADR-023). Server actions share Vercel egress IPs with SSR
   // fetches, so the distinction is "trusted caller", not "which edge".
   withInternalHeaders(reqHeaders)
+
+  for (const [key, value] of Object.entries(deploymentBypassHeaders())) {
+    reqHeaders.set(key, value)
+  }
 
   for (const [key, value] of Object.entries(await getOrganizerAuthHeaders())) {
     reqHeaders.set(key, value)

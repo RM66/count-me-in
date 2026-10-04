@@ -29,6 +29,26 @@ function trimSlash(value: string | undefined): string | undefined {
  * rather than guess an origin to send credentials to. In dev, fall back
  * to the local API default port.
  */
+/**
+ * Vercel Deployment Protection bypass for server-side fetches.
+ *
+ * When a preview deployment is gated (Vercel Authentication / Standard
+ * Protection), browser requests pass on the user's bypass cookie, but a
+ * server-side fetch carries no cookies: the edge redirects it to the
+ * SSO login page, fetch follows the redirect, and the API read comes
+ * back `200 text/html` — which surfaces as a Zod "contract violation".
+ *
+ * `VERCEL_AUTOMATION_BYPASS_SECRET` is injected by Vercel once
+ * "Protection Bypass for Automation" is enabled in project settings;
+ * elsewhere the var is absent and no header is sent. Like
+ * `x-internal-secret`, the header goes only to the configured API
+ * origin — never to a request-derived host.
+ */
+export function deploymentBypassHeaders(): Record<string, string> {
+  const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  return secret ? { 'x-vercel-protection-bypass': secret } : {}
+}
+
 export async function resolveApiOrigin(): Promise<string> {
   const apiUrl = trimSlash(process.env.API_URL)
   if (apiUrl) {

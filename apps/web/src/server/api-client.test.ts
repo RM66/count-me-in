@@ -27,6 +27,7 @@ vi.mock('@/server/api', () => ({
 
 vi.mock('@/server/api-origin', () => ({
   resolveApiOrigin: vi.fn(async () => 'http://api.test'),
+  deploymentBypassHeaders: vi.fn(() => ({})),
 }))
 
 vi.mock('@/server/internal-api', () => ({

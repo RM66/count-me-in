@@ -23,7 +23,7 @@ import { cache } from 'react'
 import type { z } from 'zod'
 
 import { apiFetch } from '@/server/api'
-import { resolveApiOrigin } from '@/server/api-origin'
+import { deploymentBypassHeaders, resolveApiOrigin } from '@/server/api-origin'
 import { withInternalHeaders } from '@/server/internal-api'
 
 import 'server-only'
@@ -90,6 +90,9 @@ async function fetchPublicEnvelope<S extends z.ZodType>(
   // when an organizer mutates public content.
   const headers = new Headers(init.headers)
   withInternalHeaders(headers)
+  for (const [key, value] of Object.entries(deploymentBypassHeaders())) {
+    headers.set(key, value)
+  }
   const res = await fetch(`${origin}${path}`, {
     ...init,
     headers,
@@ -148,6 +151,9 @@ export async function getGuestBooking(manageToken: string): Promise<GuestBooking
   const origin = await resolveApiOrigin()
   const headers = new Headers({ 'Content-Type': 'application/json' })
   withInternalHeaders(headers)
+  for (const [key, value] of Object.entries(deploymentBypassHeaders())) {
+    headers.set(key, value)
+  }
   const res = await fetch(`${origin}/api/bookings/manage-lookup`, {
     method: 'POST',
     headers,

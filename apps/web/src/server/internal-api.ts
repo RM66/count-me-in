@@ -5,7 +5,7 @@ import {
   type InternalOrganizerRecord,
 } from '@repo/contracts'
 
-import { resolveApiOrigin } from '@/server/api-origin'
+import { deploymentBypassHeaders, resolveApiOrigin } from '@/server/api-origin'
 
 import 'server-only'
 
@@ -93,6 +93,7 @@ export async function getInternalOrganizer(lookup: {
     headers: {
       'Content-Type': 'application/json',
       ...internalSecretHeaders(),
+      ...deploymentBypassHeaders(),
     },
     body: JSON.stringify(parsed.data),
     // Service-to-service credential lookup: never cacheable.
