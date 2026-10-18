@@ -66,7 +66,9 @@ jobs:
       UPSTASH_RT_EMULATOR_URL: http://localhost:8080
       UPSTASH_RT_EMULATOR_TOKEN: dev-upstash-token
       # Tier-2 live-delivery tests — dedicated instance, absent secrets
-      # skip. Named UPSTASH_RT_LIVE_* on purpose: live creds under
+      # skip. Accepts either the REST https endpoint or the Upstash
+      # redis(s):// TCP URL (its password is the REST token). Named
+      # UPSTASH_RT_LIVE_* on purpose: live creds under
       # REDIS_REST_URL/REDIS_URL would make vitest emit into production.
       UPSTASH_RT_LIVE_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
       UPSTASH_RT_LIVE_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
@@ -328,10 +330,14 @@ jobs:
           python-version: '3.12'
           enable-cache: true
 
-      - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
-
       - run: bun install --frozen-lockfile
+
+      # bunx resolves the workspace's playwright bin only after node_modules
+      # exists; run it earlier and it installs the *registry* playwright, whose
+      # browser revision won't match the @playwright/test the tests run.
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
 
       - name: Migrate CI database
         # Alembic owns the schema (Phase 1).
@@ -345,17 +351,33 @@ jobs:
       - name: Compose REDIS_REST_URL (realtime e2e)
         # E2E keeps dedicated-Upstash parity; absent secrets skip the
         # spec (locally the compose emulator serves the same purpose).
+        # Accepts the same two shapes realtimeRestConfig() resolves: an
+        # http(s) REST endpoint (+ RT_TOKEN or embedded userinfo) or an
+        # Upstash TCP URL redis(s)://…:token@*.upstash.io whose password
+        # IS the REST token — either console flavor works as the secret.
         # Built with a URL parser + percent-encoding, not sed — a token
         # containing `/`, `?`, `@`, `|` must survive the splice.
         env:
           RT_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           RT_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: |
-          if [ -n "$RT_URL" ] && [ -n "$RT_TOKEN" ]; then
+          if [ -n "$RT_URL" ]; then
             bun -e '
-              const u = new URL(process.env.RT_URL);
-              const composed = `${u.protocol}//:${encodeURIComponent(process.env.RT_TOKEN)}@${u.host}`;
-              console.log(`REDIS_REST_URL=${composed}`);
+              const u = new URL(process.env.RT_URL.trim());
+              const token = process.env.RT_TOKEN ||
+                decodeURIComponent(u.password || u.username);
+              const tcp = (u.protocol === "redis:" || u.protocol === "rediss:") &&
+                u.hostname.endsWith(".upstash.io");
+              const rest = u.protocol === "http:" || u.protocol === "https:";
+              if (!tcp && !rest) {
+                throw new Error("UPSTASH_REDIS_REST_URL is neither http(s) nor an Upstash redis(s):// URL");
+              }
+              if (!token) {
+                throw new Error("no realtime REST token — set UPSTASH_REDIS_REST_TOKEN or embed the password in the URL");
+              }
+              const origin = tcp ? `https://${u.hostname}` : u.origin;
+              const composed = new URL(origin);
+              console.log(`REDIS_REST_URL=${composed.protocol}//:${encodeURIComponent(token)}@${composed.host}`);
             ' >> "$GITHUB_ENV"
           fi
 

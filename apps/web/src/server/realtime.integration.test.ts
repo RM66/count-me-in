@@ -16,6 +16,11 @@
  * Tier 2 — `UPSTASH_RT_LIVE_URL/TOKEN` (dedicated Upstash instance):
  * subscribe first, then emit — the publish leg must deliver the event
  * live, with the stream entry id riding `message.id`/`cursor`.
+ * LIVE_URL accepts the same two shapes `realtimeRestConfig()` resolves
+ * — an http(s) REST endpoint (+ `_TOKEN`, or the token embedded in
+ * userinfo) or an Upstash TCP URL (`redis(s)://…:token@*.upstash.io`,
+ * whose password *is* the REST token) — so either Upstash-console URL
+ * flavor works as the secret.
  *
  * Each tier SKIPS when its backend is unreachable/absent (CI always has
  * the emulator; tier 2 needs repo secrets). Credentials are explicit
@@ -39,9 +44,42 @@ const EMULATOR_URL = (process.env.UPSTASH_RT_EMULATOR_URL ?? 'http://localhost:8
   '',
 )
 const EMULATOR_TOKEN = process.env.UPSTASH_RT_EMULATOR_TOKEN ?? 'dev-upstash-token'
-const LIVE = process.env.UPSTASH_RT_LIVE_URL
-  ? { url: process.env.UPSTASH_RT_LIVE_URL, token: process.env.UPSTASH_RT_LIVE_TOKEN ?? '' }
+const LIVE_URL = process.env.UPSTASH_RT_LIVE_URL?.trim()
+const LIVE = LIVE_URL
+  ? { url: LIVE_URL, token: process.env.UPSTASH_RT_LIVE_TOKEN?.trim() ?? '' }
   : null
+
+/** Normalizes the tier-2 URL the way `realtimeRestConfig()` does.
+ * Set-but-malformed fails loudly rather than skipping — a silent skip
+ * would disable the live-parity tier without anyone noticing. */
+function resolveLiveCreds(rawUrl: string, token: string) {
+  try {
+    const parsed = new URL(rawUrl)
+    if (
+      (parsed.protocol === 'redis:' || parsed.protocol === 'rediss:') &&
+      parsed.hostname.endsWith('.upstash.io') &&
+      parsed.password !== ''
+    ) {
+      return {
+        url: `https://${parsed.hostname}`,
+        token: decodeURIComponent(parsed.password),
+      }
+    }
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      const resolved = token || decodeURIComponent(parsed.password || parsed.username)
+      if (parsed.hostname !== '' && resolved !== '') {
+        return { url: parsed.origin, token: resolved }
+      }
+    }
+  } catch {
+    // falls through to the loud failure below
+  }
+  throw new Error(
+    'UPSTASH_RT_LIVE_URL is set but is neither an http(s) REST endpoint ' +
+      'nor an Upstash redis(s)://…:token@*.upstash.io URL — fix the ' +
+      'UPSTASH_REDIS_REST_URL secret (or clear it to skip tier 2)',
+  )
+}
 
 // Mirrors server/realtime.ts — history bounds drive XADD trim + EXPIRE.
 const schema = { slot: { occupancy: slotOccupancyEvent } }
@@ -178,6 +216,6 @@ describe('realtime protocol — tier 2 (dedicated Upstash)', () => {
     if (!LIVE) {
       return ctx.skip('UPSTASH_RT_LIVE_URL/TOKEN absent — dedicated tier off')
     }
-    await expectLiveDelivery(new Redis({ url: LIVE.url, token: LIVE.token }))
+    await expectLiveDelivery(new Redis(resolveLiveCreds(LIVE.url, LIVE.token)))
   }, 45_000)
 })
