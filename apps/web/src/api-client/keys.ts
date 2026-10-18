@@ -9,13 +9,21 @@
  * `services: { all: ['services'], detail: (id) => ['services', id] }` —
  * so `queryKeys.services.all` drops the list and every detail beneath it.
  *
- * Today only `organizer.me` is live: cabinet lists and details are
- * server-component reads (`server/api-client.ts`, `router.refresh()` after
- * a write), and the organizer profile is the one entity fetched client-side.
+ * Only `organizer.me` and `publicService` are live today: cabinet lists
+ * and details are server-component reads (`server/api-client.ts`,
+ * `router.refresh()` after a write), while the organizer profile and
+ * the public service view (live occupancy, ADR-025) are cached
+ * client-side.
  */
 
 export const queryKeys = {
   organizer: {
     me: ['organizer', 'me'] as const,
+  },
+  // The public service read — the key SSE invalidation and the
+  // connect-reconcile refetch share.
+  publicService: {
+    all: ['public-service'] as const,
+    detail: (id: string) => ['public-service', id] as const,
   },
 } as const

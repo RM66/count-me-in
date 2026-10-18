@@ -21,7 +21,6 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 - Separate organizer native/Capacitor app
 - Payment processing (prices are labels only)
-- WebSockets / live seat counters
 - Visitor Auth.js accounts
 - Multi-staff organizations
 - Subdomain tenancy
@@ -34,7 +33,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 - Reminder jobs; more messenger providers.
 - Optional Capacitor organizer shell if web-in-messenger insufficient ([ADR-006](decisions/006-organizer-capacitor.md)).
 - Image variants / CDN resize if needed (browser-side downscaling already in MVP — [ADR-007](decisions/007-cloudflare-r2.md)).
-- Waitlist / notify-on-free-seat; realtime capacity if demand justifies.
+- Waitlist / notify-on-free-seat (live occupancy counters shipped in MVP — [ADR-025](decisions/025-realtime-occupancy.md)); push beyond occupancy (slot create/delete/reschedule, presence).
 - Localized routes + hreflang when non-English organic search matters: locales currently share one URL via cookie/header negotiation ([ADR-011](decisions/011-i18n.md)), so only the English rendering is indexable. Trigger to revisit: meaningful non-EN search traffic.
 
 ## Phase 3+

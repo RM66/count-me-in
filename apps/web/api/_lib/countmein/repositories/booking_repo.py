@@ -73,6 +73,10 @@ async def atomic_reserve_seats(session: AsyncSession, slot_id: str, seats: int) 
         )
         .values(booked_count=TimeSlot.booked_count + seats)
         .returning(TimeSlot)
+        # populate_existing: the slot is usually already mapped (loaded
+        # for validation) — without it RETURNING yields the stale
+        # object, not the row a concurrent write produced.
+        .execution_options(populate_existing=True)
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
@@ -88,6 +92,9 @@ async def release_seats_returning(
         .where(TimeSlot.id == slot_id)
         .values(booked_count=func.greatest(0, TimeSlot.booked_count - seats))
         .returning(TimeSlot)
+        # populate_existing: same identity-map hazard — the RETURNING
+        # row must be authoritative for the response DTO.
+        .execution_options(populate_existing=True)
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
@@ -170,6 +177,9 @@ async def cancel_booking_mark(session: AsyncSession, booking_id: str) -> Booking
         )
         .values(status=BookingStatus.CANCELLED)
         .returning(Booking)
+        # populate_existing: the booking is typically already mapped —
+        # keep the RETURNING row authoritative for the response DTO.
+        .execution_options(populate_existing=True)
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()

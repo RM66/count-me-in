@@ -230,3 +230,73 @@ async def test_slot_delete_with_booking_409(client, fake_redis, db):
     r = await client.delete(f"/api/slots/{slot['id']}", headers=headers)
     assert r.status_code == 409
     assert body_json(r).get("error")
+
+
+# ── Realtime occupancy emit (ADR-025) ─────────────────────────────────────────
+
+
+def _recorder(monkeypatch):
+    """Capture the occupancy payload riding the revalidation hop: the
+    emit lives in the Next.js route (ADR-025); this side pins that the
+    hop carries the right row. The leg never reaches the network."""
+    from countmein.routes import slots as slots_route
+
+    emitted: list[dict] = []
+
+    async def _record(tags, *, occupancy=None):
+        emitted.append(occupancy)
+
+    monkeypatch.setattr(slots_route, "trigger_revalidation", _record)
+    return emitted
+
+
+def _patch_slot(client, headers, slot_id: str, body: bytes):
+    return client.patch(
+        f"/api/slots/{slot_id}",
+        headers={**headers, "content-type": "application/merge-patch+json"},
+        content=body,
+    )
+
+
+async def test_slot_patch_capacity_emits_occupancy(client, fake_redis, db, monkeypatch):
+    """A real capacity change pushes the occupancy signal to both
+    channels."""
+    emitted = _recorder(monkeypatch)
+    org, headers = await _setup(client, fake_redis, db, "slot-emit-01")
+    svc = await create_service(client, headers)
+    slot = await create_slot(client, headers, svc["id"])
+
+    r = await _patch_slot(client, headers, slot["id"], b'{"capacity": 8}')
+    assert r.status_code == 200
+    # Setup writes (service/slot create) ride the hop too — with no event.
+    events = [e for e in emitted if e]
+    assert len(events) == 1
+    assert events[0] == {
+        "serviceId": svc["id"],
+        "organizerId": org["id"],
+    }
+
+
+async def test_slot_patch_unchanged_capacity_does_not_emit(client, fake_redis, db, monkeypatch):
+    """A merge-patch carrying the current capacity is a no-op for
+    occupancy — revalidation still runs, no event rides it."""
+    emitted = _recorder(monkeypatch)
+    _, headers = await _setup(client, fake_redis, db, "slot-emit-02")
+    svc = await create_service(client, headers)
+    slot = await create_slot(client, headers, svc["id"])  # capacity 3
+
+    r = await _patch_slot(client, headers, slot["id"], b'{"capacity": 3}')
+    assert r.status_code == 200
+    assert [e for e in emitted if e] == []
+
+
+async def test_slot_patch_non_capacity_does_not_emit(client, fake_redis, db, monkeypatch):
+    """Duration/price/startsAt are not occupancy — no event."""
+    emitted = _recorder(monkeypatch)
+    _, headers = await _setup(client, fake_redis, db, "slot-emit-03")
+    svc = await create_service(client, headers)
+    slot = await create_slot(client, headers, svc["id"])
+
+    r = await _patch_slot(client, headers, slot["id"], b'{"durationMinutes": 90}')
+    assert r.status_code == 200
+    assert [e for e in emitted if e] == []

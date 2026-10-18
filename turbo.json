@@ -1,11 +1,17 @@
 {
-  "$schema": "https://turborepo.dev/schema.json",
+  "$schema": "./node_modules/turbo/schema.json",
   "ui": "tui",
   "globalEnv": [
     "POSTGRES_URL",
     "REDIS_URL",
+    "REDIS_REST_URL",
+    "UPSTASH_RT_EMULATOR_URL",
+    "UPSTASH_RT_EMULATOR_TOKEN",
+    "UPSTASH_RT_LIVE_URL",
+    "UPSTASH_RT_LIVE_TOKEN",
     "AUTH_SECRET",
     "APP_URL",
+    "INTERNAL_APP_URL",
     "R2_ACCOUNT_ID",
     "R2_ACCESS_KEY_ID",
     "R2_SECRET_ACCESS_KEY",

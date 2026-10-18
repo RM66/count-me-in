@@ -226,6 +226,11 @@ const nextConfig = {
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
       },
       {
+        // The SSE keeper (ADR-025) — same noindex as the auth routes.
+        source: '/api/realtime',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
+      },
+      {
         source: '/login/link/:path*',
         headers: [{ key: 'X-Robots-Tag', value: 'noindex' }],
       },

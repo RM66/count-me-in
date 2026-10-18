@@ -28,6 +28,12 @@ them; CI runs them against workflow services). They **skip** locally without
 the env and **fail** in CI — a red integration test in CI means the service or
 the env var was lost, not that the test is flaky.
 
+Realtime tests (ADR-025) run fully offline: the compose `redis-http` service
+is the up-redis emulator, which also serves the SSE `/subscribe` path. To
+enable them locally set `REDIS_REST_URL=http://:dev-upstash-token@localhost:8080`
+(endpoint + token in userinfo); the realtime e2e spec takes the same variable.
+On an Upstash `REDIS_URL` nothing extra is needed — the REST pair is derived.
+
 ## E2E smoke
 
 ```sh
@@ -36,8 +42,8 @@ bun run --cwd apps/web test:e2e
 ```
 
 Playwright boots the dev topology (`next dev` + the Python API via uvicorn)
-against the docker-compose services and runs three scenarios: guest booking
-round-trip, cabinet create flow, demo read-only. CI runs the same suite in the
+against the docker-compose services and runs four scenarios: guest booking
+round-trip, cabinet create flow, demo read-only, and realtime occupancy. CI runs the same suite in the
 `e2e` job.
 
 The suite creates **real** bookings — never point it at production. Playwright

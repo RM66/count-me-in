@@ -37,7 +37,7 @@ def full_prod_env(monkeypatch):
     monkeypatch.setenv("VERCEL_ENV", "")
     monkeypatch.setenv("AUTH_SECRET", "prod-secret")
     monkeypatch.setenv("POSTGRES_URL", "postgres://prod/db")
-    monkeypatch.setenv("REDIS_URL", "redis://prod")
+    monkeypatch.setenv("REDIS_URL", "rediss://default:prod-rest-token@prod.upstash.io:6379")
     monkeypatch.setenv("APP_URL", "https://countmein.group")
     monkeypatch.setenv("QSTASH_TOKEN", "prod-qstash-token")
     monkeypatch.setenv("QSTASH_CURRENT_SIGNING_KEY", "prod-signing-key")
@@ -47,6 +47,8 @@ def full_prod_env(monkeypatch):
     monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "prod-secret-key")
     monkeypatch.setenv("R2_BUCKET", "prod-bucket")
     monkeypatch.setenv("R2_PUBLIC_BASE_URL", "https://media.countmein.group")
+    # Realtime resolves from the Upstash-shaped REDIS_URL above — no
+    # dedicated variable needed in production.
 
 
 def test_validate_skipped_outside_production(monkeypatch):
@@ -107,6 +109,17 @@ def test_validate_app_url_shapes(monkeypatch, app_url, want_err):
         config.validate()  # must not raise
 
 
+def test_validate_internal_app_url_is_optional_but_checked(monkeypatch):
+    full_prod_env(monkeypatch)
+    monkeypatch.delenv("INTERNAL_APP_URL", raising=False)
+    config.validate()  # unset is fine — the hop falls back to APP_URL
+    monkeypatch.setenv("INTERNAL_APP_URL", "http://web:3000")
+    config.validate()  # the compose shape validates
+    monkeypatch.setenv("INTERNAL_APP_URL", "web:3000/path")
+    with pytest.raises(config.ConfigError):
+        config.validate()
+
+
 def test_validate_strict_env_opts_in(monkeypatch):
     # Dev/staging can opt into the production validation with STRICT_ENV=1;
     # without it (and outside production) validation stays skipped.
@@ -142,6 +155,44 @@ def test_redis_configured(monkeypatch):
     assert not config.redis_configured()
     monkeypatch.setenv("REDIS_URL", "redis://x")
     assert config.redis_configured()
+
+
+def test_validate_production_requires_realtime_resolution(monkeypatch):
+    """A non-Upstash REDIS_URL with no REDIS_REST_URL override leaves
+    realtime unresolvable — production must fail; the override fixes it."""
+    full_prod_env(monkeypatch)
+    monkeypatch.setenv("REDIS_URL", "redis://prod.internal:6379")
+    with pytest.raises(config.ConfigError, match="realtime"):
+        config.validate()
+    monkeypatch.setenv("REDIS_REST_URL", "https://:rest-tok@rest.prod.internal")
+    config.validate()
+
+
+def test_realtime_credentials(monkeypatch):
+    monkeypatch.delenv("REDIS_REST_URL", raising=False)
+
+    # REDIS_REST_URL carries endpoint + token in userinfo — this is also
+    # how non-Upstash targets (the compose emulator) are addressed.
+    monkeypatch.setenv("REDIS_REST_URL", "http://:dev-token@localhost:8080")
+    assert config.realtime_credentials() == ("http://localhost:8080", "dev-token")
+    monkeypatch.setenv("REDIS_REST_URL", "http://:dev-token@[::1]:8080")
+    assert config.realtime_credentials() == ("http://[::1]:8080", "dev-token")
+    monkeypatch.setenv("REDIS_REST_URL", "https://tok@rest.example.com:443")
+    assert config.realtime_credentials() == ("https://rest.example.com", "tok")
+    # Set-but-malformed or tokenless → off, NOT a fallthrough to REDIS_URL.
+    for bad in ("not a url", "http://localhost:8080", "redis://x"):
+        monkeypatch.setenv("REDIS_REST_URL", bad)
+        monkeypatch.setenv("REDIS_URL", "rediss://default:secret@x.upstash.io:6379")
+        assert config.realtime_credentials() is None, bad
+    monkeypatch.delenv("REDIS_REST_URL")
+
+    # An Upstash TCP URL derives the REST pair (https + the password).
+    assert config.realtime_credentials() == ("https://x.upstash.io", "secret")
+    # Non-Upstash or passwordless REDIS_URL → off.
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
+    assert config.realtime_credentials() is None
+    monkeypatch.setenv("REDIS_URL", "redis://:secret@cache.internal:6379")
+    assert config.realtime_credentials() is None
 
 
 def test_env_names_stable():

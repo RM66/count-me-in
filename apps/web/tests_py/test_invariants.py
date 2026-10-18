@@ -77,6 +77,23 @@ def test_cancel_releases_seats_and_is_idempotent():
     )
 
 
+def test_occupancy_changes_emit_on_revalidation_hop():
+    """Invariant (ADR-025): every committed occupancy change (booking
+    create, cancel, capacity patch) sends the occupancy signal on the
+    revalidation hop — never fails the write, never touches the demo
+    organizer."""
+    _assert_test_exists("tests_py.routes.test_bookings", "test_booking_create_emits_occupancy")
+    _assert_test_exists("tests_py.routes.test_bookings", "test_booking_cancel_emits_occupancy")
+    _assert_test_exists(
+        "tests_py.web.test_revalidate", "test_occupancy_event_refused_for_demo_organizer"
+    )
+    _assert_test_exists("tests_py.web.test_revalidate", "test_trigger_revalidation_absorbs_errors")
+    _assert_test_exists("tests_py.routes.test_slots", "test_slot_patch_capacity_emits_occupancy")
+    _assert_test_exists(
+        "tests_py.routes.test_slots", "test_slot_patch_unchanged_capacity_does_not_emit"
+    )
+
+
 # ── Demo organizer is read-only ───────────────────────────────────────────────
 
 
@@ -412,6 +429,7 @@ def test_login_link_consumed_on_post_only():
 EXPECTED_ENTRIES = {
     "test_seat_reserve_is_single_conditional_update",
     "test_cancel_releases_seats_and_is_idempotent",
+    "test_occupancy_changes_emit_on_revalidation_hop",
     "test_demo_organizer_rejected_on_every_write",
     "test_anonymous_cabinet_visitor_cannot_write",
     "test_guest_ticket_replay_fails",

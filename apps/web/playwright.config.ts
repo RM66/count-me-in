@@ -1,8 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
 /**
- * E2E smoke: exactly three scenarios,
- * no more — guest booking round-trip, cabinet create flow, demo read-only.
+ * E2E smoke: four scenarios — guest booking round-trip, cabinet create
+ * flow, demo read-only, and live occupancy (ADR-025).
  *
  * The suite runs against the dev topology: `next dev` on :3000 with the
  * Python API (`dev:api:py`, uvicorn) on :3001, next.config.js rewrites

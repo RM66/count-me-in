@@ -7,11 +7,11 @@ import type {
   TimeSlotRecord,
 } from '@repo/contracts'
 import { DEFAULT_LOCALE, isAppLocale, seatsLeft } from '@repo/contracts'
-import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 
-import { useCreateBooking } from '@/api-client'
+import { queryKeys, useCreateBooking } from '@/api-client'
 import { ApiError, errorMessage } from '@/api-client/error'
 
 export type BookingStep = 'slot' | 'options' | 'details' | 'verify' | 'success'
@@ -62,12 +62,22 @@ function localizedError(t: ReturnType<typeof useTranslations<'Booking'>>, err: u
   return errorMessage(err, t('errorFallback'))
 }
 
+/**
+ * The live-occupancy notice for the picked slot (ADR-025): `filled` —
+ * it disappeared or reached zero seats left; `shrunk` — the party size
+ * now exceeds what is left. Derived from the *live* slot list (the
+ * SSE-patched query), suppressed while a booking attempt is in flight
+ * or done — the 409 the server answers is already the honest verdict,
+ * and a notice stacked on it would only flicker.
+ */
+export type OccupancyNotice = 'filled' | 'shrunk' | null
+
 export function useBookingDialog({
   service,
   slots = [],
   preselectedSlotId,
 }: UseBookingDialogOptions) {
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const createBooking = useCreateBooking()
   const t = useTranslations('Booking')
   const locale = useLocale()
@@ -103,6 +113,8 @@ export function useBookingDialog({
    * The most a party may claim on a slot: the organizer's per-booking cap,
    * but never more than the seats actually left. Before a slot is picked the
    * service cap stands in — the details step is only reached with one.
+   * The `Math.max(1, …)` floor keeps the stepper's upper bound sane on a
+   * filled slot; the submit-side guards use the real `seatsLeft` below.
    */
   const seatCeiling = (slot: string | undefined) => {
     const picked = slot ? slots.find((s) => s.id === slot) : undefined
@@ -116,10 +128,63 @@ export function useBookingDialog({
   const clampSeats = (value: number, slot: string | undefined) =>
     Math.min(Math.max(1, value), seatCeiling(slot))
 
+  // ── Live occupancy (ADR-025) ────────────────────────────────────────────
+  // `slots` is the SSE-patched list — a slot can fill, shrink or vanish
+  // mid-flow. Notices are derived, never stored: they cannot desync.
+  const pickedSlot = slotId ? slots.find((s) => s.id === slotId) : undefined
+  /** Real seats left on the picked slot — 0 when it filled or vanished. */
+  const liveSeatsLeft = pickedSlot ? seatsLeft(pickedSlot) : 0
+  /**
+   * Suppression: from the Telegram tap (`attempted`) through the pending
+   * POST and any 409 error, and on the success screen — the event that
+   * arrives then is *our own* booking (or another guest's) and the
+   * server response already reports the outcome. Cleared by any
+   * deliberate navigation (back, re-pick, confirm-seats).
+   */
+  const liveSuppressed = attempted || step === 'success'
+  const liveNotice: OccupancyNotice =
+    !liveSuppressed && slotId
+      ? pickedSlot === undefined || liveSeatsLeft === 0
+        ? 'filled'
+        : seats > liveSeatsLeft
+          ? 'shrunk'
+          : null
+      : null
+
+  /** Clear the attempt marks — any deliberate navigation lets notices resurface. */
+  function clearAttempt() {
+    setAttempted(false)
+    setError(null)
+    setIsDuplicate(false)
+  }
+
   /** Pick a slot and re-clamp the party size against its remaining seats. */
   function setSlotId(next: string | undefined) {
+    if (next !== slotId) {
+      // A deliberate re-pick clears the previous attempt state.
+      clearAttempt()
+    }
     setSlotIdRaw(next)
     setSeats((prev) => clampSeats(prev, next))
+  }
+
+  /** `slotFilled`'s action: back to the picker with a clean slate. */
+  function pickAnotherSlot() {
+    setStep('slot')
+    setSlotIdRaw(undefined)
+    clearAttempt()
+  }
+
+  /** `seatsShrunk`'s confirm: take what is left, clear the attempt state. */
+  function bookRemainingSeats() {
+    setSeats(Math.max(1, liveSeatsLeft))
+    clearAttempt()
+  }
+
+  /** Verify → details: clears the spent attempt so notices can resurface. */
+  function backFromVerify() {
+    setStep('details')
+    clearAttempt()
   }
 
   function reset() {
@@ -129,9 +194,7 @@ export function useBookingDialog({
     setName('')
     setSeats(1)
     setBooking(null)
-    setError(null)
-    setIsDuplicate(false)
-    setAttempted(false)
+    clearAttempt()
     inFlightCount.current = 0
   }
 
@@ -163,12 +226,13 @@ export function useBookingDialog({
 
     inFlightCount.current++
     try {
-      // Clamp at submit too — the slot may have lost seats between steps.
-      const seatCount = clampSeats(seats, slotId)
+      // No last-second clamp: the step guards block a stale request, a
+      // just-lost seat is the server's 409 — a silent shrink books the
+      // wrong thing.
       const result = await createBooking.mutateAsync({
         serviceId: service.id,
         timeSlotId: slotId,
-        seats: seatCount,
+        seats,
         guestName: name.trim() || ticket.displayName,
         guestTicket: ticket.ticket,
         selectedOptions: selectedOptions.length > 0 ? selectedOptions : undefined,
@@ -179,8 +243,12 @@ export function useBookingDialog({
 
       setBooking(result.booking)
       setStep('success')
-      // Server-rendered page: refresh so the slot list reflects the taken seat.
-      router.refresh()
+      // The slot list is a client query (ADR-025): RSC cannot overwrite
+      // the seeded cache, so invalidate directly on booking completion
+      // without waiting for the post-commit SSE signal.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.publicService.detail(service.id),
+      })
     } catch (err) {
       // A 401 with another call in flight is the widget double-fire — drop it.
       if (err instanceof ApiError && err.status === 401 && inFlightCount.current > 1) {
@@ -188,6 +256,14 @@ export function useBookingDialog({
       }
       setError(localizedError(t, err))
       setIsDuplicate(err instanceof ApiError && err.code === 'duplicate_booking')
+      // A 409 means occupancy moved (sold out / capacity shrink) —
+      // refetch so the guest sees real seats. Other failures say
+      // nothing about occupancy; a refetch would just spend a request.
+      if (err instanceof ApiError && err.status === 409) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.publicService.detail(service.id),
+        })
+      }
     } finally {
       inFlightCount.current--
     }
@@ -219,6 +295,11 @@ export function useBookingDialog({
     error,
     isDuplicate,
     attempted,
+    liveNotice,
+    liveSeatsLeft,
+    pickAnotherSlot,
+    bookRemainingSeats,
+    backFromVerify,
     reset,
     goFromSlot,
     toggleOption,

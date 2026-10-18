@@ -1,30 +1,25 @@
 import {
   effectiveContact,
   effectiveLocation,
-  seatsLeft,
   serviceId as serviceIdShape,
-  slotPrice,
   slugShape,
 } from '@repo/contracts'
-import { ArrowLeft, CalendarX } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getLocale, getTranslations } from 'next-intl/server'
+import { getTranslations } from 'next-intl/server'
 
 import { ServiceMetaBadges } from '@/app/(guest)/_components/service-meta-badges'
-import { BookButton } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/book-button'
 import { BookingFlow } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/booking-flow'
-import { SeatsBadge } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/seats-badge'
 import { serviceJsonLd } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/service-json-ld'
+import { SlotList } from '@/app/(guest)/[orgSlug]/[serviceId]/_components/slot-list'
 import { ContactLink } from '@/components/contact-link'
 import { JsonLd } from '@/components/json-ld'
 import { LocationLink } from '@/components/location-link'
 import { Badge } from '@/components/ui/badge'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
-import { formatDate, formatTime } from '@/helpers/date'
 import { pageMetadata } from '@/lib/seo'
 import { getPublicServiceView } from '@/server/api-client'
 
@@ -75,15 +70,12 @@ export default async function ServicePage({
   params: Promise<{ orgSlug: string; serviceId: string }>
 }) {
   const { orgSlug, serviceId } = await params
-  const [t, locale, resolved] = await Promise.all([
+  const [t, resolved] = await Promise.all([
     getTranslations('ServicePage'),
-    getLocale(),
     resolveService(orgSlug, serviceId),
   ])
   if (!resolved) notFound()
   const { organizer, service, slots } = resolved
-
-  const hasOpen = slots.some((slot) => seatsLeft(slot) > 0)
 
   // A service may override its organizer's location and contact; the fallback
   // rule lives in contracts because the worker and calendar links need it
@@ -99,7 +91,7 @@ export default async function ServicePage({
         footer buttons only select a session — N+1 dialogs used to mount a
         state machine each.
       */}
-      <BookingFlow organizer={organizer} service={service} slots={slots}>
+      <BookingFlow initialView={resolved}>
         <div className="flex flex-col gap-5">
           <Link
             href={`/${organizer.slug}`}
@@ -163,57 +155,14 @@ export default async function ServicePage({
           </div>
 
           <Separator />
-
-          <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-medium">{t('upcomingSlots')}</h2>
-
-            {slots.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <CalendarX className="size-6 text-muted-foreground" />
-                  <EmptyTitle>{t('noSlotsYet')}</EmptyTitle>
-                  <EmptyDescription>{t('checkBackSoon')}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {slots.map((slot) => {
-                  const full = seatsLeft(slot) === 0
-                  return (
-                    <div
-                      key={slot.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {formatDate(slot.startsAt, organizer.timezone, locale)} ·{' '}
-                          {formatTime(slot.startsAt, organizer.timezone, locale)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {slotPrice(slot, service)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <SeatsBadge slot={slot} />
-                        <BookButton slotId={slot.id} size="sm" disabled={full}>
-                          {full ? t('full') : t('book')}
-                        </BookButton>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="sticky bottom-4 mt-6">
-          <div className="rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-            <BookButton size="lg" className="w-full" disabled={!hasOpen}>
-              {hasOpen ? t('bookNow') : t('fullyBooked')}
-            </BookButton>
-          </div>
-        </div>
+        {/*
+          The slot list, empty state and sticky footer read the live
+          query inside BookingFlow (ADR-025) — occupancy changes refetch
+          it without a page reload.
+        */}
+        <SlotList />
       </BookingFlow>
     </>
   )

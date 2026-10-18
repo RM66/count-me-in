@@ -18,9 +18,11 @@ singleton; nothing here opens a connection at module load.
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from .. import logx
 from ..auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
+from ..demo import is_demo_organizer
 from .async_client import client as async_client
 
 # The Next.js-internal route — not rewritten to the Python API: the
@@ -55,14 +57,41 @@ def public_tags(
     return tags
 
 
-async def trigger_revalidation(tags: list[str]) -> None:
+def occupancy_event(service_id: str, organizer_id: str) -> dict[str, str] | None:
+    """The occupancy-change signal that rides the revalidation hop
+    (ADR-025): the internal route emits it as `slot.occupancy` onto the
+    service and organizer channels via the official SDK, and subscribed
+    browsers refetch.
+
+    None for the demo organizer — a stray call must never emit for it
+    (the route refuses too).
+    """
+    if is_demo_organizer(organizer_id):
+        return None
+    return {
+        "serviceId": str(service_id),
+        "organizerId": str(organizer_id),
+    }
+
+
+async def trigger_revalidation(tags: list[str], *, occupancy: dict[str, str] | None = None) -> None:
     """POST the tags to the Next.js revalidation route. Best-effort:
-    transport errors and non-2xx answers are logged and swallowed —
-    the 60s TTL covers the miss."""
+    transport errors and non-2xx are logged and swallowed — the 60s TTL
+    covers the miss. A present ``occupancy`` rides the same hop; the
+    route emits it via Upstash Realtime after revalidating (ADR-025)."""
     deduped = sorted(set(tags))
     if not deduped:
+        if occupancy is not None:
+            logx.warn(
+                "occupancy signal dropped: no revalidation tags supplied",
+                {"scope": "revalidate"},
+            )
         return
-    app_url = os.getenv("APP_URL", "").rstrip("/")
+    # INTERNAL_APP_URL overrides the server-to-server origin when it
+    # differs from public APP_URL — inside compose the API reaches
+    # Next.js as http://web:3000 while APP_URL stays the public origin
+    # for QStash and notification links. Outside compose they coincide.
+    app_url = os.getenv("INTERNAL_APP_URL", "").rstrip("/") or os.getenv("APP_URL", "").rstrip("/")
     auth_secret = os.getenv("AUTH_SECRET", "")
     if app_url == "" or auth_secret == "":
         return  # dev without APP_URL/AUTH_SECRET: the TTL fallback covers it
@@ -76,10 +105,13 @@ async def trigger_revalidation(tags: list[str]) -> None:
     bypass = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "")
     if bypass:
         headers["x-vercel-protection-bypass"] = bypass
+    body: dict[str, Any] = {"tags": deduped}
+    if occupancy is not None:
+        body["occupancy"] = occupancy
     try:
         res = await async_client().post(
             app_url + REVALIDATE_PATH,
-            json={"tags": deduped},
+            json=body,
             headers=headers,
             timeout=_HTTP_TIMEOUT,
         )

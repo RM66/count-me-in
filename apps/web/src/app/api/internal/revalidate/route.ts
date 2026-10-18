@@ -1,34 +1,42 @@
 import { timingSafeEqual } from 'node:crypto'
+import {
+  DEMO_ORGANIZER_ID,
+  REALTIME_EVENT_SLOT_OCCUPANCY,
+  realtimeChannels,
+  slotOccupancyEvent,
+} from '@repo/contracts'
 import { revalidateTag } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 import { derivedInternalSecret, INTERNAL_SECRET_HEADER } from '@/server/internal-api'
+import { realtime, realtimeConfigured } from '@/server/realtime'
 
 /**
  * POST /api/internal/revalidate — on-demand Data Cache invalidation
- * (ADR-023).
+ * (ADR-023). Public SSR reads are cached under `public-organizer:{slug}`,
+ * `public-service:{id}`, `public-sitemap` tags with a 60s TTL; the
+ * Python API POSTs affected tags after a committed mutation so pages go
+ * stale immediately.
  *
- * Public SSR reads are cached in the Next.js Data Cache under
- * `public-organizer:{slug}`, `public-service:{id}` and `public-sitemap`
- * tags with a 60s TTL fallback. The Python API POSTs the affected tags
- * here after a committed mutation so the public page goes stale
- * immediately instead of at the next TTL.
+ * Lives on Next.js: `revalidateTag` is a runtime primitive. `proxy.ts`
+ * excludes the path (else the container twin would rewrite it to
+ * API_URL); auth is the internal service secret — the caller is the
+ * Python API itself.
  *
- * Lives on Next.js, not the Python API: `revalidateTag` is a Next.js
- * runtime primitive. `proxy.ts` excludes this path from the middleware
- * (it would otherwise be rewritten to API_URL in the container twin),
- * and the filesystem route wins over the catch-all `/api/internal/:path*`
- * rewrite in `vercel.json`. Auth is the internal service secret, not the
- * organizer-auth middleware — the caller is the Python API itself.
+ * The body may also carry `occupancy` — the channel-target signal a
+ * committed seat/capacity change produces (ADR-025). The route emits it
+ * as `slot.occupancy` on service + organizer channels via
+ * `@upstash/realtime`, which owns the wire format — Python describes
+ * *what* changed, never *how* it is encoded.
  *
- * Failure contract: the caller treats any non-2xx as best-effort and
- * falls back to the TTL; a refused call only delays visibility.
+ * Failure contract: non-2xx is best-effort for the caller (TTL covers
+ * it). The emit leg fails open the same way — an outage or unconfigured
+ * pair answers 200 with `emitted: false`; the demo id never reaches the
+ * channels.
  */
 
-// Only the public-cache tag families may be invalidated from here. An
-// arbitrary-tags endpoint would let anyone holding (or guessing) the
-// credential poke at unrelated cache entries — the allowlist keeps the
-// blast radius to exactly the tags api-client.ts writes.
+// Only the public-cache tag families — the allowlist keeps the blast
+// radius to exactly the tags api-client.ts writes.
 const ALLOWED_TAG = /^public-(organizer|service|sitemap)(:[a-zA-Z0-9_-]{1,64})?$/
 
 const MAX_TAGS = 32
@@ -39,6 +47,7 @@ const CODE_UNAUTHORIZED = 'unauthorized'
 const CODE_INVALID_JSON = 'invalid JSON'
 const CODE_BAD_TAGS = 'tags must be a non-empty array'
 const CODE_UNSUPPORTED_TAG = 'unsupported tag'
+const CODE_BAD_OCCUPANCY = 'unsupported occupancy'
 
 function authorized(request: Request): boolean {
   const authSecret = process.env.AUTH_SECRET
@@ -61,7 +70,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ error: CODE_INVALID_JSON }, { status: 400 })
   }
-  const tags = body && typeof body === 'object' ? (body as { tags?: unknown }).tags : undefined
+  const record =
+    body && typeof body === 'object' ? (body as { tags?: unknown; occupancy?: unknown }) : {}
+  const tags = record.tags
   if (!Array.isArray(tags) || tags.length === 0 || tags.length > MAX_TAGS) {
     return NextResponse.json({ error: CODE_BAD_TAGS }, { status: 400 })
   }
@@ -71,10 +82,47 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
   }
   for (const tag of tags as string[]) {
-    // 'max' — the built-in stale-while-revalidate profile: entries are
-    // marked stale and revalidated on the next read (the classic
-    // single-argument semantics; Next 16 requires the profile arg).
+    // 'max' — stale-while-revalidate (the classic single-arg
+    // semantics; Next 16 requires the profile arg).
     revalidateTag(tag, 'max')
   }
-  return NextResponse.json({ revalidated: true, tags })
+  // Revalidate first so a malformed occupancy payload never blocks the
+  // primary Data Cache invalidation; still answer 400 so Python↔contracts
+  // drift surfaces in logs and tests.
+  const occupancy =
+    record.occupancy === undefined ? undefined : slotOccupancyEvent.safeParse(record.occupancy)
+  if (occupancy !== undefined && !occupancy.success) {
+    return NextResponse.json({ error: CODE_BAD_OCCUPANCY, revalidated: true }, { status: 400 })
+  }
+
+  let emitted = false
+  // Without a resolved REST pair the SDK only warns — emitting anyway
+  // would report `emitted: true` for an event that went nowhere. The
+  // demo id is refused on subscribe; the emit must not spend a publish
+  // on it either (second fence — Python already drops it).
+  if (
+    realtimeConfigured &&
+    occupancy?.success &&
+    occupancy.data.organizerId !== DEMO_ORGANIZER_ID
+  ) {
+    const channels = [
+      realtimeChannels.service(occupancy.data.serviceId),
+      realtimeChannels.organizer(occupancy.data.organizerId),
+    ]
+    const results = await Promise.allSettled(
+      channels.map((channel) =>
+        realtime.channel(channel).emit(REALTIME_EVENT_SLOT_OCCUPANCY, occupancy.data),
+      ),
+    )
+    emitted = results.every((result) => result.status === 'fulfilled')
+    for (const [i, result] of results.entries()) {
+      // Fail-open (ADR-025): the write committed and the tags
+      // revalidated — an outage must not turn this hop into a 5xx.
+      // allSettled so the warning names the failed channel.
+      if (result.status === 'rejected') {
+        console.warn('[realtime] occupancy emit failed', channels[i], result.reason)
+      }
+    }
+  }
+  return NextResponse.json({ revalidated: true, tags, emitted })
 }

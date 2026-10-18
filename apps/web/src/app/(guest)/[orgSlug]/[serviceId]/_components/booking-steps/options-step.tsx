@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { FieldLegend, FieldSet } from '@/components/ui/field'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
+import { LiveOccupancyNotice } from './live-occupancy-notice'
 
 /**
  * Step 2: choose options (add-ons or single-choice).
@@ -17,17 +18,26 @@ import { cn } from '@/lib/utils'
  * Only rendered when the service has options. The selection mode (single vs
  * multi) comes from the service and decides whether this is a `RadioGroup` or a
  * checkbox list.
+ *
+ * Live occupancy (ADR-025): the party size is not picked yet on this step, so
+ * only a *filled* slot blocks it — a partial shrink is still fixable on the
+ * details step.
  */
 export function OptionsStep({
   service,
   selectedOptions,
   onToggleOption,
+  liveNotice,
+  onPickAnotherSlot,
   onBack,
   onContinue,
 }: {
   service: ServiceRecord
   selectedOptions: string[]
   onToggleOption: (value: string) => void
+  /** 'filled' when the picked session vanished or hit zero seats — null otherwise. */
+  liveNotice: 'filled' | null
+  onPickAnotherSlot: () => void
   onBack: () => void
   onContinue: () => void
 }) {
@@ -38,6 +48,7 @@ export function OptionsStep({
 
   return (
     <div className="flex flex-col gap-4">
+      {liveNotice && <LiveOccupancyNotice notice={liveNotice} onPickAnother={onPickAnotherSlot} />}
       {service.optionsSelectMode === 'single' ? (
         <RadioGroup
           value={selectedOptions[0]}
@@ -89,7 +100,9 @@ export function OptionsStep({
         </Button>
         <Button
           className="flex-1"
-          disabled={service.optionsSelectMode === 'single' && !selectedOptions.length}
+          disabled={
+            !!liveNotice || (service.optionsSelectMode === 'single' && !selectedOptions.length)
+          }
           onClick={onContinue}
         >
           {t('continue')}

@@ -235,6 +235,9 @@ async def update_slot_merge_patch(
         .where(TimeSlot.id.in_(slot_ids))
         .values(**touched_values)
         .returning(TimeSlot)
+        # populate_existing: `current` is already mapped — keep the
+        # RETURNING row authoritative for the response DTO.
+        .execution_options(populate_existing=True)
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()

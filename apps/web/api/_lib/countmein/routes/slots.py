@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 from starlette.responses import Response as StarletteResponse
 
+from .. import logx
 from ..contracts import models_gen as gen
 from ..db.serializers import to_time_slot_record
 from ..errors import ServiceNotFound, SlotNotFound
@@ -39,7 +40,8 @@ from ..web.deps import (
     uuid_path_param,
 )
 from ..web.guards import require_writable_organizer
-from ..web.revalidate import public_tags, trigger_revalidation
+from ..web.revalidate import occupancy_event, public_tags, trigger_revalidation
+from .followups import run_followups
 from .mergepatch import SLOT_FIELDS, apply_merge_patch
 
 # One malformed-UUID rule for every /api/slots/{id} route: the JSON
@@ -163,7 +165,7 @@ async def slot_patch(
     touch bookedCount (seats change only via the atomic reserve);
     shrinking capacity below sold seats answers 409. JSON Merge Patch
     body (RFC 7386/ADR-016): validated, merged, re-validated."""
-    row, _previous, _touched = await apply_merge_patch(
+    row, previous, _touched = await apply_merge_patch(
         session,
         body.raw,
         fetch=lambda s: _fetch_owned_slot(s, organizer_id, id),
@@ -178,11 +180,32 @@ async def slot_patch(
     )
 
     star = json_response(200, gen.SlotEnvelope(slot=to_time_slot_record(row)))
-    # startsAt/duration/capacity/price render on both public surfaces.
-    star.background = BackgroundTask(
-        trigger_revalidation, public_tags(organizer_slug=slug, service_id=row.service_id)
+    # startsAt/duration/capacity/price render on both public surfaces —
+    # plus the occupancy signal when the patch really moved capacity.
+    # Plain values are extracted here so ORM rows do not enter the
+    # background task.
+    tags = public_tags(organizer_slug=slug, service_id=row.service_id)
+    occupancy = (
+        occupancy_event(row.service_id, organizer_id)
+        if row.capacity != previous["capacity"]
+        else None
     )
+    star.background = BackgroundTask(run_slot_patch_followups, tags, occupancy, logx.new_trace_id())
     return star
+
+
+async def run_slot_patch_followups(
+    tags: list[str],
+    occupancy: dict[str, str] | None,
+    trace_id: str,
+) -> None:
+    """After-commit work for a slot PATCH (ADR-025): the revalidation
+    hop carries an occupancy signal iff capacity changed."""
+    await run_followups(
+        [trigger_revalidation(tags, occupancy=occupancy)],
+        source="slot-patch-followups",
+        trace_id=trace_id,
+    )
 
 
 async def slot_delete(

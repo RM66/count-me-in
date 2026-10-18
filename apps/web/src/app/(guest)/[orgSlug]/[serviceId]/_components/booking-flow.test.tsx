@@ -1,4 +1,10 @@
-import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
+import type {
+  PublicOrganizer,
+  PublicServiceViewEnvelope,
+  ServiceRecord,
+  TimeSlotRecord,
+} from '@repo/contracts'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -12,9 +18,19 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }))
 
-vi.mock('@/api-client', () => ({
-  useCreateBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}))
+// Keep the real realtime/channel wrappers' neighbours, stub the live
+// pieces: no SSE subscription and no network reconcile in jsdom.
+vi.mock('@/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api-client')>()
+  return {
+    ...actual,
+    useCreateBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useRealtimeConfigured: () => false,
+    useLivePublicService: (_id: string, initial: PublicServiceViewEnvelope) => ({
+      data: initial,
+    }),
+  }
+})
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -64,14 +80,18 @@ const slots = [
   slot('5f20f0e0-0000-4000-8000-000000000002', '22'),
 ]
 
+const initialView = { organizer, service, slots } as PublicServiceViewEnvelope
+
 function renderFlow() {
   return render(
-    <IntlTestProvider>
-      <BookingFlow organizer={organizer} service={service} slots={slots}>
-        <BookButton slotId={slots[0]!.id}>Book Monday</BookButton>
-        <BookButton slotId={slots[1]!.id}>Book Tuesday</BookButton>
-      </BookingFlow>
-    </IntlTestProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <IntlTestProvider>
+        <BookingFlow initialView={initialView}>
+          <BookButton slotId={slots[0]!.id}>Book Monday</BookButton>
+          <BookButton slotId={slots[1]!.id}>Book Tuesday</BookButton>
+        </BookingFlow>
+      </IntlTestProvider>
+    </QueryClientProvider>,
   )
 }
 

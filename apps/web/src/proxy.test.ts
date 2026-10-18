@@ -23,7 +23,7 @@ vi.mock('@/server/auth/organizer-token', () => ({
 
 import { NextRequest, NextResponse } from 'next/server'
 
-import { proxy } from './proxy'
+import { config, proxy } from './proxy'
 
 function makeRequest(pathname: string, headers: Record<string, string> = {}): NextRequest {
   const url = new URL(`https://countmein.group${pathname}`)
@@ -167,6 +167,33 @@ describe('proxy — container rewrite (API_URL, VERCEL !== 1)', () => {
     const res = await proxy(makeRequest('/api/services'))
     expect(res!.headers.get('x-middleware-rewrite')).toBeNull()
     expect(res!.status).toBe(200)
+  })
+})
+
+describe('proxy — /api/realtime (ADR-025)', () => {
+  it('the matcher does NOT match /api/realtime — the SSE route must never be rewritten', () => {
+    // Next.js matcher syntax: a literal prefix plus one regex group.
+    const apiEntry = config.matcher.find((m) => m.startsWith('/api/'))
+    const group = apiEntry!.match(/^\/api\/(\(.*\))$/)![1]!
+    const re = new RegExp(`^/api/${group}$`)
+    expect(re.test('/api/realtime')).toBe(false)
+    expect(re.test('/api/realtime/extra')).toBe(false)
+    // Lookalikes must not slip out: /api/realtimeXYZ stays covered.
+    expect(re.test('/api/realtime-stats')).toBe(true)
+    // Neighbours stay covered — the pin guards a widened exclusion.
+    expect(re.test('/api/services')).toBe(true)
+    expect(re.test('/api/auth/telegram-guest')).toBe(true)
+    expect(re.test('/api/auth/session')).toBe(false)
+    expect(re.test('/api/internal/revalidate')).toBe(false)
+  })
+
+  it('passes /api/realtime through untouched even if it is invoked (matcher guard)', async () => {
+    // The in-function guard is the second line if the matcher re-matches.
+    vi.stubEnv('API_URL', 'http://api:3001')
+    const res = await proxy(makeRequest('/api/realtime?channel=service:svc-1'))
+    expect(res!.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(mockAuth).not.toHaveBeenCalled()
+    expect(mockMint).not.toHaveBeenCalled()
   })
 })
 

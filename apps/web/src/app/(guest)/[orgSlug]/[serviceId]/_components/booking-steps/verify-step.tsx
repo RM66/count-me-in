@@ -10,12 +10,17 @@ import { TelegramLoginButton } from '@/components/telegram-login-button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import type { OccupancyNotice } from '../use-booking-dialog'
+import { LiveOccupancyNotice } from './live-occupancy-notice'
 
 /**
  * Step 4: confirm identity with Telegram.
  *
  * The demo organizer is read-only (ADR-010). The API refuses the write
  * regardless — this only spares the guest a Telegram tap before being told so.
+ *
+ * Live occupancy (ADR-025): a `liveNotice` hides the widget — tapping Telegram
+ * on a stale seat count would only burn a ticket into a 409.
  */
 export function VerifyStep({
   organizer,
@@ -23,6 +28,10 @@ export function VerifyStep({
   isDuplicate,
   isCreating,
   attempted,
+  liveNotice,
+  liveSeatsLeft,
+  onPickAnotherSlot,
+  onConfirmSeats,
   botUsername,
   onTicket,
   onTicketError,
@@ -35,6 +44,10 @@ export function VerifyStep({
   isCreating: boolean
   /** Whether the guest has already tapped Telegram — keeps the button hidden after. */
   attempted: boolean
+  liveNotice: OccupancyNotice
+  liveSeatsLeft: number
+  onPickAnotherSlot: () => void
+  onConfirmSeats: () => void
   botUsername?: string
   onTicket: (ticket: GuestTicketResponse) => void
   /** Widget-side failure before a ticket exists — nothing was consumed. */
@@ -58,6 +71,14 @@ export function VerifyStep({
         </Alert>
       ) : (
         <>
+          {liveNotice && (
+            <LiveOccupancyNotice
+              notice={liveNotice}
+              seatsLeft={liveSeatsLeft}
+              onPickAnother={onPickAnotherSlot}
+              onConfirmSeats={onConfirmSeats}
+            />
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertCircle />
@@ -74,7 +95,7 @@ export function VerifyStep({
               </AlertDescription>
             </Alert>
           )}
-          {!attempted && (
+          {!attempted && !liveNotice && (
             <p className="text-center text-sm text-muted-foreground text-pretty">
               {t('confirmHint')}
             </p>
@@ -86,7 +107,7 @@ export function VerifyStep({
                   <Spinner />
                   {t('reserving')}
                 </div>
-              ) : attempted ? null : (
+              ) : attempted || liveNotice ? null : (
                 <TelegramLoginButton
                   botUsername={botUsername}
                   buttonSize="large"
