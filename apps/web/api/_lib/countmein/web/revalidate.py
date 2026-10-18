@@ -25,8 +25,10 @@ from ..auth.internal import INTERNAL_SECRET_HEADER, derived_internal_secret
 from ..demo import is_demo_organizer
 from .async_client import client as async_client
 
-# The Next.js-internal route — not rewritten to the Python API: the
-# filesystem route wins over vercel.json's /api/internal/:path* rewrite.
+# The Next.js keeper — vercel.json rewrites only /api/internal/auth/*
+# to the Python API, so this path reaches the filesystem route in every
+# topology (dev maps the same rewrites to beforeFiles, which would
+# otherwise shadow it and silently kill the emit leg).
 REVALIDATE_PATH = "/api/internal/revalidate"
 
 # Short budget: the task runs after the response is sent; a hung
