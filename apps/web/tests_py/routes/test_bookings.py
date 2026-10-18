@@ -880,3 +880,205 @@ async def test_bookings_list_carries_referenced_slots(client):
         assert r.json()["slots"] == []
     finally:
         await _cleanup_route_fixture(fixture)
+
+
+# ── Realtime occupancy emit (ADR-025) ─────────────────────────────────────────
+
+
+def _emit_recorder(monkeypatch):
+    """Capture the occupancy payload riding the revalidation hop: the
+    emit lives in the Next.js route (ADR-025); what this side pins is
+    that the hop carries the RETURNING row's post-change snapshot."""
+    from countmein.routes import bookings as bookings_route
+
+    emitted: list[dict] = []
+
+    async def _record(tags, *, occupancy=None):
+        emitted.append(occupancy)
+
+    monkeypatch.setattr(bookings_route, "trigger_revalidation", _record)
+    # The publish leg must not reach the network: publish fails fast on
+    # an unreachable QStash.
+    monkeypatch.setenv("QSTASH_TOKEN", "test-token")
+    monkeypatch.setenv("QSTASH_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("APP_URL", "https://example.com")
+    return emitted
+
+
+async def test_booking_create_emits_occupancy(client, fake_redis, monkeypatch):
+    """A committed booking emits the post-bump snapshot — same
+    follow-up task as the notification publish, concurrent with it."""
+    fixture = await new_route_fixture(10, 0)
+    try:
+        emitted = _emit_recorder(monkeypatch)
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 2,
+                "guestName": "Ann",
+                "guestTicket": await guest_ticket("rt-emit-create"),
+            }
+        ).encode()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.60"}
+        )
+        assert r.status_code == 201, r.text
+        fixture.booking_ids.append(json.loads(r.content)["booking"]["id"])
+
+        assert len(emitted) == 1
+        assert emitted[0] == {
+            "serviceId": fixture.service_id,
+            "organizerId": fixture.organizer_id,
+        }
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_booking_cancel_emits_occupancy(client, fake_redis, monkeypatch):
+    """A guest cancel releases the seats and emits the occupancy signal."""
+    fixture = await new_route_fixture(10, 0)
+    try:
+        emitted = _emit_recorder(monkeypatch)
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 2,
+                "guestName": "Ann",
+                "guestTicket": await guest_ticket("rt-emit-cancel"),
+            }
+        ).encode()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.61"}
+        )
+        assert r.status_code == 201, r.text
+        fixture.booking_ids.append(json.loads(r.content)["booking"]["id"])
+        token = json.loads(r.content)["booking"]["manageToken"]
+
+        emitted.clear()
+        r = await client.post(
+            "/api/bookings/cancel",
+            content=json.dumps({"manageToken": token}).encode(),
+            headers={"x-forwarded-for": "203.0.113.61"},
+        )
+        assert r.status_code == 200, r.text
+        assert len(emitted) == 1
+        assert emitted[0] == {
+            "serviceId": fixture.service_id,
+            "organizerId": fixture.organizer_id,
+        }
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_booking_cancel_by_organizer_emits_occupancy(client, fake_redis, monkeypatch):
+    """The organizer-side cancel emits identically — the cabinet and
+    the public page both update."""
+    fixture = await new_route_fixture(10, 0)
+    try:
+        emitted = _emit_recorder(monkeypatch)
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 1,
+                "guestName": "Ann",
+                "guestTicket": await guest_ticket("rt-emit-orgcancel"),
+            }
+        ).encode()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.62"}
+        )
+        assert r.status_code == 201, r.text
+        booking_id = json.loads(r.content)["booking"]["id"]
+        fixture.booking_ids.append(booking_id)
+
+        emitted.clear()
+        r = await client.post(
+            "/api/bookings/cancel-by-organizer",
+            content=json.dumps({"bookingId": booking_id}).encode(),
+            headers={
+                **organizer_headers(fixture.organizer_id),
+                "x-forwarded-for": "203.0.113.62",
+            },
+        )
+        assert r.status_code == 200, r.text
+        assert len(emitted) == 1
+        assert emitted[0] == {
+            "serviceId": fixture.service_id,
+            "organizerId": fixture.organizer_id,
+        }
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_booking_create_sold_out_does_not_emit(client, fake_redis, monkeypatch):
+    """A refused write emits nothing — there is no occupancy change to
+    fan out."""
+    fixture = await new_route_fixture(2, 2)
+    try:
+        emitted = _emit_recorder(monkeypatch)
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 1,
+                "guestName": "Ann",
+                "guestTicket": await guest_ticket("rt-emit-soldout"),
+            }
+        ).encode()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.63"}
+        )
+        assert r.status_code == 409, r.text
+        assert emitted == []
+    finally:
+        await _cleanup_route_fixture(fixture)
+
+
+async def test_followups_run_publish_and_hop_concurrently(client, fake_redis, monkeypatch):
+    """The revalidation hop (carrying the occupancy event) must not wait
+    behind a slow publish: both legs of the follow-up task start
+    together under the shared deadline."""
+    from countmein.routes import bookings as bookings_route
+
+    fixture = await new_route_fixture(10, 0)
+    try:
+        hopped_at: list[float] = []
+        import asyncio
+        import time
+
+        async def _slow_publish(rows, trace_id):
+            await asyncio.sleep(2)
+            return None
+
+        async def _record_revalidate(tags, *, occupancy=None):
+            hopped_at.append(time.monotonic())
+
+        monkeypatch.setattr(bookings_route, "publish_outbox_rows", _slow_publish)
+        monkeypatch.setattr(bookings_route, "trigger_revalidation", _record_revalidate)
+        monkeypatch.setenv("APP_URL", "https://example.com")
+
+        body = json.dumps(
+            {
+                "serviceId": fixture.service_id,
+                "timeSlotId": fixture.slot_id,
+                "seats": 1,
+                "guestName": "Ann",
+                "guestTicket": await guest_ticket("rt-emit-parallel"),
+            }
+        ).encode()
+        started = time.monotonic()
+        r = await client.post(
+            "/api/bookings", content=body, headers={"x-forwarded-for": "203.0.113.64"}
+        )
+        assert r.status_code == 201, r.text
+        fixture.booking_ids.append(json.loads(r.content)["booking"]["id"])
+
+        assert len(hopped_at) == 1
+        assert hopped_at[0] - started < 1.0, (
+            "the hop must run concurrently with the publish, not after it"
+        )
+    finally:
+        await _cleanup_route_fixture(fixture)

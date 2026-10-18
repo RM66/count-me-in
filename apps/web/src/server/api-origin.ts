@@ -1,13 +1,28 @@
 import { cookies } from 'next/headers'
+import { unstable_rethrow } from 'next/navigation'
 
 import 'server-only'
 
-function trimSlash(value: string | undefined): string | undefined {
-  return value?.replace(/\/$/, '') || undefined
+/**
+ * Normalize a configured origin. Vercel system variables carry a bare host,
+ * so a missing scheme means https. Anything beyond scheme + host + port
+ * (credentials, path, query, fragment) is refused rather than silently
+ * dropped: a typo must not steer credentialed fetches somewhere unexpected.
+ */
+function toOrigin(name: string, raw: string | undefined): string | undefined {
+  const value = raw?.trim()
+  if (!value) {
+    return undefined
+  }
+  const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`)
+  if (url.href !== `${url.origin}/`) {
+    throw new Error(`${name} must be an origin without credentials, path, query or fragment`)
+  }
+  return url.origin
 }
 
 /**
- * Resolve the API origin for a server-side fetch (ADR-022).
+ * Resolve the API origin for a server-side fetch.
  *
  * Kept in its own leaf module so both `api.ts` (session-minting writes)
  * and `internal-api.ts` (Auth.js provider lookup) share one origin
@@ -21,50 +36,39 @@ function trimSlash(value: string | undefined): string | undefined {
  *
  * Resolution order:
  * 1. `API_URL` — a separate API origin (dev API server, container twin).
- * 2. Production (`VERCEL_ENV=production`): `VERCEL_PROJECT_PRODUCTION_URL` —
- *    the project's production domain, which is NOT gated by Deployment
- *    Protection. `VERCEL_URL` (the `*.vercel.app` deployment URL) IS gated
- *    when protection is on: a server-side fetch is redirected to the SSO
- *    login page and reads its HTML as a broken JSON body — surfacing as a
- *    Zod "contract violation" on every read. The production domain serves
- *    the same deployment through the same rewrites, unprotected.
- * 3. `VERCEL_URL` — the deployment's own host; correct on previews (where
- *    the `_vercel_jwt` bypass cookie or `VERCEL_AUTOMATION_BYPASS_SECRET`
- *    cover the gate) and as a last resort on production.
- * 4. `NEXT_PUBLIC_SITE_URL` — the configured public origin.
+ * 2. On Vercel, the deployment's environment decides:
+ *    - production: `VERCEL_PROJECT_PRODUCTION_URL` — the production domain,
+ *      which Standard Deployment Protection leaves ungated. The deployment
+ *      URL (`VERCEL_URL`) is gated, and a fetch without the bypass would be
+ *      redirected to the SSO page and parse its HTML as a broken JSON body.
+ *      Trade-off: the production domain serves the *promoted* deployment,
+ *      so a non-promoted production build (e.g. after an Instant Rollback)
+ *      reads the promoted deployment's API.
+ *    - preview: `VERCEL_URL` — the deployment's own host, so the preview
+ *      talks to its own API; `deploymentBypassHeaders` covers the gate.
+ *      Never the production domain: preview credentials stay off prod.
+ * 3. `NEXT_PUBLIC_SITE_URL` — the configured public origin.
  *
  * In production, none configured is a misconfiguration — fail closed
  * rather than guess an origin to send credentials to. In dev, fall back
  * to the local API default port.
  */
 export async function resolveApiOrigin(): Promise<string> {
-  const apiUrl = trimSlash(process.env.API_URL)
-  if (apiUrl) {
-    return apiUrl
-  }
-  const toHttps = (host: string) => `https://${host.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
-  if (process.env.VERCEL_ENV === 'production') {
-    const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    if (prodHost) {
-      return toHttps(prodHost)
-    }
-    const siteUrl = trimSlash(process.env.NEXT_PUBLIC_SITE_URL)
-    if (siteUrl) {
-      return siteUrl
-    }
-  }
-  const vercelHost = process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL
-  if (vercelHost) {
-    return toHttps(vercelHost)
-  }
-  const siteUrl = trimSlash(process.env.NEXT_PUBLIC_SITE_URL)
-  if (siteUrl) {
-    return siteUrl
+  const vercelOrigin =
+    process.env.VERCEL_ENV === 'production'
+      ? toOrigin('VERCEL_PROJECT_PRODUCTION_URL', process.env.VERCEL_PROJECT_PRODUCTION_URL)
+      : toOrigin('VERCEL_URL', process.env.VERCEL_URL)
+  const origin =
+    toOrigin('API_URL', process.env.API_URL) ??
+    vercelOrigin ??
+    toOrigin('NEXT_PUBLIC_SITE_URL', process.env.NEXT_PUBLIC_SITE_URL)
+  if (origin) {
+    return origin
   }
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       'Cannot resolve the API origin: set API_URL or NEXT_PUBLIC_SITE_URL ' +
-        '(VERCEL_URL is provided automatically on Vercel)',
+        '(VERCEL_URL / VERCEL_PROJECT_PRODUCTION_URL are provided automatically on Vercel)',
     )
   }
   return 'http://127.0.0.1:3001'
@@ -83,11 +87,12 @@ const VERCEL_BYPASS_COOKIE = '_vercel_jwt'
  *
  * Two credentials, in order:
  * 1. `VERCEL_AUTOMATION_BYPASS_SECRET` as `x-vercel-protection-bypass` —
- *    injected by Vercel once "Protection Bypass for Automation" is on in
- *    project settings; also covers non-request fetches (ISR, callbacks).
+ *    injected by Vercel at build time once "Protection Bypass for
+ *    Automation" is on in project settings; also covers non-request
+ *    fetches (ISR, callbacks). Rotating the secret requires a redeploy.
  * 2. The viewer's own `_vercel_jwt` cookie, forwarded — anyone who can
  *    open a gated preview already carries it, so request-scoped reads
- *    pass without any project configuration.
+ *    pass even without the project secret.
  *
  * The cookie path is preview-only: production and unprotected previews
  * need no bypass, and reading request cookies in production would
@@ -106,8 +111,10 @@ export async function deploymentBypassHeaders(): Promise<Record<string, string>>
   try {
     const jwt = (await cookies()).get(VERCEL_BYPASS_COOKIE)?.value
     return jwt ? { cookie: `${VERCEL_BYPASS_COOKIE}=${jwt}` } : {}
-  } catch {
-    // No request scope (build-time prerender, ISR revalidation): nothing to forward.
+  } catch (error) {
+    // Next's own control flow (dynamic-usage bail-out during prerender)
+    // must propagate; only a genuine absence of request scope is absorbed.
+    unstable_rethrow(error)
     return {}
   }
 }

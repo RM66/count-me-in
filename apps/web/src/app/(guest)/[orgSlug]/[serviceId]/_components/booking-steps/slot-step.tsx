@@ -15,7 +15,9 @@ import { cn } from '@/lib/utils'
  *
  * The radio list shows every upcoming session with its date, price and seats
  * left. A full slot is visible but disabled — the guest can see it exists, they
- * just cannot pick it.
+ * just cannot pick it. `slots` is the live query list (ADR-025): a slot
+ * that filled since the page loaded is greyed out in place, and Continue
+ * stays disabled while the picked slot is gone or full.
  */
 export function SlotStep({
   slots,
@@ -34,6 +36,10 @@ export function SlotStep({
 }) {
   const t = useTranslations('Booking')
   const locale = useLocale()
+
+  // A stale pick — filled or deleted while the guest looked — cannot continue.
+  const picked = slotId ? slots.find((s) => s.id === slotId) : undefined
+  const pickedUnavailable = !!slotId && (!picked || seatsLeft(picked) === 0)
 
   return (
     <div className="flex flex-col gap-4">
@@ -65,7 +71,7 @@ export function SlotStep({
           )
         })}
       </RadioGroup>
-      <Button disabled={!slotId} onClick={onContinue}>
+      <Button disabled={!slotId || pickedUnavailable} onClick={onContinue}>
         {t('continue')}
       </Button>
     </div>

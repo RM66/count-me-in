@@ -1,6 +1,6 @@
 # ADR-003: No WebSocket in MVP
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-025](025-realtime-occupancy.md) — occupancy counters are now pushed over SSE (Upstash Realtime); the atomic-UPDATE correctness rule below still stands unchanged.
 - **Date:** 2026-07-18
 
 ## Context

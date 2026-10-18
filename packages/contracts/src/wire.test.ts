@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { organizerFormSchema } from './organizer-form'
+import { slotOccupancyEvent } from './realtime'
 import { API_ROUTES } from './routes'
 import { serviceFormSchema } from './service-form'
 import { expandNowMarkers } from './test-helpers'
@@ -21,6 +22,11 @@ const TS_ONLY: ReadonlyArray<{ schema: z.ZodType; reason: string }> = [
   {
     schema: organizerFormSchema as unknown as z.ZodType,
     reason: 'form schema, not wire',
+  },
+  {
+    schema: slotOccupancyEvent,
+    reason:
+      'Upstash Realtime SSE signal, validated only in Next.js (/api/internal/revalidate + client)',
   },
 ]
 
@@ -43,8 +49,8 @@ describe('wire registry completeness', () => {
     }
   })
 
-  it('TS_ONLY holds exactly the exported form schemas', () => {
-    expect(TS_ONLY).toHaveLength(2)
+  it('TS_ONLY holds the exported non-OpenAPI schemas', () => {
+    expect(TS_ONLY).toHaveLength(3)
     for (const { reason } of TS_ONLY) expect(reason).toBeTruthy()
   })
 

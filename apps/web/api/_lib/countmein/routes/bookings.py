@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.background import BackgroundTask, BackgroundTasks
+from starlette.background import BackgroundTask
 from starlette.responses import Response as StarletteResponse
 
 from .. import logx
@@ -59,7 +59,8 @@ from ..web.deps import (
     ip_rate_limit,
 )
 from ..web.guards import require_writable_organizer
-from ..web.revalidate import public_tags, trigger_revalidation
+from ..web.revalidate import occupancy_event, public_tags, trigger_revalidation
+from .followups import run_followups
 
 # Bounds the inline outbox publish after the booking/cancel commit:
 # the response is already flushed, so this is best-effort — the sweeper
@@ -67,9 +68,10 @@ from ..web.revalidate import public_tags, trigger_revalidation
 _PUBLISH_BUDGET_SECONDS = 1.5
 
 # Mark-sent runs on its own deadline: it must outlive the publish
-# budget, and its failure must not fail anything (the dedup id makes a
-# re-publish harmless).
-_MARK_DEADLINE_SECONDS = 5.0
+# budget while fitting with _PUBLISH_BUDGET_SECONDS inside
+# FOLLOWUPS_DEADLINE_SECONDS (1.5s + 3.0s < 5.0s) so the outer deadline
+# never cancels an in-flight settle.
+_MARK_DEADLINE_SECONDS = 3.0
 
 # Shared decode dependencies: one instance per route, reused by handler
 # and identity dependencies so FastAPI's per-request cache decodes the
@@ -92,16 +94,31 @@ def _attach_followups(
     outbox: list[OutboxMessage],
     trace_id: str,
 ) -> StarletteResponse:
-    """Attach after-commit work to the response: QStash publish and
-    Next.js cache invalidation as background tasks — the caller waits
-    for neither, each absorbs its own errors (already committed)."""
-    star.background = BackgroundTasks(
-        [
-            BackgroundTask(publish_outbox_rows, outbox, trace_id),
-            BackgroundTask(trigger_revalidation, _chain_tags(chain)),
-        ]
-    )
+    """Attach after-commit work to the response: QStash publish and the
+    revalidation/occupancy hop. Plain tag/occupancy values are computed
+    here so ORM entities do not cross into the background task."""
+    tags = _chain_tags(chain)
+    occupancy = occupancy_event(chain.service.id, chain.organizer.id)
+    star.background = BackgroundTask(run_booking_followups, tags, occupancy, outbox, trace_id)
     return star
+
+
+async def run_booking_followups(
+    tags: list[str],
+    occupancy: dict[str, str] | None,
+    outbox: list[OutboxMessage],
+    trace_id: str,
+) -> None:
+    """After-commit work for one booking mutation (ADR-025): QStash
+    publish and the revalidation hop carrying the occupancy signal."""
+    await run_followups(
+        [
+            publish_outbox_rows(outbox, trace_id),
+            trigger_revalidation(tags, occupancy=occupancy),
+        ],
+        source="booking-followups",
+        trace_id=trace_id,
+    )
 
 
 async def publish_outbox_rows(rows: list[OutboxMessage], trace_id: str) -> None:
@@ -352,9 +369,8 @@ async def booking_cancel(
         {"traceId": trace_id, "bookingId": chain.booking.id},
     )
 
-    # After-commit notification (ADR-012): the organizer is told by
-    # QStash once the cancel is durable; publish and cache invalidation
-    # are background tasks — the guest waits for neither.
+    # After-commit notification (ADR-012): publish + invalidation are
+    # background tasks — the guest waits for neither.
     star = json_response(200, gen.GuestBookingEnvelope(booking=to_guest_booking_chain(chain)))
     return _attach_followups(star, chain, outbox, trace_id)
 

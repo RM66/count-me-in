@@ -5,6 +5,7 @@ import { getMessages } from 'next-intl/server'
 import type { ReactNode } from 'react'
 
 import { queryKeys } from '@/api-client/keys'
+import { CabinetLive } from '@/app/cabinet/_components/cabinet-live'
 import { CabinetSidebar } from '@/app/cabinet/_components/cabinet-sidebar'
 import { DemoBanner } from '@/app/cabinet/_components/demo-banner'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -46,6 +47,8 @@ export default async function CabinetLayout({ children }: { children: ReactNode 
     <NextIntlClientProvider messages={messages}>
       <HydrationBoundary state={dehydrate(queryClient)}>
         <SidebarProvider>
+          {/* Live occupancy → debounced router.refresh() (ADR-025). */}
+          <CabinetLive />
           <CabinetSidebar />
           <SidebarInset>
             {/* Renders only when viewing the read-only demo (ADR-010). */}

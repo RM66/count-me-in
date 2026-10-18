@@ -22,7 +22,9 @@ export function BookButton({
 } & Omit<ComponentProps<typeof Button>, 'onClick'>) {
   const { openFor } = useBookingFlow()
   return (
-    <Button {...buttonProps} onClick={() => openFor(slotId)}>
+    // `data-slot-id` — the e2e hook (realtime-occupancy.spec.ts) for
+    // targeting a session's row regardless of list order.
+    <Button {...buttonProps} data-slot-id={slotId} onClick={() => openFor(slotId)}>
       {children}
     </Button>
   )

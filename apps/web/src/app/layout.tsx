@@ -8,6 +8,7 @@ import { SITE_NAME, SITE_URL } from '@/constants/site'
 import { rootClientMessages } from '@/i18n/messages'
 import { cn } from '@/lib/utils'
 import { auth } from '@/server/auth'
+import { realtimeRestConfig } from '@/server/realtime-config'
 import { Providers } from './providers'
 
 import './globals.css'
@@ -82,7 +83,10 @@ export default async function RootLayout({
         )}
       >
         <NextIntlClientProvider locale={locale} messages={picked}>
-          <Providers session={session}>{children}</Providers>
+          {/* Env-presence flag only — credentials stay server-side (ADR-025). */}
+          <Providers session={session} realtimeEnabled={realtimeRestConfig() !== null}>
+            {children}
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -27,6 +27,11 @@ import { type BookingStep, useBookingDialog } from './use-booking-dialog'
  * service page, opened by the slot rows' `BookButton`s — and **remounted on
  * every open** (`key={openCount}`), so the hook's initial state always sees
  * the slot the guest just tapped.
+ *
+ * `slots` is the *live* list (SSE-patched query from BookingFlow, ADR-025),
+ * so `booking.liveNotice` tracks a slot that fills or shrinks mid-flow: each
+ * step gets the notice relevant to it — the options step only cares that the
+ * slot is gone, details/verify also guard the chosen party size.
  */
 export function BookingDialog({
   organizer,
@@ -82,6 +87,8 @@ export function BookingDialog({
             service={service}
             selectedOptions={booking.selectedOptions}
             onToggleOption={booking.toggleOption}
+            liveNotice={booking.liveNotice === 'filled' ? 'filled' : null}
+            onPickAnotherSlot={booking.pickAnotherSlot}
             onBack={() => booking.setStep('slot')}
             onContinue={() => booking.setStep('details')}
           />
@@ -94,6 +101,10 @@ export function BookingDialog({
             seats={booking.seats}
             onSeatsChange={booking.setSeats}
             maxSeats={maxSeats}
+            liveNotice={booking.liveNotice}
+            liveSeatsLeft={booking.liveSeatsLeft}
+            onPickAnotherSlot={booking.pickAnotherSlot}
+            onConfirmSeats={booking.bookRemainingSeats}
             onBack={() => booking.setStep(service.options?.length ? 'options' : 'slot')}
             onContinue={() => booking.setStep('verify')}
           />
@@ -106,10 +117,14 @@ export function BookingDialog({
             isDuplicate={booking.isDuplicate}
             isCreating={booking.isCreating}
             attempted={booking.attempted}
+            liveNotice={booking.liveNotice}
+            liveSeatsLeft={booking.liveSeatsLeft}
+            onPickAnotherSlot={booking.pickAnotherSlot}
+            onConfirmSeats={booking.bookRemainingSeats}
             botUsername={botUsername}
             onTicket={booking.handleTicket}
             onTicketError={booking.handleTicketError}
-            onBack={() => booking.setStep('details')}
+            onBack={booking.backFromVerify}
           />
         )}
 

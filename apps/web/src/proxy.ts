@@ -74,7 +74,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   // subtree (`/api/auth/*` minus `telegram-*`) stays on Next.js.
   const isAuthjsRoute =
     pathname.startsWith('/api/auth/') && !pathname.startsWith('/api/auth/telegram-')
-  if (pathname.startsWith('/api/') && !isAuthjsRoute) {
+  // `/api/realtime` is a Next.js keeper too (ADR-025): the SSE handler
+  // authorizes channels itself — no rewrite, no minted header. The
+  // matcher already excludes it; this guard is the second line.
+  const isRealtimeRoute = pathname === '/api/realtime' || pathname.startsWith('/api/realtime/')
+  if (pathname.startsWith('/api/') && !isAuthjsRoute && !isRealtimeRoute) {
     const requestHeaders = new Headers(request.headers)
     // The organizer-auth header is a middleware-minted credential and
     // nothing else: strip any client-supplied value before minting, so
@@ -105,8 +109,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
 
 /**
  * Match the auth pages (redirect) and the API-owned routes (header
- * minting + container rewrite). Two /api subtrees stay on Next.js and are
- * excluded:
+ * minting + container rewrite). Three /api subtrees stay on Next.js and
+ * are excluded:
  *
  * - `/api/auth/*` — the Auth.js routes need no organizer-auth header.
  *   Exception: `/api/auth/telegram-*` are Python endpoints (widget →
@@ -116,6 +120,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
  *   route. The middleware would rewrite it to API_URL in the container
  *   twin (a Python 404 loop) and mint an organizer header it must not
  *   carry; it authenticates by x-internal-secret.
+ * - `/api/realtime` — the SSE keeper (ADR-025). A rewrite would send
+ *   EventSource traffic to the Python API, which owns no such route;
+ *   channel auth reads the Auth.js session itself.
  *
  * `/cabinet/*` is deliberately absent — it is open to everyone (anonymous
  * visitors get the read-only demo, ADR-010), so running the middleware
@@ -128,6 +135,6 @@ export const config = {
   matcher: [
     '/login',
     '/signup',
-    '/api/((?!auth/(?!telegram-(?:guest|signup))|internal/revalidate).*)',
+    '/api/((?!auth/(?!telegram-(?:guest|signup))|internal/revalidate|realtime(?:/|$)).*)',
   ],
 }

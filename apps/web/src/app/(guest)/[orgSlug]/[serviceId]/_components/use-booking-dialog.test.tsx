@@ -5,24 +5,25 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api-client/error'
+import { queryKeys } from '@/api-client/keys'
 import { IntlTestProvider } from '@/i18n/test-provider'
 import { useBookingDialog } from './use-booking-dialog'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-const mockRouterRefresh = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: mockRouterRefresh, push: vi.fn() }),
-}))
-
-// Mock the entire @/api-client module — we only need useCreateBooking
+// Stub the mutation only — the hook also reads `queryKeys` for the
+// post-success cache invalidate, so the module's real exports must stay.
 const mockMutateAsync = vi.fn()
-vi.mock('@/api-client', () => ({
-  useCreateBooking: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
-  }),
-}))
+vi.mock('@/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api-client')>()
+  return {
+    ...actual,
+    useCreateBooking: () => ({
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+    }),
+  }
+})
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,37 @@ describe('useBookingDialog — handleTicket', () => {
     expect(result.current.step).toBe('success')
     expect(result.current.booking).toEqual(guestBooking)
     expect(result.current.error).toBeNull()
-    expect(mockRouterRefresh).toHaveBeenCalled()
+  })
+
+  it('invalidates the live service query on success', async () => {
+    mockMutateAsync.mockResolvedValueOnce({ booking: guestBooking })
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    })
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <IntlTestProvider>{children}</IntlTestProvider>
+      </QueryClientProvider>
+    )
+
+    const { result } = renderHook(
+      () => useBookingDialog({ service: serviceWithoutOptions, preselectedSlotId: 'slot-1' }),
+      { wrapper },
+    )
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 'guest-ticket-123',
+        messenger: 'telegram',
+        messengerId: '67890',
+        displayName: 'Jane Doe',
+      })
+    })
+
+    expect(result.current.step).toBe('success')
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: queryKeys.publicService.detail('svc-1'),
+    })
   })
 
   it('sends the chosen party size', async () => {
@@ -327,7 +358,6 @@ describe('useBookingDialog — handleTicket', () => {
     expect(result.current.step).toBe('success')
     expect(result.current.booking).toEqual(guestBooking)
     expect(result.current.error).toBeNull()
-    expect(mockRouterRefresh).toHaveBeenCalled()
   })
 
   it('clamps the party size when the picked slot has fewer seats left', () => {
@@ -761,5 +791,128 @@ describe('useBookingDialog — localized error mapping', () => {
   it('falls back to the server message for an unrecognized ApiError', async () => {
     const error = await failWith(new ApiError('Something unexpected', 418))
     expect(error).toBe('Something unexpected')
+  })
+})
+
+// ── Live occupancy (ADR-025) ─────────────────────────────────────────────────
+// `slots` is the live query list — a picked slot can fill/shrink
+// mid-flow. `liveNotice` must surface it, actions resolve it, and it
+// stays suppressed through a pending/failed/successful attempt.
+
+const liveSlot = (bookedCount: number, capacity = 10): TimeSlotRecord =>
+  ({
+    id: 'slot-1',
+    serviceId: 'svc-1',
+    startsAt: '2026-07-25T05:00:00.000Z',
+    durationMinutes: 60,
+    capacity,
+    bookedCount,
+    price: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }) as TimeSlotRecord
+
+function renderLive(initialSlots: TimeSlotRecord[]) {
+  return renderHook(
+    ({ slots }: { slots: TimeSlotRecord[] }) =>
+      useBookingDialog({
+        service: serviceWithGroupBookings,
+        slots,
+        preselectedSlotId: 'slot-1',
+      }),
+    { wrapper: createWrapper(), initialProps: { slots: initialSlots } },
+  )
+}
+
+describe('useBookingDialog — live occupancy', () => {
+  it('reports "filled" when the picked slot reaches zero seats left', () => {
+    const { result, rerender } = renderLive([liveSlot(3)])
+    expect(result.current.liveNotice).toBeNull()
+
+    rerender({ slots: [liveSlot(10, 10)] })
+    expect(result.current.liveNotice).toBe('filled')
+    expect(result.current.liveSeatsLeft).toBe(0)
+  })
+
+  it('reports "filled" when the picked slot vanishes from the list', () => {
+    const { result, rerender } = renderLive([liveSlot(3)])
+    rerender({ slots: [] })
+    expect(result.current.liveNotice).toBe('filled')
+  })
+
+  it('reports "shrunk" when the party size exceeds what is left', () => {
+    const { result, rerender } = renderLive([liveSlot(0)])
+    act(() => result.current.setSeats(3))
+
+    rerender({ slots: [liveSlot(8, 10)] }) // left = 2 < seats = 3
+    expect(result.current.liveNotice).toBe('shrunk')
+    expect(result.current.liveSeatsLeft).toBe(2)
+  })
+
+  it('bookRemainingSeats confirms the live count and clears the notice', () => {
+    const { result, rerender } = renderLive([liveSlot(0)])
+    act(() => result.current.setSeats(3))
+    rerender({ slots: [liveSlot(8, 10)] })
+    expect(result.current.liveNotice).toBe('shrunk')
+
+    act(() => result.current.bookRemainingSeats())
+    expect(result.current.seats).toBe(2)
+    expect(result.current.liveNotice).toBeNull()
+  })
+
+  it('pickAnotherSlot returns to the picker with a clean slate', () => {
+    const { result, rerender } = renderLive([liveSlot(3)])
+    act(() => result.current.setStep('details'))
+    rerender({ slots: [liveSlot(10, 10)] })
+    expect(result.current.liveNotice).toBe('filled')
+
+    act(() => result.current.pickAnotherSlot())
+    expect(result.current.step).toBe('slot')
+    expect(result.current.slotId).toBeUndefined()
+    expect(result.current.liveNotice).toBeNull()
+  })
+
+  it('suppresses the notice while a booking attempt is in flight or failed', async () => {
+    mockMutateAsync.mockRejectedValueOnce(new ApiError('Only 2 seats left', 409, 'seats_left'))
+    const { result, rerender } = renderLive([liveSlot(3)])
+    act(() => result.current.setStep('verify'))
+
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 't',
+        messenger: 'telegram',
+        messengerId: '1',
+        displayName: 'J',
+      })
+    })
+    expect(result.current.attempted).toBe(true)
+
+    // The slot filling *during* the failed attempt must not stack a notice
+    // on the server error — suppression holds until deliberate navigation.
+    rerender({ slots: [liveSlot(10, 10)] })
+    expect(result.current.liveNotice).toBeNull()
+
+    act(() => result.current.backFromVerify())
+    expect(result.current.step).toBe('details')
+    expect(result.current.attempted).toBe(false)
+    expect(result.current.liveNotice).toBe('filled')
+  })
+
+  it('stays suppressed on the success step — the arriving event is our own', async () => {
+    mockMutateAsync.mockResolvedValueOnce({ booking: guestBooking })
+    const { result, rerender } = renderLive([liveSlot(3)])
+    act(() => result.current.setStep('verify'))
+
+    await act(async () => {
+      await result.current.handleTicket({
+        ticket: 't',
+        messenger: 'telegram',
+        messengerId: '1',
+        displayName: 'J',
+      })
+    })
+    expect(result.current.step).toBe('success')
+
+    rerender({ slots: [liveSlot(4, 10)] })
+    expect(result.current.liveNotice).toBeNull()
   })
 })

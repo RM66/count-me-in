@@ -29,6 +29,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # Upstash REST emulator over the test Redis (ADR-025): implements
+  # /pipeline and the SSE /subscribe path, so the full realtime loop
+  # runs locally. amd64-only image — Rosetta on Apple Silicon.
+  redis-http:
+    image: ghcr.io/coriou/up-redis:1.0.1
+    platform: linux/amd64
+    container_name: countmein_redis_http
+    environment:
+      UPREDIS_TOKEN: dev-upstash-token
+      UPREDIS_REDIS_URL: redis://redis:6379
+    ports:
+      - '8080:8080'
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/health > /dev/null || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # Full-stack local dev (Phase 6): `docker compose up` boots the whole
   # topology — Postgres + Redis (integration tests, E2E, dev servers)
   # plus the containerized Python API and the Next.js web app.
@@ -52,7 +73,11 @@ services:
       # deliberately unset — the container opens the queue pool.
       POSTGRES_URL: postgresql://countmein:countmein@postgres:5432/countmein
       REDIS_URL: redis://redis:6379
+      # APP_URL is the PUBLIC origin (QStash destination, notification
+      # links) — host-reachable localhost. INTERNAL_APP_URL is the
+      # server-to-server origin for the revalidate/occupancy hop.
       APP_URL: http://localhost:3000
+      INTERNAL_APP_URL: http://web:3000
       API_URL: http://api:3001
       AUTH_SECRET: ${AUTH_SECRET:-dev-auth-secret-change-me}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -100,6 +125,10 @@ services:
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}
       NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
       NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+      # Realtime (ADR-025): the REST endpoint for SSE subscribe +
+      # internal emit. Defaults to the compose emulator; a real
+      # Upstash resolves from REDIS_URL.
+      REDIS_REST_URL: ${REDIS_REST_URL:-http://:dev-upstash-token@redis-http:8080}
     ports:
       - '3000:3000'
     healthcheck:

@@ -95,6 +95,20 @@ def test_healthz_rewrite():
     )
 
 
+def test_next_keepers_not_rewritten():
+    """The Next.js API keepers must stay out of every rewrite: in dev the
+    same sources become beforeFiles rewrites that shadow the filesystem
+    route (next.config.js), so a covered keeper silently dies — a broad
+    /api/internal/:path* once sent the revalidation hop to uvicorn's 404,
+    taking cache invalidation and the occupancy emit with it."""
+    keepers = ("/api/internal/revalidate", "/api/realtime")
+    for source, _ in vercel_rewrites():
+        for keeper in keepers:
+            assert not rewrite_regex(source).fullmatch(keeper), (
+                f"rewrite {source} shadows the Next.js keeper {keeper}"
+            )
+
+
 def test_bundle_excludes():
     """The function bundle must exclude everything that is not the API.
     The list is pinned so a new top-level directory does not silently

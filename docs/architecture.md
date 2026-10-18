@@ -4,13 +4,13 @@ High-level system design for CountMeIn. Product domain in [domain.md](domain.md)
 
 ## Product surfaces
 
-| Surface           | App            | Audience   | Responsibility                                                                                                                                                                             |
-| ----------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Landing           | `apps/web`     | Prospects  | Marketing, organizer sign-up                                                                                                                                                               |
-| Public booking    | `apps/web`     | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book                                                                                                                                |
-| Organizer cabinet | `apps/web`     | Organizers | Services, slots, bookings, profile — opened from messenger links                                                                                                                           |
-| API               | `apps/web/api` | Clients    | HTTP API (a single Python ASGI Vercel Function); two TS handlers stay in Next.js — Auth.js `[...nextauth]` and `/api/internal/revalidate` ([ADR-021](decisions/021-api-python-rewrite.md)) |
-| Jobs              | `apps/web/api` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                                                                          |
+| Surface           | App            | Audience   | Responsibility                                                                                                                                                                                                                                                |
+| ----------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Landing           | `apps/web`     | Prospects  | Marketing, organizer sign-up                                                                                                                                                                                                                                  |
+| Public booking    | `apps/web`     | Guests     | `https://countmein.group/{orgSlug}` — service → slot → book                                                                                                                                                                                                   |
+| Organizer cabinet | `apps/web`     | Organizers | Services, slots, bookings, profile — opened from messenger links                                                                                                                                                                                              |
+| API               | `apps/web/api` | Clients    | HTTP API (a single Python ASGI Vercel Function); three TS handlers stay in Next.js — Auth.js `[...nextauth]`, `/api/internal/revalidate` and `/api/realtime` ([ADR-021](decisions/021-api-python-rewrite.md), [ADR-025](decisions/025-realtime-occupancy.md)) |
+| Jobs              | `apps/web/api` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                                                                                                                                             |
 
 **MVP entry for organizers:** register via Telegram Login Widget → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
 
@@ -28,6 +28,8 @@ flowchart LR
   Redis[(Redis)]
   R2[(Cloudflare R2)]
   QStash[(Upstash QStash)]
+  Realtime[(Upstash Realtime)]
+  Next[apps/web Next.js internals]
 
   Landing --> API
   Public --> API
@@ -39,6 +41,10 @@ flowchart LR
   Jobs --> DB
   API --> DB
   API --> Redis
+  API -->|"revalidate + occupancy after commit"| Next
+  Next -->|"SDK emit XADD + PUBLISH"| Realtime
+  Realtime -->|"SSE /api/realtime"| Public
+  Realtime -->|"SSE /api/realtime"| Cabinet
   API --> R2
 ```
 
@@ -52,6 +58,7 @@ flowchart LR
 | `packages/eslint-config` / `typescript-config` | Shared lint & TS configs                                                                                                                                                         |
 | Postgres                                       | Domain data                                                                                                                                                                      |
 | Redis                                          | Sessions, short-lived auth tickets, rate limits                                                                                                                                  |
+| Upstash Realtime                               | Live slot occupancy (ADR-025): Redis Streams replay + pub/sub over REST, SSE route on Next.js; streams trimmed to `MAXLEN 200`, `EXPIRE 86400`                                   |
 | Upstash QStash                                 | Job queue: at-least-once delivery, retries, demo-refresh cron                                                                                                                    |
 | Cloudflare R2                                  | Organizer avatar + service images ([ADR-007](decisions/007-cloudflare-r2.md))                                                                                                    |
 
@@ -125,6 +132,10 @@ Every handler refuses the demo organizer (`isDemoOrganizerId`).
 `bun run dev` starts `web` (Next.js on :3000) and the Python API (uvicorn on :3001) concurrently; `next.config.js` proxies API-owned `/api/*` routes to it. Publishing needs `QSTASH_TOKEN`; without it dev skips publishing with a warning — bookings succeed, no notifications send. End-to-end delivery additionally needs a publicly reachable `APP_URL`, because QStash POSTs from Upstash to that URL (localhost is not routable — use a deployed preview or a tunnel).
 
 Delivery state lives in the QStash console (message log, retries, events) — check it before suspecting the send path.
+
+Realtime occupancy (ADR-025) needs REST credentials only on Next.js — the Python API hands the occupancy signal to `POST /api/internal/revalidate`, which emits through `@upstash/realtime` (`src/server/realtime.ts`), while `src/app/api/realtime/route.ts` serves subscribe/history from the same `src/server/realtime-config.ts` resolver. Resolution: `REDIS_REST_URL` (`http(s)://:token@host[:port]` — the override for non-Upstash targets like the compose emulator) or an Upstash-shaped `REDIS_URL` (`redis(s)://…:token@*.upstash.io` → `https://host` + the URL password). The Python twin `config.realtime_credentials()` is kept only for `config.validate`'s production cold-start gate. Unresolvable = realtime off: no emit happens and the client never subscribes — pages degrade to the periodic reconcile. Retention on every channel stream: `MAXLEN 200`, `EXPIRE 86400`.
+
+The full loop runs offline: the compose `redis-http` service (`ghcr.io/coriou/up-redis`, amd64-only) answers the Upstash REST surface including the SSE `/subscribe` path. Set `REDIS_REST_URL=http://:dev-upstash-token@localhost:8080` to get live occupancy in local dev and e2e without an Upstash account.
 
 ## Observability
 

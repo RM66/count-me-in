@@ -43,6 +43,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **i18n:** next-intl, ICU messages per locale ([ADR-011](docs/decisions/011-i18n.md))
 - **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis — `NullPool` on Vercel serverless, queue pool in the container (`apps/web/Dockerfile.api` + `docker-compose.yml`)
 - **Media:** Cloudflare R2
+- **Realtime:** Upstash Realtime — SSE over Redis Streams + Pub/Sub ([ADR-025](docs/decisions/025-realtime-occupancy.md))
 - **Jobs:** Upstash QStash ([ADR-012](docs/decisions/012-queue-upstash-qstash.md))
 - **Notifications:** messengers primary (Telegram first); cabinet deep links
 - **Observability:** PostHog, Sentry
@@ -53,12 +54,13 @@ Architecture and domain: [`docs/`](docs/), agent guide: [`AGENTS.md`](AGENTS.md)
 
 ```sh
 bun run setup                 # deps (bun + uv) + .env from .env.example + apps/web/.env symlink
-docker compose up -d          # full stack: Postgres + Redis + API + web
+docker compose up -d          # full stack: Postgres + Redis + redis-http + API + web
 bun run dev                   # host dev servers (Next :3000 + API :3001)
 ```
 
-`docker compose up postgres redis` keeps the minimal shape for host-run
-servers and pytest/Playwright. The API image migrates on startup
+`docker compose up postgres redis redis-http` keeps the service shape for host-run
+servers and pytest/Playwright (`redis-http` emulates the Upstash REST/SSE surface
+offline when `REDIS_REST_URL=http://:dev-upstash-token@localhost:8080` is set). The API image migrates on startup
 (`alembic upgrade head`); the web image runs the standalone server and
 reaches the API at `API_URL` (explicit `API_URL` wins over same-origin
 even with `NODE_ENV=production`). Vercel serverless stays the
@@ -93,7 +95,7 @@ bun run test:py       # the Python API suite (pytest) — a separate, mandatory 
 bun run test:watch    # watch mode (vitest)
 ```
 
-In `apps/web`: `bun run test:web` (Vitest), `bun run test:py` (pytest), `bun run test:e2e` (Playwright — three smoke specs in `e2e/` covering the guest booking round-trip, the cabinet create flow, and demo read-only; boots both dev servers itself, needs docker Postgres + Redis and a migrated schema). `bun run lint:py` runs ruff (lint + format) + strict mypy on the API; `bun run test:py:unit` runs pytest without the `integration`-marked tests (no docker needed).
+In `apps/web`: `bun run test:web` (Vitest), `bun run test:py` (pytest), `bun run test:e2e` (Playwright — four smoke specs in `e2e/` covering the guest booking round-trip, the cabinet create flow, demo read-only, and live occupancy; boots both dev servers itself, needs docker Postgres + Redis and a migrated schema). `bun run lint:py` runs ruff (lint + format) + strict mypy on the API; `bun run test:py:unit` runs pytest without the `integration`-marked tests (no docker needed).
 
 Coverage spans Zod schemas and slot/timezone logic (`packages/contracts`), helpers, API client, React hooks and components, and the Python API (`apps/web/api/_lib` + `tests_py`).
 
@@ -102,6 +104,7 @@ Coverage spans Zod schemas and slot/timezone logic (`packages/contracts`), helpe
 - **Messenger-only identity** — no phone/OTP ([ADR-008](docs/decisions/008-messenger-only-auth.md)).
 - **Guest booking** without Auth.js accounts; cancel in MVP ([ADR-002](docs/decisions/002-guest-booking.md)).
 - **Atomic capacity** — single conditional `UPDATE` inside booking transaction, never read-then-write.
+- **Live occupancy** — post-commit `slot.occupancy` invalidation signals over SSE via Upstash Realtime (`service:{id}` public, `organizer:{id}` private, fail-open, demo excluded; [ADR-025](docs/decisions/025-realtime-occupancy.md)).
 - **Prices are display text only** in MVP (no payments).
 - **`/cabinet` requires no session** — anonymous visitors see read-only demo ([ADR-010](docs/decisions/010-demo-organizer-account.md)).
 - **Notifications published after commit** — jobs carry ids only; the handler refetches at send time ([ADR-012](docs/decisions/012-queue-upstash-qstash.md)).

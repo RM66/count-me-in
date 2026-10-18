@@ -9,9 +9,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fetchMock = vi.fn()
 
+// A hostile Host: if origin resolution ever read request headers, the
+// fetch (with x-internal-secret) would go here and the tests would see it.
 vi.mock('next/headers', () => ({
-  headers: vi.fn(async () => new Headers({ host: 'countmein.group' })),
+  headers: vi.fn(async () => new Headers({ host: 'evil.example' })),
+  cookies: vi.fn(async () => ({ get: () => undefined })),
 }))
+
+// Every variable resolveApiOrigin / deploymentBypassHeaders read, blanked
+// so the developer's shell or .env cannot leak into a test.
+const ORIGIN_ENV = [
+  'API_URL',
+  'VERCEL_ENV',
+  'VERCEL_URL',
+  'VERCEL_PROJECT_PRODUCTION_URL',
+  'NEXT_PUBLIC_SITE_URL',
+  'VERCEL_AUTOMATION_BYPASS_SECRET',
+] as const
 
 vi.mock('@/server/auth', () => ({
   auth: vi.fn(async () => ({ user: { id: 'org-1', slug: 'my-slug' } })),
@@ -29,6 +43,9 @@ describe('apiFetch', () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
     // NODE_ENV is typed read-only; the runtime allows the assignment.
     vi.stubEnv('NODE_ENV', 'development')
+    for (const name of ORIGIN_ENV) {
+      vi.stubEnv(name, '')
+    }
   })
 
   afterEach(() => {
@@ -48,11 +65,10 @@ describe('apiFetch', () => {
   })
 
   it('ignores the Host header — a spoofed Host must not steer the origin', async () => {
-    // The mock above returns host: evil.example-like input; the origin is
+    // The mock above answers host: evil.example; the origin is
     // configuration-only, or x-internal-secret would be exfiltrated.
     vi.stubEnv('NODE_ENV', 'production')
-    vi.stubEnv('API_URL', '')
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://countmein.group')
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://countmein.group/')
     const { apiFetch } = await import('@/server/api')
     await apiFetch('/api/services')
     const [url] = fetchMock.mock.calls[0]!
@@ -61,7 +77,6 @@ describe('apiFetch', () => {
 
   it('uses VERCEL_URL for the same-origin rewrite when no API_URL is set', async () => {
     vi.stubEnv('NODE_ENV', 'production')
-    vi.stubEnv('API_URL', '')
     vi.stubEnv('VERCEL_URL', 'countmein-web-abc123.vercel.app')
     const { apiFetch } = await import('@/server/api')
     await apiFetch('/api/services')
@@ -74,7 +89,6 @@ describe('apiFetch', () => {
     // SSO wall; the production domain serves the same deployment ungated.
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('VERCEL_ENV', 'production')
-    vi.stubEnv('API_URL', '')
     vi.stubEnv('VERCEL_URL', 'countmein-web-abc123.vercel.app')
     vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'countmein.group')
     const { apiFetch } = await import('@/server/api')
@@ -83,9 +97,38 @@ describe('apiFetch', () => {
     expect(String(url)).toBe('https://countmein.group/api/services')
   })
 
+  it('keeps a preview on its own deployment, never the production domain', async () => {
+    // VERCEL_PROJECT_PRODUCTION_URL is set on previews too; routing a
+    // preview's credentials to prod would cross environments.
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('VERCEL_URL', 'countmein-git-feature.vercel.app')
+    vi.stubEnv('VERCEL_PROJECT_PRODUCTION_URL', 'countmein.group')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
+    const [url] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('https://countmein-git-feature.vercel.app/api/services')
+  })
+
+  it('sends the automation bypass secret when the project provides one', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('VERCEL_URL', 'countmein-git-feature.vercel.app')
+    vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', 'bypass-secret')
+    const { apiFetch } = await import('@/server/api')
+    await apiFetch('/api/services')
+    const init = fetchMock.mock.calls[0]![1] as RequestInit
+    expect((init.headers as Headers).get('x-vercel-protection-bypass')).toBe('bypass-secret')
+  })
+
+  it('refuses an API_URL that is not a bare origin', async () => {
+    vi.stubEnv('API_URL', 'http://api:3001/v1')
+    const { apiFetch } = await import('@/server/api')
+    await expect(apiFetch('/api/services')).rejects.toThrow('API_URL must be an origin')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('fails closed in production when no origin is configured', async () => {
     vi.stubEnv('NODE_ENV', 'production')
-    vi.stubEnv('API_URL', '')
     const { apiFetch } = await import('@/server/api')
     await expect(apiFetch('/api/services')).rejects.toThrow('API origin')
     expect(fetchMock).not.toHaveBeenCalled()

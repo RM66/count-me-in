@@ -19,6 +19,9 @@ export default async function GuestLayout({ children }: { children: ReactNode })
         'MyBookings',
         'ManageBooking',
         'AddToCalendar',
+        // The live slot list is a client component (ADR-025) — it reads
+        // ServicePage copy off this provider.
+        'ServicePage',
       ]),
     ),
   ])
