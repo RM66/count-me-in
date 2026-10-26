@@ -1,0 +1,65 @@
+{
+  "schema": "TelegramIdTokenInput",
+  "cases": [
+    {
+      "name": "valid",
+      "body": {
+        "idToken": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln",
+        "nonceVerifier": "eBTI9cV2yLjQ_Bwbo2SEaaUIKHbASpzgSPnqenUJmq0"
+      },
+      "valid": true
+    },
+    {
+      "name": "idToken required",
+      "body": {
+        "nonceVerifier": "eBTI9cV2yLjQ_Bwbo2SEaaUIKHbASpzgSPnqenUJmq0"
+      },
+      "valid": false,
+      "fieldErrors": ["idToken"]
+    },
+    {
+      "name": "idToken empty",
+      "body": {
+        "idToken": "",
+        "nonceVerifier": "eBTI9cV2yLjQ_Bwbo2SEaaUIKHbASpzgSPnqenUJmq0"
+      },
+      "valid": false,
+      "fieldErrors": ["idToken"]
+    },
+    {
+      "name": "nonceVerifier required",
+      "body": {
+        "idToken": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln"
+      },
+      "valid": false,
+      "fieldErrors": ["nonceVerifier"]
+    },
+    {
+      "name": "nonceVerifier wrong length",
+      "body": {
+        "idToken": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln",
+        "nonceVerifier": "eBTI9cV2yLjQ_Bwbo2SEaaUIKHbASpzgSPnqenUJmq"
+      },
+      "valid": false,
+      "fieldErrors": ["nonceVerifier"]
+    },
+    {
+      "name": "nonceVerifier non-base64url char",
+      "body": {
+        "idToken": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln",
+        "nonceVerifier": "eBTI9cV2yLjQ+Bwbo2SEaaUIKHbASpzgSPnqenUJmq0"
+      },
+      "valid": false,
+      "fieldErrors": ["nonceVerifier"]
+    },
+    {
+      "name": "nonceVerifier with padding rejected",
+      "body": {
+        "idToken": "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln",
+        "nonceVerifier": "eBTI9cV2yLjQ_Bwbo2SEaaUIKHbASpzgSPnqenUJmq0="
+      },
+      "valid": false,
+      "fieldErrors": ["nonceVerifier"]
+    }
+  ]
+}

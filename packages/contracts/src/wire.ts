@@ -5,12 +5,8 @@ import {
   authTicketResponse,
   guestTicketResponse,
   loginLinkPayload,
-  telegramAuthDate,
-  telegramHash,
-  telegramName,
-  telegramOptionalName,
-  telegramUserId,
-  telegramWidgetPayload,
+  telegramIdToken,
+  telegramIdTokenInput,
 } from './auth'
 import {
   bookingRecord,
@@ -69,6 +65,7 @@ import {
   manageToken,
   maxSeatsPerBooking,
   messengerId,
+  nonceVerifier,
   optionLabel,
   organizerDescription,
   priceText,
@@ -313,11 +310,8 @@ register(httpUrl, { id: 'URL' })
 register(slotStartsAt, { id: 'SlotStartsAt' })
 register(optionsList, { id: 'OptionsList' })
 register(selectedOptionsShape, { id: 'SelectedOptions' })
-register(telegramUserId, { id: 'TelegramUserID' })
-register(telegramAuthDate, { id: 'TelegramAuthDate' })
-register(telegramName, { id: 'TelegramName' })
-register(telegramOptionalName, { id: 'TelegramOptionalName' })
-register(telegramHash, { id: 'TelegramHash' })
+register(telegramIdToken, { id: 'TelegramIdToken' })
+register(nonceVerifier, { id: 'NonceVerifier' })
 
 // Enums.
 register(bookingStatusEnum, { id: 'BookingStatus' })
@@ -370,9 +364,9 @@ register(updateOrganizerProfileInput, {
 register(updateOrganizerLanguageInput, { id: 'UpdateOrganizerLanguageInput' })
 register(createAvatarUploadInput, { id: 'CreateAvatarUploadInput' })
 register(createServicePhotoUploadInput, { id: 'CreateServicePhotoUploadInput' })
-register(telegramWidgetPayload, {
-  id: 'TelegramWidgetPayload',
-  validation: inputValidation(telegramWidgetPayload),
+register(telegramIdTokenInput, {
+  id: 'TelegramIdTokenInput',
+  validation: inputValidation(telegramIdTokenInput),
 })
 
 // Records.

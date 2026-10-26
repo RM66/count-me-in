@@ -12,7 +12,7 @@ High-level system design for CountMeIn. Product domain in [domain.md](domain.md)
 | API               | `apps/web/api` | Clients    | HTTP API (a single Python ASGI Vercel Function); three TS handlers stay in Next.js — Auth.js `[...nextauth]`, `/api/internal/revalidate` and `/api/realtime` ([ADR-021](decisions/021-api-python-rewrite.md), [ADR-025](decisions/025-realtime-occupancy.md)) |
 | Jobs              | `apps/web/api` | QStash     | Messenger notifications / demo refresh — `POST /api/jobs/{queue}`                                                                                                                                                                                             |
 
-**MVP entry for organizers:** register via Telegram Login Widget → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
+**MVP entry for organizers:** register via Telegram OIDC login (ADR-026) → profile form → booking notifications include cabinet deep link. No native app — [ADR-006](decisions/006-organizer-capacitor.md).
 
 ## Context diagram
 
@@ -65,7 +65,7 @@ flowchart LR
 ## Critical flow: create booking (guest)
 
 1. `GET` public page data by organizer `slug` (services, slots; cacheable).
-2. Guest picks service/slot/options; enters name; authenticates with messenger login widget — server validates signed payload and issues short-lived guest ticket (Redis TTL; **no seat held**).
+2. Guest picks service/slot/options; enters name; authenticates with Telegram OIDC login — server validates the id_token against Telegram JWKS and issues short-lived guest ticket (Redis TTL; **no seat held**).
 3. `POST` booking in one transaction (with the ticket):
    - validate `selectedOptions` against service
    - **claim seats atomically**: `UPDATE TimeSlot SET bookedCount = bookedCount + :seats WHERE id = :id AND bookedCount + :seats <= capacity RETURNING …` (not read-then-write)
@@ -87,8 +87,8 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 ## Auth boundary
 
-- **Organizers:** Auth.js (Telegram Login Widget, server-side HMAC); session for cabinet. Notification deep links use **one-time login link**: the job handler stores `{ organizerId, next }` in Redis under 32-byte token → `/login/link/{token}` consumed via `POST` (server action calling `signIn`). `GET` does not consume — link previewers fetch URLs before human clicks. Single-use, 30-day TTL, `noindex`, demo id refused; failure → `/login`. See [ADR-008](decisions/008-messenger-only-auth.md).
-- **Visitors:** No Auth.js account; booking requires widget auth (short-lived ticket); management via deep link or re-auth. See [ADR-002](decisions/002-guest-booking.md).
+- **Organizers:** Auth.js (Telegram OIDC id_token verified server-side, ADR-026); session for cabinet. Notification deep links use **one-time login link**: the job handler stores `{ organizerId, next }` in Redis under 32-byte token → `/login/link/{token}` consumed via `POST` (server action calling `signIn`). `GET` does not consume — link previewers fetch URLs before human clicks. Single-use, 30-day TTL, `noindex`, demo id refused; failure → `/login`. See [ADR-008](decisions/008-messenger-only-auth.md).
+- **Visitors:** No Auth.js account; booking requires Telegram OIDC login (short-lived ticket); management via deep link or re-auth. See [ADR-002](decisions/002-guest-booking.md).
 
 ## Jobs / notifications
 
@@ -117,7 +117,7 @@ Authenticated organizer → signed upload URL → PUT to R2 → save URL on `pho
 
 ### Delivery policy
 
-Telegram bot can only message users who pressed **Start** — UX includes bot-start step after widget auth, with management deep link shown on-screen as fallback.
+Telegram bot can only message users who pressed **Start** — UX includes bot-start step after login, with management deep link shown on-screen as fallback.
 
 | Telegram response           | Action                                                   |
 | --------------------------- | -------------------------------------------------------- |

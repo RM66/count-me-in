@@ -19,16 +19,16 @@ Rendering note: locale resolution reads cookies/headers per request ([ADR-011](d
 
 ## 2. Guest (public booking, no Auth.js account)
 
-| Page               | Route                    | Purpose                                                                       |
-| ------------------ | ------------------------ | ----------------------------------------------------------------------------- |
-| Organizer page     | `/{orgSlug}`             | Profile + services list. Slug min 4 chars, reserved words blocked (ADR-009)   |
-| Service page       | `/{orgSlug}/{serviceId}` | Description, photo, price, slots with availability, options                   |
-| Booking management | `/booking/{manageToken}` | Opened from messenger deep link. Details + **Cancel** + **Add to calendar**   |
-| Booking lookup     | `/booking`               | Re-authenticate with widget → list of bookings (fallback when deep link lost) |
+| Page               | Route                    | Purpose                                                                         |
+| ------------------ | ------------------------ | ------------------------------------------------------------------------------- |
+| Organizer page     | `/{orgSlug}`             | Profile + services list. Slug min 4 chars, reserved words blocked (ADR-009)     |
+| Service page       | `/{orgSlug}/{serviceId}` | Description, photo, price, slots with availability, options                     |
+| Booking management | `/booking/{manageToken}` | Opened from messenger deep link. Details + **Cancel** + **Add to calendar**     |
+| Booking lookup     | `/booking`               | Re-authenticate with Telegram → list of bookings (fallback when deep link lost) |
 
 ### Booking flow (modal/stepper on service page)
 
-1. Pick slot → 2. Pick options → 3. Enter name → 4. Authenticate with widget (short-lived ticket, no seat held) → 5. **Success screen**: details, management link, **"Add to calendar"**
+1. Pick slot → 2. Pick options → 3. Enter name → 4. Authenticate with Telegram (short-lived ticket, no seat held) → 5. **Success screen**: details, management link, **"Add to calendar"**
 
 **"Add to calendar"** generates `.ics` / Google Calendar link from slot's `startsAt`/`endsAt`. No internal `Calendar` entity.
 
@@ -38,8 +38,8 @@ Reachable without session: signed-in → own data; anonymous → read-only demo 
 
 | Page                | Route                                      | Purpose                                                                                                       |
 | ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| Sign up             | `/signup`                                  | Telegram Login Widget → profile form (slug, name, timezone)                                                   |
-| Log in              | `/login`                                   | Messenger login widget                                                                                        |
+| Sign up             | `/signup`                                  | Telegram OIDC login → profile form (slug, name, timezone)                                                     |
+| Log in              | `/login`                                   | Telegram OIDC login                                                                                           |
 | Login link          | `/login/link/{token}`                      | One-time link from notification: establishes session, redirects to target page. Consumed by `POST`, `noindex` |
 | Cabinet overview    | `/cabinet`                                 | Upcoming bookings, quick status                                                                               |
 | Services list       | `/cabinet/services`                        | List; create / edit / delete                                                                                  |
@@ -60,7 +60,7 @@ Reachable without session: signed-in → own data; anonymous → read-only demo 
 
 ## Notes
 
-- `manageToken` in URL is a secret; `/booking/{manageToken}` needs no re-auth (messenger already proved ownership). `/booking` requires re-authenticating with widget.
+- `manageToken` in URL is a secret; `/booking/{manageToken}` needs no re-auth (messenger already proved ownership). `/booking` requires re-authenticating with Telegram.
 - Login-link token consumed on **`POST`**, never `GET` — link previewers would burn a single-use token. Visiting while already signed in redirects without spending.
 - Slugs min 4 chars, reserved words blocked (`api`, `booking`, `cabinet`, `signup`, `login`, `terms`, `privacy`, `demo`) — ADR-009, ADR-010.
 - `/demo` is seeded read-only organizer through normal `/{orgSlug}` route; all writes reject it (ADR-010).

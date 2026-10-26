@@ -1,27 +1,20 @@
 name: auth-telegram
 steps:
   - reset: true
-    mint: guestWidget
-    request: { method: POST, path: /api/auth/telegram-guest, json: <widgetPayload> }
-    note: valid widget payload → 200 guest ticket
-  - mint: signupWidget
-    request: { method: POST, path: /api/auth/telegram-signup, json: <widgetPayload> }
-    note: valid widget payload → 200 auth ticket + organizerExists flag
+    request: { method: POST, path: /api/auth/telegram-guest, json: <idTokenPayload> }
+    note: valid id_token → 200 guest ticket
+  - request: { method: POST, path: /api/auth/telegram-signup, json: <idTokenPayload> }
+    note: valid id_token → 200 auth ticket + organizerExists flag
   - request:
       method: POST
       path: /api/auth/telegram-guest
-      json:
-        {
-          id: 1,
-          first_name: A,
-          auth_date: 1,
-          hash: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef,
-        }
-    note: malformed/failed-HMAC payload → 400
+      json: { idToken: x.y.z, nonceVerifier: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa }
+    note: undecodable/forged token → 400
   - request: { method: POST, path: /api/auth/telegram-guest, json: {} }
     note: empty body → 400 validation error
-  - request: { method: POST, path: /api/auth/telegram-guest, json: <widgetPayload> }
+  - request: { method: POST, path: /api/auth/telegram-guest, json: <idTokenPayload> }
     repeat: 10
-    note: exhaust the 10/min guest bucket
-  - request: { method: POST, path: /api/auth/telegram-guest, json: <widgetPayload> }
+    note: exhaust the 10/min guest bucket (fresh token per repeat —
+      placeholders resolve inside the loop)
+  - request: { method: POST, path: /api/auth/telegram-guest, json: <idTokenPayload> }
     note: 11th call → 429

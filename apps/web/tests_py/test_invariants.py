@@ -150,6 +150,26 @@ def test_guest_ticket_purpose_is_enforced():
     )
 
 
+# ── Telegram OIDC identity (ADR-026) ──────────────────────────────────────────
+
+
+def test_oidc_token_is_verifier_bound_and_single_use():
+    """Invariant: identity enters only through a validated OIDC
+    id_token — the verifier must hash to the token's nonce
+    (proof-of-possession) and the nonce is claimed single-use in Redis,
+    so a replayed token fails."""
+    _assert_test_exists("tests_py.auth.test_telegram", "test_wrong_verifier")
+    _assert_test_exists("tests_py.auth.test_telegram", "test_replay")
+
+
+def test_oidc_identity_continuity_is_id_not_sub():
+    """Invariant: identity continuity is the numeric `id` claim (int or
+    digit-string), never `sub` — existing organizers keep their
+    messenger identity without a DB migration."""
+    _assert_test_exists("tests_py.auth.test_telegram", "test_id_as_int_accepted")
+    _assert_test_exists("tests_py.auth.test_telegram", "test_sub_is_never_the_identity")
+
+
 # ── Notifications: after commit, idempotent, absorbed ─────────────────────────
 
 
@@ -459,6 +479,8 @@ EXPECTED_ENTRIES = {
     "test_healthz_recovers_own_panics_and_names_missing_env",
     "test_dev_without_qstash_token_marks_rows_skipped",
     "test_booking_created_fans_out_one_job_per_recipient",
+    "test_oidc_token_is_verifier_bound_and_single_use",
+    "test_oidc_identity_continuity_is_id_not_sub",
 }
 
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "CountMeIn API",
     "description": "API for group booking, organizer cabinet management, and notifications.",
-    "version": "1.0.0+111351c7f692"
+    "version": "1.0.0+26866cf58aa7"
   },
   "servers": [
     {
@@ -18,7 +18,7 @@
   "paths": {
     "/api/auth/telegram-guest": {
       "post": {
-        "summary": "Verify Telegram login widget data and mint a single-use guest ticket",
+        "summary": "Verify a Telegram OIDC id_token and mint a single-use guest ticket",
         "operationId": "telegramGuest",
         "x-rateLimit": {
           "limit": 10,
@@ -30,7 +30,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TelegramWidgetPayload"
+                "$ref": "#/components/schemas/TelegramIdTokenInput"
               }
             }
           }
@@ -47,7 +47,7 @@
             }
           },
           "400": {
-            "description": "Malformed widget payload or failed HMAC",
+            "description": "Malformed body or failed id_token verification",
             "content": {
               "application/json": {
                 "schema": {
@@ -81,7 +81,7 @@
     },
     "/api/auth/telegram-signup": {
       "post": {
-        "summary": "Verify Telegram login widget data and mint an organizer signup ticket",
+        "summary": "Verify a Telegram OIDC id_token and mint an organizer signup ticket",
         "operationId": "telegramSignup",
         "x-rateLimit": {
           "limit": 5,
@@ -93,7 +93,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TelegramWidgetPayload"
+                "$ref": "#/components/schemas/TelegramIdTokenInput"
               }
             }
           }
@@ -110,7 +110,7 @@
             }
           },
           "400": {
-            "description": "Malformed widget payload or failed HMAC",
+            "description": "Malformed body or failed id_token verification",
             "content": {
               "application/json": {
                 "schema": {
@@ -2954,6 +2954,10 @@
         "minLength": 1,
         "maxLength": 100
       },
+      "NonceVerifier": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{43}$"
+      },
       "NotificationRecipient": {
         "type": "string",
         "enum": [
@@ -3528,60 +3532,24 @@
         "maxLength": 40,
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
-      "TelegramAuthDate": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 4102444800
-      },
-      "TelegramHash": {
-        "type": "string",
-        "minLength": 64,
-        "maxLength": 64
-      },
-      "TelegramName": {
+      "TelegramIdToken": {
         "type": "string",
         "minLength": 1,
-        "maxLength": 256
+        "maxLength": 8192
       },
-      "TelegramOptionalName": {
-        "type": "string",
-        "maxLength": 256
-      },
-      "TelegramUserID": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 9007199254740991
-      },
-      "TelegramWidgetPayload": {
+      "TelegramIdTokenInput": {
         "type": "object",
         "properties": {
-          "id": {
-            "$ref": "#/components/schemas/TelegramUserID"
+          "idToken": {
+            "$ref": "#/components/schemas/TelegramIdToken"
           },
-          "first_name": {
-            "$ref": "#/components/schemas/TelegramName"
-          },
-          "last_name": {
-            "$ref": "#/components/schemas/TelegramOptionalName"
-          },
-          "username": {
-            "$ref": "#/components/schemas/TelegramOptionalName"
-          },
-          "photo_url": {
-            "$ref": "#/components/schemas/URL"
-          },
-          "auth_date": {
-            "$ref": "#/components/schemas/TelegramAuthDate"
-          },
-          "hash": {
-            "$ref": "#/components/schemas/TelegramHash"
+          "nonceVerifier": {
+            "$ref": "#/components/schemas/NonceVerifier"
           }
         },
         "required": [
-          "id",
-          "first_name",
-          "auth_date",
-          "hash"
+          "idToken",
+          "nonceVerifier"
         ]
       },
       "TimeSlotRecord": {

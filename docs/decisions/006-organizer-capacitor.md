@@ -9,7 +9,7 @@ Organizers need a way to manage services, slots, and bookings, and to learn abou
 
 Desired MVP flow:
 
-1. Organizer registers via messenger login widget (Telegram).
+1. Organizer registers via messenger login (Telegram).
 2. Booking notifications arrive in that messenger.
 3. Each message includes a link to the organizer cabinet.
 4. The link opens in the messenger **WebView** (or system browser) — responsive web pages in `apps/web`.

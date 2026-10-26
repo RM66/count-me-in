@@ -154,7 +154,7 @@ Interval: half-open `[startsAt, endsAt)`. `durationMinutes` is source of truth; 
 
 ### Booking
 
-Reservation on a slot by a guest (no Auth.js account). Guest identified by messenger account, verified via login widget at booking time ([ADR-002](decisions/002-guest-booking.md), [ADR-008](decisions/008-messenger-only-auth.md)).
+Reservation on a slot by a guest (no Auth.js account). Guest identified by messenger account, verified via Telegram OIDC login at booking time (ADR-026) ([ADR-002](decisions/002-guest-booking.md), [ADR-008](decisions/008-messenger-only-auth.md)).
 
 | Field                  | Required | Meaning                                                                                                                                                                                                      |
 | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

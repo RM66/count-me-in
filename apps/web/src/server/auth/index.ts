@@ -8,10 +8,10 @@ import 'server-only'
  * Auth.js for organizers (ADR-008): messenger-only identity, JWT sessions.
  * `Organizer.id` IS the Auth.js user id — no separate user table.
  *
- * Single provider: **telegram** (Telegram Login Widget). The widget HMAC is
- * validated by the Python API (`/api/auth/telegram-*`), which answers an
- * auth ticket; the provider redeems ticket/login-link credentials into
- * sessions.
+ * Single provider: **telegram** (Telegram OIDC login, ADR-026). The
+ * id_token is validated by the Python API (`/api/auth/telegram-*`),
+ * which answers an auth ticket; the provider redeems ticket/login-link
+ * credentials into sessions.
  *
  * **Nothing is route-gated here.** `/cabinet` is open to everyone —
  * unauthenticated visitors get the read-only demo cabinet (ADR-010) — so

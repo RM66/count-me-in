@@ -29,7 +29,7 @@ type UseBookingDialogOptions = {
  *
  * Extracted from [`BookingDialog`](booking-dialog.tsx) so the component is left
  * with rendering only. The last two steps are one round trip each and in a
- * fixed order: the widget proves the identity (`verify`), and only then does
+ * fixed order: the Telegram login proves the identity (`verify`), and only then does
  * `POST /api/bookings` claim the seats. Nothing is reserved before that — the
  * ticket holds no seat (docs/domain.md), so the sold-out case surfaces at the
  * moment of booking.
@@ -102,7 +102,7 @@ export function useBookingDialog({
    */
   const [attempted, setAttempted] = useState(false)
   /**
-   * Concurrent `handleTicket` calls in flight. The widget can fire twice for
+   * Concurrent `handleTicket` calls in flight. The login flow can fire twice for
    * one tap; the first call gets the real result, the second gets a 401 (ticket
    * already consumed). A 401 with another call still in flight is dropped.
    * Cleared on `reset()`.
@@ -213,7 +213,7 @@ export function useBookingDialog({
   }
 
   /**
-   * Widget auth succeeded — spend the ticket on the booking immediately.
+   * Login auth succeeded — spend the ticket on the booking immediately.
    * Tickets are single-use, so holding one only risks expiry or losing the
    * last seat. See `inFlightCount` above for the double-fire defense.
    */
@@ -250,7 +250,7 @@ export function useBookingDialog({
         queryKey: queryKeys.publicService.detail(service.id),
       })
     } catch (err) {
-      // A 401 with another call in flight is the widget double-fire — drop it.
+      // A 401 with another call in flight is the login double-fire — drop it.
       if (err instanceof ApiError && err.status === 401 && inFlightCount.current > 1) {
         return
       }
@@ -270,7 +270,7 @@ export function useBookingDialog({
   }
 
   /**
-   * Widget-side failure (fetch error, missing ticket) — no ticket was issued,
+   * Login-side failure (fetch error, missing ticket) — no ticket was issued,
    * so nothing is consumed and the guest may tap again. Surface the error in
    * the same slot as booking failures without marking `attempted`.
    */

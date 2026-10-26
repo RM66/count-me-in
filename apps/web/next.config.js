@@ -11,6 +11,27 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 // vercel.json is the single source of truth for /api/* routing (ADR-013).
 const vercelConfig = JSON.parse(readFileSync(new URL('./vercel.json', import.meta.url), 'utf8'))
 
+// OIDC login invariant (ADR-026): the browser passes
+// NEXT_PUBLIC_TELEGRAM_CLIENT_ID to Telegram.Login.auth, and the Python
+// API derives the expected `aud` from the TELEGRAM_BOT_TOKEN prefix —
+// the Client ID IS the bot id. When both values are set they must be
+// the same digit string, or the popup would mint tokens the API
+// rejects. Skipped when either is absent: local/Docker web builds run
+// without the bot token.
+{
+  const clientId = process.env.NEXT_PUBLIC_TELEGRAM_CLIENT_ID
+  const botToken = process.env.TELEGRAM_BOT_TOKEN
+  if (clientId && botToken) {
+    const botId = botToken.trim().split(':')[0]
+    if (!/^\d+$/.test(clientId) || clientId !== botId) {
+      throw new Error(
+        'NEXT_PUBLIC_TELEGRAM_CLIENT_ID must equal the TELEGRAM_BOT_TOKEN bot id ' +
+          `(the part before ":"); got ${JSON.stringify(clientId)} vs bot id ${JSON.stringify(botId)}`,
+      )
+    }
+  }
+}
+
 // R2_PUBLIC_BASE_URL may be the default *.r2.dev domain or a custom domain.
 function buildRemotePatterns() {
   const raw = process.env.R2_PUBLIC_BASE_URL
@@ -38,13 +59,23 @@ const nextConfig = {
   images: {
     remotePatterns: [
       ...buildRemotePatterns(),
-      { protocol: 'https', hostname: 't.me' }, // For Telegram avatars
+      { protocol: 'https', hostname: 't.me' }, // Telegram avatars (id_token `picture`)
+      { protocol: 'https', hostname: 'telesco.pe' }, // Telegram avatar CDN (apex)
+      { protocol: 'https', hostname: '*.telesco.pe' }, // Telegram avatar CDN (cdn1..cdn5)
     ],
   },
-  // 127.0.0.1/localhost: Playwright E2E (apps/web/e2e) drives the dev server
-  // on 127.0.0.1 — without the origin allowlisted, Next 16 blocks the HMR
-  // websocket and React hydration never completes.
-  allowedDevOrigins: ['127.0.0.1', 'localhost', '*.tunneler-si.yandex.ru'],
+  // E2E drives the dev server on 127.0.0.1 — without the origin
+  // allowlisted Next 16 blocks HMR + hydration. Extra origins (tunnels
+  // for device checks) come from ALLOWED_DEV_ORIGINS in .env — never a
+  // committed public mask: anyone can spin up a matching quick tunnel.
+  allowedDevOrigins: [
+    '127.0.0.1',
+    'localhost',
+    ...(process.env.ALLOWED_DEV_ORIGINS ?? '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean),
+  ],
   async rewrites() {
     // In production Vercel Edge Router executes rewrites from vercel.json natively
     // before entering Next.js. No beforeFiles rewrites needed.
@@ -94,7 +125,7 @@ const nextConfig = {
   async headers() {
     // Security headers. CSP is assembled from
     // env so every origin the app actually talks to is allowed —
-    // hardcoded hosts broke the Telegram login widget, R2 uploads and
+    // hardcoded hosts broke Telegram login, R2 uploads and
     // PostHog in production.
     // Next.js needs 'unsafe-inline' for styles (styled-jsx / inline
     // critical CSS) and 'unsafe-eval' only in dev. The Python API sets its
@@ -168,32 +199,32 @@ const nextConfig = {
       // through the App Router here, so script-src allows 'unsafe-inline'
       // for now — JsonLd escapes payloads (`escapeJsonForHtml`), and CSP is
       // the compensating control to tighten later with nonces.
-      // telegram.org hosts the login widget script (ADR-008) — the only
-      // auth mechanism, so it must load.
-      // 'unsafe-eval' is required in production too: telegram-widget.js
-      // parses data-onauth via eval and cannot work without it. The
-      // JSON-LD XSS vector is closed by escaping, and 'unsafe-inline'
-      // is already granted — the marginal loss is
-      // small. The long-term fix is the OAuth-redirect flow.
+      // telegram.org hosts telegram-login.js — the OIDC popup library
+      // (ADR-026) — the only auth mechanism, so it must load. The
+      // library maps telegram.org → oauth.telegram.org itself, so no
+      // second script host is needed. 'unsafe-eval' is dev-only: the
+      // new flow never uses the lib's data-onauth auto-init (the eval
+      // path it existed for).
       // va.vercel-scripts.com hosts the <Analytics/> and <SpeedInsights/>
       // loader scripts (providers.tsx); their beacons post to same-origin
       // /_vercel/* endpoints already covered by connect-src 'self'.
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}${vercelLive}`,
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://telegram.org https://va.vercel-scripts.com ${posthogWildcard}${posthogExtra}${vercelLive}`,
       `style-src 'self' 'unsafe-inline'${vercelLive}`,
-      `img-src 'self' data: blob: https://t.me ${mediaOrigin} ${posthogWildcard}${posthogExtra}${vercelLiveImg}`,
+      `img-src 'self' data: blob: https://t.me https://telesco.pe https://*.telesco.pe ${mediaOrigin} ${posthogWildcard}${posthogExtra}${vercelLiveImg}`,
       `font-src 'self' data:${vercelLiveFont}`,
       // r2UploadOrigin is in connect-src (the signed PUT goes straight from
       // the browser to R2) but not img-src — rendered media always comes
       // from mediaOrigin. No upstash.io: the browser never talks to Upstash.
-      `connect-src 'self' ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin}${vercelLiveConnect}`,
+      // oauth.telegram.org is the in-app browser's fetch('/inapp') path —
+      // without it Telegram WebView logins hang silently (ADR-026).
+      `connect-src 'self' ${sentryOrigin} ${posthogWildcard}${posthogExtra} ${r2UploadOrigin} ${mediaOrigin} https://oauth.telegram.org${vercelLiveConnect}`,
       // Session replay runs its recorder in a blob: worker — without an
       // explicit worker-src it falls back to default-src 'self' and replay
       // silently never starts.
       "worker-src 'self' blob:",
-      // The Telegram login widget renders in an iframe from
-      // oauth.telegram.org — without frame-src it falls back to
-      // default-src 'self' and the widget never appears.
-      `frame-src https://oauth.telegram.org${vercelLive}`,
+      // No iframes of our own — the OIDC flow is a popup + postMessage,
+      // so outside the Vercel toolbar on previews this is 'none'.
+      `frame-src${vercelLive ? vercelLive : " 'none'"}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

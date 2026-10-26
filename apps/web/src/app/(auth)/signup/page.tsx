@@ -10,6 +10,7 @@ import { errorMessage } from '@/api-client'
 import { AuthShell } from '@/app/(auth)/_components/auth-shell'
 import { useSignupForm } from '@/app/(auth)/signup/_components/use-signup-form'
 import { TelegramLoginButton } from '@/components/telegram-login-button'
+import { isTelegramClientId } from '@/components/telegram-oidc'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -51,7 +52,7 @@ function SignupPageInner() {
   const timezoneOptions =
     timezone && !TIMEZONES.includes(timezone) ? [timezone, ...TIMEZONES] : TIMEZONES
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+  const clientId = process.env.NEXT_PUBLIC_TELEGRAM_CLIENT_ID
 
   const steps = [t('stepTelegram'), t('stepProfile')]
 
@@ -96,35 +97,28 @@ function SignupPageInner() {
 
       {form.step === 0 && (
         <div className="flex flex-col items-center gap-4">
-          {botUsername ? (
-            <>
-              <TelegramLoginButton
-                botUsername={botUsername}
-                buttonSize="large"
-                mode="signup"
-                onTicketIssued={(ticketValue, organizerExists) => {
-                  if (organizerExists) {
-                    toast.info(t('accountExists'))
-                    form.signIn
-                      .mutateAsync(ticketValue)
-                      .then(() => {
-                        form.router.push('/cabinet')
-                        form.router.refresh()
-                      })
-                      .catch((error: unknown) =>
-                        toast.error(errorMessage(error, t('signInFailed'))),
-                      )
-                    return
-                  }
-                  form.setTicket(ticketValue)
-                  form.setStep(1)
-                }}
-                onError={() => toast.error(t('signInFailed'))}
-              />
-              <p className="text-center text-sm text-muted-foreground">{t('authenticate')}</p>
-            </>
-          ) : (
-            <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
+          <TelegramLoginButton
+            clientId={clientId ?? ''}
+            mode="signup"
+            onTicketIssued={(ticketValue, organizerExists) => {
+              if (organizerExists) {
+                toast.info(t('accountExists'))
+                form.signIn
+                  .mutateAsync(ticketValue)
+                  .then(() => {
+                    form.router.push('/cabinet')
+                    form.router.refresh()
+                  })
+                  .catch((error: unknown) => toast.error(errorMessage(error, t('signInFailed'))))
+                return
+              }
+              form.setTicket(ticketValue)
+              form.setStep(1)
+            }}
+            onError={() => toast.error(t('signInFailed'))}
+          />
+          {isTelegramClientId(clientId ?? '') && (
+            <p className="text-center text-sm text-muted-foreground">{t('authenticate')}</p>
           )}
         </div>
       )}

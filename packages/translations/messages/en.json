@@ -65,7 +65,6 @@
     "findMyBookings": "Find my bookings →",
     "confirmHint": "Confirm with Telegram — no account needed, and it only proves who you are.",
     "reserving": "Reserving your seat…",
-    "notConfigured": "Telegram login is not configured, so booking is unavailable.",
     "errSoldOut": "This session is fully booked",
     "errSeatsLeft": "Only {count, plural, =1 {# seat} other {# seats}} left on this session",
     "errPartyTooLarge": "You can book at most {maxSeats, plural, =1 {# seat} other {# seats}} in a single booking",
@@ -94,8 +93,7 @@
     "noBookingsFound": "No bookings found",
     "noBookingsDescription": "This Telegram account has no bookings yet. If you booked with a different account, confirm with that one instead.",
     "nothingYet": "Nothing to show yet",
-    "nothingYetDescription": "Confirm with Telegram above to look up your bookings.",
-    "notConfigured": "Telegram login is not configured, so lookup is unavailable."
+    "nothingYetDescription": "Confirm with Telegram above to look up your bookings."
   },
   "ManageBooking": {
     "backTo": "Back to {name}",
@@ -361,7 +359,7 @@
       "collectHeading": "Data we collect",
       "collectBody": "For organizers: name, messenger account, timezone, and the services and slots you publish. For guests: display name and messenger account, used to confirm and manage a booking.",
       "useHeading": "How we use it",
-      "useBody": "Messenger accounts are verified through the Messenger Login Widget at booking time — no one-time codes or passwords are collected. We use your messenger account to deliver booking confirmations and cancellation links. We do not sell personal data.",
+      "useBody": "Messenger accounts are verified through Telegram sign-in at booking time — no one-time codes or passwords are collected. We use your messenger account to deliver booking confirmations and cancellation links. We do not sell personal data.",
       "analyticsHeading": "Analytics and error monitoring",
       "analyticsBody": "We use PostHog for product analytics (page views, feature usage) and Sentry for error monitoring (crash reports and performance traces). PostHog session recordings are enabled with all input fields masked, so no typed personal data appears in recordings. Signed-in organizers are identified by an internal id so their activity can be grouped; guests are not identified in analytics. Neither service receives your messenger credentials.",
       "analyticsCookies": "Analytics cookies are off by default and load only after you accept them in the cookie banner; if you reject or ignore it, PostHog is never initialized and no analytics cookies are set. Essential cookies required for sign-in and booking are always active and do not require consent. Sentry error monitoring runs without cookies. You can change your choice at any time by clearing this site's data in your browser.",
@@ -379,7 +377,6 @@
       "createAccount": "Create an account",
       "noAccountFound": "No account found. Please create an account first.",
       "sameAccount": "Use the same Telegram account you signed up with.",
-      "notConfigured": "Telegram login is not configured. Please contact support.",
       "signInFailed": "Could not sign you in — authenticate with Telegram again"
     },
     "signup": {
@@ -391,7 +388,6 @@
       "stepProfile": "Profile",
       "accountExists": "Account already exists. Signing you in…",
       "authenticate": "Authenticate with Telegram to continue.",
-      "notConfigured": "Telegram login is not configured. Please contact support.",
       "displayName": "Display name",
       "namePlaceholder": "Studio Demo",
       "publicHandle": "Public handle",
@@ -783,5 +779,16 @@
       "full": "Full",
       "left": "{count} left"
     }
+  },
+  "TelegramLogin": {
+    "button": "Log in with Telegram",
+    "buttonGuest": "Confirm with Telegram",
+    "notConfigured": "Telegram login is not configured. Please contact support.",
+    "unavailable": "Telegram login needs a secure connection (HTTPS).",
+    "loadFailed": "Could not load Telegram login. Check your connection.",
+    "popupBlocked": "Allow pop-ups for this site to sign in with Telegram.",
+    "authFailed": "Couldn't verify you with Telegram. Please try again.",
+    "inAppFailed": "Telegram sign-in didn't open. Tap again to retry in a window.",
+    "retry": "Try again"
   }
 }

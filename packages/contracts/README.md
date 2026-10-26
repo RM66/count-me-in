@@ -52,7 +52,7 @@ One file per entity, each holding its input, update, and record schemas built fr
 - [`primitives.ts`](src/primitives.ts) — scalar building blocks (`slug`, `displayName`, `capacity`, `seats`, `uuid`, …) and their bounds (`BOUNDS`).
 - [`enums.ts`](src/enums.ts) — shared enumerations (`BookingStatus`, `Messenger`, `OptionsSelectMode`).
 - [`organizer.ts`](src/organizer.ts), [`service.ts`](src/service.ts), [`time-slot.ts`](src/time-slot.ts), [`booking.ts`](src/booking.ts) — entity schemas.
-- [`auth.ts`](src/auth.ts) — ticket and Telegram widget schemas.
+- [`auth.ts`](src/auth.ts) — ticket and Telegram OIDC auth schemas.
 - [`storage.ts`](src/storage.ts) — image upload input/target schemas.
 - [`jobs.ts`](src/jobs.ts) — QStash queue names and job payloads.
 - [`routes.ts`](src/routes.ts) — HTTP surface (method, path, auth, request/response); subpath export, not in `index.ts`.

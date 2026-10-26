@@ -18,7 +18,7 @@ from .organizer import (
     decode_internal_organizer_lookup_input,
     decode_merged_organizer_input,
     decode_register_organizer_input,
-    decode_telegram_widget_payload,
+    decode_telegram_id_token_input,
     decode_update_organizer_language_input,
     decode_update_organizer_profile_input,
 )
@@ -49,7 +49,7 @@ DECODERS = {
     "UpdateOrganizerLanguageInput": decode_update_organizer_language_input,
     "CreateAvatarUploadInput": decode_create_avatar_upload_input,
     "CreateServicePhotoUploadInput": decode_create_service_photo_upload_input,
-    "TelegramWidgetPayload": decode_telegram_widget_payload,
+    "TelegramIdTokenInput": decode_telegram_id_token_input,
     "InternalOrganizerLookupInput": decode_internal_organizer_lookup_input,
 }
 
@@ -68,7 +68,7 @@ __all__ = [
     "decode_merged_service_input",
     "decode_merged_slot_input",
     "decode_register_organizer_input",
-    "decode_telegram_widget_payload",
+    "decode_telegram_id_token_input",
     "decode_update_organizer_language_input",
     "decode_update_organizer_profile_input",
     "decode_update_service_input",

@@ -65,7 +65,6 @@
     "findMyBookings": "予約を確認する →",
     "confirmHint": "Telegramで本人確認します。アカウント登録は不要で、ご本人であることの確認にのみ使用されます。",
     "reserving": "予約を確保しています…",
-    "notConfigured": "Telegramログインが設定されていないため、予約できません。",
     "errSoldOut": "この回は満席です",
     "errSeatsLeft": "この回の空きは残り{count}枠です",
     "errPartyTooLarge": "1回の予約で申し込めるのは最大{maxSeats}名です",
@@ -94,8 +93,7 @@
     "noBookingsFound": "予約が見つかりません",
     "noBookingsDescription": "このTelegramアカウントでの予約はまだありません。別のアカウントで予約した場合は、そちらのアカウントで確認してください。",
     "nothingYet": "表示する予約はまだありません",
-    "nothingYetDescription": "上のボタンからTelegramで確認すると、予約を検索できます。",
-    "notConfigured": "Telegramログインが設定されていないため、予約を検索できません。"
+    "nothingYetDescription": "上のボタンからTelegramで確認すると、予約を検索できます。"
   },
   "ManageBooking": {
     "backTo": "{name}に戻る",
@@ -361,7 +359,7 @@
       "collectHeading": "収集するデータ",
       "collectBody": "主催者については、氏名、メッセンジャーアカウント、タイムゾーン、公開したサービスと開催枠を収集します。参加者については、予約の確認と管理に使用する表示名とメッセンジャーアカウントを収集します。",
       "useHeading": "データの利用方法",
-      "useBody": "メッセンジャーアカウントは予約時にMessenger Login Widgetを通じて確認され、ワンタイムコードやパスワードは収集しません。メッセンジャーアカウントは、予約確認やキャンセル用リンクの送信に使用します。当社は個人データを販売しません。",
+      "useBody": "メッセンジャーアカウントは予約時にTelegramログインを通じて確認され、ワンタイムコードやパスワードは収集しません。メッセンジャーアカウントは、予約確認やキャンセル用リンクの送信に使用します。当社は個人データを販売しません。",
       "analyticsHeading": "アクセス解析とエラー監視",
       "analyticsBody": "製品の利用状況分析（ページ閲覧、機能の利用状況）にはPostHogを、エラー監視（クラッシュレポート、パフォーマンストレース）にはSentryを使用します。PostHogのセッション録画ではすべての入力欄がマスクされるため、入力した個人データが録画に表示されることはありません。ログイン中の主催者は、操作をまとめて分析できるよう内部IDで識別されますが、参加者はアクセス解析上で識別されません。いずれのサービスにもメッセンジャーの認証情報は送信されません。",
       "analyticsCookies": "アクセス解析Cookieは初期状態では無効で、Cookieバナーで同意した場合にのみ読み込まれます。拒否した場合や選択しなかった場合、PostHogは初期化されず、アクセス解析Cookieも設定されません。ログインと予約に必要なCookieは常に有効で、同意を必要としません。Sentryによるエラー監視はCookieを使用せずに動作します。ブラウザでこのサイトのデータを削除すれば、いつでも選択を変更できます。",
@@ -379,7 +377,6 @@
       "createAccount": "アカウントを作成",
       "noAccountFound": "アカウントが見つかりません。先にアカウントを作成してください。",
       "sameAccount": "登録時と同じTelegramアカウントを使用してください。",
-      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。",
       "signInFailed": "ログインできませんでした。もう一度Telegramで認証してください"
     },
     "signup": {
@@ -391,7 +388,6 @@
       "stepProfile": "プロフィール",
       "accountExists": "アカウントはすでに存在します。ログインしています…",
       "authenticate": "続行するにはTelegramで認証してください。",
-      "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。",
       "displayName": "表示名",
       "namePlaceholder": "Studio Demo",
       "publicHandle": "公開用ID",
@@ -783,5 +779,16 @@
       "full": "満席",
       "left": "残り{count}枠"
     }
+  },
+  "TelegramLogin": {
+    "button": "Telegramでログイン",
+    "buttonGuest": "Telegramで確認",
+    "notConfigured": "Telegramログインが設定されていません。サポートにお問い合わせください。",
+    "unavailable": "Telegramログインには安全な接続（HTTPS）が必要です。",
+    "loadFailed": "Telegramログインを読み込めませんでした。接続を確認してください。",
+    "popupBlocked": "Telegram でログインするには、このサイトのポップアップを許可してください。",
+    "authFailed": "Telegramで確認できませんでした。もう一度お試しください。",
+    "inAppFailed": "Telegramログインが開きませんでした。もう一度タップするとウィンドウで再試行します。",
+    "retry": "再試行"
   }
 }
