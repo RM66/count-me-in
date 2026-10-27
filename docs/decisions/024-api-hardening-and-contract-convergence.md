@@ -40,8 +40,8 @@ and Pydantic.
 
 - Guest ticket consumption moved **past** domain refusals:
   `SlotGone`/`InvalidOptions`/`PartyTooLarge`/`SoldOut` no longer burn the
-  ticket — the guest retries with different seats without re-running the
-  widget. It is consumed only when a booking is genuinely attempted.
+  ticket — the guest retries with different seats without re-running
+  Telegram auth. It is consumed only when a booking is genuinely attempted.
 - The three merge-patch endpoints are `PATCH` (RFC 7386), not `PUT`.
 - `assert_matches_spec` validates real handler responses against
   `spec_gen.json` in tests — serializer drift is a red test, not a shipped body.

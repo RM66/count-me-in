@@ -112,6 +112,11 @@ type QuerySearch = Annotated[str, Field(max_length=200, min_length=1)]
 type ServiceDescription = Annotated[str, Field(max_length=2000)]
 
 
+class TelegramIdTokenInput(BaseModel):
+    idToken: Annotated[str, Field(max_length=8192, min_length=1)]
+    nonceVerifier: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{43}$')]
+
+
 class UpdateOrganizerLanguageInput(BaseModel):
     language: Literal['en', 'de', 'es', 'fr', 'pt', 'ru', 'ar', 'ja']
 
@@ -445,16 +450,6 @@ class SitemapServiceEntry(BaseModel):
         str, Field(max_length=40, min_length=4, pattern='^[a-z0-9]+(?:-[a-z0-9]+)*$')
     ]
     serviceId: Annotated[str, Field(pattern='^[A-Za-z0-9_-]{6,32}$')]
-
-
-class TelegramWidgetPayload(BaseModel):
-    id: Annotated[int, Field(ge=1, le=9007199254740991)]
-    first_name: Annotated[str, Field(max_length=256, min_length=1)]
-    last_name: Annotated[str | None, Field(max_length=256)] = None
-    username: Annotated[str | None, Field(max_length=256)] = None
-    photo_url: AnyUrl | None = None
-    auth_date: Annotated[int, Field(ge=1, le=4102444800)]
-    hash: Annotated[str, Field(max_length=64, min_length=64)]
 
 
 class TimeSlotRecord(BaseModel):

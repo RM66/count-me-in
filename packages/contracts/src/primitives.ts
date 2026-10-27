@@ -4,6 +4,8 @@ import { DEMO_ORGANIZER_SLUG } from './demo'
 
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const SERVICE_ID_PATTERN = /^[A-Za-z0-9_-]{6,32}$/
+/** 32 random bytes as unpadded base64url — the OIDC nonce-verifier shape. */
+export const NONCE_VERIFIER_PATTERN = /^[A-Za-z0-9_-]{43}$/
 
 /**
  * Reserved slugs that conflict with system routes (ADR-009) or with the seeded
@@ -150,10 +152,20 @@ export const manageToken = z.string().min(BOUNDS.manageToken.min).max(BOUNDS.man
 export const messengerId = z.string().min(BOUNDS.messengerId.min).max(BOUNDS.messengerId.max)
 
 /**
- * Opaque short-lived token proving messenger identity was validated (ADR-008).
- * Replaces the old `otpTicket` — same shape, new semantics (widget HMAC, not OTP code).
+ * Opaque short-lived token proving messenger identity was validated (ADR-026).
+ * Replaces the old `otpTicket` — same shape, new semantics (Telegram OIDC
+ * id_token, not OTP code).
  */
 export const authTicket = z.string().min(BOUNDS.authTicket.min).max(BOUNDS.authTicket.max)
+
+/**
+ * Client-generated proof-of-possession verifier for the Telegram OIDC
+ * flow (ADR-026): the page hashes it into the `nonce` passed to Telegram,
+ * then sends the verifier alongside the returned id_token — the API
+ * re-checks `sha256(verifier) == nonce`. Not an auth ticket; it is never
+ * stored or looked up, only hashed.
+ */
+export const nonceVerifier = z.string().regex(NONCE_VERIFIER_PATTERN, 'Invalid nonce verifier')
 
 /** Pagination: maximum number of records to return (1..100). */
 export const queryLimit = z.number().int().min(1).max(100)

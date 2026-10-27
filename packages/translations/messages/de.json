@@ -65,7 +65,6 @@
     "findMyBookings": "Meine Buchungen finden →",
     "confirmHint": "Bestätige mit Telegram — du brauchst kein Konto, und die Bestätigung weist nur deine Identität nach.",
     "reserving": "Dein Platz wird reserviert…",
-    "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet, daher sind Buchungen derzeit nicht möglich.",
     "errSoldOut": "Dieser Termin ist ausgebucht",
     "errSeatsLeft": "Bei diesem Termin sind nur noch {count, plural, =1 {# Platz} other {# Plätze}} frei",
     "errPartyTooLarge": "Du kannst mit einer Buchung höchstens {maxSeats, plural, =1 {# Platz} other {# Plätze}} buchen",
@@ -94,8 +93,7 @@
     "noBookingsFound": "Keine Buchungen gefunden",
     "noBookingsDescription": "Für dieses Telegram-Konto gibt es noch keine Buchungen. Wenn du mit einem anderen Konto gebucht hast, bestätige dich stattdessen damit.",
     "nothingYet": "Noch nichts anzuzeigen",
-    "nothingYetDescription": "Bestätige dich oben mit Telegram, um deine Buchungen abzurufen.",
-    "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet, daher ist die Suche derzeit nicht verfügbar."
+    "nothingYetDescription": "Bestätige dich oben mit Telegram, um deine Buchungen abzurufen."
   },
   "ManageBooking": {
     "backTo": "Zurück zu {name}",
@@ -361,7 +359,7 @@
       "collectHeading": "Welche Daten wir erfassen",
       "collectBody": "Für Veranstalter: Name, Messenger-Konto, Zeitzone sowie die veröffentlichten Angebote und Termine. Für Gäste: Anzeigename und Messenger-Konto zur Bestätigung und Verwaltung einer Buchung.",
       "useHeading": "Wie wir die Daten verwenden",
-      "useBody": "Messenger-Konten werden bei der Buchung über das Messenger Login Widget verifiziert — Einmalcodes oder Passwörter werden nicht erfasst. Wir verwenden dein Messenger-Konto, um Buchungsbestätigungen und Stornierungslinks zu senden. Wir verkaufen keine personenbezogenen Daten.",
+      "useBody": "Messenger-Konten werden bei der Buchung über die Telegram-Anmeldung verifiziert — Einmalcodes oder Passwörter werden nicht erfasst. Wir verwenden dein Messenger-Konto, um Buchungsbestätigungen und Stornierungslinks zu senden. Wir verkaufen keine personenbezogenen Daten.",
       "analyticsHeading": "Analyse und Fehlerüberwachung",
       "analyticsBody": "Wir verwenden PostHog für Produktanalysen (Seitenaufrufe und Nutzung von Funktionen) und Sentry zur Fehlerüberwachung (Absturzberichte und Leistungsmessungen). PostHog-Sitzungsaufzeichnungen sind aktiviert, wobei alle Eingabefelder maskiert werden. Daher erscheinen eingegebene personenbezogene Daten nicht in den Aufzeichnungen. Angemeldete Veranstalter werden anhand einer internen ID identifiziert, damit ihre Aktivitäten gruppiert werden können; Gäste werden in der Analyse nicht identifiziert. Keiner der beiden Dienste erhält deine Messenger-Zugangsdaten.",
       "analyticsCookies": "Analyse-Cookies sind standardmäßig deaktiviert und werden erst geladen, nachdem du sie im Cookie-Banner akzeptiert hast. Wenn du sie ablehnst oder das Banner ignorierst, wird PostHog nicht initialisiert und es werden keine Analyse-Cookies gesetzt. Erforderliche Cookies für Anmeldung und Buchung sind immer aktiv und benötigen keine Einwilligung. Die Fehlerüberwachung von Sentry funktioniert ohne Cookies. Du kannst deine Auswahl jederzeit ändern, indem du die Daten dieser Website in deinem Browser löschst.",
@@ -379,7 +377,6 @@
       "createAccount": "Konto erstellen",
       "noAccountFound": "Kein Konto gefunden. Erstelle bitte zuerst ein Konto.",
       "sameAccount": "Verwende dasselbe Telegram-Konto wie bei deiner Registrierung.",
-      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support.",
       "signInFailed": "Du konntest nicht angemeldet werden — authentifiziere dich erneut mit Telegram"
     },
     "signup": {
@@ -391,7 +388,6 @@
       "stepProfile": "Profil",
       "accountExists": "Das Konto besteht bereits. Du wirst angemeldet…",
       "authenticate": "Authentifiziere dich mit Telegram, um fortzufahren.",
-      "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte wende dich an den Support.",
       "displayName": "Anzeigename",
       "namePlaceholder": "Studio Demo",
       "publicHandle": "Öffentlicher Kurzname",
@@ -783,5 +779,16 @@
       "full": "Ausgebucht",
       "left": "Noch {count}"
     }
+  },
+  "TelegramLogin": {
+    "button": "Mit Telegram anmelden",
+    "buttonGuest": "Mit Telegram bestätigen",
+    "notConfigured": "Die Telegram-Anmeldung ist nicht eingerichtet. Bitte kontaktiere den Support.",
+    "unavailable": "Die Telegram-Anmeldung benötigt eine sichere Verbindung (HTTPS).",
+    "loadFailed": "Die Telegram-Anmeldung konnte nicht geladen werden. Prüfe deine Verbindung.",
+    "popupBlocked": "Erlaube Pop-ups für diese Website, um dich mit Telegram anzumelden.",
+    "authFailed": "Verifizierung über Telegram fehlgeschlagen. Bitte erneut versuchen.",
+    "inAppFailed": "Telegram-Anmeldung wurde nicht geöffnet. Tippe erneut, um es in einem Fenster zu versuchen.",
+    "retry": "Erneut versuchen"
   }
 }

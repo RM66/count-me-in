@@ -30,7 +30,7 @@ from .shared import hash_manage_token, new_manage_token
 DEMO_TIMEZONE = "Europe/Belgrade"
 
 # Sentinel messenger id — deliberately not a real Telegram account, so
-# the demo can never be logged into via the widget.
+# the demo can never be logged into via Telegram login.
 DEMO_MESSENGER_ID = "demo-account"
 
 DEMO_ORGANIZER_DESCRIPTION = (

@@ -8,9 +8,9 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 
 - Turborepo: `apps/web`, packages (`contracts`, `translations`, `eslint-config`, `typescript-config`) — `@repo/db` was dissolved when Alembic took schema ownership ([ADR-022](decisions/022-backend-refactoring-plan.md)).
 - `apps/web`: landing + public booking + **organizer cabinet** (services, slots, week calendar, bookings, analytics) + HTTP API + job handlers.
-- Organizer flow: messenger login widget → notifications → **deep link** opens cabinet in WebView/browser.
+- Organizer flow: Telegram OIDC login → notifications → **deep link** opens cabinet in WebView/browser.
 - Domain without Calendar: Organizer → Service → TimeSlot → Booking; display prices + service options.
-- Guest booking with messenger login widget → atomic `confirmed`; cancel in MVP (guest + organizer).
+- Guest booking with Telegram OIDC login → atomic `confirmed`; cancel in MVP (guest + organizer).
 - Messenger notifications via Upstash QStash job handlers; Telegram first ([ADR-012](decisions/012-queue-upstash-qstash.md)).
 - Image uploads (avatar, service photo) via Cloudflare R2, browser-downscaled to 512×512 WebP ([ADR-007](decisions/007-cloudflare-r2.md)).
 - Read-only demo organizer at `/demo`, linked from landing; writes reject it, notifications never send for it; seed refreshed by a QStash schedule ([ADR-010](decisions/010-demo-organizer-account.md)).
@@ -49,7 +49,7 @@ Phased delivery for CountMeIn. Architecture: [architecture.md](architecture.md).
 | Topic                  | Decision                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------- |
 | Domain / URL           | `countmein.group/{orgSlug}`                                                           |
-| Auth                   | Messenger login widget (Telegram); `Organizer.id` only                                |
+| Auth                   | Telegram OIDC login (ADR-026); `Organizer.id` only                                    |
 | Notifications          | Messengers (Telegram MVP) + cabinet deep links                                        |
 | Guest cancel           | MVP                                                                                   |
 | Organizer client (MVP) | Web cabinet in `apps/web` ([ADR-006](decisions/006-organizer-capacitor.md))           |

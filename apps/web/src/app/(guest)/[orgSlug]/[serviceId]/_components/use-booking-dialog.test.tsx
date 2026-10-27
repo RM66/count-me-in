@@ -580,7 +580,7 @@ describe('useBookingDialog — handleTicket', () => {
     expect(result.current.step).toBe('success')
   })
 
-  it('does not let a sequential 401 overwrite a success (widget double-fire)', async () => {
+  it('does not let a sequential 401 overwrite a success (login double-fire)', async () => {
     // First call succeeds
     mockMutateAsync.mockResolvedValueOnce({ booking: guestBooking })
     // Second call (double-fire): ticket already consumed, server returns 401
@@ -606,7 +606,7 @@ describe('useBookingDialog — handleTicket', () => {
     expect(mockMutateAsync).toHaveBeenCalledTimes(1)
     expect(result.current.step).toBe('success')
 
-    // Second call — the widget double-fire; the 401 must not overwrite the
+    // Second call — the login double-fire; the 401 must not overwrite the
     // success because the first call is no longer in flight (inFlightCount
     // is 0 by now), so the 401 is a genuine "ticket expired" — but the step
     // is already 'success', so the error is set but not shown.
@@ -656,7 +656,7 @@ describe('useBookingDialog — handleTicket', () => {
   })
 
   it('does not let a concurrent 401 overwrite a 409 when 401 arrives first', async () => {
-    // Simulate the real-world race: the widget double-fires, both calls start
+    // Simulate the real-world race: the login double-fires, both calls start
     // concurrently. The 401 (ticket already consumed) arrives *before* the
     // 409 (duplicate) because the server generates the 401 immediately while
     // the 409 needs the full booking transaction.

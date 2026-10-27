@@ -1,5 +1,5 @@
-"""Auth: Telegram widget validation, single-use tickets, one-time login
-links, and organizer session resolution."""
+"""Auth: Telegram OIDC id_token validation, single-use tickets,
+one-time login links, and organizer session resolution."""
 
 from ..errors import (
     TelegramInvalidError,
@@ -7,7 +7,7 @@ from ..errors import (
     TelegramValidationFailedError,
 )
 from .session import Session, session_from_request
-from .telegram import TelegramIdentity, validate_telegram_widget
+from .telegram import TelegramIdentity, validate_telegram_id_token
 from .ticket import (
     consume_login_link,
     consume_ticket,
@@ -30,5 +30,5 @@ __all__ = [
     "peek_login_link",
     "peek_ticket",
     "session_from_request",
-    "validate_telegram_widget",
+    "validate_telegram_id_token",
 ]

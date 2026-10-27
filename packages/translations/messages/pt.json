@@ -65,7 +65,6 @@
     "findMyBookings": "Encontrar minhas reservas →",
     "confirmHint": "Confirme com o Telegram — não é preciso criar uma conta, e isso serve apenas para verificar sua identidade.",
     "reserving": "Reservando sua vaga…",
-    "notConfigured": "O login com o Telegram não está configurado, então não é possível fazer reservas.",
     "errSoldOut": "Esta sessão está totalmente reservada",
     "errSeatsLeft": "Restam apenas {count, plural, =1 {# vaga} other {# vagas}} nesta sessão",
     "errPartyTooLarge": "Você pode reservar no máximo {maxSeats, plural, =1 {# vaga} other {# vagas}} em uma única reserva",
@@ -94,8 +93,7 @@
     "noBookingsFound": "Nenhuma reserva encontrada",
     "noBookingsDescription": "Esta conta do Telegram ainda não tem reservas. Se você reservou com outra conta, confirme com ela.",
     "nothingYet": "Ainda não há nada para mostrar",
-    "nothingYetDescription": "Confirme com o Telegram acima para buscar suas reservas.",
-    "notConfigured": "O login com o Telegram não está configurado, então não é possível fazer a busca."
+    "nothingYetDescription": "Confirme com o Telegram acima para buscar suas reservas."
   },
   "ManageBooking": {
     "backTo": "Voltar para {name}",
@@ -361,7 +359,7 @@
       "collectHeading": "Dados que coletamos",
       "collectBody": "Dos organizadores: nome, conta do aplicativo de mensagens, fuso horário e os serviços e horários publicados. Dos participantes: nome de exibição e conta do aplicativo de mensagens, usados para confirmar e gerenciar uma reserva.",
       "useHeading": "Como usamos esses dados",
-      "useBody": "As contas de aplicativos de mensagens são verificadas pelo Messenger Login Widget no momento da reserva — não coletamos códigos de uso único nem senhas. Usamos sua conta para enviar confirmações de reserva e links de cancelamento. Não vendemos dados pessoais.",
+      "useBody": "As contas de aplicativos de mensagens são verificadas pelo login com o Telegram no momento da reserva — não coletamos códigos de uso único nem senhas. Usamos sua conta para enviar confirmações de reserva e links de cancelamento. Não vendemos dados pessoais.",
       "analyticsHeading": "Análises e monitoramento de erros",
       "analyticsBody": "Usamos o PostHog para análises do produto (visualizações de páginas e uso de recursos) e o Sentry para monitorar erros (relatórios de falhas e rastreamentos de desempenho). As gravações de sessão do PostHog ficam ativadas com todos os campos de entrada ocultos, portanto nenhum dado pessoal digitado aparece nas gravações. Organizadores autenticados são identificados por um ID interno para agrupar suas atividades; participantes não são identificados nas análises. Nenhum dos serviços recebe suas credenciais do aplicativo de mensagens.",
       "analyticsCookies": "Os cookies de análise ficam desativados por padrão e só são carregados depois que você os aceita no aviso de cookies. Se você recusar ou ignorar o aviso, o PostHog não será inicializado e nenhum cookie de análise será definido. Os cookies essenciais, necessários para entrar e fazer reservas, estão sempre ativos e não exigem consentimento. O monitoramento de erros do Sentry funciona sem cookies. Você pode alterar sua escolha a qualquer momento apagando os dados deste site no navegador.",
@@ -379,7 +377,6 @@
       "createAccount": "Criar uma conta",
       "noAccountFound": "Nenhuma conta encontrada. Primeiro, crie uma conta.",
       "sameAccount": "Use a mesma conta do Telegram com que você se cadastrou.",
-      "notConfigured": "O login com o Telegram não está configurado. Entre em contato com o suporte.",
       "signInFailed": "Não foi possível entrar — autentique-se novamente com o Telegram"
     },
     "signup": {
@@ -391,7 +388,6 @@
       "stepProfile": "Perfil",
       "accountExists": "A conta já existe. Entrando…",
       "authenticate": "Autentique-se com o Telegram para continuar.",
-      "notConfigured": "O login com o Telegram não está configurado. Entre em contato com o suporte.",
       "displayName": "Nome de exibição",
       "namePlaceholder": "Estúdio Demo",
       "publicHandle": "Identificador público",
@@ -783,5 +779,16 @@
       "full": "Lotado",
       "left": "{count} restantes"
     }
+  },
+  "TelegramLogin": {
+    "button": "Entrar com o Telegram",
+    "buttonGuest": "Confirmar com o Telegram",
+    "notConfigured": "O login com o Telegram não está configurado. Contacta o suporte.",
+    "unavailable": "O login com o Telegram precisa de uma ligação segura (HTTPS).",
+    "loadFailed": "Não foi possível carregar o login com o Telegram. Verifica a tua ligação.",
+    "popupBlocked": "Permite os pop-ups deste site para iniciares sessão com o Telegram.",
+    "authFailed": "Não foi possível verificar pelo Telegram. Tente novamente.",
+    "inAppFailed": "O login do Telegram não abriu. Toque novamente para tentar em uma janela.",
+    "retry": "Tentar novamente"
   }
 }

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-28
 - **Supersedes:** [ADR-005](005-phone-messenger.md); amends [ADR-002](002-guest-booking.md)
+- **Amended by:** [ADR-026](026-telegram-oidc.md) (the HMAC Login Widget described below is superseded by the Telegram OIDC `id_token` flow — messenger-only identity and the `(messenger, messengerId)` continuity contract are unchanged)
 
 ## Context
 

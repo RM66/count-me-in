@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { messengerEnum } from './enums'
-import { authTicket, httpUrl, messengerId, uuid } from './primitives'
+import { authTicket, httpUrl, messengerId, nonceVerifier, uuid } from './primitives'
 
 /**
  * Auth.js session cookie names, most-secure first. Auth.js itself reads only
@@ -23,43 +23,28 @@ export const ORGANIZER_AUTH_ISS = 'countmein-web'
 export const ORGANIZER_AUTH_AUD = 'countmein-api'
 
 /**
- * Telegram numeric user id. Bounded rather than `.positive()` so the bound
- * is derivable as an inclusive JSON Schema range — an exclusive minimum
- * is not.
+ * A Telegram OIDC `id_token` (compact JWS). A token carrying profile
+ * claims stays well under this bound.
  */
-export const telegramUserId = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER)
-
-/** Unix seconds; the upper bound is 2100-01-01, far past any plausible widget. */
-export const telegramAuthDate = z.number().int().min(1).max(4_102_444_800)
-
-/** Telegram caps names at 64; 256 leaves room without accepting a payload bomb. */
-export const telegramName = z.string().min(1).max(256)
-
-/** Optional name/username fields: present-but-empty is what the widget sends today. */
-export const telegramOptionalName = z.string().max(256)
-
-/** HMAC-SHA256 hex digest. */
-export const telegramHash = z.string().min(64).max(64)
+export const telegramIdToken = z.string().min(1).max(8192)
 
 /**
- * Telegram Login Widget payload from the client.
- * Server re-validates the HMAC before trusting any field.
+ * Request body of `/api/auth/telegram-*` (ADR-008, OIDC flavour):
+ * the `id_token` from the Telegram login flow plus the page's
+ * nonce verifier — the API verifies the JWT signature against
+ * Telegram's JWKS and `sha256(nonceVerifier) == claims.nonce`.
  */
-export const telegramWidgetPayload = z.object({
-  id: telegramUserId,
-  first_name: telegramName,
-  last_name: telegramOptionalName.optional(),
-  username: telegramOptionalName.optional(),
-  photo_url: httpUrl.optional(),
-  auth_date: telegramAuthDate,
-  hash: telegramHash,
+export const telegramIdTokenInput = z.object({
+  idToken: telegramIdToken,
+  nonceVerifier,
 })
-export type TelegramWidgetPayload = z.infer<typeof telegramWidgetPayload>
+export type TelegramIdTokenInput = z.infer<typeof telegramIdTokenInput>
 
 /**
  * Response from POST /api/auth/telegram-signup.
- * Contains a short-lived auth ticket; `organizerExists` tells the client
- * whether to go to login or signup.
+ * Contains a short-lived auth ticket minted after the id_token was
+ * verified; `organizerExists` tells the client whether to go to login
+ * or signup.
  */
 export const authTicketResponse = z.object({
   ticket: authTicket,
@@ -103,8 +88,8 @@ export function authTicketKey(token: string): string {
 }
 
 /**
- * POST /api/auth/telegram-guest — same widget validation but issues a guest
- * ticket for the booking flow instead of an organizer session.
+ * POST /api/auth/telegram-guest — same id_token validation but issues a
+ * guest ticket for the booking flow instead of an organizer session.
  */
 export const guestTicketResponse = z.object({
   ticket: authTicket,

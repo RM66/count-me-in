@@ -39,7 +39,7 @@ only copy of the sample content.
 ## Rationale
 
 - **Anonymous instead of a demo session.** The demo's `messengerId` is the
-  sentinel `demo-account` — no Telegram widget can sign it, so a session would
+  sentinel `demo-account` — no Telegram login can sign it, so a session would
   need a public endpoint minting cookies for a hardcoded id, plus `signOut` and
   redirect special-cases. Per-request resolution has no state to leak or get
   stuck.

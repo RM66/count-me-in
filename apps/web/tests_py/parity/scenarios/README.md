@@ -24,7 +24,7 @@ One YAML file per scenario; each is an ordered list of steps the retired recorde
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | healthz.yaml                       | healthz happy path                                                                                                                                                      |
 | healthz-rate-limit.yaml            | rate limit 429 (healthz bucket, 30/min)                                                                                                                                 |
-| auth-telegram.yaml                 | telegramGuest/telegramSignup happy path + malformed payload + failed HMAC + rate limit 429                                                                              |
+| auth-telegram.yaml                 | telegramGuest/telegramSignup happy path + malformed payload + failed token + rate limit 429                                                                             |
 | organizers-register.yaml           | registerOrganizer happy path + validation errors (slug rules) + expired/unknown ticket 401 + slug taken 409                                                             |
 | organizers-me.yaml                 | getMyProfile anonymous (demo) + signed-in + 404                                                                                                                         |
 | organizers-me-write.yaml           | updateMyProfile merge-patch absent/null + wrong content-type 415 + demo refusal 403 + 404                                                                               |

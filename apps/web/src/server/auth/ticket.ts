@@ -8,7 +8,7 @@ import 'server-only'
  * Short-lived auth ticket service (ADR-008).
  *
  * Tickets are issued by the Python API (`/api/auth/telegram-*`) after
- * server-side HMAC validation of the Telegram Login Widget payload; this
+ * server-side validation of the Telegram OIDC id_token (ADR-026); this
  * module only *redeems* them when Auth.js establishes the session.
  *
  * Key in Redis: `auth:ticket:{token}` — JSON payload, 10 min TTL, single-use

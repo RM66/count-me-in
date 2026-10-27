@@ -2,7 +2,10 @@
 
 import type { PublicOrganizer, ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { useTranslations } from 'next-intl'
+import { useEffect } from 'react'
 
+import { loadTelegramLoginScript } from '@/components/telegram-inapp'
+import { isTelegramWebView } from '@/components/telegram-oidc'
 import {
   Dialog,
   DialogContent,
@@ -52,8 +55,17 @@ export function BookingDialog({
   const booking = useBookingDialog({ service, slots, preselectedSlotId })
   const t = useTranslations('Booking')
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+  const clientId = process.env.NEXT_PUBLIC_TELEGRAM_CLIENT_ID
   const maxSeats = booking.maxSeats
+
+  // Warm the telegram-login.js fetch while the guest picks a slot — only
+  // the in-app WebView branch needs the lib, and its oauth_supported
+  // handshake takes a beat (ADR-026). Safe to race ahead of the button:
+  // the loader installs the receiveEvent observer itself, so the
+  // one-shot oauth_supported is captured module-side, not consumed here.
+  useEffect(() => {
+    if (open && isTelegramWebView()) void loadTelegramLoginScript().catch(() => {})
+  }, [open])
 
   const stepTitles: Record<BookingStep, string> = {
     slot: t('pickTime'),
@@ -121,7 +133,7 @@ export function BookingDialog({
             liveSeatsLeft={booking.liveSeatsLeft}
             onPickAnotherSlot={booking.pickAnotherSlot}
             onConfirmSeats={booking.bookRemainingSeats}
-            botUsername={botUsername}
+            clientId={clientId}
             onTicket={booking.handleTicket}
             onTicketError={booking.handleTicketError}
             onBack={booking.backFromVerify}

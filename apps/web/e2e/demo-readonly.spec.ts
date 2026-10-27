@@ -6,7 +6,7 @@ import { mintGuestTicket, skipCookieBanner, sql } from './fixtures'
 /**
  * Scenario 3: the demo account is read-only — checked at the
  * server guard, not just the UI. `/demo` (the demo organizer's public page)
- * renders the demo banner instead of the Telegram widget, and the API
+ * renders the demo banner instead of the Telegram login button, and the API
  * refuses writes against the demo organizer with 403 (ADR-010).
  */
 test.describe('demo read-only', () => {
@@ -20,7 +20,7 @@ test.describe('demo read-only', () => {
     await expect(page.getByText('Studio Demo').first()).toBeVisible()
 
     // ── The booking flow on a demo service page shows the read-only notice
-    // instead of the Telegram widget (the UI affordance — the widget never
+    // instead of the Telegram login button (the UI affordance — it never
     // renders, so no booking can even be attempted from the demo).
     await page.goto('/demo/demo-yoga')
     await expect(async () => {

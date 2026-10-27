@@ -69,7 +69,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   // DEMO_READ_ONLY).
   //
   // `/api/auth/telegram-*` are Python endpoints despite the prefix — they
-  // exchange widget payloads for tickets and must be rewritten to API_URL
+  // exchange id_token proofs for tickets and must be rewritten to API_URL
   // in the container twin like every other API route. Only the Auth.js
   // subtree (`/api/auth/*` minus `telegram-*`) stays on Next.js.
   const isAuthjsRoute =
@@ -113,7 +113,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
  * are excluded:
  *
  * - `/api/auth/*` — the Auth.js routes need no organizer-auth header.
- *   Exception: `/api/auth/telegram-*` are Python endpoints (widget →
+ *   Exception: `/api/auth/telegram-*` are Python endpoints (id_token →
  *   ticket) and *must* match, or the container twin would leave them on
  *   Next.js where Auth.js answers "unknown action".
  * - `/api/internal/revalidate` — the Python→Next.js cache-invalidation

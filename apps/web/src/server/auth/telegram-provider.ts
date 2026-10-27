@@ -10,11 +10,11 @@ import 'server-only'
 /**
  * Telegram Credentials provider for Auth.js (ADR-008).
  *
- * The widget HMAC itself is validated by the Python API
+ * The id_token itself is validated by the Python API
  * (`/api/auth/telegram-signup`, `/api/auth/telegram-guest`) — the client
- * always exchanges the widget payload there first, so this provider only
- * sees token-shaped credentials that are *already* proof of a validated
- * messenger identity:
+ * always exchanges the `{idToken, nonceVerifier}` proof there first, so
+ * this provider only sees token-shaped credentials that are *already*
+ * proof of a validated messenger identity:
  * - `ticket` — the `signIn('telegram', { ticket })` call the signup page
  *   makes after profile completion.
  * - `loginLinkToken` — a one-time link from a notification message

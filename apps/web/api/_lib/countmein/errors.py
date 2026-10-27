@@ -102,15 +102,16 @@ class UnauthorizedInternal(ApiError):
 
 
 class TelegramNotConfiguredError(ApiError):
-    """TELEGRAM_BOT_TOKEN is absent — the widget payload cannot be
-    validated (500 telegramNotConfigured)."""
+    """TELEGRAM_BOT_TOKEN is absent or lacks the numeric bot-id prefix —
+    the id_token's expected audience cannot be derived (500
+    telegramNotConfigured)."""
 
     status = 500
     key = "telegramNotConfigured"
 
 
 class TelegramInvalidError(ApiError):
-    """The Telegram Login Widget payload is malformed (400
+    """The Telegram OIDC request body is malformed (400
     telegramInvalid)."""
 
     status = 400
@@ -118,8 +119,8 @@ class TelegramInvalidError(ApiError):
 
 
 class TelegramValidationFailedError(ApiError):
-    """The Telegram Login Widget payload failed HMAC or freshness
-    validation (400 telegramValidationFailed)."""
+    """The Telegram OIDC id_token failed JWT, freshness, nonce-binding
+    or replay validation (400 telegramValidationFailed)."""
 
     status = 400
     key = "telegramValidationFailed"

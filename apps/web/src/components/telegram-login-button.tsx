@@ -1,203 +1,134 @@
 'use client'
 
 import type { GuestTicketResponse } from '@repo/contracts'
-import { authTicketResponse, guestTicketResponse } from '@repo/contracts'
-import { useEffect, useRef } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 
-import { post } from '@/api-client/client'
-
-interface TelegramUser {
-  id: number
-  first_name: string
-  last_name?: string
-  username?: string
-  photo_url?: string
-  auth_date: number
-  hash: string
-}
+import { Button } from '@/components/ui/button'
+import { useTelegramLogin } from './use-telegram-login'
+import { useTelegramTicketExchange } from './use-telegram-ticket-exchange'
 
 type TelegramLoginButtonProps = {
-  botUsername: string
-  buttonSize?: 'large' | 'medium' | 'small'
-  cornerRadius?: number
-  requestAccess?: boolean
-  usePic?: boolean
-  className?: string
+  /** The bot's OIDC Client ID (NEXT_PUBLIC_TELEGRAM_CLIENT_ID) — equals the bot id. */
+  clientId: string
 
-  /** Redirect on successful login (default: /cabinet). Only used in login mode. */
-  redirectTo?: string
-  /**
-   * Called when the widget auth succeeds but no organizer exists for the identity.
-   * Receives the signup ticket; the caller hands it to /signup via
-   * sessionStorage — a one-time credential must not land in the URL.
-   */
-  onSignupRequired?: (ticket: string) => void
-
-  /**
-   * Set to `'signup'` to run the ticket-issuance flow instead of direct sign-in,
-   * or `'guest'` for the booking flow (no organizer account, no session).
-   */
-  mode?: 'login' | 'signup' | 'guest'
-  /**
-   * Called after the server validates the widget payload and issues a ticket.
-   * `organizerExists` is true if the identity is already registered.
-   */
-  onTicketIssued?: (ticket: string, organizerExists: boolean) => void
-
-  /**
-   * Called with the guest ticket and the identity behind it (ADR-002).
-   * Only used in guest mode — the caller spends the ticket on a booking or a
-   * lookup; it is single-use and short-lived, so it should not be held.
-   */
-  onGuestTicket?: (ticket: GuestTicketResponse) => void
-
-  /** Called when widget auth fails (fetch or sign-in errors) — alongside console.error. */
+  /** Post-proof round-trip failures (ticket POST, sign-in) — alongside console.error. */
   onError?: (err: unknown) => void
+} & (
+  | {
+      /** Direct sign-in (default). */
+      mode?: 'login'
+      /** Redirect on successful login (default: /cabinet). */
+      redirectTo?: string
+      /**
+       * Called when Telegram auth succeeds but no organizer exists —
+       * receives the signup ticket; the caller hands it to /signup via
+       * sessionStorage (a one-time credential must not land in the URL).
+       */
+      onSignupRequired: (ticket: string) => void
+    }
+  | {
+      /** Ticket issuance for the signup flow instead of direct sign-in. */
+      mode: 'signup'
+      /** `organizerExists` is true if the identity is already registered. */
+      onTicketIssued: (ticket: string, organizerExists: boolean) => void
+    }
+  | {
+      /** The booking flow — a guest ticket, no session (ADR-002). */
+      mode: 'guest'
+      /** Single-use and short-lived — the caller spends it, does not hold it. */
+      onGuestTicket: (ticket: GuestTicketResponse) => void
+    }
+)
+
+/** The exchange args for the mode's branch of the props union. */
+function exchangeArgs(
+  props: TelegramLoginButtonProps,
+): Parameters<typeof useTelegramTicketExchange>[0] {
+  switch (props.mode) {
+    case 'guest':
+      return { mode: 'guest', onGuestTicket: props.onGuestTicket, onError: props.onError }
+    case 'signup':
+      return { mode: 'signup', onTicketIssued: props.onTicketIssued, onError: props.onError }
+    default:
+      return {
+        mode: 'login',
+        redirectTo: props.redirectTo,
+        onSignupRequired: props.onSignupRequired,
+        onError: props.onError,
+      }
+  }
 }
 
 /**
- * Telegram Login Widget component (ADR-008).
+ * Telegram OIDC login button (ADR-026).
  *
- * The organizer modes (login, signup) POST widget data to
- * `/api/auth/telegram-signup` which validates the HMAC server-side and
- * returns a short-lived auth ticket plus whether an organizer already
- * exists for this identity.
+ * Keeps a nonce-bound verifier, opens the consent popup (or the in-app
+ * flow inside the Telegram WebView), POSTs `{idToken, nonceVerifier}`.
+ * Mount at most one instance per page — the delivery paths are
+ * singletons.
  *
- * **Login mode** (default): if `organizerExists` → signs in via Auth.js with
- * the ticket and redirects. If not → calls `onSignupRequired(ticket)`.
- *
- * **Signup mode**: calls `onTicketIssued(ticket, organizerExists)` so the page
- * can either proceed to profile creation or sign in directly.
- *
- * **Guest mode**: posts to `/api/auth/telegram-guest` and calls
- * `onGuestTicket` — the booking flow (ADR-002). Deliberately a different
- * endpoint from the organizer modes: a guest gets no session, and its ticket
- * cannot be redeemed as a sign-in.
- *
- * @see https://core.telegram.org/widgets/login
+ * @see https://core.telegram.org/bots/telegram-login
  */
-export function TelegramLoginButton({
-  botUsername,
-  buttonSize = 'large',
-  cornerRadius,
-  requestAccess = true,
-  usePic = true,
-  className,
-  redirectTo = '/cabinet',
-  onSignupRequired,
-  mode = 'login',
-  onTicketIssued,
-  onGuestTicket,
-  onError,
-}: TelegramLoginButtonProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const callbackName = useRef(`onTelegramAuth_${Math.random().toString(36).substring(7)}`)
+export function TelegramLoginButton(props: TelegramLoginButtonProps) {
+  const { clientId } = props
+  const mode = props.mode ?? 'login'
+  const t = useTranslations('TelegramLogin')
+  const locale = useLocale()
+  const { pending, handleProof } = useTelegramTicketExchange(exchangeArgs(props))
 
-  // Callbacks stored in refs so the widget-creation effect doesn't re-run on
-  // parent re-renders (which would tear down and re-create the widget script,
-  // re-firing its auth callback).
-  const onGuestTicketRef = useRef(onGuestTicket)
-  const onTicketIssuedRef = useRef(onTicketIssued)
-  const onSignupRequiredRef = useRef(onSignupRequired)
-  const onErrorRef = useRef(onError)
-  onGuestTicketRef.current = onGuestTicket
-  onTicketIssuedRef.current = onTicketIssued
-  onSignupRequiredRef.current = onSignupRequired
-  onErrorRef.current = onError
+  const { status, loadFailed, popupBlocked, authFailed, inAppFailed, retry, onClick } =
+    useTelegramLogin({
+      clientId,
+      lang: locale,
+      onResult: (proof) => {
+        void handleProof(proof)
+      },
+    })
 
-  // Dedup: the widget can fire its callback twice for one tap. Each auth event
-  // has a unique `hash`, so a repeat with the same hash is dropped.
-  const lastAuthHash = useRef<string | null>(null)
+  // The component owns its vertical layout — callers may mount it
+  // inside a horizontal flex row (VerifyStep).
+  if (status === 'config' || status === 'unavailable') {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-center text-sm text-destructive" role="alert">
+          {status === 'config' ? t('notConfigured') : t('unavailable')}
+        </p>
+      </div>
+    )
+  }
 
-  useEffect(() => {
-    const container = containerRef.current
-    const callback = callbackName.current
-
-    if (!container || !botUsername) return
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any)[callback] = async (user: TelegramUser) => {
-      if (lastAuthHash.current === user.hash) return
-      lastAuthHash.current = user.hash
-
-      if (mode === 'guest') {
-        try {
-          const data = await post('/api/auth/telegram-guest', user, guestTicketResponse)
-          if (!data.ticket) {
-            console.error('[TelegramLoginButton] Guest ticket error: missing ticket')
-            onErrorRef.current?.(new Error('missing guest ticket'))
-            return
-          }
-          onGuestTicketRef.current?.(data)
-        } catch (err) {
-          console.error('[TelegramLoginButton] Guest fetch error:', err)
-          onErrorRef.current?.(err)
-        }
-      } else if (mode === 'signup') {
-        try {
-          const data = await post('/api/auth/telegram-signup', user, authTicketResponse)
-          if (!data.ticket) {
-            console.error('[TelegramLoginButton] Signup ticket error: missing ticket')
-            onErrorRef.current?.(new Error('missing signup ticket'))
-            return
-          }
-          onTicketIssuedRef.current?.(data.ticket, data.organizerExists ?? false)
-        } catch (err) {
-          console.error('[TelegramLoginButton] Signup fetch error:', err)
-          onErrorRef.current?.(err)
-        }
-      } else {
-        try {
-          const data = await post('/api/auth/telegram-signup', user, authTicketResponse)
-
-          if (!data.ticket) {
-            console.error('[TelegramLoginButton] Login validation error: missing ticket')
-            onErrorRef.current?.(new Error('missing login ticket'))
-            return
-          }
-
-          if (data.organizerExists) {
-            const { signIn } = await import('next-auth/react')
-            const result = await signIn('telegram', { ticket: data.ticket, redirect: false })
-            if (result?.ok) {
-              window.location.href = redirectTo
-            } else {
-              console.error('[TelegramLoginButton] Sign-in with ticket failed:', result?.error)
-              onErrorRef.current?.(result?.error)
-            }
-          } else {
-            onSignupRequiredRef.current?.(data.ticket)
-          }
-        } catch (err) {
-          console.error('[TelegramLoginButton] Login fetch error:', err)
-          onErrorRef.current?.(err)
-        }
-      }
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://telegram.org/js/telegram-widget.js?22'
-    script.async = true
-    script.setAttribute('data-telegram-login', botUsername)
-    script.setAttribute('data-size', buttonSize)
-    script.setAttribute('data-onauth', `${callback}(user)`)
-    script.setAttribute('data-request-access', requestAccess ? 'write' : '')
-
-    if (cornerRadius !== undefined) {
-      script.setAttribute('data-radius', cornerRadius.toString())
-    }
-    if (!usePic) {
-      script.setAttribute('data-userpic', 'false')
-    }
-
-    container.appendChild(script)
-
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any)[callback]
-      if (container) container.innerHTML = ''
-    }
-  }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, redirectTo, mode])
-
-  return <div ref={containerRef} className={className} />
+  // A failed lib load does not block the flow — the click falls back
+  // to the manual popup; the hint + retry stay offered.
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {loadFailed && (
+        <p className="text-center text-sm text-destructive" role="alert">
+          {t('loadFailed')}
+        </p>
+      )}
+      {popupBlocked && (
+        <p className="text-center text-sm text-destructive" role="alert">
+          {t('popupBlocked')}
+        </p>
+      )}
+      {authFailed && (
+        <p className="text-center text-sm text-destructive" role="alert">
+          {t('authFailed')}
+        </p>
+      )}
+      {inAppFailed && (
+        <p className="text-center text-sm text-destructive" role="alert">
+          {t('inAppFailed')}
+        </p>
+      )}
+      <Button type="button" size="lg" onClick={onClick} disabled={status !== 'ready' || pending}>
+        {mode === 'guest' ? t('buttonGuest') : t('button')}
+      </Button>
+      {loadFailed && (
+        <Button variant="outline" size="sm" onClick={retry} className="w-full">
+          {t('retry')}
+        </Button>
+      )}
+    </div>
+  )
 }

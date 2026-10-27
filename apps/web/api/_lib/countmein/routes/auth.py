@@ -1,6 +1,7 @@
-"""Auth routes — the widget-validation endpoints (ADR-002, ADR-008).
+"""Auth routes — the id_token-validation endpoints (ADR-002, ADR-008,
+ADR-026).
 
-Rate limit and body read are FastAPI dependencies (web/deps.py); widget
+Rate limit and body read are FastAPI dependencies (web/deps.py); token
 validation raises ApiError subclasses the app-level handler renders —
 no per-route error mapping. Redis/Postgres failures fall through to the
 500 envelope.
@@ -15,7 +16,7 @@ from starlette.responses import Response as StarletteResponse
 from ..auth.telegram import (
     TICKET_PURPOSE_GUEST,
     TICKET_PURPOSE_ORGANIZER,
-    validate_telegram_widget,
+    validate_telegram_id_token,
 )
 from ..auth.ticket import issue_ticket
 from ..contracts import models_gen as gen
@@ -28,12 +29,12 @@ async def telegram_guest(
     _limited: None = Depends(ip_rate_limit("rl:guest:", 10, 60.0)),
     body: bytes = Depends(request_body),
 ) -> StarletteResponse:
-    """POST /api/auth/telegram-guest: validate the Telegram Login Widget
-    payload and issue a short-lived ticket proving the messenger
+    """POST /api/auth/telegram-guest: validate the Telegram OIDC
+    id_token and issue a short-lived ticket proving the messenger
     identity. The identity is echoed back for form prefill; the booking
     endpoint re-reads it from the ticket and never trusts the echo
     (invariant 8)."""
-    identity = validate_telegram_widget(body)
+    identity = await validate_telegram_id_token(body)
 
     ticket = await issue_ticket(identity.to_ticket_payload(TICKET_PURPOSE_GUEST))
 
@@ -53,11 +54,11 @@ async def telegram_signup(
     body: bytes = Depends(request_body),
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
-    """POST /api/auth/telegram-signup: validate the widget payload via
-    HMAC, return {organizerExists, ticket} so the client signs in or
-    proceeds to the profile step without re-authenticating. The
-    organizer is not created here."""
-    identity = validate_telegram_widget(body)
+    """POST /api/auth/telegram-signup: validate the id_token against
+    Telegram's JWKS, return {organizerExists, ticket} so the client
+    signs in or proceeds to the profile step without re-authenticating.
+    The organizer is not created here."""
+    identity = await validate_telegram_id_token(body)
 
     exists = await organizer_repo.exists_by_messenger(
         session, identity.messenger, identity.messenger_id
