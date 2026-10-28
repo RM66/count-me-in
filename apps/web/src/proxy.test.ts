@@ -24,8 +24,7 @@ vi.mock('@/server/auth/organizer-token', () => ({
 // The real edge-safe verifier runs: its WebCrypto derivation is part of
 // what these tests pin. 'test-auth-secret' → this derived hex value
 // (same golden vector as internal-api.test.ts).
-const VALID_INTERNAL_SECRET =
-  '73b1b535eb4ded0b2f67951c5f9baf63b26be71360d8401d8a49d2a24c1dd106'
+const VALID_INTERNAL_SECRET = '73b1b535eb4ded0b2f67951c5f9baf63b26be71360d8401d8a49d2a24c1dd106'
 
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -120,9 +119,7 @@ describe('proxy — API header minting', () => {
         'x-organizer-auth': 'server-minted-jwt',
       }),
     )
-    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe(
-      'server-minted-jwt',
-    )
+    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe('server-minted-jwt')
     expect(mockAuth).not.toHaveBeenCalled()
     expect(mockMint).not.toHaveBeenCalled()
   })
