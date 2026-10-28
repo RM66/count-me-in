@@ -43,3 +43,25 @@ export function segmentClientMessages<K extends keyof WebMessages>(
 ) {
   return pick(messages, [...BASE_NAMESPACES, ...namespaces])
 }
+
+/**
+ * (auth) segment: Auth copy + `TelegramLogin` — the login button mounts
+ * on login and signup (ADR-026). Exported so a test can pin the list —
+ * a missing namespace renders raw keys (MISSING_MESSAGE), which unit
+ * tests do not see: IntlTestProvider feeds the whole dictionary.
+ */
+export const AUTH_SEGMENT_NAMESPACES = ['Auth', 'TelegramLogin'] as const
+
+/** (guest) segment: booking surfaces + `TelegramLogin` on verify-step and /booking. */
+export const GUEST_SEGMENT_NAMESPACES = [
+  'SeatsBadge',
+  'Booking',
+  'SuccessStep',
+  'MyBookings',
+  'ManageBooking',
+  'AddToCalendar',
+  // The live slot list is a client component (ADR-025) — it reads
+  // ServicePage copy off this provider.
+  'ServicePage',
+  'TelegramLogin',
+] as const

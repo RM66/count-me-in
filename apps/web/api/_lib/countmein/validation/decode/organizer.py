@@ -35,8 +35,8 @@ def decode_create_service_photo_upload_input(body: bytes) -> gen.CreateServicePh
     return decode_input(gen.CreateServicePhotoUploadInput, body)
 
 
-def decode_telegram_widget_payload(body: bytes) -> gen.TelegramWidgetPayload:
-    return decode_input(gen.TelegramWidgetPayload, body)
+def decode_telegram_id_token_input(body: bytes) -> gen.TelegramIdTokenInput:
+    return decode_input(gen.TelegramIdTokenInput, body)
 
 
 def decode_internal_organizer_lookup_input(body: bytes) -> gen.InternalOrganizerLookupInput:

@@ -1,44 +1,53 @@
-"""Route-level tests for the two Telegram Login Widget endpoints
+"""Route-level tests for the two Telegram OIDC endpoints
 (POST /api/auth/telegram-guest and /api/auth/telegram-signup) — the only
-routes whose happy paths the parity goldens do not exercise. The widget
-HMAC is minted like the parity harness mints it; Redis is faked, and
-the signup's organizer-exists lookup is patched — no Postgres needed."""
+routes whose happy paths the parity goldens do not exercise. The
+id_token is minted against a random per-process test keypair like the parity
+harness does; JWKS is mocked via respx, Redis is faked, and the signup's
+organizer-exists lookup is patched — no Postgres needed.
+"""
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import time
 
 import countmein.routes.auth as auth_routes
+import fakeredis.aioredis
+import httpx
 import pytest
+import respx
+from _oidc_helpers import (
+    id_token_claims,
+    make_rsa_key,
+    new_verifier,
+    nonce_for,
+    sign_id_token,
+)
+from _oidc_helpers import (
+    jwks as _oidc_jwks,
+)
+from _oidc_helpers import (
+    mint_id_token_payload as _mint_payload,
+)
 from countmein import redis as redis_mod
+from countmein.auth import jwks as jwks_mod
 from httpx import ASGITransport, AsyncClient
 
 BOT_TOKEN = "123456:test-bot-token-00000000000000000000"
+BOT_ID = "123456"
 TEST_SECRET = "route-test-secret-0000000000000000000000"
+TEST_KID = "oidc-1"
+
+_PRIVATE_KEY = make_rsa_key()
 
 
-def mint_widget_payload(user_id: int, name: str) -> dict:
-    """Telegram Login Widget payload with a valid HMAC (auth/telegram.py)."""
-    data = {"id": user_id, "first_name": name, "auth_date": int(time.time())}
-    dcs = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
-    secret = hashlib.sha256(BOT_TOKEN.encode()).digest()
-    data["hash"] = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
-    return data
+def _jwk_set() -> dict:
+    return _oidc_jwks(_PRIVATE_KEY, TEST_KID)
 
 
-@pytest.fixture()
-def fake_redis(monkeypatch):
-    import fakeredis.aioredis
-
-    fake = fakeredis.aioredis.FakeRedis()
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
-    monkeypatch.setattr(redis_mod, "client", lambda: fake)
-    yield fake
-    import fakeredis.aioredis as _a
-
-    _a.FakeRedis()
+def mint_id_token_payload(user_id: int, name: str) -> dict:
+    """A real RS256 id_token + the verifier whose hash it carries — the
+    {idToken, nonceVerifier} body the new flow posts."""
+    return _mint_payload(user_id, name, aud=BOT_ID, key=_PRIVATE_KEY, kid=TEST_KID)
 
 
 @pytest.fixture(autouse=True)
@@ -46,10 +55,30 @@ def _env(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", BOT_TOKEN)
     monkeypatch.setenv("AUTH_SECRET", TEST_SECRET)
     monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
+    jwks_mod.reset_for_test()
+    yield
+    jwks_mod.reset_for_test()
 
 
 @pytest.fixture()
-async def client(fake_redis, monkeypatch):
+def fake_redis(monkeypatch):
+    fake = fakeredis.aioredis.FakeRedis()
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setattr(redis_mod, "client", lambda: fake)
+    return fake
+
+
+@pytest.fixture()
+def _jwks():
+    """The JWKS URL mocked at the httpx transport — route tests must not
+    touch the network."""
+    with respx.mock(assert_all_called=False) as router:
+        router.get(jwks_mod.JWKS_URL).mock(return_value=httpx.Response(200, json=_jwk_set()))
+        yield
+
+
+@pytest.fixture()
+async def client(fake_redis, _jwks, monkeypatch):
     from countmein.app import create_app
 
     # The signup route's organizer-exists lookup is a DB read; patch it
@@ -65,8 +94,7 @@ async def client(fake_redis, monkeypatch):
 
 
 async def test_telegram_guest_issues_ticket(client):
-    payload = mint_widget_payload(7, "Guest")
-    resp = await client.post("/api/auth/telegram-guest", json=payload)
+    resp = await client.post("/api/auth/telegram-guest", json=mint_id_token_payload(7, "Guest"))
     assert resp.status_code == 200
     body = resp.json()
     assert body["messenger"] == "telegram"
@@ -75,17 +103,17 @@ async def test_telegram_guest_issues_ticket(client):
     assert body["ticket"]
 
 
-async def test_telegram_guest_rejects_bad_hash(client):
-    payload = mint_widget_payload(7, "Guest")
-    payload["hash"] = "0" * 64
-    resp = await client.post("/api/auth/telegram-guest", json=payload)
+async def test_telegram_guest_rejects_bad_token(client):
+    resp = await client.post(
+        "/api/auth/telegram-guest",
+        json={"idToken": "x.y.z", "nonceVerifier": "a" * 43},
+    )
     assert resp.status_code == 400
     assert resp.json()["error"]
 
 
 async def test_telegram_signup_reports_existing_organizer(client):
-    payload = mint_widget_payload(42, "Org")
-    resp = await client.post("/api/auth/telegram-signup", json=payload)
+    resp = await client.post("/api/auth/telegram-signup", json=mint_id_token_payload(42, "Org"))
     assert resp.status_code == 200
     body = resp.json()
     assert body["organizerExists"] is True
@@ -93,23 +121,50 @@ async def test_telegram_signup_reports_existing_organizer(client):
 
 
 async def test_telegram_signup_reports_new_organizer(client):
-    payload = mint_widget_payload(43, "New Org")
-    resp = await client.post("/api/auth/telegram-signup", json=payload)
+    resp = await client.post("/api/auth/telegram-signup", json=mint_id_token_payload(43, "New Org"))
     assert resp.status_code == 200
     body = resp.json()
     assert body["organizerExists"] is False
     assert body["ticket"]
 
 
-async def test_telegram_signup_rejects_stale_auth_date(client):
-    payload = mint_widget_payload(42, "Org")
-    # Outside the 24h freshness window (WIDGET_DATA_VALID_AFTER).
-    payload["auth_date"] = int(time.time()) - 86400 - 3600
-    # Re-sign with the stale auth_date so only freshness fails.
-    data = {k: v for k, v in payload.items() if k != "hash"}
-    dcs = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
-    secret = hashlib.sha256(BOT_TOKEN.encode()).digest()
-    payload["hash"] = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
-    resp = await client.post("/api/auth/telegram-signup", json=payload)
+async def test_telegram_signup_rejects_expired_token(client):
+    """An expired id_token is the new freshness refusal — same 400 class
+    as the old stale auth_date."""
+    verifier = new_verifier()
+    now = int(time.time())
+    token = sign_id_token(
+        id_token_claims(
+            nonce_for(verifier),
+            BOT_ID,
+            iat=now - 120,
+            exp=now - 60,
+            id="42",
+            name="Org",
+            given_name="",
+            family_name="",
+            preferred_username="",
+            picture="",
+        ),
+        _PRIVATE_KEY,
+        TEST_KID,
+    )
+    resp = await client.post(
+        "/api/auth/telegram-signup", json={"idToken": token, "nonceVerifier": verifier}
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"]
+
+
+async def test_telegram_guest_rejects_replay(client):
+    payload = mint_id_token_payload(7, "Guest")
+    resp = await client.post("/api/auth/telegram-guest", json=payload)
+    assert resp.status_code == 200
+    resp = await client.post("/api/auth/telegram-guest", json=payload)
+    assert resp.status_code == 400
+
+
+async def test_telegram_guest_rejects_malformed_body(client):
+    resp = await client.post("/api/auth/telegram-guest", json={})
     assert resp.status_code == 400
     assert resp.json()["error"]

@@ -17,7 +17,7 @@ import { BookingListItem } from './booking-list-item'
  * "Find my booking" — the fallback when the messenger deep link is lost
  * (ADR-002, entry path 2).
  *
- * Identity comes from the Telegram widget, not from a typed-in phone number:
+ * Identity comes from the Telegram OIDC login, not from a typed-in phone number:
  * ADR-008 removed phone/OTP entirely, and a self-declared number would let
  * anyone list someone else's bookings. The guest taps once, the server matches
  * `(guestMessenger, guestMessengerId)`, and every result carries its own
@@ -34,7 +34,7 @@ export function FindBooking() {
    */
   const [found, setFound] = useState<GuestBooking[] | null>(null)
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+  const clientId = process.env.NEXT_PUBLIC_TELEGRAM_CLIENT_ID
 
   return (
     <div className="mx-auto w-full max-w-xl py-6 md:py-14">
@@ -53,10 +53,9 @@ export function FindBooking() {
                 <Spinner />
                 {t('lookingUp')}
               </div>
-            ) : botUsername ? (
+            ) : (
               <TelegramLoginButton
-                botUsername={botUsername}
-                buttonSize="large"
+                clientId={clientId ?? ''}
                 mode="guest"
                 onGuestTicket={async (ticket) => {
                   try {
@@ -67,8 +66,6 @@ export function FindBooking() {
                 }}
                 onError={(error) => toast.error(errorMessage(error, t('lookupFailed')))}
               />
-            ) : (
-              <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
             )}
             <p className="text-center text-sm text-muted-foreground">{t('onlyThisAccount')}</p>
           </CardContent>

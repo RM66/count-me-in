@@ -109,7 +109,7 @@ describe('proxy — API header minting', () => {
   })
 
   it('treats /api/auth/telegram-* as Python routes despite the auth prefix', async () => {
-    // The widget→ticket endpoints live under /api/auth/ but belong to the
+    // The id_token→ticket endpoints live under /api/auth/ but belong to the
     // Python API — in the container twin they must be rewritten to API_URL
     // like every other API route, or Auth.js answers "unknown action".
     vi.stubEnv('API_URL', 'http://api:3001')

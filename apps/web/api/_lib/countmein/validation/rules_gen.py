@@ -50,7 +50,4 @@ RULES: dict[str, dict[str, Any]] = {
         "fieldRules": {"slug":["slugNotReserved"],"timezone":["ianaTimezone"],"photoUrl":["httpUrl"]},
         "mergedRequired": ["name","slug","timezone"],
     },
-    "TelegramWidgetPayload": {
-        "fieldRules": {"photo_url":["httpUrl"]},
-    },
 }

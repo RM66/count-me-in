@@ -19,7 +19,7 @@ import { LiveOccupancyNotice } from './live-occupancy-notice'
  * The demo organizer is read-only (ADR-010). The API refuses the write
  * regardless — this only spares the guest a Telegram tap before being told so.
  *
- * Live occupancy (ADR-025): a `liveNotice` hides the widget — tapping Telegram
+ * Live occupancy (ADR-025): a `liveNotice` hides the login button — tapping Telegram
  * on a stale seat count would only burn a ticket into a 409.
  */
 export function VerifyStep({
@@ -32,7 +32,7 @@ export function VerifyStep({
   liveSeatsLeft,
   onPickAnotherSlot,
   onConfirmSeats,
-  botUsername,
+  clientId,
   onTicket,
   onTicketError,
   onBack,
@@ -48,9 +48,9 @@ export function VerifyStep({
   liveSeatsLeft: number
   onPickAnotherSlot: () => void
   onConfirmSeats: () => void
-  botUsername?: string
+  clientId?: string
   onTicket: (ticket: GuestTicketResponse) => void
-  /** Widget-side failure before a ticket exists — nothing was consumed. */
+  /** Login-side failure before a ticket exists — nothing was consumed. */
   onTicketError: (err: unknown) => void
   onBack: () => void
 }) {
@@ -100,26 +100,21 @@ export function VerifyStep({
               {t('confirmHint')}
             </p>
           )}
-          {botUsername ? (
-            <div className="flex justify-center">
-              {isCreating ? (
-                <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
-                  <Spinner />
-                  {t('reserving')}
-                </div>
-              ) : attempted || liveNotice ? null : (
-                <TelegramLoginButton
-                  botUsername={botUsername}
-                  buttonSize="large"
-                  mode="guest"
-                  onGuestTicket={onTicket}
-                  onError={onTicketError}
-                />
-              )}
-            </div>
-          ) : (
-            <p className="text-center text-sm text-destructive">{t('notConfigured')}</p>
-          )}
+          <div className="flex justify-center">
+            {isCreating ? (
+              <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
+                <Spinner />
+                {t('reserving')}
+              </div>
+            ) : attempted || liveNotice ? null : (
+              <TelegramLoginButton
+                clientId={clientId ?? ''}
+                mode="guest"
+                onGuestTicket={onTicket}
+                onError={onTicketError}
+              />
+            )}
+          </div>
         </>
       )}
       <Button variant="ghost" disabled={isCreating} onClick={onBack}>

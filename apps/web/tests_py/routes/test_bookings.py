@@ -498,7 +498,7 @@ async def _sold_out(fixture, monkeypatch, client):
 async def test_booking_create_sold_out_leaves_ticket(client, fake_redis, monkeypatch):
     """ADR-024 B1: a domain refusal must not burn the ticket — after a
     409 it stays redeemable (the guest retries without re-running the
-    widget)."""
+    Telegram login)."""
     fixture = await new_route_fixture(2, 2)  # full slot
     try:
         monkeypatch.setenv("QSTASH_TOKEN", "test-token")

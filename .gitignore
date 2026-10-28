@@ -16,6 +16,11 @@ blob-report/
 # next.js
 .next/
 out/
+# Written by `next dev` (Next 16 agent-rules block) — regenerated on
+# every run, so tracking them only produces diff noise. The project
+# guide stays the repo-root AGENTS.md.
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
 
 # production
 /build

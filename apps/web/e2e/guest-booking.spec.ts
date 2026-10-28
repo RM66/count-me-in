@@ -15,10 +15,13 @@ import {
  * `/{orgSlug}/{serviceId}` → slot pick → ticket mock → booking →
  * `/booking/{manageToken}` → cancel.
  *
- * The Telegram widget cannot run headless; the "ticket mock" intercepts
- * `/api/auth/telegram-guest` and returns a ticket minted into Redis by the
- * test — the booking then consumes it through the real API write path
- * (require_guest_identity), so the single-use semantics are exercised for real.
+ * The Telegram OIDC popup cannot run headless; a `window.open` stub
+ * answers the button's own /auth URL with the `auth_result` postMessage
+ * oauth.telegram.org would send — a JWT-shaped result carrying the page's
+ * nonce — and the "ticket mock" intercepts `/api/auth/telegram-guest`,
+ * returning a ticket minted into Redis by the test. The booking then
+ * consumes it through the real API write path (require_guest_identity),
+ * so the single-use semantics are exercised for real.
  */
 test.describe('guest booking flow', () => {
   test.beforeAll(async () => {
@@ -30,8 +33,52 @@ test.describe('guest booking flow', () => {
     const ticketToken = `e2e-guest-ticket-${Date.now()}`
     await mintGuestTicket(ticketToken, `e2e-guest-${Date.now()}`)
 
-    // The widget posts the Telegram user to /api/auth/telegram-guest; the
-    // intercept answers with the pre-minted ticket instead.
+    // Stub window.open: the button builds the /auth popup URL itself
+    // (the stock lib's popup path is upstream-broken). The stub captures
+    // the page's nonce from that URL and delivers the auth_result
+    // postMessage — origin- and source-checked exactly like the real one.
+    await page.addInitScript(() => {
+      const w = window as unknown as {
+        open: (url: string | URL) => Window | null
+      }
+      w.open = (url: string | URL) => {
+        const nonce = new URL(String(url)).searchParams.get('nonce')
+        // A real Window as the popup stand-in: MessageEventInit.source
+        // only accepts a Window/MessagePort — a plain object throws
+        // "Failed to convert value to 'EventTarget'" in Chromium — and
+        // the hook checks `ev.source === popup`, so the same object must
+        // be returned here and passed as `source` below.
+        const iframe = document.createElement('iframe')
+        document.body.appendChild(iframe)
+        const popup = iframe.contentWindow as Window
+        if (nonce) {
+          const payload = btoa(JSON.stringify({ nonce }))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '')
+          setTimeout(() => {
+            window.dispatchEvent(
+              new MessageEvent('message', {
+                data: JSON.stringify({ event: 'auth_result', result: `e2e.${payload}.stub` }),
+                origin: 'https://oauth.telegram.org',
+                source: popup,
+              }),
+            )
+            // Like the real popup after postMessage — gone.
+            iframe.remove()
+          }, 0)
+        }
+        return popup
+      }
+    })
+    // Belt: the telegram-login.js lib is only needed inside the Telegram
+    // WebView — if anything still requests it, it must not overwrite the stub.
+    await page.route('**/js/telegram-login.js', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/javascript', body: '' })
+    })
+    // The component POSTs {idToken, nonceVerifier} to
+    // /api/auth/telegram-guest; the intercept answers with the
+    // pre-minted ticket instead.
     await page.route('**/api/auth/telegram-guest', async (route) => {
       await route.fulfill({
         status: 200,
@@ -63,24 +110,10 @@ test.describe('guest booking flow', () => {
     await page.locator('#guest-name').fill('E2E Guest')
     await page.getByRole('button', { name: 'Continue' }).click()
 
-    // Verify step: fire the widget callback directly — the component then
-    // POSTs to the intercepted endpoint and spends the ticket on a booking.
-    await page.evaluate(() => {
-      const callbackName = Object.keys(window).find((k) => k.startsWith('onTelegramAuth_'))
-      if (!callbackName) throw new Error('widget callback not registered')
-      const callback = (window as unknown as Record<string, ((u: unknown) => void) | undefined>)[
-        callbackName
-      ]
-      if (!callback) throw new Error('widget callback is not callable')
-      callback({
-        id: 1,
-        first_name: 'E2E',
-        last_name: 'Guest',
-        username: 'e2e_guest',
-        auth_date: Math.floor(Date.now() / 1000),
-        hash: `e2e-${Date.now()}`,
-      })
-    })
+    // Verify step: click the real button — the stubbed popup delivers
+    // the auth_result, the component pairs the nonce, POSTs to the
+    // intercepted endpoint and spends the ticket on a booking.
+    await page.getByRole('button', { name: 'Confirm with Telegram' }).click()
 
     // Success step: the manage link carries the real manageToken.
     const manageLink = page.getByRole('link', { name: 'Manage this booking' })

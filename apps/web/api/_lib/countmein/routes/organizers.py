@@ -86,8 +86,8 @@ async def organizer_register(
     session: AsyncSession = Depends(get_db_session),
 ) -> StarletteResponse:
     """POST /api/organizers (ADR-008). The messenger identity comes from
-    the auth ticket (validated server-side via the Telegram widget
-    HMAC). The ticket is only peeked — it stays valid so the client can
+    the auth ticket (validated server-side via the Telegram OIDC
+    id_token). The ticket is only peeked — it stays valid so the client can
     exchange it for a session via Auth.js (signIn('telegram', {ticket})
     consumes it)."""
     payload = body.model

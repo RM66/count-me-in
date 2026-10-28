@@ -6,7 +6,7 @@ import { getMessages, getTranslations } from 'next-intl/server'
 import type { ReactNode } from 'react'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
-import { segmentClientMessages } from '@/i18n/messages'
+import { AUTH_SEGMENT_NAMESPACES, segmentClientMessages } from '@/i18n/messages'
 
 /**
  * Auth pages are utility surfaces, not landing content — kept out of search
@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   // Client-side copy for this segment only (i18n/messages.ts).
-  const messages = segmentClientMessages(await getMessages(), ['Auth'])
+  const messages = segmentClientMessages(await getMessages(), AUTH_SEGMENT_NAMESPACES)
   return (
     <NextIntlClientProvider messages={messages}>
       <div className="flex min-h-screen flex-col bg-muted/30">

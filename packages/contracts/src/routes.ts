@@ -15,7 +15,7 @@
  */
 import type { z } from 'zod'
 
-import { authTicketResponse, guestTicketResponse, telegramWidgetPayload } from './auth'
+import { authTicketResponse, guestTicketResponse, telegramIdTokenInput } from './auth'
 import {
   cancelBookingByOrganizerInput,
   createBookingInput,
@@ -164,18 +164,22 @@ const DEMO_FORBIDDEN = {
 } as const
 
 export const API_ROUTES: readonly ApiRoute[] = [
-  // ── Auth (Telegram widget) ────────────────────────────────────────────────
+  // ── Auth (Telegram OIDC) ──────────────────────────────────────────────────
   {
     operationId: 'telegramGuest',
     method: 'post',
     path: '/api/auth/telegram-guest',
-    summary: 'Verify Telegram login widget data and mint a single-use guest ticket',
+    summary: 'Verify a Telegram OIDC id_token and mint a single-use guest ticket',
     auth: 'public',
-    request: telegramWidgetPayload,
+    request: telegramIdTokenInput,
     rateLimit: { limit: 10, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 200, description: 'Guest ticket issued', body: guestTicketResponse },
-      { status: 400, description: 'Malformed widget payload or failed HMAC', body: errorBody },
+      {
+        status: 400,
+        description: 'Malformed body or failed id_token verification',
+        body: errorBody,
+      },
       TOO_MANY,
       { status: 500, description: 'Telegram bot is not configured', body: errorBody },
     ],
@@ -184,13 +188,17 @@ export const API_ROUTES: readonly ApiRoute[] = [
     operationId: 'telegramSignup',
     method: 'post',
     path: '/api/auth/telegram-signup',
-    summary: 'Verify Telegram login widget data and mint an organizer signup ticket',
+    summary: 'Verify a Telegram OIDC id_token and mint an organizer signup ticket',
     auth: 'public',
-    request: telegramWidgetPayload,
+    request: telegramIdTokenInput,
     rateLimit: { limit: 5, windowSeconds: 60, per: 'ip' },
     responses: [
       { status: 200, description: 'Auth ticket issued', body: authTicketResponse },
-      { status: 400, description: 'Malformed widget payload or failed HMAC', body: errorBody },
+      {
+        status: 400,
+        description: 'Malformed body or failed id_token verification',
+        body: errorBody,
+      },
       TOO_MANY,
       { status: 500, description: 'Telegram bot is not configured', body: errorBody },
     ],

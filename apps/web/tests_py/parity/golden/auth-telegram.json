@@ -2,15 +2,13 @@
   "scenario": "auth-telegram",
   "steps": [
     {
-      "note": "valid widget payload → 200 guest ticket",
+      "note": "valid id_token → 200 guest ticket",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -39,15 +37,13 @@
       "sink": []
     },
     {
-      "note": "valid widget payload → 200 auth ticket + organizerExists flag",
+      "note": "valid id_token → 200 auth ticket + organizerExists flag",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-signup",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -74,15 +70,13 @@
       "sink": []
     },
     {
-      "note": "malformed/failed-HMAC payload → 400",
+      "note": "undecodable/forged token → 400",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 1,
-          "first_name": "A",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "x.y.z",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -139,15 +133,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -176,15 +168,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -213,15 +203,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -250,15 +238,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -287,15 +273,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -324,15 +308,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -361,15 +343,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -398,15 +378,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -435,15 +413,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -472,15 +448,13 @@
       "sink": []
     },
     {
-      "note": "exhaust the 10/min guest bucket",
+      "note": "exhaust the 10/min guest bucket (fresh token per repeat — placeholders resolve inside the loop)",
       "request": {
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {
@@ -514,10 +488,8 @@
         "method": "POST",
         "path": "/api/auth/telegram-guest",
         "body": {
-          "id": 900100200,
-          "first_name": "Parity Guest",
-          "auth_date": "<epoch>",
-          "hash": "<hash>"
+          "idToken": "<token>",
+          "nonceVerifier": "<token>"
         }
       },
       "response": {

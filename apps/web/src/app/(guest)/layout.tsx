@@ -5,25 +5,13 @@ import { getMessages, getTranslations } from 'next-intl/server'
 import type { ReactNode } from 'react'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
-import { segmentClientMessages } from '@/i18n/messages'
+import { GUEST_SEGMENT_NAMESPACES, segmentClientMessages } from '@/i18n/messages'
 
 export default async function GuestLayout({ children }: { children: ReactNode }) {
   const [t, messages] = await Promise.all([
     getTranslations('GuestLayout'),
     // Client-side copy for this segment only (i18n/messages.ts).
-    getMessages().then((m) =>
-      segmentClientMessages(m, [
-        'SeatsBadge',
-        'Booking',
-        'SuccessStep',
-        'MyBookings',
-        'ManageBooking',
-        'AddToCalendar',
-        // The live slot list is a client component (ADR-025) — it reads
-        // ServicePage copy off this provider.
-        'ServicePage',
-      ]),
-    ),
+    getMessages().then((m) => segmentClientMessages(m, GUEST_SEGMENT_NAMESPACES)),
   ])
 
   return (

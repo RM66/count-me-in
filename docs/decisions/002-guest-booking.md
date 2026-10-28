@@ -2,6 +2,7 @@
 
 - **Status:** Accepted (amended 2026-07-28)
 - **Date:** 2026-07-18
+- **Amended by:** [ADR-026](026-telegram-oidc.md) (the widget/HMAC proof step described below is superseded by the Telegram OIDC `id_token` flow — guest tickets and their purposes are unchanged)
 
 ## Context
 

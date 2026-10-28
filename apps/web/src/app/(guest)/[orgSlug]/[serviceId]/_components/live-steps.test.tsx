@@ -16,10 +16,10 @@ import { IntlTestProvider } from '@/i18n/test-provider'
  * copy IS the contract here (a renamed key fails visibly).
  */
 
-// The Telegram widget loads an external script — presence/absence is
-// what matters, not the widget itself.
+// The Telegram login flow loads an external script — presence/absence
+// is what matters, not the button itself.
 vi.mock('@/components/telegram-login-button', () => ({
-  TelegramLoginButton: () => <div data-testid="telegram-widget" />,
+  TelegramLoginButton: () => <div data-testid="telegram-login" />,
 }))
 
 // SlotList reads the live context from BookingFlow — the hook is
@@ -248,7 +248,7 @@ describe('DetailsStep — shrunk notice', () => {
   })
 })
 
-describe('VerifyStep — the widget hides while a notice is up', () => {
+describe('VerifyStep — the login button hides while a notice is up', () => {
   const base = {
     ...stepCallbacks,
     organizer,
@@ -257,17 +257,17 @@ describe('VerifyStep — the widget hides while a notice is up', () => {
     isCreating: false,
     attempted: false,
     liveSeatsLeft: 2,
-    botUsername: 'countmein_bot',
+    clientId: '123456',
   }
 
-  it('renders the widget normally', () => {
+  it('renders the login button normally', () => {
     intl(<VerifyStep {...base} liveNotice={null} />)
-    expect(screen.getByTestId('telegram-widget')).toBeInTheDocument()
+    expect(screen.getByTestId('telegram-login')).toBeInTheDocument()
   })
 
-  it('hides the widget under a filled notice', () => {
+  it('hides the login button under a filled notice', () => {
     intl(<VerifyStep {...base} liveNotice="filled" />)
-    expect(screen.queryByTestId('telegram-widget')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('telegram-login')).not.toBeInTheDocument()
     expect(screen.getByText('This session just filled up.')).toBeInTheDocument()
   })
 })

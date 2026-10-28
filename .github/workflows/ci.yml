@@ -313,7 +313,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       AUTH_SECRET: e2e-test-secret-not-production
       APP_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: countmeingroupbot
+      NEXT_PUBLIC_TELEGRAM_CLIENT_ID: '8998312585'
     steps:
       - uses: actions/checkout@v7
 

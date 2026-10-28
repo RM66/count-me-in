@@ -1,5 +1,5 @@
-"""Short-lived auth tickets (ADR-008): issued after server-side HMAC
-validation of the Telegram Login Widget payload; single-use (a replayed
+"""Short-lived auth tickets (ADR-008, ADR-026): issued after server-side
+validation of the Telegram OIDC id_token; single-use (a replayed
 booking fails), 10-minute TTL. Key: auth:ticket:{token}.
 """
 
@@ -11,6 +11,7 @@ import secrets
 from datetime import timedelta
 from typing import Any
 
+from .. import logx
 from .. import redis as redis_mod
 from ..contracts.constants_gen import AUTH_TICKET_TTL_SECONDS
 from ..contracts.domain import auth_ticket_key as ticket_key
@@ -85,6 +86,28 @@ async def consume_guest_ticket(token: str) -> AuthTicketPayload:
     if payload is None or payload.purpose != TICKET_PURPOSE_GUEST:
         raise TicketExpired()
     return payload
+
+
+# ── OIDC nonce single-use claims ─────────────────────────────────────────────
+# Telegram id_tokens carry a `nonce` the page minted from its verifier;
+# claiming it in Redis makes a captured token single-use for its whole
+# validity window. Key prefix is internal to Python — Next.js never
+# touches it.
+
+_OIDC_NONCE_PREFIX = "auth:oidc-nonce:"
+
+
+async def claim_oidc_nonce(nonce: str, ttl: int) -> bool:
+    """SET-NX the nonce with the token's remaining lifetime as TTL:
+    True = first use. Identity is fail-closed (ADR-019): a Redis error
+    is logged and becomes a RuntimeError (→ 500), never masked as a
+    validation failure."""
+    try:
+        claimed = await redis_mod.client().set(_OIDC_NONCE_PREFIX + nonce, "1", nx=True, ex=ttl)
+    except Exception as err:
+        logx.error(err, {"scope": "telegram-auth"})
+        raise RuntimeError("oidc nonce claim failed") from err
+    return bool(claimed)
 
 
 # ── One-time login links ─────────────────────────────────────────────────────

@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+import _oidc_helpers as _oidc
 import httpx
 import pytest
 import redis.asyncio as aioredis
@@ -42,6 +43,7 @@ import respx
 import yaml
 from countmein import redis as redis_mod
 from countmein.app import create_app
+from countmein.auth import jwks as jwks_mod
 from countmein.contracts.constants_gen import DEMO_ORGANIZER_ID
 from countmein.db import client as db_client
 from countmein.db.seed import seed_demo
@@ -115,7 +117,7 @@ ISO_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\
 # own placeholder class. Only normalized under the keys that mint them.
 DAY_KEY_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 DAY_LIST_KEYS = {"days", "bookedDays"}
-TOKEN_KEYS = {"manageToken", "ticket", "guestTicket", "token"}
+TOKEN_KEYS = {"manageToken", "ticket", "guestTicket", "token", "idToken", "nonceVerifier"}
 SID_KEYS = {"id", "serviceId"}
 RL_WINDOWS = {
     "/api/healthz": 60,
@@ -184,13 +186,31 @@ async def mint_ticket(r: aioredis.Redis, purpose: str, messenger_id: str, name: 
     return token
 
 
-def mint_widget_payload(bot_token: str, user_id: int, name: str) -> dict:
-    """Telegram Login Widget payload with a valid HMAC (auth/telegram.py)."""
-    data: dict[str, Any] = {"id": user_id, "first_name": name, "auth_date": int(time.time())}
-    dcs = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
-    secret = hashlib.sha256(bot_token.encode()).digest()
-    data["hash"] = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
-    return data
+# ── OIDC id_token minting (ADR-026) ─────────────────────────────────────
+# A random per-process test RSA keypair: the Sink serves the public half as
+# the JWKS, mint_id_token_payload signs with the private half. aud is the
+# bot id derived from the pinned TELEGRAM_BOT_TOKEN prefix. The minting
+# machinery itself is shared with the other OIDC tests in
+# tests_py/_oidc_helpers.py.
+
+_OIDC_KEY = _oidc.make_rsa_key()
+_OIDC_KID = "parity-oidc-key"
+
+
+def _oidc_jwks() -> dict:
+    return _oidc.jwks(_OIDC_KEY, _OIDC_KID)
+
+
+def mint_id_token_payload(user_id: int, name: str) -> dict:
+    """A fresh RS256 id_token + the verifier whose hash it carries — the
+    {idToken, nonceVerifier} body (auth/telegram.py)."""
+    return _oidc.mint_id_token_payload(
+        user_id,
+        name,
+        aud=TELEGRAM_BOT_TOKEN.split(":")[0],
+        key=_OIDC_KEY,
+        kid=_OIDC_KID,
+    )
 
 
 def mint_qstash_signature(body: bytes, sub: str, key: str = QSTASH_CURRENT_KEY) -> str:
@@ -241,6 +261,7 @@ async def reset_state(r: aioredis.Redis) -> None:
         )
     await seed_demo(datetime.now(UTC))
     await r.flushdb()
+    jwks_mod.reset_for_test()
 
 
 async def flush_rate_limits(r: aioredis.Redis) -> None:
@@ -382,13 +403,9 @@ class Normalizer:
         return self.seen[v]
 
     def json(self, obj: object, key: str | None = None) -> object:
-        if isinstance(obj, int) and key == "auth_date":
-            return "<epoch>"
         if isinstance(obj, str):
             if key in TOKEN_KEYS and len(obj) >= 20:
                 return "<token>"
-            if key == "hash":
-                return "<hash>"
             # Service ids: normalize ONLY by key name — a 21-char
             # slug/name in free text must not be touched.
             if key in SID_KEYS and re.fullmatch(r"[A-Za-z0-9_-]{21}", obj):
@@ -416,7 +433,7 @@ class Normalizer:
             text,
         )
         text = re.sub(
-            r'("(?:ticket|manageToken|guestToken)"):("[^"]{20,}")',
+            r'("(?:ticket|manageToken|guestToken|idToken|nonceVerifier)"):("[^"]{20,}")',
             lambda m: f'{m.group(1)}:"<token>"',
             text,
         )
@@ -450,6 +467,10 @@ class Sink:
         url = str(request.url)
         if url.startswith(BASE):
             raise httpx.ConnectError("connection refused", request=request)
+        # The JWKS fetch is answered, not recorded — it is key material,
+        # not an outbound call the golden should pin.
+        if "oauth.telegram.org" in url and request.url.path == "/.well-known/jwks.json":
+            return httpx.Response(200, json=_oidc_jwks())
         path = request.url.path or "/"
         body = request.content.decode("utf-8", "replace")
         self.calls.append({"path": path, "body": body})
@@ -487,8 +508,8 @@ async def resolve_placeholders(
             return captures["session"]
         if value == "<demoSession>":
             return mint_session(DEMO_ORGANIZER_ID, "demo")
-        if value == "<widgetPayload>":
-            return mint_widget_payload(TELEGRAM_BOT_TOKEN, 900100200, "Parity Guest")
+        if value == "<idTokenPayload>":
+            return mint_id_token_payload(900100200, "Parity Guest")
         # Captured ids also appear inside larger strings, e.g. a path
         # like /api/slots/<slotId>.
         for key in ("slotId", "serviceId", "bookingId", "manageToken"):
@@ -573,11 +594,14 @@ async def run_scenario(
         if "request" not in step:
             continue
 
-        req = await resolve_placeholders(
-            step["request"], captures, r, mint_guest=step.get("mint") == "guestTicket"
-        )
         repeat = int(step.get("repeat", 1))
         for _ in range(repeat):
+            # Resolve inside the repeat loop — a fresh idToken/verifier
+            # (and fresh ticket) per iteration, or the single-use nonce
+            # claim would turn bucket exhaustion into a replay refusal.
+            req = await resolve_placeholders(
+                step["request"], captures, r, mint_guest=step.get("mint") == "guestTicket"
+            )
             headers = dict(req.get("headers") or {})
             body_bytes: bytes | None = None
             if "body_raw" in req:

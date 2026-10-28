@@ -38,7 +38,7 @@ Organizers of group classes, events, and outings who need to manage schedule, ca
 - **API:** Python 3.12, FastAPI (ASGI) — a single Vercel Function ([ADR-021](docs/decisions/021-api-python-rewrite.md))
 - **UI:** React, Tailwind, shadcn/ui (Radix)
 - **State:** TanStack Query (server)
-- **Auth:** Auth.js — messenger login only (Telegram Login Widget)
+- **Auth:** Auth.js — messenger login only (Telegram OIDC, ADR-026)
 - **Validation:** Zod (`packages/contracts`) → OpenAPI → Pydantic v2 models via datamodel-code-generator; requests validated against the spec ([ADR-016](docs/decisions/016-standard-openapi-codegen.md), [ADR-021](docs/decisions/021-api-python-rewrite.md))
 - **i18n:** next-intl, ICU messages per locale ([ADR-011](docs/decisions/011-i18n.md))
 - **Data:** Postgres (Alembic migrations in `apps/web/alembic`), Redis — `NullPool` on Vercel serverless, queue pool in the container (`apps/web/Dockerfile.api` + `docker-compose.yml`)

@@ -65,7 +65,6 @@
     "findMyBookings": "Retrouver mes réservations →",
     "confirmHint": "Confirme avec Telegram — aucun compte n’est nécessaire, cela sert uniquement à vérifier ton identité.",
     "reserving": "Réservation de ta place…",
-    "notConfigured": "La connexion avec Telegram n’est pas configurée, la réservation est donc indisponible.",
     "errSoldOut": "Cette séance est complète",
     "errSeatsLeft": "Il ne reste que {count, plural, =1 {# place} other {# places}} pour cette séance",
     "errPartyTooLarge": "Tu peux réserver au maximum {maxSeats, plural, =1 {# place} other {# places}} en une seule réservation",
@@ -94,8 +93,7 @@
     "noBookingsFound": "Aucune réservation trouvée",
     "noBookingsDescription": "Ce compte Telegram n’a encore aucune réservation. Si tu as réservé avec un autre compte, confirme plutôt avec celui-ci.",
     "nothingYet": "Rien à afficher pour le moment",
-    "nothingYetDescription": "Confirme avec Telegram ci-dessus pour retrouver tes réservations.",
-    "notConfigured": "La connexion avec Telegram n’est pas configurée, la recherche est donc indisponible."
+    "nothingYetDescription": "Confirme avec Telegram ci-dessus pour retrouver tes réservations."
   },
   "ManageBooking": {
     "backTo": "Retour à {name}",
@@ -361,7 +359,7 @@
       "collectHeading": "Données que nous collectons",
       "collectBody": "Pour les organisateurs : nom, compte de messagerie, fuseau horaire, ainsi que les activités et créneaux publiés. Pour les participants : nom d’affichage et compte de messagerie, utilisés pour confirmer et gérer une réservation.",
       "useHeading": "Utilisation de ces données",
-      "useBody": "Les comptes de messagerie sont vérifiés au moment de la réservation via le widget de connexion de la messagerie — aucun code à usage unique ni mot de passe n’est collecté. Nous utilisons ton compte de messagerie pour envoyer les confirmations de réservation et les liens d’annulation. Nous ne vendons aucune donnée personnelle.",
+      "useBody": "Les comptes de messagerie sont vérifiés au moment de la réservation via la connexion Telegram — aucun code à usage unique ni mot de passe n’est collecté. Nous utilisons ton compte de messagerie pour envoyer les confirmations de réservation et les liens d’annulation. Nous ne vendons aucune donnée personnelle.",
       "analyticsHeading": "Analyse et suivi des erreurs",
       "analyticsBody": "Nous utilisons PostHog pour l’analyse du produit (pages consultées, utilisation des fonctionnalités) et Sentry pour le suivi des erreurs (rapports de plantage et traces de performance). Les enregistrements de session PostHog sont activés avec tous les champs de saisie masqués, de sorte qu’aucune donnée personnelle saisie n’y apparaît. Les organisateurs connectés sont identifiés par un identifiant interne afin de regrouper leur activité ; les participants ne sont pas identifiés dans les analyses. Aucun de ces services ne reçoit tes identifiants de messagerie.",
       "analyticsCookies": "Les cookies d’analyse sont désactivés par défaut et ne sont chargés qu’après ton acceptation dans la bannière de cookies ; si tu refuses ou ignores celle-ci, PostHog n’est jamais initialisé et aucun cookie d’analyse n’est créé. Les cookies essentiels nécessaires à la connexion et à la réservation sont toujours actifs et ne nécessitent pas de consentement. Le suivi des erreurs Sentry fonctionne sans cookies. Tu peux modifier ton choix à tout moment en effaçant les données de ce site dans ton navigateur.",
@@ -379,7 +377,6 @@
       "createAccount": "Créer un compte",
       "noAccountFound": "Aucun compte trouvé. Crée d’abord un compte.",
       "sameAccount": "Utilise le même compte Telegram que lors de ton inscription.",
-      "notConfigured": "La connexion avec Telegram n’est pas configurée. Contacte l’assistance.",
       "signInFailed": "Impossible de te connecter — authentifie-toi de nouveau avec Telegram"
     },
     "signup": {
@@ -391,7 +388,6 @@
       "stepProfile": "Profil",
       "accountExists": "Ce compte existe déjà. Connexion en cours…",
       "authenticate": "Authentifie-toi avec Telegram pour continuer.",
-      "notConfigured": "La connexion avec Telegram n’est pas configurée. Contacte l’assistance.",
       "displayName": "Nom affiché",
       "namePlaceholder": "Studio Démo",
       "publicHandle": "Identifiant public",
@@ -783,5 +779,16 @@
       "full": "Complet",
       "left": "Encore {count}"
     }
+  },
+  "TelegramLogin": {
+    "button": "Se connecter avec Telegram",
+    "buttonGuest": "Confirmer avec Telegram",
+    "notConfigured": "La connexion Telegram n’est pas configurée. Contacte le support.",
+    "unavailable": "La connexion Telegram nécessite une connexion sécurisée (HTTPS).",
+    "loadFailed": "Impossible de charger la connexion Telegram. Vérifie ta connexion.",
+    "popupBlocked": "Autorise les fenêtres pop-up de ce site pour te connecter avec Telegram.",
+    "authFailed": "Impossible de vous vérifier via Telegram. Veuillez réessayer.",
+    "inAppFailed": "La connexion Telegram ne s'est pas ouverte. Touchez à nouveau pour réessayer dans une fenêtre.",
+    "retry": "Réessayer"
   }
 }
