@@ -21,6 +21,12 @@ vi.mock('@/server/auth/organizer-token', () => ({
   mintOrganizerAuth: (...args: unknown[]) => mockMint(...args),
 }))
 
+// The real edge-safe verifier runs: its WebCrypto derivation is part of
+// what these tests pin. 'test-auth-secret' → this derived hex value
+// (same golden vector as internal-api.test.ts).
+const VALID_INTERNAL_SECRET =
+  '73b1b535eb4ded0b2f67951c5f9baf63b26be71360d8401d8a49d2a24c1dd106'
+
 import { NextRequest, NextResponse } from 'next/server'
 
 import { config, proxy } from './proxy'
@@ -100,6 +106,37 @@ describe('proxy — API header minting', () => {
       makeRequest('/api/services', { 'x-organizer-auth': 'forged-by-the-client' }),
     )
     expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe('minted-jwt')
+  })
+
+  it('passes X-Organizer-Auth through for a verified internal-secret caller', async () => {
+    // Server-to-server calls (SSR apiFetch) mint the header inside the
+    // request — x-internal-secret proves they are ours, and the edge
+    // cannot see a session cookie there: stripping it served every SSR
+    // cabinet read anonymously (the demo-cabinet regression).
+    vi.stubEnv('AUTH_SECRET', 'test-auth-secret')
+    const res = await proxy(
+      makeRequest('/api/organizers/me', {
+        'x-internal-secret': VALID_INTERNAL_SECRET,
+        'x-organizer-auth': 'server-minted-jwt',
+      }),
+    )
+    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBe(
+      'server-minted-jwt',
+    )
+    expect(mockAuth).not.toHaveBeenCalled()
+    expect(mockMint).not.toHaveBeenCalled()
+  })
+
+  it('still strips X-Organizer-Auth when x-internal-secret is present but invalid', async () => {
+    vi.stubEnv('AUTH_SECRET', 'test-auth-secret')
+    mockAuth.mockResolvedValueOnce(null)
+    const res = await proxy(
+      makeRequest('/api/services', {
+        'x-internal-secret': 'not-the-derived-secret',
+        'x-organizer-auth': 'forged-by-the-client',
+      }),
+    )
+    expect(res!.headers.get('x-middleware-request-x-organizer-auth')).toBeNull()
   })
 
   it('skips the Auth.js routes — they stay on Next.js', async () => {

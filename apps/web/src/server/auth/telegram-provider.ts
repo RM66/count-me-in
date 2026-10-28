@@ -52,9 +52,19 @@ export function createTelegramProvider() {
       const rawTicket = (credentials as Record<string, unknown>)?.ticket
       if (typeof rawTicket === 'string' && rawTicket.length === TICKET_BASE64URL_LENGTH) {
         const payload = await consumeTicket(rawTicket)
-        if (!payload || payload.purpose !== 'organizer') {
+        if (!payload) {
+          // Ticket absent in Redis or payload rejected — conflates "already
+          // spent", "expired" and "schema mismatch"; the token itself is a
+          // credential and is never logged.
+          console.error('[TelegramProvider] Sign-in ticket not found or malformed')
+          return null
+        }
+        if (payload.purpose !== 'organizer') {
           // A guest ticket (booking flow) must never be redeemable for an
           // organizer session — tickets are bound to one flow by `purpose`.
+          console.error(
+            `[TelegramProvider] Sign-in ticket purpose "${payload.purpose}", expected "organizer"`,
+          )
           return null
         }
         const organizer = await getInternalOrganizer({
@@ -62,11 +72,13 @@ export function createTelegramProvider() {
           messengerId: payload.messengerId,
         })
         if (!organizer) {
+          console.error('[TelegramProvider] Organizer lookup returned no record')
           return null
         }
         return { id: organizer.id, name: organizer.name, slug: organizer.slug }
       }
 
+      console.error('[TelegramProvider] Sign-in credentials missing a ticket of the expected shape')
       return null
     },
   })

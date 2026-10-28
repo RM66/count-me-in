@@ -57,7 +57,10 @@ export function useTelegramTicketExchange({
       if (data.organizerExists) {
         const { signIn } = await import('next-auth/react')
         const result = await signIn('telegram', { ticket: data.ticket, redirect: false })
-        if (result?.ok) {
+        // `result.ok` is the callback's transport status — it is true even
+        // when authorize fails, because Auth.js answers 200 and carries the
+        // failure in `?error=` inside `data.url`. `error` is the auth result.
+        if (result && !result.error) {
           window.location.href = redirectTo
         } else {
           console.error('[TelegramLogin] Sign-in with ticket failed:', result?.error)
