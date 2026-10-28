@@ -3,6 +3,7 @@
 import type { ServiceRecord, TimeSlotRecord } from '@repo/contracts'
 import { instantToWallClockInputs } from '@repo/contracts'
 import { useTranslations } from 'next-intl'
+import { useWatch } from 'react-hook-form'
 
 import { FormTextField } from '@/components/form-field'
 import { Button } from '@/components/ui/button'
@@ -92,6 +93,11 @@ export function SlotDialog({
   const { control } = form
   const { isDirty } = form.formState
 
+  // An empty price means "inherit the service default" — so the placeholder
+  // previews what the slot will actually show, following the picker on create.
+  const serviceId = useWatch({ control, name: 'serviceId' })
+  const servicePrice = services.find((service) => service.id === serviceId)?.defaultPrice
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -154,7 +160,7 @@ export function SlotDialog({
               control={control}
               name="price"
               label={t('fieldPrice')}
-              placeholder={t('pricePlaceholder')}
+              placeholder={servicePrice ?? t('pricePlaceholder')}
               description={t('priceDescription')}
             />
           </FieldGroup>
