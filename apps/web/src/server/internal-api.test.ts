@@ -27,6 +27,16 @@ describe('derivedInternalSecret', () => {
     )
   })
 
+  it('the edge-side derivation (auth/internal-secret.ts) matches the same vector', async () => {
+    // The middleware cannot import internal-api.ts (node:crypto is not
+    // edge-safe), so it verifies with its own WebCrypto derivation — the
+    // golden vector pins both to the same output.
+    const { deriveInternalSecret } = await import('@/server/auth/internal-secret')
+    expect(await deriveInternalSecret('test-auth-secret')).toBe(
+      '73b1b535eb4ded0b2f67951c5f9baf63b26be71360d8401d8a49d2a24c1dd106',
+    )
+  })
+
   it('is deterministic and secret-sensitive', () => {
     expect(derivedInternalSecret('test-auth-secret')).toBe(
       derivedInternalSecret('test-auth-secret'),

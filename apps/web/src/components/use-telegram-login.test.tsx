@@ -509,6 +509,17 @@ describe('modes', () => {
     )
   })
 
+  it('login mode: reports a failed sign-in instead of navigating', async () => {
+    mocks.post.mockResolvedValue({ ticket: 'tk', organizerExists: true })
+    // The real next-auth v5 result shape on a failed authorize: the
+    // callback answers 200 {url:"...?error=..."}, so `ok` is true while
+    // `error` carries the failure — checking `ok` alone masks it.
+    mocks.signIn.mockResolvedValue({ ok: true, error: 'CredentialsSignin', url: null })
+    const { onError } = renderButton({ mode: 'login' })
+    await deliverClick()
+    await waitFor(() => expect(onError).toHaveBeenCalledWith('CredentialsSignin'))
+  })
+
   it('login mode: calls onSignupRequired when no organizer exists', async () => {
     mocks.post.mockResolvedValue({ ticket: 'tk', organizerExists: false })
     const onSignupRequired = vi.fn()

@@ -13,6 +13,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
 import { auth } from '@/server/auth'
+import { INTERNAL_SECRET_HEADER, verifyInternalSecret } from '@/server/auth/internal-secret'
 import { mintOrganizerAuth, ORGANIZER_AUTH_HEADER } from '@/server/auth/organizer-token'
 
 /**
@@ -80,17 +81,26 @@ export async function proxy(request: NextRequest): Promise<NextResponse | void> 
   const isRealtimeRoute = pathname === '/api/realtime' || pathname.startsWith('/api/realtime/')
   if (pathname.startsWith('/api/') && !isAuthjsRoute && !isRealtimeRoute) {
     const requestHeaders = new Headers(request.headers)
-    // The organizer-auth header is a middleware-minted credential and
-    // nothing else: strip any client-supplied value before minting, so
-    // an anonymous request can never carry a forged header through to
-    // the Python API. The trust boundary is the topology (this edge always
-    // overwrites the header), not only the signing secret.
-    requestHeaders.delete(ORGANIZER_AUTH_HEADER)
-    const session = await auth()
-    if (session?.user?.id) {
-      const token = await mintOrganizerAuth(session.user.id, session.user.slug)
-      if (token) {
-        requestHeaders.set(ORGANIZER_AUTH_HEADER, token)
+    // Server-side callers (SSR apiFetch, internal lookups) prove themselves
+    // with x-internal-secret — only our own functions can mint it. Their
+    // x-organizer-auth was minted inside the request, not forged by a
+    // client, and the edge's auth() sees no session cookie on a
+    // server-to-server call: stripping the header here (as happened before)
+    // served every SSR cabinet read as anonymous — the demo cabinet.
+    const trustedServerCall = await verifyInternalSecret(requestHeaders.get(INTERNAL_SECRET_HEADER))
+    if (!trustedServerCall) {
+      // The organizer-auth header is a middleware-minted credential and
+      // nothing else: strip any client-supplied value before minting, so
+      // an anonymous request can never carry a forged header through to
+      // the Python API. The trust boundary is the topology (this edge always
+      // overwrites the header), not only the signing secret.
+      requestHeaders.delete(ORGANIZER_AUTH_HEADER)
+      const session = await auth()
+      if (session?.user?.id) {
+        const token = await mintOrganizerAuth(session.user.id, session.user.slug)
+        if (token) {
+          requestHeaders.set(ORGANIZER_AUTH_HEADER, token)
+        }
       }
     }
     // Container twin: no Vercel Edge Router serves the API at
